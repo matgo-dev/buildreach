@@ -1,0 +1,61 @@
+name: Deploy to ECS
+
+# 仅手动触发(代码提交 / 合并 main 不会自动部署)
+# 触发方式:
+#   - GitHub 网页:repo → Actions → "Deploy to ECS" → Run workflow
+#   - 命令行:gh workflow run "Deploy to ECS"
+on:
+  workflow_dispatch:
+
+# 同时只允许一个部署在跑,后到的排队等(不取消正在进行的)
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  check-migration:
+    name: 迁移安全检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检查破坏性迁移
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          # commit message 含 [allow-destructive-migration] → 跳过
+          if git log -1 --pretty=%B | grep -q '\[allow-destructive-migration\]'; then
+            echo "已授权破坏性迁移,跳过检查"
+            exit 0
+          fi
+          bash deploy/check-migration-safety.sh
+
+  deploy:
+    name: 部署到 ECS
+    needs: check-migration
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 触发 deploy.sh
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USER }}
+          key: ${{ secrets.ECS_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            cd /opt/overseas-platform
+            bash deploy/deploy.sh
+
+      - name: 通知
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ 部署完成 → http://${{ secrets.ECS_HOST }}:3000"
+          else
+            echo "❌ 部署失败,登录 ECS 排查:ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}"
+          fi

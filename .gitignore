@@ -1,0 +1,55 @@
+# ---- Python / 后端 ----
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# 数据库与本地数据
+*.db
+*.db-journal
+
+# ---- Node / 前端 ----
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# ---- 环境变量(绝不入库)----
+.env
+.env.local
+.env*.local
+.env.production
+!.env.example
+!.env.local.example
+!.env.production.example
+
+# ---- Docker 部署运行时文件(ECS 本地维护)----
+backups/
+*.sql.gz
+legacy-demo.sql.gz
+
+# ---- 编辑器 / 系统 ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Office / WPS 临时锁文件(打开 xlsx/doc 时生成,内容是垃圾)
+~$*
+.~*
+
+# ---- 日志 ----
+*.log
+.claude/
+.gstack/
+
+# ---- AI 指令 / 内部设计文档(本地保留,不入库) ----
+CLAUDE.md
+docs/

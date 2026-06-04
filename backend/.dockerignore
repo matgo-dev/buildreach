@@ -1,0 +1,52 @@
+# Python 构建产物
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# 测试 / 覆盖率
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 环境配置 / 敏感信息(绝不进镜像)
+.env
+.env.*
+!.env.example
+
+# 本地开发数据
+dev.db
+*.db
+*.db-journal
+
+# 误放在 backend/ 的空目录
+frontend/
+
+# 文档(运行时用不到)
+README.md
+*.md
+
+# 注:scripts/ 故意保留进镜像 — 运维脚本(如 import_categories.py)需在 ECS 上执行
+
+# Docker 元文件(自己不需要进镜像;但 docker-entrypoint.sh 必须保留,启动要用)
+Dockerfile
+.dockerignore
+
+# 操作系统垃圾
+.DS_Store
+Thumbs.db

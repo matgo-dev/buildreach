@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>柬埔寨供应商信用评估 PoC · 双源对照</title>
+  <style>
+    body { font-family: -apple-system, "PingFang SC", sans-serif; margin: 24px; color: #222; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 16px; border-left: 4px solid #6b7280; padding-left: 8px; margin-top: 28px; }
+    h4 { margin: 16px 0 8px; font-size: 14px; }
+    .bar { margin: 14px 0; }
+    .bar input[type=text] { width: 320px; padding: 8px; font-size: 14px; }
+    .bar button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
+    .quick button { margin: 4px 4px 0 0; padding: 5px 10px; font-size: 12px; background: #eef; border: 1px solid #ccd; border-radius: 4px; cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; max-width: 980px; font-size: 13px; }
+    th, td { border: 1px solid #e5e7eb; padding: 7px 10px; text-align: left; vertical-align: top; }
+    th { background: #f6f6f6; }
+    .col-field { width: 130px; color: #555; }
+    .null { color: #bbb; }
+    /* 调用结果列:所有 status 统一基础样式,边框一致,非 ok 仅浅灰背景,不用红色 */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 980px; }
+    .result-column { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; }
+    .result-column.non-ok { background: #f9fafb; }
+    .result-header { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+    .status-icon { display: inline-block; width: 18px; color: #6b7280; }
+    .status-label { color: #374151; font-weight: normal; font-size: 12px; }
+    .meta-line { font-size: 12px; color: #666; margin: 6px 0; }
+    .article { border-top: 1px solid #eee; padding: 6px 0; font-size: 12px; }
+    .article .neg { color: #374151; font-weight: bold; }  /* 中性,不用红色 */
+    .article a { color: #2563eb; text-decoration: none; }
+    .article .meta { color: #999; }
+    .result-raw { margin-top: 8px; font-size: 12px; }
+    .result-raw pre { background: #f6f6f6; padding: 8px; max-height: 200px; overflow: auto; }
+    /* status 行(工商表格内) */
+    .status-cell .status-icon { color: #6b7280; }
+    /* 重合度 */
+    .overlap-stats { max-width: 480px; font-size: 13px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
+    .clickable { cursor: pointer; text-decoration: underline; color: #2563eb; }
+    .clickable:hover { color: #1d4ed8; }
+    .url-list { margin-top: 12px; padding: 8px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; max-height: 300px; overflow-y: auto; max-width: 960px; }
+    .url-item { padding: 4px 0; font-size: 13px; word-break: break-all; }
+    .empty { color: #6b7280; font-style: italic; text-align: center; padding: 20px; }
+    /* v1.2 爬虫降级链尝试轨迹 */
+    .attempt-chain { margin: 12px 0; padding: 8px 12px; background: #f9fafb; border-left: 3px solid #d1d5db; max-width: 980px; }
+    .attempt-chain h5 { margin: 0 0 8px; font-size: 13px; color: #6b7280; }
+    .attempt-list { list-style: none; padding: 0; margin: 0; }
+    .attempt-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+    .attempt-icon { width: 16px; text-align: center; color: #6b7280; }
+    .attempt-source { font-family: monospace; color: #374151; }
+    .attempt-status { color: #6b7280; }
+    .attempt-duration { margin-left: auto; color: #9ca3af; font-size: 12px; }
+    .hit-source { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e5e7eb; font-size: 13px; }
+    #status { margin: 10px 0; color: #666; }
+    details.meta { margin-top: 18px; max-width: 980px; font-size: 12px; }
+    details.meta pre { background: #f6f6f6; padding: 10px; overflow-x: auto; max-height: 360px; }
+  </style>
+</head>
+<body>
+  <h1>柬埔寨供应商信用评估 PoC · 双源对照</h1>
+  <div class="bar">
+    公司名称: <input id="company" type="text" value="Kampot Cement">
+    <button onclick="doSearch()">查询</button>
+    <label style="margin-left:10px;font-size:13px"><input type="checkbox" id="force"> 强制刷新(绕过 Tavily 缓存)</label>
+  </div>
+  <div class="quick">
+    快捷测试 · 大企业:
+    <button onclick="quick('Kampot Cement')">Kampot Cement</button>
+    <button onclick="quick('Acleda Bank')">Acleda Bank</button>
+    &nbsp;&nbsp;中小企业:
+    <button onclick="quick('KHALIBRE CO.,LTD')">KHALIBRE</button>
+    <button onclick="quick('T.S SPORT (CAMBODIA) CO., LTD.')">T.S SPORT</button>
+    <button onclick="quick('TOP FORM (CAMBODIA) COMPANY LIMITED')">TOP FORM</button>
+  </div>
+  <div id="status"></div>
+  <div id="result"></div>
+
+  <details class="meta" id="meta-box" style="display:none">
+    <summary>完整调用元信息(ComparisonResponse JSON)</summary>
+    <pre id="meta"></pre>
+  </details>
+
+  <script>
+    const FIELDS = [
+      ["company_full_name", "企业全称"], ["country_region", "国家/地区"],
+      ["registration_no", "注册号"], ["established_date", "成立日期"],
+      ["legal_representative", "法人代表"], ["business_scope", "经营范围"],
+      ["registered_capital", "注册资本"],
+    ];
+    // status → 中性 Unicode 图标 + 中文标签(不用红绿色区分成败)
+    const STATUS_MAP = {
+      ok: ["●", "调用成功"], access_restricted: ["◐", "访问受限"],
+      no_match: ["○", "未匹配到内容"], parse_error: ["◇", "解析问题"],
+      timeout: ["◷", "超时"], error: ["△", "异常"],
+    };
+    let lastData = null;
+
+    function quick(name) { document.getElementById('company').value = name; doSearch(); }
+    function statusHtml(s) {
+      const [icon, label] = STATUS_MAP[s] || ["△", s];
+      return `<span class="status-icon">${icon}</span><span class="status-label">${label}</span>`;
+    }
+    function cell(v) { return v == null || v === '' ? '<span class="null">—</span>' : v; }
+
+    function renderBasic(t, c) {
+      const rows = FIELDS.map(([k, label]) =>
+        `<tr><td class="col-field">${label}</td><td>${cell(t.fields[k])}</td><td>${cell(c.fields[k])}</td></tr>`
+      ).join('');
+      const rawRow = (r) => r.raw_snippet
+        ? `<details class="result-raw"><summary>查看调用详情</summary><pre>${escapeHtml(r.raw_snippet)}</pre></details>` : '';
+      return `
+      <h2>维度 1 · 工商基础(PRD §Δ10 · 7 字段)</h2>
+      <table>
+        <tr><th class="col-field">字段</th>
+            <th>Tavily + LLM ${cacheTag(t)}</th>
+            <th>爬虫(降级链) ${cacheTag(c)}</th></tr>
+        ${rows}
+        <tr><td class="col-field">填充率</td><td>${t.fields_filled}/7</td><td>${c.fields_filled}/7</td></tr>
+        <tr><td class="col-field">耗时</td><td>${t.duration_ms}ms</td><td>${c.duration_ms}ms</td></tr>
+        <tr class="status-cell"><td class="col-field">状态</td>
+            <td>${statusHtml(t.status)}${t.error_detail ? ' · ' + t.error_detail : ''}${rawRow(t)}</td>
+            <td>${statusHtml(c.status)}${c.error_detail ? ' · ' + c.error_detail : ''}${rawRow(c)}</td></tr>
+        <tr><td class="col-field">来源</td><td>${cell(t.source_url)}</td><td>${cell(c.source_url)}</td></tr>
+      </table>
+      ${renderChain(c)}`;
+    }
+    function cacheTag(r) {
+      if (r.status === 'ok') return r.cache_hit ? '· 缓存命中' : '· 实时';
+      return '';
+    }
+    function renderChain(c) {
+      if (!c.attempts || c.attempts.length === 0) return '';
+      const items = c.attempts.map(a => {
+        const [icon, label] = STATUS_MAP[a.status] || ['△', a.status];
+        const code = a.http_status_code ? ' (' + a.http_status_code + ')' : '';
+        return `<li class="attempt-item">
+          <span class="attempt-icon">${icon}</span>
+          <span class="attempt-source">${a.source}</span>
+          <span class="attempt-status">─ ${label}${code}</span>
+          <span class="attempt-duration">${a.duration_ms}ms</span>
+        </li>`;
+      }).join('');
+      return `<div class="attempt-chain">
+        <h5>爬虫降级链路尝试(MOC → OpenCorporates → Wikipedia → GLEIF)</h5>
+        <ul class="attempt-list">${items}</ul>
+        <div class="hit-source">最终数据来自:<strong>${c.hit_source || '所有源均未命中'}</strong></div>
+      </div>`;
+    }
+
+    function renderArticles(r) {
+      if (r.articles.length === 0)
+        return `<div class="null">无召回(${(STATUS_MAP[r.status]||[])[1] || r.status}${r.error_detail ? ' · ' + r.error_detail : ''})</div>`;
+      return r.articles.map(a => `<div class="article">
+        ${a.is_negative ? '<span class="neg">[负面] </span>' : ''}<a href="${a.url}" target="_blank">${a.title}</a>
+        <div class="meta">${a.source_site} · ${a.published_date || '日期未知'}</div>
+      </div>`).join('');
+    }
+    function legalCol(title, r) {
+      return `<div class="result-column ${r.status === 'ok' ? '' : 'non-ok'}">
+        <div class="result-header">${title} <span style="font-weight:normal">${statusHtml(r.status)}</span></div>
+        <div class="meta-line">文章 ${r.article_count} · 负面 ${r.negative_count} · 最近 ${r.latest_published || '—'} · ${r.duration_ms}ms ${cacheTag(r)}</div>
+        ${renderArticles(r)}
+      </div>`;
+    }
+
+    function renderLegal(legal) {
+      const o = legal.overlap;
+      return `
+      <h2>维度 4 · 司法舆情</h2>
+      <div class="grid2">
+        ${legalCol('Tavily + LLM', legal.legal_tavily)}
+        ${legalCol('爬虫(媒体站)', legal.legal_crawler)}
+      </div>
+      <h4>召回内容对比</h4>
+      <div class="overlap-stats">
+        <div class="stat-row"><span>Tavily + LLM 召回</span><span class="clickable" data-list="tavily-all">${o.tavily_total} 篇</span></div>
+        <div class="stat-row"><span>爬虫召回</span><span class="clickable" data-list="crawler-all">${o.crawler_total} 篇</span></div>
+        <div class="stat-row"><span>两边同时召回</span><span class="clickable" data-list="overlap">${o.overlap_count} 篇</span></div>
+      </div>
+      <div class="url-list" id="url-list-display" style="display:none;"></div>`;
+    }
+
+    function getUrlsByType(t) {
+      const l = lastData.legal, o = l.overlap;
+      if (t === 'tavily-all') return l.legal_tavily.articles.map(a => a.url);
+      if (t === 'crawler-all') return l.legal_crawler.articles.map(a => a.url);
+      if (t === 'overlap') return o.overlap_urls;
+      if (t === 'tavily-only') return o.tavily_only_urls;
+      if (t === 'crawler-only') return o.crawler_only_urls;
+      return [];
+    }
+    function renderUrlList(urls) {
+      const c = document.getElementById('url-list-display');
+      c.style.display = 'block';
+      c.innerHTML = urls.length === 0
+        ? '<div class="empty">该类别下无召回内容</div>'
+        : urls.map(u => `<div class="url-item"><a href="${u}" target="_blank" rel="noopener">${u}</a></div>`).join('');
+    }
+    function bindClickable() {
+      document.querySelectorAll('.clickable').forEach(el =>
+        el.addEventListener('click', () => renderUrlList(getUrlsByType(el.dataset.list))));
+    }
+    function escapeHtml(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    async function doSearch() {
+      const name = document.getElementById('company').value.trim();
+      const force = document.getElementById('force').checked;
+      const statusEl = document.getElementById('status');
+      const resultEl = document.getElementById('result');
+      if (!name) { statusEl.textContent = '请输入公司名'; return; }
+      statusEl.textContent = '4 路并发调用中...'; resultEl.innerHTML = '';
+      document.getElementById('meta-box').style.display = 'none';
+      try {
+        const resp = await fetch('/api/poc/compare', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ company_name: name, force_refresh: force }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()));
+        const d = await resp.json();
+        lastData = d;
+        resultEl.innerHTML = renderBasic(d.basic_tavily, d.basic_crawler) + renderLegal(d.legal);
+        bindClickable();
+        document.getElementById('meta').textContent = JSON.stringify(d, null, 2);
+        document.getElementById('meta-box').style.display = 'block';
+        statusEl.textContent = '';
+      } catch (e) {
+        statusEl.textContent = '查询失败:' + e.message;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+# ============================================================
+# 央企海外工程供应链平台 · 生产部署编排
+#
+# 用途:演示 + 单机生产
+# 不用途:本地开发(本地走 uvicorn --reload + pnpm dev)
+#
+# 启动:docker compose --env-file .env.production up -d --build
+# 部署:见 deploy/deploy.sh 与 deploy/README.md
+# ============================================================
+
+# 共用日志驱动:每服务最多 30MB(10m × 3 文件滚动),防磁盘塞满
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # PG 时区固定 UTC,与应用层 _utcnow() 约定一致
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # 不对外暴露 5432,只在 compose 内部网络可见
+    expose:
+      - "5432"
+    logging: *default-logging
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # 数据库连接(从 POSTGRES_* 拼出)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
+      # JWT
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+
+      # 初始 super admin
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
+      SUPER_ADMIN_INITIAL_PASSWORD: ${SUPER_ADMIN_INITIAL_PASSWORD}
+
+      # demo seed 总开关(演示环境保持 true;真正生产改 false)
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-true}
+
+      # CORS(逗号分隔)
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
+
+      # Refresh token cookie(纯 HTTP 部署:SECURE=false;接 HTTPS 后改 true)
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-refresh_token}
+      REFRESH_COOKIE_PATH: ${REFRESH_COOKIE_PATH:-/api/v1/auth}
+      REFRESH_COOKIE_MAX_AGE: ${REFRESH_COOKIE_MAX_AGE:-604800}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
+
+      # 登录限流
+      LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}
+      LOGIN_RATE_LIMIT_MAX_FAILURES: ${LOGIN_RATE_LIMIT_MAX_FAILURES:-5}
+      LOGIN_RATE_LIMIT_LOCK_SECONDS: ${LOGIN_RATE_LIMIT_LOCK_SECONDS:-300}
+
+      # 日志
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # 调试 API 开关(生产建议 false)
+      ENABLE_DEBUG_API: ${ENABLE_DEBUG_API:-false}
+    ports:
+      - "8001:8000"
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* 必须 build 时注入,运行时改无效
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3001:3000"
+    logging: *default-logging
+
+volumes:
+  pgdata:
+    # 显式 name:避免 compose project name 漂移导致卷被认作新卷
+    name: overseas_platform_pgdata

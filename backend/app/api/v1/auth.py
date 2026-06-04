@@ -1,0 +1,513 @@
+"""认证路由 /api/v1/auth/*"""
+from __future__ import annotations
+
+from dataclasses import asdict
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.core.dependencies import CurrentUser, get_current_user
+from app.core.exceptions import MultipleValidationError, NotAuthenticatedError, success
+from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.db.models.user import User, UserStatus
+from jose import JWTError
+from urllib.parse import urlparse
+from app.db.session import get_db
+from app.rbac.constants import Permissions
+from app.rbac.guards import block_if_must_change_password, require_permission
+from app.schemas.auth import (
+    BuyerRegisterIn,
+    ChangePasswordIn,
+    LoginIn,
+    MeOut,
+    RegisterOut,
+    SupplierRegisterIn,
+    TokenOut,
+)
+from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, ProfileUpdateIn
+from app.services import auth_service, me_service
+from app.services.credit.harvester.harvest_task import harvest_after_register
+from app.services.credit.registration_hook import initialize_credit_for_new_supplier
+
+from email_validator import validate_email as ev_validate, EmailNotValidError
+from sqlalchemy import and_, select
+from app.constants.country_registration import (
+    BUSINESS_CODE_EMAIL_ALREADY_REGISTERED,
+    BUSINESS_CODE_PHONE_ALREADY_REGISTERED,
+    BUSINESS_CODE_SUPPLIER_ALREADY_REGISTERED,
+    COUNTRY_CODES,
+    COUNTRY_META,
+    DUPLICATE_REGISTRATION_ERROR_MESSAGE,
+    EMAIL_ALREADY_REGISTERED_MESSAGE,
+    LANGUAGE_CODES,
+    PHONE_ALREADY_REGISTERED_MESSAGE,
+    validate_registration_no,
+)
+from app.core.security import PASSWORD_RULE_MESSAGE, validate_password_strength
+from app.db.models.supplier_organization import SupplierOrganization
+
+
+# ---- 供应商注册:全量校验(格式 + 业务一次性返回) ----
+
+# 与 schemas/auth.py 中 SUPPLIER_PHONE_REGEX 一致
+import re
+_SUPPLIER_PHONE_RE = re.compile(r"^[+0-9\s\-]{6,20}$")
+
+
+def _validate_supplier_register(raw: dict) -> tuple["SupplierRegisterIn | None", list[dict]]:
+    """手动跑全部格式校验,收集所有错误而不短路。
+    返回 (parsed_body_or_None, format_errors)。
+    """
+    errors: list[dict] = []
+
+    # 必填检查
+    required = ["email", "name", "phone", "password", "company_name",
+                 "country_code", "registration_no", "language_preference"]
+    for f in required:
+        if not raw.get(f):
+            errors.append({"field": f, "code": 42200, "message": f"{f} 不能为空"})
+
+    # 逐字段格式校验(仅在有值时校验)
+    email = raw.get("email", "")
+    if email:
+        try:
+            ev_validate(email, check_deliverability=False)
+        except EmailNotValidError:
+            errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
+
+    phone = raw.get("phone", "")
+    if phone and not _SUPPLIER_PHONE_RE.match(phone):
+        errors.append({"field": "phone", "code": 42200,
+                        "message": "联系电话格式不正确(6-20 位,允许 +、数字、空格、短横)"})
+
+    password = raw.get("password", "")
+    if password and not validate_password_strength(password):
+        errors.append({"field": "password", "code": 42200, "message": PASSWORD_RULE_MESSAGE})
+
+    name = raw.get("name", "")
+    if name and len(name) > 100:
+        errors.append({"field": "name", "code": 42200, "message": "联系人姓名不能超过 100 个字符"})
+
+    company_name = raw.get("company_name", "")
+    if company_name and len(company_name) > 200:
+        errors.append({"field": "company_name", "code": 42200, "message": "公司名称不能超过 200 个字符"})
+
+    country_code = raw.get("country_code", "")
+    if country_code and country_code not in COUNTRY_CODES:
+        errors.append({"field": "country_code", "code": 42200,
+                        "message": f"country_code 必须是合法国家之一:{','.join(COUNTRY_CODES)}"})
+
+    registration_no = raw.get("registration_no", "")
+    if registration_no and country_code and country_code in COUNTRY_CODES:
+        if not validate_registration_no(country_code, registration_no):
+            hint = COUNTRY_META.get(country_code, {}).get("reg_no_hint", "格式不符")
+            errors.append({"field": "registration_no", "code": 42200,
+                            "message": f"注册号格式不符,应为:{hint}"})
+
+    language_preference = raw.get("language_preference", "")
+    if language_preference and language_preference not in LANGUAGE_CODES:
+        errors.append({"field": "language_preference", "code": 42200,
+                        "message": f"语言偏好必须是合法值之一:{','.join(LANGUAGE_CODES)}"})
+
+    if errors:
+        return None, errors
+
+    # 格式全通过,用 Pydantic 构建对象(此时不会再抛异常)
+    body = SupplierRegisterIn(**raw)
+    return body, []
+
+
+async def _check_supplier_duplicates(
+    db: "AsyncSession", raw: dict, format_errors: list[dict],
+) -> list[dict]:
+    """对格式校验通过的字段,跑业务唯一性检查。"""
+    errors: list[dict] = []
+    errored_fields = {e["field"] for e in format_errors}
+
+    # 注册号重复(需要 country_code 和 registration_no 都格式合法)
+    if "country_code" not in errored_fields and "registration_no" not in errored_fields:
+        country_code = raw.get("country_code", "")
+        registration_no = raw.get("registration_no", "")
+        if country_code and registration_no:
+            row = await db.execute(
+                select(SupplierOrganization.id).where(
+                    and_(
+                        SupplierOrganization.country_code == country_code,
+                        SupplierOrganization.registration_no == registration_no,
+                    )
+                )
+            )
+            if row.scalar_one_or_none() is not None:
+                errors.append({
+                    "field": "registration_no",
+                    "code": BUSINESS_CODE_SUPPLIER_ALREADY_REGISTERED,
+                    "message": DUPLICATE_REGISTRATION_ERROR_MESSAGE,
+                })
+
+    # 邮箱重复
+    if "email" not in errored_fields:
+        email = raw.get("email", "")
+        if email:
+            from app.db.models.user import User
+            row = await db.execute(select(User.id).where(User.email == email))
+            if row.scalar_one_or_none() is not None:
+                errors.append({
+                    "field": "email",
+                    "code": BUSINESS_CODE_EMAIL_ALREADY_REGISTERED,
+                    "message": EMAIL_ALREADY_REGISTERED_MESSAGE,
+                })
+
+    # 手机号重复
+    if "phone" not in errored_fields:
+        phone = raw.get("phone", "")
+        if phone:
+            from app.db.models.user import User
+            row = await db.execute(select(User.id).where(User.phone == phone))
+            if row.scalar_one_or_none() is not None:
+                errors.append({
+                    "field": "phone",
+                    "code": BUSINESS_CODE_PHONE_ALREADY_REGISTERED,
+                    "message": PHONE_ALREADY_REGISTERED_MESSAGE,
+                })
+
+    return errors
+
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/register/buyer", summary="BUYER 自助注册")
+async def register_buyer(
+    body: BuyerRegisterIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await auth_service.register_buyer(
+        db,
+        email=body.email,
+        username=body.username,
+        name=body.name,
+        phone=body.phone,
+        password=body.password,
+        company_name=body.company_name,
+        unified_social_credit_code=body.unified_social_credit_code,
+        request=request,
+    )
+    return success(RegisterOut(user_id=user.id, email=user.email).model_dump())
+
+
+@router.post("/register/supplier", summary="SUPPLIER 自助注册")
+async def register_supplier(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    # 手动解析 + 全量校验(不依赖 Pydantic 自动 422 短路)
+    # WHY:格式错误和业务错误(重复)要一次性返回,避免用户反复提交
+    raw = await request.json()
+    body, format_errors = _validate_supplier_register(raw)
+
+    # 格式通过的字段继续跑业务校验(重复检查)
+    business_errors = await _check_supplier_duplicates(db, raw, format_errors)
+
+    all_errors = format_errors + business_errors
+    if all_errors:
+        raise MultipleValidationError(all_errors)
+
+    user, supplier_org_id = await auth_service.register_supplier(
+        db,
+        email=body.email,
+        name=body.name,
+        phone=body.phone,
+        password=body.password,
+        company_name=body.company_name,
+        country_code=body.country_code,
+        registration_no=body.registration_no,
+        language_preference=body.language_preference,
+        request=request,
+    )
+    # 注册即评分:异步生成信用评分初始化(独立 session,失败不影响注册)
+    background_tasks.add_task(
+        initialize_credit_for_new_supplier, supplier_org_id=supplier_org_id
+    )
+    # Δ7:占位评分之后,链尾追加柬埔寨公开数据抓取(仅 KH 生效,内部自行判断)
+    background_tasks.add_task(
+        harvest_after_register, supplier_org_id=supplier_org_id
+    )
+    return success(RegisterOut(user_id=user.id, email=user.email).model_dump())
+
+
+def _origin_allowed(origin_header: str | None, allowed: list[str]) -> bool:
+    """Origin/Referer 白名单校验(CSRF 防御)。
+
+    取 origin_header 的 scheme://host[:port],与 allowed 列表精确匹配。
+    """
+    if not origin_header:
+        return False
+    parsed = urlparse(origin_header)
+    if not parsed.scheme or not parsed.hostname:
+        return False
+    port = f":{parsed.port}" if parsed.port else ""
+    normalized = f"{parsed.scheme}://{parsed.hostname}{port}"
+    return normalized in allowed
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    """统一封装:把 refresh token 写入 httpOnly cookie。"""
+    response.set_cookie(
+        key=settings.REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        max_age=settings.REFRESH_COOKIE_MAX_AGE,
+        path=settings.REFRESH_COOKIE_PATH,
+        httponly=True,
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+    )
+
+
+@router.post("/login", summary="登录(access 在 body,refresh 在 httpOnly cookie)")
+async def login(
+    body: LoginIn,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    tokens = await auth_service.login(
+        db, identifier=body.identifier, password=body.password, request=request
+    )
+    # refresh 不入 body,通过 httpOnly cookie 下发
+    _set_refresh_cookie(response, tokens["refresh_token"])
+    return success(TokenOut(
+        access_token=tokens["access_token"],
+        token_type=tokens["token_type"],
+        expires_in=tokens["expires_in"],
+    ).model_dump())
+
+
+@router.get("/me", summary="当前用户:roles + permissions + organization")
+async def me(current: CurrentUser = Depends(get_current_user)):
+    org = asdict(current.organization) if current.organization else None
+    data = MeOut(
+        id=current.id,
+        email=current.email,
+        username=current.username,
+        name=current.name,
+        phone=current.phone,
+        status=current.status,
+        must_change_password=current.must_change_password,
+        roles=current.roles,
+        permissions=current.permissions,
+        organization=org,
+    ).model_dump()
+    return success(data)
+
+
+@router.post("/refresh", summary="用 httpOnly cookie 中的 refresh token 换新 access(并轮转 refresh)")
+async def refresh(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    # 1. CSRF 防御:Origin/Referer 必须在白名单
+    origin = request.headers.get("origin") or request.headers.get("referer")
+    if not _origin_allowed(origin, settings.CORS_ORIGINS):
+        raise NotAuthenticatedError("Invalid origin")
+
+    # 2. 从 httpOnly cookie 读 refresh token
+    refresh_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
+    if not refresh_token:
+        raise NotAuthenticatedError("No refresh token")
+
+    # 3. 解码 + 校验(type 必须 refresh)
+    try:
+        payload = decode_token(refresh_token, expected_type="refresh")
+    except JWTError:
+        raise NotAuthenticatedError("Invalid refresh token")
+
+    user_id_raw = payload.get("sub")
+    if user_id_raw is None:
+        raise NotAuthenticatedError("Invalid token payload")
+    try:
+        user_id = int(user_id_raw)
+    except (TypeError, ValueError):
+        raise NotAuthenticatedError("Invalid token payload")
+
+    # 4. 用户必须 ACTIVE
+    user = await db.get(User, user_id)
+    if user is None or user.status != UserStatus.ACTIVE:
+        raise NotAuthenticatedError("User unavailable")
+
+    # 4.5 token_version 校验:refresh token 的 tv 必须匹配当前库值
+    if int(payload.get("tv", -1)) != user.token_version:
+        raise NotAuthenticatedError("Token revoked")
+
+    # 5. 签新 access + 新 refresh(refresh 轮转,降低盗用窗口)
+    new_access, expires_in = create_access_token(user.id, user.email, user.token_version)
+    new_refresh = create_refresh_token(user.id, user.email, user.token_version)
+
+    # 6. 新 refresh 写回 cookie
+    _set_refresh_cookie(response, new_refresh)
+
+    # 7. 返回新 access(refresh 静默,**不写 audit_logs** 避免噪音)
+    return success({
+        "access_token": new_access,
+        "token_type": "Bearer",
+        "expires_in": expires_in,
+    })
+
+
+@router.post("/logout", summary="登出(清 cookie + 写审计)")
+async def logout(
+    request: Request,
+    response: Response,
+    current: CurrentUser = Depends(require_permission(Permissions.AUTH_LOGOUT)),
+    db: AsyncSession = Depends(get_db),
+):
+    await auth_service.logout(
+        db, user_id=current.id, user_email=current.email, request=request
+    )
+    response.delete_cookie(
+        key=settings.REFRESH_COOKIE_NAME,
+        path=settings.REFRESH_COOKIE_PATH,
+    )
+    return success(None)
+
+
+@router.post("/change-password", summary="修改自己密码")
+async def change_password(
+    body: ChangePasswordIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await auth_service.change_password(
+        db,
+        user_id=current.id,
+        old_password=body.old_password,
+        new_password=body.new_password,
+        request=request,
+    )
+    return success(None)
+
+
+# ----- 自助资料管理 -----
+
+def _me_payload(user) -> dict:
+    """读取 User → 拼一份精简的资料返回(不含 roles/permissions)。"""
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "name": user.name,
+        "phone": user.phone,
+        "status": user.status,
+        "must_change_password": user.must_change_password,
+    }
+
+
+@router.patch(
+    "/me/profile",
+    summary="修改自己基础资料(name / phone,无需密码)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def update_my_profile(
+    body: ProfileUpdateIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await me_service.update_profile(
+        db,
+        user_id=current.id,
+        name=body.name,
+        phone=body.phone,
+        request=request,
+    )
+    return success(_me_payload(user))
+
+
+@router.post(
+    "/me/email",
+    summary="修改自己登录邮箱(需当前密码)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def change_my_email(
+    body: ChangeEmailIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await me_service.change_email(
+        db,
+        user_id=current.id,
+        new_email=body.new_email,
+        current_password=body.current_password,
+        request=request,
+    )
+    return success(_me_payload(user))
+
+
+@router.post(
+    "/me/username",
+    summary="修改/清空自己登录用户名(需当前密码)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def change_my_username(
+    body: ChangeUsernameIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await me_service.change_username(
+        db,
+        user_id=current.id,
+        new_username=body.new_username,
+        current_password=body.current_password,
+        request=request,
+    )
+    return success(_me_payload(user))
+
+
+@router.post(
+    "/me/phone",
+    summary="修改/清空自己登录手机号(需当前密码)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def change_my_phone(
+    body: ChangePhoneIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await me_service.change_phone(
+        db,
+        user_id=current.id,
+        new_phone=body.new_phone,
+        current_password=body.current_password,
+        request=request,
+    )
+    return success(_me_payload(user))
+
+
+@router.patch(
+    "/me/language",
+    summary="切换语言偏好(写回 DB)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def update_language_preference(
+    body: dict,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.constants.country_registration import LANGUAGE_CODES
+
+    lang = body.get("language_preference", "")
+    if lang not in LANGUAGE_CODES:
+        from app.core.exceptions import ValidationFailedError
+        raise ValidationFailedError(f"language_preference must be one of: {','.join(LANGUAGE_CODES)}")
+
+    user = await db.get(User, current.id)
+    user.language_preference = lang
+    await db.commit()
+    return success({"language_preference": lang})

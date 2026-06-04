@@ -1,0 +1,51 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "back_to_home": "Back to Home"
+  },
+  "brand": {
+    "tagline": "B2B Supply Chain for Overseas EPC Projects",
+    "full_title": "JIJIAN SELECT - B2B Supply Chain for Overseas EPC Projects",
+    "description": "B2B industrial supply chain platform for Chinese SOE overseas EPC projects"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "identifier_label": "Email / Phone / Username",
+      "identifier_placeholder": "Enter email / phone / username",
+      "identifier_required": "Please enter email / phone / username",
+      "password_label": "Password",
+      "password_placeholder": "Enter your password",
+      "password_required": "Please enter your password",
+      "submit": "Login",
+      "submitting": "Logging in...",
+      "no_account": "Don't have an account?",
+      "register_now": "Register Now",
+      "registered_success": "Registration successful, please login",
+      "error_rate_limit": "Too many failed attempts, account temporarily locked. Please try again in 5 minutes",
+      "error_invalid_credentials": "Invalid credentials, please try again",
+      "error_network": "Network error, please try again later",
+      "error_unknown": "Login failed"
+    }
+  },
+  "error": {
+    "auth": {
+      "invalid_credentials": "Invalid credentials, please try again",
+      "account_locked": "Account temporarily locked, please try again in 5 minutes",
+      "token_expired": "Session expired, please login again",
+      "permission_denied": "You do not have permission to perform this action",
+      "not_authenticated": "Please login first"
+    },
+    "validation": {
+      "failed": "Validation failed, please check the form"
+    },
+    "general": {
+      "not_found": "The requested resource was not found",
+      "internal_error": "Internal server error, please try again later",
+      "rate_limited": "Too many requests, please try again later",
+      "conflict": "Resource conflict"
+    }
+  }
+}

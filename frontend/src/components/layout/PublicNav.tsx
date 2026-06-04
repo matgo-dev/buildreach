@@ -1,0 +1,54 @@
+"use client";
+import { Link, usePathname } from "@/i18n/navigation";
+
+import { PUBLIC_NAV } from "@/config/navigation";
+import { useAuthStore } from "@/stores/authStore";
+
+/** 公开区主导航:中英双语,顶部 header 中央插槽。公开 layout 和工作台 layout 共用。
+ *
+ * 角色裁剪:SUPPLIER 顶部只显示「首页」—— 信用评估走左侧工作台「信用评分」,
+ * 风控/商城/国别/AI 对 SUPPLIER 心智错配(被监管方 / 被采购方),全部隐藏。
+ */
+export function PublicNav() {
+  const pathname = usePathname();
+  const user = useAuthStore((s) => s.user);
+  const isSupplierOnly =
+    !!user && user.roles.length > 0 && user.roles.every((r) => r === "SUPPLIER");
+  // SUPPLIER 登录后世界观 = 工作台,顶部 nav 整体隐藏(出口走 logo / 工作台切换 / 头像菜单)
+  const items = isSupplierOnly ? [] : PUBLIC_NAV;
+  return (
+    <nav className="flex items-center gap-1" aria-label="主导航">
+      {items.map((item) => {
+        // 子路径也算激活(如 /mall/xxx 时高亮"严选商城");工作台路径下全部不激活
+        const active =
+          item.path === "/"
+            ? pathname === "/"
+            : pathname === item.path || pathname.startsWith(item.path + "/");
+        return (
+          <Link
+            key={item.path}
+            href={item.path}
+            className={
+              "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 " +
+              (active
+                ? "text-[#003366]"
+                : "text-gray-500 hover:bg-slate-50 hover:text-[#003366]")
+            }
+          >
+            <span className="block text-center leading-tight">
+              <span className="block">{item.label}</span>
+              {item.labelEn && (
+                <span className="-mt-0.5 block text-[8px] font-normal text-gray-400">
+                  {item.labelEn}
+                </span>
+              )}
+            </span>
+            {active && (
+              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-[#FF6B35]" />
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

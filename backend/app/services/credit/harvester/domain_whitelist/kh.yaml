@@ -1,0 +1,28 @@
+# 柬埔寨域名白名单(按维度划分)
+# 来源: PRD v0.2 §Δ9 + 数据源调研报告
+# 维护说明: 每行一个域名,不带 https:// 前缀,不带路径
+
+basic:
+  - businessregistration.moc.gov.kh  # 柬埔寨商务部企业注册门户
+  - mpwt.gov.kh                       # 柬埔寨公共工程与运输部(PRD §Δ9)
+  - opencorporates.com                # 国际工商聚合(柬埔寨数据有镜像)
+  - en.wikipedia.org                  # 大型企业基础信息
+  - gleif.org                         # LEI 编码补充
+  - lei.bloomberg.com                 # LEI 备用源
+
+qualification:
+  - mpwt.gov.kh                       # 柬埔寨 ISC 来源(PRD §Δ9)
+                                      # 国家级地理封禁(SonicWall GEO-IP),自建爬虫从中国/美国
+                                      # 均不可达;依赖 Tavily 全球索引能力,保留为白名单源
+  - iso.org                           # 国际标准目录
+
+finance:
+  - csx.com.kh                        # 柬埔寨证券交易所
+  - bloomberg.com                     # 国际财经
+  - reuters.com                       # 国际财经
+
+legal:
+  - khmertimeskh.com                  # 柬埔寨主要英文媒体
+  - phnompenhpost.com                 # 柬埔寨主要英文媒体
+  - voanews.com                       # 国际媒体(柬埔寨频道)
+  - reuters.com                       # 国际媒体

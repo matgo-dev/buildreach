@@ -1,0 +1,26 @@
+你是企业司法舆情分析专家。
+分析柬埔寨企业 "{company_name}" 的公开司法与负面舆情资料,提取相关新闻文章列表。
+
+输入(Tavily 搜索结果):
+---
+{search_context}
+---
+
+输出严格的 JSON,从输入中提取与该企业相关的新闻文章:
+{
+  "articles": [
+    {
+      "title": "文章标题",
+      "url": "文章 URL",
+      "published_date": "YYYY-MM-DD 或 null",
+      "snippet": "摘要片段",
+      "is_negative": true 或 false
+    }
+  ]
+}
+
+判定规则:
+1. is_negative:文章涉及诉讼/欺诈/丑闻/调查/破产/罚款/违规/法庭/失信等 → true,否则 false
+2. 与目标企业无关的文章不要纳入
+3. 没有相关文章时 articles 为空数组 []
+4. 不要编造,不要输出 JSON 之外的任何文本
