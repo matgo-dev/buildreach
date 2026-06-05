@@ -34,6 +34,23 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/admin/users/{user_id}/force-logout"),
     # credit — AI 评语生成(含 LLM 成本归因审计)
     ("POST", "/api/v1/credit/companies/{company_id}/ai-summary/generate"),
+    # operator products — SPU CRUD + 图片 + 上下架
+    ("POST", "/api/v1/operator/products"),
+    ("PUT", "/api/v1/operator/products/{product_id}"),
+    ("PATCH", "/api/v1/operator/products/{product_id}/status"),
+    ("DELETE", "/api/v1/operator/products/{product_id}"),
+    ("POST", "/api/v1/operator/products/{product_id}/images"),
+    ("DELETE", "/api/v1/operator/products/{product_id}/images/{image_id}"),
+    ("PATCH", "/api/v1/operator/products/{product_id}/images/{image_id}/set-main"),
+    ("PATCH", "/api/v1/operator/products/{product_id}/images/sort"),
+    # operator products — SKU CRUD
+    ("POST", "/api/v1/operator/products/{product_id}/skus"),
+    ("PUT", "/api/v1/operator/products/{product_id}/skus/{sku_id}"),
+    ("DELETE", "/api/v1/operator/products/{product_id}/skus/{sku_id}"),
+    # operator products — 供货关系(挂 SKU)
+    ("POST", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers"),
+    ("PUT", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers/{ps_id}"),
+    ("DELETE", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers/{ps_id}"),
 }
 
 
