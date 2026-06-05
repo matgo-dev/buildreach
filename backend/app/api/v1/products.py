@@ -1,4 +1,7 @@
-"""公开商品 API（无需登录，买方浏览用）。"""
+"""公开商品 API（无需登录，买方浏览用）— SPU + SKU 两层口径。
+
+断层隔离：响应体不含任何供应商字段。
+"""
 from __future__ import annotations
 
 import math
@@ -7,10 +10,20 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import success
+from app.core.exceptions import NotFoundError, success
 from app.core.i18n import get_localized
+from app.db.models.product import ProductStatus
+from app.db.models.product_image import ImageType
+from app.db.models.product_sku import SkuStatus
 from app.db.session import get_db
-from app.schemas.product import ProductPublic, ProductPublicDetail, ProductAttrSchema, ProductImageSchema
+from app.schemas.product import (
+    PriceTierSchema,
+    ProductAttrSchema,
+    ProductImageSchema,
+    ProductPublic,
+    ProductPublicDetail,
+    SkuPublic,
+)
 from app.services import product as product_svc
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -23,42 +36,73 @@ def _img_to_dict(img) -> dict:
 
 
 def _get_main_image_url(p) -> str | None:
-    """取 MAIN 类型图片的 full_url，没有则取 sort_order 最小的。"""
     if not p.images:
         return None
-    from app.db.models.product_image import ImageType
     main = next((i for i in p.images if i.image_type == ImageType.MAIN), None)
     if not main:
         main = sorted(p.images, key=lambda i: i.sort_order)[0]
     return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
 
 
+def _default_sku(p):
+    """取默认 SKU，没有则取第一个 ACTIVE SKU。"""
+    if not p.skus:
+        return None
+    default = next((s for s in p.skus if s.is_default), None)
+    if not default:
+        active = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
+        default = active[0] if active else p.skus[0]
+    return default
+
+
 def _to_public(p) -> dict:
-    main_image = _get_main_image_url(p)
+    ds = _default_sku(p)
+    active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE)
     return ProductPublic(
         id=p.id,
-        sku_code=p.sku_code,
+        spu_code=p.spu_code,
         name=get_localized(p, "name"),
         category_code=p.category_code,
-        price_min=p.price_min,
-        price_max=p.price_max,
-        currency=p.currency,
-        unit=p.unit,
-        moq=p.moq,
-        lead_time_days=p.lead_time_days,
         origin=get_localized(p, "origin"),
         brand=get_localized(p, "brand") or None,
         certifications=p.certifications,
         is_featured=p.is_featured,
-        main_image=main_image,
+        main_image=_get_main_image_url(p),
+        price_min=ds.price_min if ds else None,
+        price_max=ds.price_max if ds else None,
+        currency=ds.currency if ds else None,
+        sku_count=active_count,
+    ).model_dump()
+
+
+def _sku_to_public(sku) -> dict:
+    """SKU 买方响应（不含供应商字段）。"""
+    sku_images = [_img_to_dict(img) for img in (sku.images or [])]
+    tiers = [PriceTierSchema.model_validate(t).model_dump() for t in (sku.price_tiers or [])]
+    return SkuPublic(
+        id=sku.id,
+        sku_code=sku.sku_code,
+        name=get_localized(sku, "name") if sku.name else None,
+        color=get_localized(sku, "color") if sku.color else None,
+        material=get_localized(sku, "material") if sku.material else None,
+        manufacturer_model=sku.manufacturer_model,
+        price_min=sku.price_min,
+        price_max=sku.price_max,
+        currency=sku.currency,
+        unit=sku.unit,
+        moq=sku.moq,
+        lead_time_min=sku.lead_time_min,
+        lead_time_max=sku.lead_time_max,
+        is_default=sku.is_default,
+        status=sku.status,
+        price_tiers=tiers,
+        images=sku_images,
     ).model_dump()
 
 
 @router.get("", summary="公开商品列表")
 async def list_products(
     category_code: str | None = Query(None),
-    price_min: float | None = Query(None),
-    price_max: float | None = Query(None),
     featured: bool | None = Query(None),
     keyword: str | None = Query(None),
     sort: str = Query("newest"),
@@ -67,8 +111,8 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await product_svc.list_products_public(
-        db, category_code=category_code, price_min=price_min,
-        price_max=price_max, featured=featured, keyword=keyword,
+        db, category_code=category_code,
+        featured=featured, keyword=keyword,
         sort=sort, page=page, size=size,
     )
     return success({
@@ -86,31 +130,25 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ):
     p = await product_svc.get_product(db, product_id)
-    from app.db.models.product import ProductStatus
     if p.status != ProductStatus.ACTIVE:
-        from app.core.exceptions import NotFoundError
         raise NotFoundError("Product not found")
 
-    main_image = _get_main_image_url(p)
+    # 只返回 ACTIVE SKU
+    active_skus = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
 
     data = ProductPublicDetail(
         id=p.id,
-        sku_code=p.sku_code,
+        spu_code=p.spu_code,
         name=get_localized(p, "name"),
+        description=get_localized(p, "description"),
         category_code=p.category_code,
-        price_min=p.price_min,
-        price_max=p.price_max,
-        currency=p.currency,
-        unit=p.unit,
-        moq=p.moq,
-        lead_time_days=p.lead_time_days,
         origin=get_localized(p, "origin"),
         brand=get_localized(p, "brand") or None,
-        certifications=p.certifications,
-        is_featured=p.is_featured,
-        main_image=main_image,
-        description=get_localized(p, "description"),
         hs_code=p.hs_code,
+        certifications=p.certifications,
+        selling_points=get_localized(p, "selling_points"),
+        is_featured=p.is_featured,
+        skus=[_sku_to_public(s) for s in active_skus],
         images=[_img_to_dict(img) for img in p.images],
         attributes=[ProductAttrSchema.model_validate(attr) for attr in p.attrs],
     ).model_dump()
