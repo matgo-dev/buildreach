@@ -732,131 +732,136 @@ async def test_duplicate_supplier_binding(client: AsyncClient):
     assert r2.json()["code"] == 50007
 
 
-# ── 审计断言 ─────────────────────────────────────────────
+# ── 审计断言（通过 audit API 查询，避免多连接 deadlock）────
+
+async def _get_audit_admin_headers(client: AsyncClient) -> dict[str, str]:
+    """superadmin 登录 + 改密（清 must_change_password），获取有 SYSTEM_AUDIT 权限的 headers。"""
+    from app.core.config import settings
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": settings.SUPER_ADMIN_EMAIL, "password": settings.SUPER_ADMIN_INITIAL_PASSWORD},
+    )
+    assert r.status_code == 200
+    token = r.json()["data"]["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+
+    # 改密（清 must_change_password 标记）
+    new_pw = "TestNewPass_999!"
+    r2 = await client.post("/api/v1/auth/change-password", headers=h, json={
+        "old_password": settings.SUPER_ADMIN_INITIAL_PASSWORD, "new_password": new_pw,
+    })
+    assert r2.status_code == 200
+
+    r3 = await client.post("/api/v1/auth/login", json={
+        "identifier": settings.SUPER_ADMIN_EMAIL, "password": new_pw,
+    })
+    assert r3.status_code == 200
+    return {"Authorization": f"Bearer {r3.json()['data']['access_token']}"}
+
+
+async def _query_audit_count(
+    client: AsyncClient, admin_headers: dict,
+    resource_type: str | None = None, action: str | None = None,
+) -> int:
+    """通过 audit API 查询符合条件的审计日志总数。"""
+    params = {}
+    if resource_type:
+        params["resource_type"] = resource_type
+    if action:
+        params["action"] = action
+    r = await client.get("/api/v1/admin/audit-logs", headers=admin_headers, params=params)
+    assert r.status_code == 200, r.text
+    return r.json()["data"]["total"]
+
 
 @pytest.mark.asyncio
-async def test_audit_on_product_create(client: AsyncClient, db_session):
+async def test_audit_on_product_create(client: AsyncClient):
     """创建 SPU 后 audit_log 落一条。"""
-    from sqlalchemy import text
-
-    headers = await _login_operator(client)
+    admin_h = await _get_audit_admin_headers(client)
+    op_h = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
 
-    before = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE resource_type='product' AND action='CREATE'")
-    )).scalar() or 0
-
-    await _create_test_product(client, headers, cat_code, "AUDIT-CREATE-001")
-
-    after = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE resource_type='product' AND action='CREATE'")
-    )).scalar() or 0
+    before = await _query_audit_count(client, admin_h, resource_type="product", action="CREATE")
+    await _create_test_product(client, op_h, cat_code, "AUDIT-CREATE-001")
+    after = await _query_audit_count(client, admin_h, resource_type="product", action="CREATE")
     assert after > before
 
 
 @pytest.mark.asyncio
-async def test_audit_on_sku_create(client: AsyncClient, db_session):
+async def test_audit_on_sku_create(client: AsyncClient):
     """创建 SKU 后 audit_log 落一条。"""
-    from sqlalchemy import text
-
-    headers = await _login_operator(client)
+    admin_h = await _get_audit_admin_headers(client)
+    op_h = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "AUDIT-SKU-001")
+    pid = await _create_test_product(client, op_h, cat_code, "AUDIT-SKU-001")
 
-    before = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE resource_type='product_sku' AND action='CREATE'")
-    )).scalar() or 0
-
-    await _create_test_sku(client, headers, pid, "AUDIT-SKU-S001")
-
-    after = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE resource_type='product_sku' AND action='CREATE'")
-    )).scalar() or 0
+    before = await _query_audit_count(client, admin_h, resource_type="product_sku", action="CREATE")
+    await _create_test_sku(client, op_h, pid, "AUDIT-SKU-S001")
+    after = await _query_audit_count(client, admin_h, resource_type="product_sku", action="CREATE")
     assert after > before
 
 
 @pytest.mark.asyncio
-async def test_audit_on_status_change(client: AsyncClient, db_session):
+async def test_audit_on_status_change(client: AsyncClient):
     """上下架后 audit_log 落一条 STATUS_CHANGE。"""
-    from sqlalchemy import text
-
-    headers = await _login_operator(client)
+    admin_h = await _get_audit_admin_headers(client)
+    op_h = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "AUDIT-STATUS-001")
-    await _create_test_sku(client, headers, pid, "AUDIT-STATUS-SKU")
-    await _upload_test_image(client, headers, pid)
+    pid = await _create_test_product(client, op_h, cat_code, "AUDIT-STATUS-001")
+    await _create_test_sku(client, op_h, pid, "AUDIT-STATUS-SKU")
+    await _upload_test_image(client, op_h, pid)
 
-    before = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE action='STATUS_CHANGE'")
-    )).scalar() or 0
-
+    before = await _query_audit_count(client, admin_h, action="STATUS_CHANGE")
     await client.patch(
         f"/api/v1/operator/products/{pid}/status",
-        headers=headers, json={"status": "ACTIVE"},
+        headers=op_h, json={"status": "ACTIVE"},
     )
-
-    after = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE action='STATUS_CHANGE'")
-    )).scalar() or 0
+    after = await _query_audit_count(client, admin_h, action="STATUS_CHANGE")
     assert after > before
 
 
 @pytest.mark.asyncio
-async def test_no_audit_on_publish_validation_failure(client: AsyncClient, db_session):
+async def test_no_audit_on_publish_validation_failure(client: AsyncClient):
     """上架校验失败不写审计。"""
-    from sqlalchemy import text
-
-    headers = await _login_operator(client)
+    admin_h = await _get_audit_admin_headers(client)
+    op_h = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "AUDIT-NOLOG-001")
+    pid = await _create_test_product(client, op_h, cat_code, "AUDIT-NOLOG-001")
 
-    before = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE action='STATUS_CHANGE'")
-    )).scalar() or 0
-
+    before = await _query_audit_count(client, admin_h, action="STATUS_CHANGE")
     r = await client.patch(
         f"/api/v1/operator/products/{pid}/status",
-        headers=headers, json={"status": "ACTIVE"},
+        headers=op_h, json={"status": "ACTIVE"},
     )
     assert r.status_code == 400
-
-    after = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs WHERE action='STATUS_CHANGE'")
-    )).scalar() or 0
+    after = await _query_audit_count(client, admin_h, action="STATUS_CHANGE")
     assert after == before
 
 
 @pytest.mark.asyncio
-async def test_no_audit_on_duplicate_supplier(client: AsyncClient, db_session):
+async def test_no_audit_on_duplicate_supplier(client: AsyncClient):
     """重复绑定供应商不写审计。"""
-    from sqlalchemy import text
-
-    headers = await _login_operator(client)
+    admin_h = await _get_audit_admin_headers(client)
+    op_h = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "AUDIT-NODUP-001")
-    sku_id = await _create_test_sku(client, headers, pid, "AUDIT-NODUP-SKU")
+    pid = await _create_test_product(client, op_h, cat_code, "AUDIT-NODUP-001")
+    sku_id = await _create_test_sku(client, op_h, pid, "AUDIT-NODUP-SKU")
 
     payload = {"supplier_org_id": 1, "supplier_price": 2.00}
     r1 = await client.post(
         f"/api/v1/operator/products/{pid}/skus/{sku_id}/suppliers",
-        headers=headers, json=payload,
+        headers=op_h, json=payload,
     )
     if r1.status_code == 404:
         pytest.skip("No supplier org with id=1")
 
-    before = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs")
-    )).scalar() or 0
-
+    before = await _query_audit_count(client, admin_h)
     r2 = await client.post(
         f"/api/v1/operator/products/{pid}/skus/{sku_id}/suppliers",
-        headers=headers, json=payload,
+        headers=op_h, json=payload,
     )
     assert r2.status_code == 400
-
-    after = (await db_session.execute(
-        text("SELECT count(*) FROM audit_logs")
-    )).scalar() or 0
+    after = await _query_audit_count(client, admin_h)
     assert after == before
 
 
