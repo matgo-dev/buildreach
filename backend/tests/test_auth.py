@@ -301,14 +301,11 @@ async def test_supplier_register_missing_language_preference(client):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="业务 bug: _validate_supplier_register 未 catch pydantic extra_forbidden，穿透 ASGI 层")
 async def test_supplier_register_no_username_field(client):
-    """payload 多带 username 字段应被拒绝并返回 4xx。
-    TODO: 业务代码应 catch pydantic.ValidationError 并转为 409/422。
-    """
+    """payload 多带 username 字段应被 Pydantic extra_forbidden 拦截 → 409。"""
     bad = {**SUPPLIER_PAYLOAD, "username": "ghost"}
     r = await client.post("/api/v1/auth/register/supplier", json=bad)
-    assert r.status_code in (409, 422)
+    assert r.status_code == 409
 
 
 @pytest.mark.asyncio
