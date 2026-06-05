@@ -44,8 +44,8 @@ def normalize_locale(raw: str | None) -> str:
     base = key.split("-")[0] if "-" in key else key
     if base in _LOCALE_MAP:
         return _LOCALE_MAP[base]
-    # 防御性兜底,实际不会触发(平台只允许注册支持的语言)
-    return DEFAULT_LOCALE
+    # 不认识的语言大概率是外国用户,回退到 en 比 zh 更合理
+    return "en"
 
 
 class LocaleMiddleware(BaseHTTPMiddleware):
