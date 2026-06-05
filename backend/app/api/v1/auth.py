@@ -113,8 +113,12 @@ def _validate_supplier_register(raw: dict) -> tuple["SupplierRegisterIn | None",
     if errors:
         return None, errors
 
-    # 格式全通过,用 Pydantic 构建对象(此时不会再抛异常)
-    body = SupplierRegisterIn(**raw)
+    # 格式全通过,用 Pydantic 构建对象
+    try:
+        body = SupplierRegisterIn(**raw)
+    except Exception as e:
+        # 防御：请求体含 schema 未定义的字段时 Pydantic 抛 extra_forbidden
+        return None, [{"field": "unknown", "code": 42200, "message": str(e)}]
     return body, []
 
 
