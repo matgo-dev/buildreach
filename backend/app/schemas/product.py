@@ -17,8 +17,13 @@ from pydantic import BaseModel, ConfigDict, Field
 class ProductImageSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    url: str
+    image_key: str
+    full_url: str = ""
+    image_type: str = "GALLERY"
     sort_order: int
+    width: int | None = None
+    height: int | None = None
+    file_size: int | None = None
 
 
 # ---------- 品类属性 ----------
@@ -57,7 +62,7 @@ class AttrTemplateSchema(BaseModel):
 
 class ProductSupplierCreate(BaseModel):
     supplier_org_id: int
-    supplier_price: Decimal = Field(gt=0)
+    supplier_price: Decimal = Field(default=Decimal("0"), ge=0)
     supplier_moq: int | None = None
     supplier_lead_time_days: int | None = None
     has_pvoc: bool = False

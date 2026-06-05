@@ -7,8 +7,21 @@ import { ArrowLeft, ArrowRight, Check, Save } from "lucide-react";
 import { operatorProductApi, categoryApi, type AttrTemplate } from "@/lib/productApi";
 import { api } from "@/lib/api";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { FieldError } from "@/components/form/FieldError";
+import { validateAll, extractFieldErrors, errorSummary, type FieldRules } from "@/lib/formValidation";
+import { Package, Upload, X, Star } from "lucide-react";
 
-const STEPS = ["基础信息", "品类属性", "预览确认"];
+// 前端校验规则
+const PRODUCT_RULES: FieldRules = {
+  category_code: [{ required: true, message: "请选择品类" }],
+  name: [{ required: true, message: "请填写商品名称" }],
+  price_min: [{ required: true, message: "请填写最低价" }, { min: 0.01, message: "最低价必须大于 0" }],
+  price_max: [{ required: true, message: "请填写最高价" }, { min: 0.01, message: "最高价必须大于 0" }],
+  moq: [{ required: true, message: "请填写起订量" }, { min: 1, message: "起订量至少为 1" }],
+  unit: [{ required: true, message: "请选择计量单位" }],
+};
+
+const STEPS = ["基础信息", "品类属性", "图片上传", "预览确认"];
 
 type CategoryItem = { code: string; name_zh: string; name_en: string; level: number };
 
@@ -24,7 +37,8 @@ type FormData = {
   currency: string;
   unit: string;
   moq: string;
-  lead_time_days: string;
+  lead_time_min: string;
+  lead_time_max: string;
   origin: string;
   hs_code: string;
   brand: string;
@@ -40,6 +54,9 @@ export default function CreateProductPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [l1List, setL1List] = useState<CategoryItem[]>([]);
   const [l2List, setL2List] = useState<CategoryItem[]>([]);
   const [l3List, setL3List] = useState<CategoryItem[]>([]);
@@ -57,7 +74,8 @@ export default function CreateProductPage() {
     currency: "USD",
     unit: "pcs",
     moq: "1",
-    lead_time_days: "",
+    lead_time_min: "",
+    lead_time_max: "",
     origin: "China",
     hs_code: "",
     brand: "",
@@ -144,6 +162,10 @@ export default function CreateProductPage() {
 
   const updateField = (field: keyof FormData, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
+    // 清除该字段的错误
+    if (errors[field]) {
+      setErrors((e) => { const n = { ...e }; delete n[field]; return n; });
+    }
   };
 
   const updateAttr = (idx: number, value: string) => {
@@ -163,9 +185,42 @@ export default function CreateProductPage() {
     }));
   };
 
+  // 图片管理
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const total = imageFiles.length + files.length;
+    if (total > 8) {
+      alert("最多上传 8 张图片");
+      return;
+    }
+    const newFiles = [...imageFiles, ...files];
+    setImageFiles(newFiles);
+    // 生成预览
+    const newPreviews = [...imagePreviews];
+    files.forEach((f) => newPreviews.push(URL.createObjectURL(f)));
+    setImagePreviews(newPreviews);
+    e.target.value = "";
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    URL.revokeObjectURL(imagePreviews[idx]);
+    setImageFiles((fs) => fs.filter((_, i) => i !== idx));
+    setImagePreviews((ps) => ps.filter((_, i) => i !== idx));
+  };
+
   const handleSave = async (asDraft: boolean) => {
+    // 前端校验
+    const frontErrors = validateAll(form as unknown as Record<string, unknown>, PRODUCT_RULES);
+    if (Object.keys(frontErrors).length > 0) {
+      setErrors(frontErrors);
+      setStep(0); // 跳回基础信息步骤
+      return;
+    }
+
     setSaving(true);
+    setErrors({});
     try {
+      // 1. 创建商品
       const payload: Record<string, unknown> = {
         category_code: form.category_code,
         name: form.name,
@@ -175,7 +230,7 @@ export default function CreateProductPage() {
         currency: form.currency,
         unit: form.unit,
         moq: parseInt(form.moq),
-        lead_time_days: form.lead_time_days ? parseInt(form.lead_time_days) : null,
+        lead_time_days: form.lead_time_max ? parseInt(form.lead_time_max) : null,
         origin: form.origin,
         hs_code: form.hs_code || null,
         brand: form.brand || null,
@@ -187,9 +242,22 @@ export default function CreateProductPage() {
           .map((a, i) => ({ ...a, sort_order: i })),
       };
       const res = await operatorProductApi.create(payload);
+
+      // 2. 上传图片（第一张自动设为主图）
+      for (const file of imageFiles) {
+        await operatorProductApi.uploadImage(res.id, file);
+      }
+
       router.push(`/operator/products/${res.id}`);
     } catch (e: any) {
-      alert(e.message || "Failed to create product");
+      // 解析后端字段级错误
+      const fieldErrors = extractFieldErrors(e);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+        setStep(0); // 跳回基础信息步骤显示错误
+      } else {
+        alert(e.message || "创建失败，请检查表单内容");
+      }
     } finally {
       setSaving(false);
     }
@@ -239,6 +307,15 @@ export default function CreateProductPage() {
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         {step === 0 && (
           <div className="grid grid-cols-2 gap-6">
+            {/* 错误汇总 */}
+            {Object.keys(errors).length > 0 && (
+              <div className="col-span-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+                <p className="font-medium">请修正以下问题：</p>
+                <ul className="mt-1 list-inside list-disc text-[12px]">
+                  {Object.values(errors).map((msg, i) => <li key={i}>{msg}</li>)}
+                </ul>
+              </div>
+            )}
             {/* 三级品类联动 */}
             <div className="col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-slate-700">所属品类 / Category *</label>
@@ -311,10 +388,11 @@ export default function CreateProductPage() {
               <input
                 type="text"
                 placeholder="如 LED Panel Light 36W 600x600mm"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.name ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
               />
+              <FieldError error={errors.name} />
             </div>
 
             {/* Description */}
@@ -335,20 +413,24 @@ export default function CreateProductPage() {
               <input
                 type="number"
                 step="0.01"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                min="0"
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.price_min ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
                 value={form.price_min}
                 onChange={(e) => updateField("price_min", e.target.value)}
               />
+              <FieldError error={errors.price_min} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">最高价（USD）*</label>
               <input
                 type="number"
                 step="0.01"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                min="0"
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.price_max ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
                 value={form.price_max}
                 onChange={(e) => updateField("price_max", e.target.value)}
               />
+              <FieldError error={errors.price_max} />
             </div>
 
             {/* MOQ + Unit */}
@@ -356,10 +438,12 @@ export default function CreateProductPage() {
               <label className="mb-1.5 block text-sm font-medium text-slate-700">最小起订量 *</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                min="1"
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.moq ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
                 value={form.moq}
                 onChange={(e) => updateField("moq", e.target.value)}
               />
+              <FieldError error={errors.moq} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">计量单位 *</label>
@@ -374,16 +458,31 @@ export default function CreateProductPage() {
               </select>
             </div>
 
-            {/* Lead time + Origin */}
+            {/* Lead time (min + max) */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">交期（天）</label>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">最短交期（天）</label>
               <input
                 type="number"
+                min="0"
+                placeholder="如 3"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={form.lead_time_days}
-                onChange={(e) => updateField("lead_time_days", e.target.value)}
+                value={form.lead_time_min}
+                onChange={(e) => updateField("lead_time_min", e.target.value)}
               />
             </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">最长交期（天）</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="如 7"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={form.lead_time_max}
+                onChange={(e) => updateField("lead_time_max", e.target.value)}
+              />
+            </div>
+
+            {/* Origin */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">产地</label>
               <input
@@ -499,6 +598,70 @@ export default function CreateProductPage() {
 
         {step === 2 && (
           <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900">商品图片 / Product Images</h3>
+            <p className="text-[13px] text-slate-500">上传商品图片，第一张自动设为主图。支持 jpg/png/webp，单张不超过 5MB，最多 8 张。</p>
+
+            {/* 上传区域 */}
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 transition-colors hover:border-blue-400 hover:bg-blue-50/30">
+              <Upload className="mb-2 h-8 w-8 text-slate-400" />
+              <span className="text-[13px] font-medium text-slate-600">点击上传图片 / Click to upload</span>
+              <span className="mt-1 text-[11px] text-slate-400">支持 JPG / PNG / WebP，最多 8 张</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={handleAddImages}
+              />
+            </label>
+
+            {/* 图片预览 */}
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-4 gap-3">
+                {imagePreviews.map((src, idx) => (
+                  <div key={idx} className="group relative">
+                    <img
+                      src={src}
+                      alt={`图片 ${idx + 1}`}
+                      className="h-32 w-full rounded-lg border border-slate-200 object-cover"
+                    />
+                    {idx === 0 && (
+                      <span className="absolute left-1.5 top-1.5 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        <Star className="mr-0.5 inline h-2.5 w-2.5" />主图
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute right-1.5 top-1.5 hidden rounded-full bg-red-500/80 p-1 text-white group-hover:block"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <p className="mt-1 text-center text-[10px] text-slate-400">
+                      {idx === 0 ? "主图 / Main" : `图片 ${idx + 1}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {imagePreviews.length === 0 && (
+              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 text-slate-300">
+                <div className="text-center">
+                  <Package className="mx-auto h-8 w-8" />
+                  <p className="mt-1 text-[12px]">暂未上传图片</p>
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-400">
+              已选择 {imageFiles.length} / 8 张。图片将在保存时自动压缩到 800×800 正方形。
+            </p>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-900">预览确认 / Review</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-slate-500">品类编码：</span> <span className="font-mono font-medium">{form.category_code}</span></div>
@@ -530,8 +693,19 @@ export default function CreateProductPage() {
                 </div>
               </div>
             )}
+            {/* 图片预览 */}
+            {imagePreviews.length > 0 && (
+              <div className="mt-4">
+                <h4 className="mb-2 text-sm font-medium text-slate-700">商品图片 ({imageFiles.length} 张)</h4>
+                <div className="flex gap-2">
+                  {imagePreviews.map((src, idx) => (
+                    <img key={idx} src={src} alt="" className="h-16 w-16 rounded border border-slate-200 object-cover" />
+                  ))}
+                </div>
+              </div>
+            )}
             <p className="mt-4 text-xs text-slate-400">
-              商品将保存为草稿。保存后可上传图片、绑定供应商，然后上架发布。
+              商品将保存为草稿，图片同步上传。保存后可绑定供应商，然后上架发布。
             </p>
           </div>
         )}

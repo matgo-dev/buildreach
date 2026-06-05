@@ -21,6 +21,7 @@ export default function PublicProductDetailPage() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [activeTab, setActiveTab] = useState<"specs" | "desc">("specs");
 
   useEffect(() => {
     publicProductApi.detail(productId).then(setProduct).catch(console.error).finally(() => setLoading(false));
@@ -55,7 +56,7 @@ export default function PublicProductDetailPage() {
               <div className="relative aspect-square overflow-hidden rounded border border-slate-200 bg-[#FAFAFA]">
                 {images.length > 0 ? (
                   <>
-                    <img src={`${API_BASE}${images[selectedImage]?.url}`} alt={p.name} className="h-full w-full object-contain p-6" />
+                    <img src={images[selectedImage]?.full_url} alt={p.name} className="h-full w-full object-contain p-6" />
                     {images.length > 1 && (
                       <>
                         <button onClick={() => setSelectedImage((i) => (i > 0 ? i - 1 : images.length - 1))} className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-white"><ChevronLeft className="h-4 w-4 text-slate-700" /></button>
@@ -71,7 +72,7 @@ export default function PublicProductDetailPage() {
                 <div className="mt-3 flex gap-2">
                   {images.map((img: any, idx: number) => (
                     <button key={img.id} onClick={() => setSelectedImage(idx)} className={`h-16 w-16 overflow-hidden rounded border-2 ${idx === selectedImage ? "border-[#0D4D4D]" : "border-slate-200"}`}>
-                      <img src={`${API_BASE}${img.url}`} alt="" className="h-full w-full object-cover" />
+                      <img src={img.full_url} alt="" className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -152,31 +153,41 @@ export default function PublicProductDetailPage() {
           <div className="mt-5 rounded border border-slate-200 bg-white">
             {/* Tab 头 */}
             <div className="flex border-b border-slate-200 px-6">
-              <button className="border-b-2 border-[#0D4D4D] px-4 py-3 text-[13px] font-medium text-[#0D4D4D]">
+              <button
+                onClick={() => setActiveTab("specs")}
+                className={`px-4 py-3 text-[13px] font-medium transition-colors ${activeTab === "specs" ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]" : "text-slate-500 hover:text-slate-700"}`}
+              >
                 规格参数 / Specifications
               </button>
               {p.description && (
-                <button className="px-4 py-3 text-[13px] text-slate-500 hover:text-slate-700">
+                <button
+                  onClick={() => setActiveTab("desc")}
+                  className={`px-4 py-3 text-[13px] font-medium transition-colors ${activeTab === "desc" ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]" : "text-slate-500 hover:text-slate-700"}`}
+                >
                   商品描述 / Description
                 </button>
               )}
             </div>
 
             <div className="p-6">
-              {attrs.length > 0 && (
-                <table className="w-full text-[13px]">
-                  <tbody>
-                    {attrs.map((a: any, idx: number) => (
-                      <tr key={a.attr_key} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                        <td className="w-[200px] px-4 py-2.5 font-medium text-slate-600">{a.attr_key}</td>
-                        <td className="px-4 py-2.5 text-slate-900">{a.attr_value}{a.attr_unit ? ` ${a.attr_unit}` : ""}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {activeTab === "specs" && (
+                attrs.length > 0 ? (
+                  <table className="w-full text-[13px]">
+                    <tbody>
+                      {attrs.map((a: any, idx: number) => (
+                        <tr key={a.attr_key} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                          <td className="w-[200px] px-4 py-2.5 font-medium text-slate-600">{a.attr_key}</td>
+                          <td className="px-4 py-2.5 text-slate-900">{a.attr_value}{a.attr_unit ? ` ${a.attr_unit}` : ""}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-[13px] text-slate-400">暂无规格参数</p>
+                )
               )}
-              {p.description && (
-                <div className="mt-4 prose prose-sm max-w-none text-slate-700">{p.description}</div>
+              {activeTab === "desc" && p.description && (
+                <div className="prose prose-sm max-w-none text-slate-700">{p.description}</div>
               )}
             </div>
           </div>

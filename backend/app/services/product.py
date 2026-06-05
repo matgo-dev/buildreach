@@ -175,12 +175,10 @@ async def update_product_status(
     product = await _get_product_or_404(db, product_id, load_relations=True)
     old_status = product.status
 
-    # 上架校验：必须有图片 + 供货关系
+    # 上架校验：必须有图片
     if new_status == ProductStatus.ACTIVE:
         if not product.images:
             raise BusinessError(400, 50004, "Cannot publish: at least 1 image required")
-        if not product.supplier_relations:
-            raise BusinessError(400, 50005, "Cannot publish: at least 1 supplier required")
 
     product.status = new_status
     await db.commit()
@@ -395,9 +393,46 @@ async def list_product_suppliers(
 
 # ── 图片 ──────────────────────────────────────────────────
 
+TARGET_SIZE = (800, 800)
+JPEG_QUALITY = 85
+
+
+def _process_image(content: bytes) -> tuple[bytes, int, int]:
+    """Pillow 压缩：超 800x800 等比缩小，填充为正方形，输出 JPEG。"""
+    from io import BytesIO
+    from PIL import Image
+
+    img = Image.open(BytesIO(content))
+    img = img.convert("RGB")
+
+    # 尺寸校验
+    w, h = img.size
+    if w < 200 or h < 200:
+        raise BusinessError(400, 50011, "Image too small, minimum 200x200")
+
+    # 等比缩小到 800x800 以内
+    img.thumbnail(TARGET_SIZE, Image.LANCZOS)
+
+    # 填充为正方形（白底居中）
+    w, h = img.size
+    if w != h:
+        side = max(w, h)
+        bg = Image.new("RGB", (side, side), (255, 255, 255))
+        bg.paste(img, ((side - w) // 2, (side - h) // 2))
+        img = bg
+
+    buf = BytesIO()
+    img.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+    final_bytes = buf.getvalue()
+    final_w, final_h = img.size
+    return final_bytes, final_w, final_h
+
+
 async def add_product_image(
     db: AsyncSession, product_id: int, file: UploadFile,
+    image_type: str = "GALLERY",
 ) -> ProductImage:
+    from app.db.models.product_image import ImageType
     product = await _get_product_or_404(db, product_id, load_relations=True)
 
     # 数量限制
@@ -414,24 +449,59 @@ async def add_product_image(
     if len(content) > MAX_IMAGE_SIZE:
         raise BusinessError(400, 50010, "Image size must be under 5MB")
 
-    # 保存文件
+    # Pillow 压缩到 800x800 正方形 JPEG
+    processed_bytes, img_w, img_h = _process_image(content)
+
+    # 保存文件（统一 .jpg）
     product_dir = UPLOAD_DIR / str(product_id)
     product_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}{ext}"
+    filename = f"{uuid.uuid4().hex}.jpg"
     filepath = product_dir / filename
-    filepath.write_bytes(content)
+    filepath.write_bytes(processed_bytes)
+
+    # 第一张图自动设为 MAIN
+    actual_type = image_type if image_type in ImageType.ALL else ImageType.GALLERY
+    if not product.images:
+        actual_type = ImageType.MAIN
 
     # 写入数据库
     next_sort = len(product.images)
+    image_key = f"products/{product_id}/{filename}"
     img = ProductImage(
         product_id=product_id,
-        url=f"/uploads/products/{product_id}/{filename}",
+        image_key=image_key,
+        image_type=actual_type,
         sort_order=next_sort,
+        width=img_w,
+        height=img_h,
+        file_size=len(processed_bytes),
     )
     db.add(img)
     await db.commit()
     await db.refresh(img)
     return img
+
+
+async def set_main_image(db: AsyncSession, product_id: int, image_id: int) -> None:
+    """设为主图：将原 MAIN 降为 GALLERY，目标图升为 MAIN。"""
+    from app.db.models.product_image import ImageType
+    await _get_product_or_404(db, product_id)
+
+    # 原 MAIN → GALLERY
+    await db.execute(
+        update(ProductImage)
+        .where(ProductImage.product_id == product_id, ProductImage.image_type == ImageType.MAIN)
+        .values(image_type=ImageType.GALLERY)
+    )
+    # 目标 → MAIN
+    result = await db.execute(
+        update(ProductImage)
+        .where(ProductImage.id == image_id, ProductImage.product_id == product_id)
+        .values(image_type=ImageType.MAIN)
+    )
+    if result.rowcount == 0:
+        raise NotFoundError("Image not found")
+    await db.commit()
 
 
 async def delete_product_image(db: AsyncSession, image_id: int) -> None:
@@ -442,8 +512,8 @@ async def delete_product_image(db: AsyncSession, image_id: int) -> None:
     if not img:
         raise NotFoundError("Image not found")
 
-    # 删文件（忽略文件不存在的情况）
-    filepath = Path(__file__).resolve().parent.parent.parent / img.url.lstrip("/")
+    # 删文件
+    filepath = UPLOAD_DIR.parent / img.image_key
     if filepath.exists():
         filepath.unlink()
 

@@ -290,22 +290,25 @@ async def test_upload_and_delete_image(client: AsyncClient):
     cat_code = await _get_first_category_code(client)
     pid = await _create_test_product(client, headers, cat_code, "IMG-001")
 
-    # 构造一个最小的 PNG
-    png_bytes = (
-        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
-        b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00"
-        b"\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00"
-        b"\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
-    )
+    # 用 Pillow 生成一张 300x300 的真实测试图片
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
 
     r = await client.post(
         f"/api/v1/operator/products/{pid}/images",
         headers=headers,
-        files={"file": ("test.png", io.BytesIO(png_bytes), "image/png")},
+        files={"file": ("test.png", buf, "image/png")},
     )
     assert r.status_code == 200, r.text
-    img_id = r.json()["data"]["id"]
-    assert r.json()["data"]["url"].endswith(".png")
+    data = r.json()["data"]
+    img_id = data["id"]
+    assert data["image_key"].endswith(".jpg")  # Pillow 压缩后统一输出 JPEG
+    assert data["image_type"] == "MAIN"  # 第一张自动设为主图
+    assert data["width"] == 300
+    assert data["height"] == 300
+    assert "full_url" in data
 
     # 删除
     r2 = await client.delete(f"/api/v1/operator/products/{pid}/images/{img_id}", headers=headers)

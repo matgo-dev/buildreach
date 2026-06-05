@@ -76,7 +76,7 @@ export default function OperatorProductsPage() {
       render: (p) => (
         <div className="flex items-center gap-3">
           {p.main_image ? (
-            <img src={`${API_BASE}${p.main_image}`} alt="" className="h-10 w-10 rounded border border-slate-200 object-cover" />
+            <img src={p.main_image} alt="" className="h-10 w-10 rounded border border-slate-200 object-cover" />
           ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded border border-slate-200 bg-slate-50">
               <Package className="h-5 w-5 text-slate-300" />

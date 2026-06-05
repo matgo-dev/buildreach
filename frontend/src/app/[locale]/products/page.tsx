@@ -147,7 +147,7 @@ export default function PublicProductsPage() {
                 {items.map((p) => viewMode === "grid" ? (
                   <div key={p.id} onClick={() => router.push(`/products/${p.id}`)} className="group cursor-pointer rounded border border-slate-200 bg-white transition-all hover:shadow-md hover:-translate-y-0.5">
                     <div className="aspect-square overflow-hidden bg-[#FAFAFA] rounded-t">
-                      {p.main_image ? <img src={`${API_BASE}${p.main_image}`} alt={p.name} className="h-full w-full object-contain p-2 transition-transform group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-slate-200" /></div>}
+                      {p.main_image ? <img src={p.main_image} alt={p.name} className="h-full w-full object-contain p-2 transition-transform group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-slate-200" /></div>}
                     </div>
                     <div className="p-2">
                       <h3 className="text-[12px] font-medium text-slate-900 line-clamp-1">{p.name}</h3>
@@ -162,7 +162,7 @@ export default function PublicProductsPage() {
                   </div>
                 ) : (
                   <div key={p.id} onClick={() => router.push(`/products/${p.id}`)} className="flex cursor-pointer gap-4 rounded border border-slate-200 bg-white p-3 hover:shadow-md">
-                    <div className="h-20 w-20 shrink-0 rounded bg-[#FAFAFA] overflow-hidden">{p.main_image ? <img src={`${API_BASE}${p.main_image}`} alt="" className="h-full w-full object-contain p-1" /> : <div className="flex h-full items-center justify-center"><Package className="h-6 w-6 text-slate-200" /></div>}</div>
+                    <div className="h-20 w-20 shrink-0 rounded bg-[#FAFAFA] overflow-hidden">{p.main_image ? <img src={p.main_image} alt="" className="h-full w-full object-contain p-1" /> : <div className="flex h-full items-center justify-center"><Package className="h-6 w-6 text-slate-200" /></div>}</div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-[13px] font-medium text-slate-900">{p.name}</h3>
                       <p className="mt-1 text-[14px] font-bold text-[#0D4D4D]">TZS {(Number(p.price_min) * 2500).toLocaleString()} / {p.unit}</p>

@@ -34,7 +34,7 @@ from app.db.models.attr_template import AttrTemplate
 from app.db.models.permission import Permission
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_attr import ProductAttr
-from app.db.models.product_image import ProductImage
+from app.db.models.product_image import ImageType, ProductImage
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.role import Role
 from app.db.models.role_permission import RolePermission
@@ -70,6 +70,7 @@ __all__ = [
     "Product",
     "ProductStatus",
     "ProductImage",
+    "ImageType",
     "ProductAttr",
     "ProductSupplier",
     "AttrTemplate",

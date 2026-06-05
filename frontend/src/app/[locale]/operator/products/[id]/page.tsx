@@ -11,10 +11,9 @@ import {
   type ProductOperatorDetail,
   type ProductSupplierDetail,
 } from "@/lib/productApi";
+import { suppliersApi, type SupplierListItem } from "@/lib/api/suppliers";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/products/StatusBadge";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8002";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -28,10 +27,41 @@ export default function ProductDetailPage() {
 
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [sf, setSf] = useState({
-    supplier_org_id: "", supplier_price: "", supplier_moq: "",
+    supplier_org_id: 0, supplier_org_name: "", supplier_price: "", supplier_moq: "",
     supplier_lead_time_days: "", has_pvoc: false, has_coc: false,
     is_preferred: false, notes: "",
   });
+
+  // 供应商搜索
+  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierOptions, setSupplierOptions] = useState<SupplierListItem[]>([]);
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const supplierSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchSuppliers = useCallback(async (q: string) => {
+    try {
+      const items = await suppliersApi.list({ q });
+      setSupplierOptions(items);
+      setShowSupplierDropdown(true);
+    } catch { setSupplierOptions([]); }
+  }, []);
+
+  const handleSupplierQueryChange = (q: string) => {
+    setSupplierQuery(q);
+    setSf((f) => ({ ...f, supplier_org_id: 0, supplier_org_name: "" }));
+    if (supplierSearchTimer.current) clearTimeout(supplierSearchTimer.current);
+    if (q.length >= 1) {
+      supplierSearchTimer.current = setTimeout(() => searchSuppliers(q), 300);
+    } else {
+      setShowSupplierDropdown(false);
+    }
+  };
+
+  const selectSupplier = (s: SupplierListItem) => {
+    setSf((f) => ({ ...f, supplier_org_id: s.id, supplier_org_name: s.name }));
+    setSupplierQuery(s.name);
+    setShowSupplierDropdown(false);
+  };
 
   const fetchProduct = useCallback(async () => {
     setLoading(true);
@@ -62,17 +92,18 @@ export default function ProductDetailPage() {
   };
 
   const handleAddSupplier = async () => {
+    if (!sf.supplier_org_id) { alert("请选择供应商"); return; }
     try {
       await operatorProductApi.addSupplier(productId, {
-        supplier_org_id: parseInt(sf.supplier_org_id),
-        supplier_price: parseFloat(sf.supplier_price),
+        supplier_org_id: sf.supplier_org_id,
+        supplier_price: sf.supplier_price ? parseFloat(sf.supplier_price) : 0,
         supplier_moq: sf.supplier_moq ? parseInt(sf.supplier_moq) : null,
         supplier_lead_time_days: sf.supplier_lead_time_days ? parseInt(sf.supplier_lead_time_days) : null,
         has_pvoc: sf.has_pvoc, has_coc: sf.has_coc, is_preferred: sf.is_preferred,
-        notes: sf.notes || null,
       });
       setShowSupplierForm(false);
-      setSf({ supplier_org_id: "", supplier_price: "", supplier_moq: "", supplier_lead_time_days: "", has_pvoc: false, has_coc: false, is_preferred: false, notes: "" });
+      setSf({ supplier_org_id: 0, supplier_org_name: "", supplier_price: "", supplier_moq: "", supplier_lead_time_days: "", has_pvoc: false, has_coc: false, is_preferred: false, notes: "" });
+      setSupplierQuery("");
       fetchProduct();
     } catch (err: any) { alert(err.message || "添加失败"); }
   };
@@ -143,7 +174,7 @@ export default function ProductDetailPage() {
               <div className="grid grid-cols-2 gap-2">
                 {images.map((img) => (
                   <div key={img.id} className="group relative">
-                    <img src={`${API_BASE}${img.url}`} alt="" className="h-24 w-full rounded border border-slate-200 object-cover" />
+                    <img src={img.full_url} alt="" className="h-24 w-full rounded border border-slate-200 object-cover" />
                     {img.sort_order === 0 && <span className="absolute left-1 top-1 rounded bg-blue-600 px-1 py-0.5 text-[9px] text-white">主图</span>}
                     <button onClick={() => handleDeleteImage(img.id)} className="absolute right-1 top-1 hidden rounded bg-red-500/80 p-0.5 text-white group-hover:block">
                       <Trash2 className="h-3 w-3" />
@@ -223,27 +254,64 @@ export default function ProductDetailPage() {
                   </div>
 
                   {showSupplierForm && (
-                    <div className="rounded-md border border-blue-200 bg-blue-50/50 p-4">
-                      <div className="grid grid-cols-3 gap-3 text-[12px]">
-                        <div><label className="mb-1 block text-[11px] font-medium text-slate-600">供应商 ID *</label><input type="number" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_org_id} onChange={(e) => setSf((f) => ({ ...f, supplier_org_id: e.target.value }))} /></div>
-                        <div><label className="mb-1 block text-[11px] font-medium text-slate-600">底价 / Price *</label><input type="number" step="0.01" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_price} onChange={(e) => setSf((f) => ({ ...f, supplier_price: e.target.value }))} /></div>
-                        <div><label className="mb-1 block text-[11px] font-medium text-slate-600">起订量 / MOQ</label><input type="number" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_moq} onChange={(e) => setSf((f) => ({ ...f, supplier_moq: e.target.value }))} /></div>
-                        <div><label className="mb-1 block text-[11px] font-medium text-slate-600">交期 / Lead Time (天)</label><input type="number" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_lead_time_days} onChange={(e) => setSf((f) => ({ ...f, supplier_lead_time_days: e.target.value }))} /></div>
+                    <div className="rounded-md border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+                      {/* 第一行：供应商搜索（必选） */}
+                      <div className="relative">
+                        <label className="mb-1 block text-[11px] font-medium text-slate-600">供应商 / Supplier *</label>
+                        <input
+                          type="text"
+                          placeholder="输入名称搜索..."
+                          className="w-full rounded border px-3 py-2 text-[13px]"
+                          value={supplierQuery}
+                          onChange={(e) => handleSupplierQueryChange(e.target.value)}
+                          onFocus={() => { if (supplierOptions.length > 0) setShowSupplierDropdown(true); }}
+                          onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
+                        />
+                        {sf.supplier_org_id > 0 && (
+                          <span className="absolute right-3 top-[30px] text-[11px] text-emerald-600">✓ {sf.supplier_org_name}</span>
+                        )}
+                        {showSupplierDropdown && supplierOptions.length > 0 && (
+                          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded border border-slate-200 bg-white shadow-lg">
+                            {supplierOptions.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                className="flex w-full items-center justify-between px-3 py-2.5 text-left text-[13px] hover:bg-blue-50"
+                                onMouseDown={() => selectSupplier(s)}
+                              >
+                                <span className="font-medium text-slate-800">{s.name}</span>
+                                <span className="text-[11px] text-slate-400">{s.country_code}{s.grade ? ` · ${s.grade}` : ""}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {showSupplierDropdown && supplierOptions.length === 0 && supplierQuery.length >= 1 && (
+                          <div className="absolute z-10 mt-1 w-full rounded border border-slate-200 bg-white px-3 py-2.5 text-[13px] text-slate-400 shadow-lg">
+                            未找到匹配的供应商
+                          </div>
+                        )}
+                      </div>
+                      {/* 第二行：供货条件（全部选填） */}
+                      <div className="grid grid-cols-4 gap-3 text-[12px]">
+                        <div><label className="mb-1 block text-[11px] font-medium text-slate-500">底价 / Price</label><input type="number" step="0.01" placeholder="选填" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_price} onChange={(e) => setSf((f) => ({ ...f, supplier_price: e.target.value }))} /></div>
+                        <div><label className="mb-1 block text-[11px] font-medium text-slate-500">起订量 / MOQ</label><input type="number" placeholder="选填" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_moq} onChange={(e) => setSf((f) => ({ ...f, supplier_moq: e.target.value }))} /></div>
+                        <div><label className="mb-1 block text-[11px] font-medium text-slate-500">交期 / Lead Time (天)</label><input type="number" placeholder="选填" className="w-full rounded border px-2 py-1.5 text-[12px]" value={sf.supplier_lead_time_days} onChange={(e) => setSf((f) => ({ ...f, supplier_lead_time_days: e.target.value }))} /></div>
                         <div className="flex items-end gap-3">
                           <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={sf.has_pvoc} onChange={(e) => setSf((f) => ({ ...f, has_pvoc: e.target.checked }))} /> PVoC</label>
                           <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={sf.has_coc} onChange={(e) => setSf((f) => ({ ...f, has_coc: e.target.checked }))} /> CoC</label>
                           <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={sf.is_preferred} onChange={(e) => setSf((f) => ({ ...f, is_preferred: e.target.checked }))} /> 优选</label>
                         </div>
-                        <div className="flex items-end gap-2">
-                          <button onClick={handleAddSupplier} className="rounded bg-blue-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-blue-700">保存</button>
-                          <button onClick={() => setShowSupplierForm(false)} className="rounded border px-3 py-1.5 text-[11px] text-slate-600 hover:bg-slate-50">取消</button>
-                        </div>
+                      </div>
+                      {/* 操作按钮 */}
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => { setShowSupplierForm(false); setSupplierQuery(""); }} className="rounded border px-4 py-1.5 text-[12px] text-slate-600 hover:bg-slate-50">取消</button>
+                        <button onClick={handleAddSupplier} disabled={!sf.supplier_org_id} className="rounded bg-blue-600 px-4 py-1.5 text-[12px] font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">保存</button>
                       </div>
                     </div>
                   )}
 
                   {suppliers.length === 0
-                    ? <p className="text-[13px] text-slate-400">暂无供货关系，请先添加供应商后再上架</p>
+                    ? <p className="text-[13px] text-slate-400">暂无供货关系</p>
                     : (
                       <table className="w-full text-[13px]">
                         <thead>

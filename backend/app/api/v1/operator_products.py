@@ -7,6 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import success
 from app.core.i18n import get_localized
@@ -30,11 +31,24 @@ from app.services import product as product_svc
 router = APIRouter(prefix="/operator/products", tags=["operator-products"])
 
 
+def _img_to_dict(img) -> dict:
+    d = ProductImageSchema.model_validate(img).model_dump()
+    d["full_url"] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
+    return d
+
+
+def _get_main_image_url(p) -> str | None:
+    if not p.images:
+        return None
+    from app.db.models.product_image import ImageType
+    main = next((i for i in p.images if i.image_type == ImageType.MAIN), None)
+    if not main:
+        main = sorted(p.images, key=lambda i: i.sort_order)[0]
+    return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
+
+
 def _to_operator(p) -> dict:
-    main_image = None
-    if hasattr(p, "images") and p.images:
-        sorted_imgs = sorted(p.images, key=lambda i: i.sort_order)
-        main_image = sorted_imgs[0].url if sorted_imgs else None
+    main_image = _get_main_image_url(p) if hasattr(p, "images") and p.images else None
     supplier_count = len(p.supplier_relations) if hasattr(p, "supplier_relations") and p.supplier_relations else 0
     return ProductOperator(
         id=p.id,
@@ -134,11 +148,7 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ):
     p = await product_svc.get_product(db, product_id)
-    main_image = None
-    if p.images:
-        sorted_imgs = sorted(p.images, key=lambda i: i.sort_order)
-        main_image = sorted_imgs[0].url if sorted_imgs else None
-
+    main_image = _get_main_image_url(p)
     suppliers = await product_svc.list_product_suppliers(db, product_id)
 
     data = ProductOperatorDetail(
@@ -163,7 +173,7 @@ async def get_product(
         description=get_localized(p, "description"),
         description_i18n=p.description_i18n,
         hs_code=p.hs_code,
-        images=[ProductImageSchema.model_validate(img) for img in p.images],
+        images=[_img_to_dict(img) for img in p.images],
         attributes=[ProductAttrSchema.model_validate(attr) for attr in p.attrs],
         status=p.status,
         suppliers=suppliers,
@@ -183,7 +193,7 @@ async def upload_image(
     db: AsyncSession = Depends(get_db),
 ):
     img = await product_svc.add_product_image(db, product_id, file)
-    return success(ProductImageSchema.model_validate(img).model_dump())
+    return success(_img_to_dict(img))
 
 
 @router.delete("/{product_id}/images/{image_id}", summary="删除商品图片")
@@ -194,6 +204,17 @@ async def delete_image(
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.delete_product_image(db, image_id)
+    return success()
+
+
+@router.patch("/{product_id}/images/{image_id}/set-main", summary="设为主图")
+async def set_main_image(
+    product_id: int,
+    image_id: int,
+    current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
+    db: AsyncSession = Depends(get_db),
+):
+    await product_svc.set_main_image(db, product_id, image_id)
     return success()
 
 

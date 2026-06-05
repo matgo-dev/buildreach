@@ -6,6 +6,7 @@ import math
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import success
 from app.core.i18n import get_localized
 from app.db.session import get_db
@@ -15,11 +16,25 @@ from app.services import product as product_svc
 router = APIRouter(prefix="/products", tags=["products"])
 
 
+def _img_to_dict(img) -> dict:
+    d = ProductImageSchema.model_validate(img).model_dump()
+    d["full_url"] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
+    return d
+
+
+def _get_main_image_url(p) -> str | None:
+    """取 MAIN 类型图片的 full_url，没有则取 sort_order 最小的。"""
+    if not p.images:
+        return None
+    from app.db.models.product_image import ImageType
+    main = next((i for i in p.images if i.image_type == ImageType.MAIN), None)
+    if not main:
+        main = sorted(p.images, key=lambda i: i.sort_order)[0]
+    return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
+
+
 def _to_public(p) -> dict:
-    main_image = None
-    if p.images:
-        sorted_imgs = sorted(p.images, key=lambda i: i.sort_order)
-        main_image = sorted_imgs[0].url if sorted_imgs else None
+    main_image = _get_main_image_url(p)
     return ProductPublic(
         id=p.id,
         sku_code=p.sku_code,
@@ -76,10 +91,7 @@ async def get_product(
         from app.core.exceptions import NotFoundError
         raise NotFoundError("Product not found")
 
-    main_image = None
-    if p.images:
-        sorted_imgs = sorted(p.images, key=lambda i: i.sort_order)
-        main_image = sorted_imgs[0].url if sorted_imgs else None
+    main_image = _get_main_image_url(p)
 
     data = ProductPublicDetail(
         id=p.id,
@@ -99,7 +111,7 @@ async def get_product(
         main_image=main_image,
         description=get_localized(p, "description"),
         hs_code=p.hs_code,
-        images=[ProductImageSchema.model_validate(img) for img in p.images],
+        images=[_img_to_dict(img) for img in p.images],
         attributes=[ProductAttrSchema.model_validate(attr) for attr in p.attrs],
     ).model_dump()
     return success(data)

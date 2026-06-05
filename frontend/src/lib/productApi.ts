@@ -37,8 +37,13 @@ export interface ProductOperator extends ProductPublic {
 
 export interface ProductImage {
   id: number;
-  url: string;
+  image_key: string;
+  full_url: string;
+  image_type: string;
   sort_order: number;
+  width: number | null;
+  height: number | null;
+  file_size: number | null;
 }
 
 export interface ProductAttr {

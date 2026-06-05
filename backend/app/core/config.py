@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT_MAX_FAILURES: int = 5
     LOGIN_RATE_LIMIT_LOCK_SECONDS: int = 300
 
+    # 商品图片 URL 前缀（MVP 本地 StaticFiles，生产换 CDN）
+    IMAGE_BASE_URL: str = "http://localhost:8000/uploads"
+
     # 调试 API(/api/_debug/*)是否开启;生产应关闭
     ENABLE_DEBUG_API: bool = True
 
