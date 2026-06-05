@@ -46,3 +46,6 @@ class Category(Base, TimestampUpdateMixin):
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # 东非商品目录扩展
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    product_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

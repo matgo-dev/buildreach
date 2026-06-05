@@ -17,7 +17,7 @@ os.environ.setdefault(
     "DATABASE_URL",
     os.environ.get(
         "TEST_DATABASE_URL",
-        "postgresql+asyncpg://liujingjing@localhost:5433/overseas_supply_test",
+        "postgresql+asyncpg://liujingjing@localhost:5433/buildlink_ea_test",
     ),
 )
 os.environ.setdefault("SUPER_ADMIN_EMAIL", "superadmin@platform.local")

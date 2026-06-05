@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/layout/AppShell";
+import { BuyerShell } from "@/components/layout/BuyerShell";
 
 export default function BuyerLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return <BuyerShell>{children}</BuyerShell>;
 }

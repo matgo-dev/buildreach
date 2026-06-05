@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import success
 from app.db.session import get_db
 from app.services import category as category_service
+from app.services import product as product_svc
+from app.schemas.product import AttrTemplateSchema
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -34,3 +36,12 @@ async def get_categories_tree(
 ):
     tree = await category_service.get_tree(db, is_active=is_active)
     return success([n.model_dump() for n in tree])
+
+
+@router.get("/{code}/attr-templates", summary="品类属性模板")
+async def get_attr_templates(
+    code: str,
+    db: AsyncSession = Depends(get_db),
+):
+    templates = await product_svc.get_attr_templates(db, code)
+    return success([AttrTemplateSchema.model_validate(t).model_dump() for t in templates])

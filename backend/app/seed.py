@@ -273,11 +273,16 @@ async def run_all_seeds(db: AsyncSession) -> None:
 
     - 引导管理员:始终种入(生产唯一保留项)
     - 术语表:始终种入
+    - 品类:始终种入(九大 L1 + C01 照明 L2/L3)
     - demo 内容(中建三局 / admin / operator / buyer demo 账号):
       仅当 settings.SEED_DEMO_ACCOUNTS=true 时种入
     """
     await seed_bootstrap_admin(db)
     await seed_glossary(db)
+
+    # 品类种子:生产也需要,始终运行
+    from app.seed_categories import seed_categories
+    await seed_categories(db)
     if settings.SEED_DEMO_ACCOUNTS:
         await seed_buyer_org(db)
         await seed_demo_internal_accounts(db)

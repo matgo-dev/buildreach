@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/layout/AppShell";
+import { OperatorShell } from "@/components/layout/OperatorShell";
 
 export default function OperatorLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return <OperatorShell>{children}</OperatorShell>;
 }
