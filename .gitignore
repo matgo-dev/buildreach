@@ -52,3 +52,4 @@ legacy-demo.sql.gz
 
 # ---- 内部设计文档(本地保留,不入库) ----
 docs/
+CLAUDE.md
