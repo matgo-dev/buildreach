@@ -1,15 +1,18 @@
-"""运营商品管理 API — SPU + SKU 两层化。
+"""运营商品管理 API — SPU + SKU 两层化 + 审计日志。
 
 SPU CRUD + SKU CRUD(含阶梯价) + 图片(SPU/SKU) + 供货关系(挂 SKU)。
+全部写路径成功后写 audit_log；可预期校验错误不写审计。
 """
 from __future__ import annotations
 
 import math
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.core.config import settings
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import success
@@ -172,43 +175,68 @@ async def list_products(
 
 @router.post("", summary="创建商品(SPU)")
 async def create_product(
+    request: Request,
     data: ProductCreate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_svc.create_product(db, data, current.id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.CREATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product.id, request=request,
+    )
     return success({"id": product.id, "spu_code": product.spu_code})
 
 
 @router.put("/{product_id}", summary="编辑商品(SPU)")
 async def update_product(
     product_id: int,
+    request: Request,
     data: ProductUpdate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_svc.update_product(db, product_id, data)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.UPDATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product.id, request=request,
+    )
     return success({"id": product.id})
 
 
 @router.patch("/{product_id}/status", summary="上架/下架")
 async def update_status(
     product_id: int,
+    request: Request,
     data: ProductStatusUpdate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_APPROVE)),
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_svc.update_product_status(db, product_id, data.status)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.STATUS_CHANGE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product.id, request=request,
+        extra={"new_status": product.status},
+    )
     return success({"id": product.id, "status": product.status})
 
 
 @router.delete("/{product_id}", summary="删除草稿商品(SPU)")
 async def delete_product(
     product_id: int,
+    request: Request,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.delete_product(db, product_id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.DELETE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product_id, request=request,
+    )
     return success()
 
 
@@ -262,11 +290,17 @@ async def list_skus(
 @router.post("/{product_id}/skus", summary="创建 SKU")
 async def create_sku(
     product_id: int,
+    request: Request,
     data: SkuCreate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     sku = await product_svc.create_sku(db, product_id, data)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.CREATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku.id, request=request,
+    )
     return success({"id": sku.id, "sku_code": sku.sku_code})
 
 
@@ -274,11 +308,17 @@ async def create_sku(
 async def update_sku(
     product_id: int,
     sku_id: int,
+    request: Request,
     data: SkuUpdate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     sku = await product_svc.update_sku(db, sku_id, data)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.UPDATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku.id, request=request,
+    )
     return success({"id": sku.id})
 
 
@@ -286,10 +326,16 @@ async def update_sku(
 async def delete_sku(
     product_id: int,
     sku_id: int,
+    request: Request,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.delete_sku(db, sku_id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.DELETE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku_id, request=request,
+    )
     return success()
 
 
@@ -298,12 +344,19 @@ async def delete_sku(
 @router.post("/{product_id}/images", summary="上传商品图片")
 async def upload_image(
     product_id: int,
+    request: Request,
     file: UploadFile = File(...),
     sku_id: int | None = Query(None),
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     img = await product_svc.add_product_image(db, product_id, file, sku_id=sku_id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.CREATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product_id, request=request,
+        extra={"sub_resource": "image", "image_id": img.id},
+    )
     return success(_img_to_dict(img))
 
 
@@ -311,10 +364,17 @@ async def upload_image(
 async def delete_image(
     product_id: int,
     image_id: int,
+    request: Request,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.delete_product_image(db, image_id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.DELETE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product_id, request=request,
+        extra={"sub_resource": "image", "image_id": image_id},
+    )
     return success()
 
 
@@ -322,21 +382,35 @@ async def delete_image(
 async def set_main_image(
     product_id: int,
     image_id: int,
+    request: Request,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.set_main_image(db, product_id, image_id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.UPDATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product_id, request=request,
+        extra={"sub_resource": "image", "image_id": image_id, "action": "set_main"},
+    )
     return success()
 
 
 @router.patch("/{product_id}/images/sort", summary="图片排序")
 async def sort_images(
     product_id: int,
+    request: Request,
     image_ids: List[int],
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.update_image_sort(db, product_id, image_ids)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.UPDATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=product_id, request=request,
+        extra={"sub_resource": "image", "action": "sort"},
+    )
     return success()
 
 
@@ -357,11 +431,18 @@ async def list_sku_suppliers(
 async def add_sku_supplier(
     product_id: int,
     sku_id: int,
+    request: Request,
     data: SupplierRelationCreate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     ps = await product_svc.add_sku_supplier(db, sku_id, data)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.CREATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku_id, request=request,
+        extra={"sub_resource": "supplier", "supplier_relation_id": ps.id},
+    )
     return success({"id": ps.id})
 
 
@@ -370,11 +451,18 @@ async def update_sku_supplier(
     product_id: int,
     sku_id: int,
     ps_id: int,
+    request: Request,
     data: SupplierRelationUpdate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     ps = await product_svc.update_sku_supplier(db, ps_id, data)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.UPDATE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku_id, request=request,
+        extra={"sub_resource": "supplier", "supplier_relation_id": ps.id},
+    )
     return success({"id": ps.id})
 
 
@@ -383,10 +471,17 @@ async def remove_sku_supplier(
     product_id: int,
     sku_id: int,
     ps_id: int,
+    request: Request,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await product_svc.remove_sku_supplier(db, ps_id)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.DELETE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku_id, request=request,
+        extra={"sub_resource": "supplier", "supplier_relation_id": ps_id},
+    )
     return success()
 
 
