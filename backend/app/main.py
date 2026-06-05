@@ -74,6 +74,7 @@ async def biz_exc_handler(request: Request, exc: BusinessError) -> JSONResponse:
             "code": exc.biz_code,
             "message": exc.biz_message,
             "message_key": exc.message_key,
+            "message_params": getattr(exc, "message_params", None),
             "data": exc.biz_data,
             "trace_id": get_trace_id(),
         },

@@ -36,7 +36,9 @@
       "account_locked": "账户已临时锁定,请 5 分钟后重试",
       "token_expired": "登录已过期,请重新登录",
       "permission_denied": "没有权限执行此操作",
-      "not_authenticated": "请先登录"
+      "not_authenticated": "请先登录",
+      "account_disabled": "账户已被禁用",
+      "password_change_required": "请先修改密码"
     },
     "validation": {
       "failed": "输入校验失败,请检查表单"
@@ -45,6 +47,7 @@
       "not_found": "请求的资源不存在",
       "internal_error": "服务器内部错误,请稍后重试",
       "rate_limited": "请求过于频繁,请稍后重试",
+      "rate_limited_with_params": "请求过于频繁,请 {retry_after} 秒后重试",
       "conflict": "资源冲突"
     }
   }
