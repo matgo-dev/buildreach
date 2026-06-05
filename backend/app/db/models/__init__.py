@@ -35,7 +35,9 @@ from app.db.models.permission import Permission
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_image import ImageType, ProductImage
+from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
+from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.role import Role
 from app.db.models.role_permission import RolePermission
 from app.db.models.score_audit_log import ScoreAuditLog
@@ -72,7 +74,10 @@ __all__ = [
     "ProductImage",
     "ImageType",
     "ProductAttr",
+    "ProductSku",
+    "SkuStatus",
     "ProductSupplier",
+    "SkuPriceTier",
     "AttrTemplate",
     # credit assessment - 评分模型骨架
     "ScoreDimension",

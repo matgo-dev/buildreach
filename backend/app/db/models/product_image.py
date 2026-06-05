@@ -1,8 +1,8 @@
 """商品图片。
 
-image_type: MAIN(主图,每商品仅1张) / GALLERY(轮播图) / DETAIL(详情描述图)
+image_type: MAIN(主图) / GALLERY(轮播图) / DETAIL(详情描述图)
 image_key: 存储相对路径，完整 URL 由后端按 IMAGE_BASE_URL 拼接。
-上传时自动压缩到 800x800 正方形 JPEG。
+sku_id: NULL=SPU 级图片，非空=SKU 级图片。
 """
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ class ProductImage(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_product_images_product_id", "product_id"),
         Index("ix_product_images_type", "product_id", "image_type"),
+        Index("ix_product_images_sku_id", "sku_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -31,6 +32,11 @@ class ProductImage(Base, TimestampMixin):
         Integer,
         ForeignKey("products.id", name="fk_product_images_product_id", ondelete="CASCADE"),
         nullable=False,
+    )
+    sku_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("product_skus.id", name="fk_product_images_sku_id", ondelete="SET NULL"),
+        nullable=True,
     )
     image_key: Mapped[str] = mapped_column(String(300), nullable=False)
     image_type: Mapped[str] = mapped_column(String(20), nullable=False, default=ImageType.GALLERY)
@@ -40,3 +46,4 @@ class ProductImage(Base, TimestampMixin):
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     product: Mapped["Product"] = relationship("Product", back_populates="images")
+    sku: Mapped["ProductSku | None"] = relationship("ProductSku", back_populates="images")
