@@ -90,10 +90,10 @@ export default function OperatorProductsPage() {
       ),
     },
     {
-      key: "sku",
-      title: "SKU 编码",
+      key: "spu",
+      title: "SPU 编码",
       width: "120px",
-      render: (p) => <span className="font-mono text-[12px] text-slate-600">{p.sku_code}</span>,
+      render: (p) => <span className="font-mono text-[12px] text-slate-600">{p.spu_code}</span>,
     },
     {
       key: "category",
@@ -106,26 +106,13 @@ export default function OperatorProductsPage() {
       title: "价格区间 / Price",
       width: "140px",
       render: (p) => (
-        <span className="text-slate-700 font-medium">
-          ${Number(p.price_min).toFixed(2)} - ${Number(p.price_max).toFixed(2)}
-        </span>
-      ),
-    },
-    {
-      key: "moq",
-      title: "起订量 / MOQ",
-      width: "100px",
-      render: (p) => <span className="text-slate-600">{p.moq} {p.unit}</span>,
-    },
-    {
-      key: "suppliers",
-      title: "供应商",
-      width: "70px",
-      align: "center",
-      render: (p) => (
-        <span className="inline-flex items-center justify-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-          {p.supplier_count}
-        </span>
+        p.price_min != null && p.price_max != null ? (
+          <span className="text-slate-700 font-medium">
+            {p.currency} {Number(p.price_min).toFixed(2)} - {Number(p.price_max).toFixed(2)}
+          </span>
+        ) : (
+          <span className="text-slate-400 text-[12px]">未设价</span>
+        )
       ),
     },
     {
@@ -202,7 +189,7 @@ export default function OperatorProductsPage() {
       <FilterBar
         keyword={keyword}
         onKeywordChange={(v) => { setKeyword(v); setPage(1); }}
-        searchPlaceholder="搜索商品名称或 SKU..."
+        searchPlaceholder="搜索商品名称或 SPU 编码..."
       >
         <FilterSelect
           value={status}
