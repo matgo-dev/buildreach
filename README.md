@@ -73,7 +73,6 @@ buildlink-ea/
 │   │   ├── lib/          API 封装 / 格式化工具
 │   │   └── i18n/         路由配置 / locale 映射
 │   └── messages/         zh.json / en.json 翻译文件
-├── docs/                 设计文档 / 技术方案
 ├── deploy/               部署脚本
 └── docker-compose.yml    生产部署编排
 ```
