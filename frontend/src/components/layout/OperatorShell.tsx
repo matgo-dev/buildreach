@@ -1,11 +1,12 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
-import { Search, Bell, MessageSquare, User, ChevronDown, Phone } from "lucide-react";
+import { Search, Bell, MessageSquare, ChevronDown, Phone, LogOut, LayoutDashboard } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useAuthStore } from "@/stores/authStore";
+import { useLogout } from "@/hooks/useAuth";
 import { WORKSPACES, type NavItem } from "@/config/navigation";
 import { scopeOf } from "@/config/permission-matrix";
 import type { RoleCode } from "@/lib/auth";
@@ -30,6 +31,23 @@ export function OperatorShell({ children }: { children: ReactNode }) {
 
 function OperatorTopbar() {
   const user = useAuthStore((s) => s.user);
+  const logout = useLogout();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // 点外部关闭
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!userMenuRef.current?.contains(e.target as Node)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [userMenuOpen]);
+
+  const displayName = user?.username || user?.email || "Admin";
+  const initial = (displayName[0] ?? "O").toUpperCase();
+
   return (
     <header className="flex h-[50px] items-center justify-between border-b border-slate-200 bg-white px-5">
       <div className="relative flex-1 max-w-md">
@@ -48,11 +66,49 @@ function OperatorTopbar() {
         <button className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100">
           <MessageSquare className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2 text-[12px]">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0D4D4D] text-[11px] font-bold text-white">
-            {(user?.username?.[0] || "O").toUpperCase()}
-          </div>
-          <span className="text-slate-700 font-medium">{user?.username || "Admin"}</span>
+
+        {/* 用户下拉菜单 */}
+        <div ref={userMenuRef} className="relative">
+          <button
+            onClick={() => setUserMenuOpen((v) => !v)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1 text-[12px] hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0D4D4D] text-[11px] font-bold text-white">
+              {initial}
+            </div>
+            <span className="text-slate-700 font-medium">{displayName}</span>
+            <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {userMenuOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1.5 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+              <div className="border-b border-slate-100 px-3 py-2.5">
+                <p className="text-[12px] font-medium text-slate-800">{displayName}</p>
+                {user?.email && user.email !== displayName && (
+                  <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                )}
+              </div>
+              <div className="py-1">
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 hover:bg-slate-50"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5 text-slate-400" />
+                  返回首页
+                </Link>
+              </div>
+              <div className="border-t border-slate-100 py-1">
+                <button
+                  onClick={() => { setUserMenuOpen(false); logout(); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-red-500 hover:bg-red-50"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  退出登录
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
