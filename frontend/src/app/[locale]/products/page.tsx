@@ -152,12 +152,11 @@ export default function PublicProductsPage() {
                     <div className="p-2">
                       <h3 className="text-[12px] font-medium text-slate-900 line-clamp-1">{p.name}</h3>
                       {p.brand && <p className="text-[10px] text-slate-400 mt-0.5">{p.brand}</p>}
-                      <p className="mt-1.5 text-[13px] font-bold text-[#0D4D4D]">TZS {(Number(p.price_min) * 2500).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">/ {p.unit}</span></p>
+                      {/* TODO: 分支4 买方前端两层化 — 价格/MOQ/交期改从默认 SKU 读 */}
+                      <p className="mt-1.5 text-[13px] font-bold text-[#0D4D4D]">
+                        {p.price_min != null ? `TZS ${(Number(p.price_min) * 2500).toLocaleString()}` : "询价"}
+                      </p>
                       <span className="mt-1 inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1 py-0.5 text-[9px] text-emerald-600">● 有货 / In Stock</span>
-                      <div className="mt-1.5 flex items-center justify-between text-[9px] text-slate-400">
-                        <span>MOQ {p.moq} {p.unit}</span>
-                        <span>交期 {p.lead_time_days ?? "—"} 天</span>
-                      </div>
                     </div>
                   </div>
                 ) : (
@@ -165,8 +164,11 @@ export default function PublicProductsPage() {
                     <div className="h-20 w-20 shrink-0 rounded bg-[#FAFAFA] overflow-hidden">{p.main_image ? <img src={p.main_image} alt="" className="h-full w-full object-contain p-1" /> : <div className="flex h-full items-center justify-center"><Package className="h-6 w-6 text-slate-200" /></div>}</div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-[13px] font-medium text-slate-900">{p.name}</h3>
-                      <p className="mt-1 text-[14px] font-bold text-[#0D4D4D]">TZS {(Number(p.price_min) * 2500).toLocaleString()} / {p.unit}</p>
-                      <div className="mt-1 flex items-center gap-3 text-[10px] text-slate-400"><span className="text-emerald-600">● 有货</span><span>MOQ {p.moq}</span><span>交期 {p.lead_time_days ?? "—"} 天</span></div>
+                      {/* TODO: 分支4 买方前端两层化 */}
+                      <p className="mt-1 text-[14px] font-bold text-[#0D4D4D]">
+                        {p.price_min != null ? `TZS ${(Number(p.price_min) * 2500).toLocaleString()}` : "询价"}
+                      </p>
+                      <div className="mt-1 flex items-center gap-3 text-[10px] text-slate-400"><span className="text-emerald-600">● 有货</span></div>
                     </div>
                     <div className="flex items-center shrink-0"><button className="rounded bg-[#25D366] px-3 py-1.5 text-[11px] font-medium text-white hover:bg-[#20BD5A]">WhatsApp 询价</button></div>
                   </div>
