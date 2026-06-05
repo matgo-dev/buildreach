@@ -36,7 +36,9 @@
       "account_locked": "Account temporarily locked, please try again in 5 minutes",
       "token_expired": "Session expired, please login again",
       "permission_denied": "You do not have permission to perform this action",
-      "not_authenticated": "Please login first"
+      "not_authenticated": "Please login first",
+      "account_disabled": "Account has been disabled",
+      "password_change_required": "Please change your password first"
     },
     "validation": {
       "failed": "Validation failed, please check the form"
@@ -45,6 +47,7 @@
       "not_found": "The requested resource was not found",
       "internal_error": "Internal server error, please try again later",
       "rate_limited": "Too many requests, please try again later",
+      "rate_limited_with_params": "Too many requests, please try again in {retry_after} seconds",
       "conflict": "Resource conflict"
     }
   }

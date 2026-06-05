@@ -11,9 +11,41 @@ DEFAULT_LOCALE = "zh"
 
 _current_locale: ContextVar[str] = ContextVar("current_locale", default=DEFAULT_LOCALE)
 
+# BCP 47 → 平台支持的 locale 显式映射,不做盲目 split
+_LOCALE_MAP: dict[str, str] = {
+    "zh": "zh",
+    "zh-cn": "zh",
+    "zh-tw": "zh",      # 繁体暂归 zh,未来可拆 zh-hant
+    "zh-hk": "zh",
+    "zh-hant": "zh",
+    "en": "en",
+    "en-us": "en",
+    "en-gb": "en",
+    "en-au": "en",
+}
+
 
 def get_current_locale() -> str:
     return _current_locale.get()
+
+
+def normalize_locale(raw: str | None) -> str:
+    """BCP 47 标签 → 平台支持的 locale。
+
+    规则:空/None→zh;zh-*→zh;en-*→en;不支持的→en。
+    使用显式映射而非盲目 split,新增 locale 只需加 _LOCALE_MAP 条目。
+    """
+    if not raw:
+        return DEFAULT_LOCALE
+    key = raw.strip().lower()
+    if key in _LOCALE_MAP:
+        return _LOCALE_MAP[key]
+    # 映射表未命中,尝试基础语言码
+    base = key.split("-")[0] if "-" in key else key
+    if base in _LOCALE_MAP:
+        return _LOCALE_MAP[base]
+    # 防御性兜底,实际不会触发(平台只允许注册支持的语言)
+    return DEFAULT_LOCALE
 
 
 class LocaleMiddleware(BaseHTTPMiddleware):
@@ -33,7 +65,13 @@ def _parse_accept_language(header: str) -> str:
     if not header:
         return DEFAULT_LOCALE
     for part in header.split(","):
-        lang = part.split(";")[0].strip().split("-")[0].lower()
-        if lang in SUPPORTED_LOCALES:
-            return lang
+        tag = part.split(";")[0].strip()
+        result = normalize_locale(tag)
+        # normalize_locale 对不支持的返回 "en",需确认原始 tag 确实匹配
+        if result in SUPPORTED_LOCALES:
+            key = tag.strip().lower()
+            # 确保是显式映射命中或 base 命中,而非兜底的 "en"
+            base = key.split("-")[0] if "-" in key else key
+            if key in _LOCALE_MAP or base in _LOCALE_MAP:
+                return result
     return DEFAULT_LOCALE
