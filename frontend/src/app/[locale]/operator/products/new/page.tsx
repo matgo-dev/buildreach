@@ -8,17 +8,13 @@ import { operatorProductApi, categoryApi, type AttrTemplate } from "@/lib/produc
 import { api } from "@/lib/api";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { FieldError } from "@/components/form/FieldError";
-import { validateAll, extractFieldErrors, errorSummary, type FieldRules } from "@/lib/formValidation";
+import { validateAll, extractFieldErrors, type FieldRules } from "@/lib/formValidation";
 import { Package, Upload, X, Star } from "lucide-react";
 
-// 前端校验规则
+// SPU 级校验规则（去掉 SKU 级字段）
 const PRODUCT_RULES: FieldRules = {
   category_code: [{ required: true, message: "请选择品类" }],
   name: [{ required: true, message: "请填写商品名称" }],
-  price_min: [{ required: true, message: "请填写最低价" }, { min: 0.01, message: "最低价必须大于 0" }],
-  price_max: [{ required: true, message: "请填写最高价" }, { min: 0.01, message: "最高价必须大于 0" }],
-  moq: [{ required: true, message: "请填写起订量" }, { min: 1, message: "起订量至少为 1" }],
-  unit: [{ required: true, message: "请选择计量单位" }],
 };
 
 const STEPS = ["基础信息", "品类属性", "图片上传", "预览确认"];
@@ -32,13 +28,7 @@ type FormData = {
   category_code: string;
   name: string;
   description: string;
-  price_min: string;
-  price_max: string;
-  currency: string;
-  unit: string;
-  moq: string;
-  lead_time_min: string;
-  lead_time_max: string;
+  selling_points: string;
   origin: string;
   hs_code: string;
   brand: string;
@@ -48,7 +38,6 @@ type FormData = {
 };
 
 const CERT_OPTIONS = ["PVoC", "CoC", "ISO9001", "CE", "SABS", "KEBS"];
-const UNIT_OPTIONS = ["pcs", "sets", "meters", "kg", "rolls", "bags", "boxes"];
 
 export default function CreateProductPage() {
   const router = useRouter();
@@ -69,13 +58,7 @@ export default function CreateProductPage() {
     category_code: "",
     name: "",
     description: "",
-    price_min: "",
-    price_max: "",
-    currency: "USD",
-    unit: "pcs",
-    moq: "1",
-    lead_time_min: "",
-    lead_time_max: "",
+    selling_points: "",
     origin: "China",
     hs_code: "",
     brand: "",
@@ -102,7 +85,6 @@ export default function CreateProductPage() {
     api.get<CategoryItem[]>(`/api/v1/categories?parent_code=${form.l1_code}&is_active=true`)
       .then((items) => {
         setL2List(items);
-        // 如果没有 L2 子级，最终分类就是 L1
         if (items.length === 0) {
           setForm((f) => ({ ...f, category_code: form.l1_code }));
         }
@@ -115,7 +97,6 @@ export default function CreateProductPage() {
   useEffect(() => {
     if (!form.l2_code) {
       setL3List([]);
-      // 有 L2 列表但没选 → category_code 保持 L1
       if (form.l1_code) setForm((f) => ({ ...f, l3_code: "", category_code: form.l1_code }));
       return;
     }
@@ -162,7 +143,6 @@ export default function CreateProductPage() {
 
   const updateField = (field: keyof FormData, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
-    // 清除该字段的错误
     if (errors[field]) {
       setErrors((e) => { const n = { ...e }; delete n[field]; return n; });
     }
@@ -195,7 +175,6 @@ export default function CreateProductPage() {
     }
     const newFiles = [...imageFiles, ...files];
     setImageFiles(newFiles);
-    // 生成预览
     const newPreviews = [...imagePreviews];
     files.forEach((f) => newPreviews.push(URL.createObjectURL(f)));
     setImagePreviews(newPreviews);
@@ -208,53 +187,48 @@ export default function CreateProductPage() {
     setImagePreviews((ps) => ps.filter((_, i) => i !== idx));
   };
 
-  const handleSave = async (asDraft: boolean) => {
+  const handleSave = async () => {
     // 前端校验
     const frontErrors = validateAll(form as unknown as Record<string, unknown>, PRODUCT_RULES);
     if (Object.keys(frontErrors).length > 0) {
       setErrors(frontErrors);
-      setStep(0); // 跳回基础信息步骤
+      setStep(0);
       return;
     }
 
     setSaving(true);
     setErrors({});
     try {
-      // 1. 创建商品
+      // 1. 创建 SPU（草稿）
       const payload: Record<string, unknown> = {
         category_code: form.category_code,
         name: form.name,
         description: form.description || null,
-        price_min: parseFloat(form.price_min),
-        price_max: parseFloat(form.price_max),
-        currency: form.currency,
-        unit: form.unit,
-        moq: parseInt(form.moq),
-        lead_time_days: form.lead_time_max ? parseInt(form.lead_time_max) : null,
+        selling_points: form.selling_points || null,
         origin: form.origin,
         hs_code: form.hs_code || null,
         brand: form.brand || null,
         certifications: form.certifications,
         is_featured: form.is_featured,
-        status: asDraft ? "DRAFT" : "DRAFT",
+        status: "DRAFT",
         attributes: form.attributes
           .filter((a) => a.attr_value)
           .map((a, i) => ({ ...a, sort_order: i })),
       };
       const res = await operatorProductApi.create(payload);
 
-      // 2. 上传图片（第一张自动设为主图）
+      // 2. 上传图片
       for (const file of imageFiles) {
         await operatorProductApi.uploadImage(res.id, file);
       }
 
+      // 3. 跳转详情页，在那里添加 SKU
       router.push(`/operator/products/${res.id}`);
     } catch (e: any) {
-      // 解析后端字段级错误
       const fieldErrors = extractFieldErrors(e);
       if (Object.keys(fieldErrors).length > 0) {
         setErrors(fieldErrors);
-        setStep(0); // 跳回基础信息步骤显示错误
+        setStep(0);
       } else {
         alert(e.message || "创建失败，请检查表单内容");
       }
@@ -267,8 +241,8 @@ export default function CreateProductPage() {
     <div className="space-y-6">
       <AdminPageHeader
         titleZh="创建商品"
-        titleEn="Create Product"
-        subtitle="填写商品信息，添加到商品目录"
+        titleEn="Create Product (SPU)"
+        subtitle="填写 SPU 基本信息，保存后在详情页添加 SKU 变体"
         breadcrumbs={[
           { label: "运营后台", href: "/operator/dashboard" },
           { label: "商品中心", href: "/operator/products" },
@@ -316,11 +290,11 @@ export default function CreateProductPage() {
                 </ul>
               </div>
             )}
+
             {/* 三级品类联动 */}
             <div className="col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-slate-700">所属品类 / Category *</label>
               <div className="grid grid-cols-3 gap-3">
-                {/* L1 一级品类 */}
                 <select
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={form.l1_code}
@@ -328,12 +302,9 @@ export default function CreateProductPage() {
                 >
                   <option value="">一级品类...</option>
                   {l1List.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name_zh} / {c.name_en}
-                    </option>
+                    <option key={c.code} value={c.code}>{c.name_zh} / {c.name_en}</option>
                   ))}
                 </select>
-                {/* L2 二级品类 */}
                 <select
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400"
                   value={form.l2_code}
@@ -342,12 +313,9 @@ export default function CreateProductPage() {
                 >
                   <option value="">{l2List.length === 0 ? (form.l1_code ? "无子分类" : "请先选一级") : "二级品类..."}</option>
                   {l2List.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name_zh} / {c.name_en}
-                    </option>
+                    <option key={c.code} value={c.code}>{c.name_zh} / {c.name_en}</option>
                   ))}
                 </select>
-                {/* L3 三级品类 */}
                 <select
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400"
                   value={form.l3_code}
@@ -356,33 +324,19 @@ export default function CreateProductPage() {
                 >
                   <option value="">{l3List.length === 0 ? (form.l2_code ? "无子分类" : "请先选二级") : "三级品类..."}</option>
                   {l3List.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name_zh} / {c.name_en}
-                    </option>
+                    <option key={c.code} value={c.code}>{c.name_zh} / {c.name_en}</option>
                   ))}
                 </select>
               </div>
               {form.category_code && (
                 <p className="mt-1 text-xs text-slate-400">
                   最终品类编码：<span className="font-mono text-blue-600">{form.category_code}</span>
-                  {" "}（SKU 编码将由系统自动生成）
+                  {" "}（SPU 编码将由系统自动生成）
                 </p>
               )}
             </div>
 
-            {/* Brand */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">品牌</label>
-              <input
-                type="text"
-                placeholder="如 OEM"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={form.brand}
-                onChange={(e) => updateField("brand", e.target.value)}
-              />
-            </div>
-
-            {/* Name EN */}
+            {/* Name */}
             <div className="col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-slate-700">商品名称 / Product Name *</label>
               <input
@@ -407,84 +361,31 @@ export default function CreateProductPage() {
               />
             </div>
 
-            {/* Price Range */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">最低价（USD）*</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.price_min ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
-                value={form.price_min}
-                onChange={(e) => updateField("price_min", e.target.value)}
-              />
-              <FieldError error={errors.price_min} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">最高价（USD）*</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.price_max ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
-                value={form.price_max}
-                onChange={(e) => updateField("price_max", e.target.value)}
-              />
-              <FieldError error={errors.price_max} />
-            </div>
-
-            {/* MOQ + Unit */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">最小起订量 *</label>
-              <input
-                type="number"
-                min="1"
-                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.moq ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500"}`}
-                value={form.moq}
-                onChange={(e) => updateField("moq", e.target.value)}
-              />
-              <FieldError error={errors.moq} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">计量单位 *</label>
-              <select
+            {/* Selling Points */}
+            <div className="col-span-2">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">卖点 / Selling Points</label>
+              <textarea
+                rows={2}
+                placeholder="产品核心卖点..."
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={form.unit}
-                onChange={(e) => updateField("unit", e.target.value)}
-              >
-                {UNIT_OPTIONS.map((u) => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Lead time (min + max) */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">最短交期（天）</label>
-              <input
-                type="number"
-                min="0"
-                placeholder="如 3"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={form.lead_time_min}
-                onChange={(e) => updateField("lead_time_min", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">最长交期（天）</label>
-              <input
-                type="number"
-                min="0"
-                placeholder="如 7"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={form.lead_time_max}
-                onChange={(e) => updateField("lead_time_max", e.target.value)}
+                value={form.selling_points}
+                onChange={(e) => updateField("selling_points", e.target.value)}
               />
             </div>
 
-            {/* Origin */}
+            {/* Brand + Origin */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">产地</label>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">品牌 / Brand</label>
+              <input
+                type="text"
+                placeholder="如 OEM"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={form.brand}
+                onChange={(e) => updateField("brand", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">产地 / Origin</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -599,9 +500,8 @@ export default function CreateProductPage() {
         {step === 2 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-900">商品图片 / Product Images</h3>
-            <p className="text-[13px] text-slate-500">上传商品图片，第一张自动设为主图。支持 jpg/png/webp，单张不超过 5MB，最多 8 张。</p>
+            <p className="text-[13px] text-slate-500">上传 SPU 级商品图片，第一张自动设为主图。支持 jpg/png/webp，单张不超过 5MB，最多 8 张。</p>
 
-            {/* 上传区域 */}
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 transition-colors hover:border-blue-400 hover:bg-blue-50/30">
               <Upload className="mb-2 h-8 w-8 text-slate-400" />
               <span className="text-[13px] font-medium text-slate-600">点击上传图片 / Click to upload</span>
@@ -615,16 +515,11 @@ export default function CreateProductPage() {
               />
             </label>
 
-            {/* 图片预览 */}
             {imagePreviews.length > 0 && (
               <div className="grid grid-cols-4 gap-3">
                 {imagePreviews.map((src, idx) => (
                   <div key={idx} className="group relative">
-                    <img
-                      src={src}
-                      alt={`图片 ${idx + 1}`}
-                      className="h-32 w-full rounded-lg border border-slate-200 object-cover"
-                    />
+                    <img src={src} alt={`图片 ${idx + 1}`} className="h-32 w-full rounded-lg border border-slate-200 object-cover" />
                     {idx === 0 && (
                       <span className="absolute left-1.5 top-1.5 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
                         <Star className="mr-0.5 inline h-2.5 w-2.5" />主图
@@ -665,12 +560,15 @@ export default function CreateProductPage() {
             <h3 className="text-lg font-semibold text-slate-900">预览确认 / Review</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-slate-500">品类编码：</span> <span className="font-mono font-medium">{form.category_code}</span></div>
-              <div><span className="text-slate-500">SKU：</span> <span className="font-mono text-slate-400">系统自动生成</span></div>
+              <div><span className="text-slate-500">SPU 编码：</span> <span className="font-mono text-slate-400">系统自动生成</span></div>
               <div className="col-span-2"><span className="text-slate-500">商品名称：</span> <span className="font-medium">{form.name}</span></div>
-              <div><span className="text-slate-500">价格区间：</span> <span className="font-medium">${form.price_min} - ${form.price_max}</span></div>
-              <div><span className="text-slate-500">起订量：</span> <span className="font-medium">{form.moq} {form.unit}</span></div>
               <div><span className="text-slate-500">产地：</span> <span className="font-medium">{form.origin}</span></div>
               <div><span className="text-slate-500">品牌：</span> <span className="font-medium">{form.brand || "—"}</span></div>
+              <div><span className="text-slate-500">HS 编码：</span> <span className="font-mono font-medium">{form.hs_code || "—"}</span></div>
+              <div><span className="text-slate-500">精选推荐：</span> <span className="font-medium">{form.is_featured ? "是" : "否"}</span></div>
+              {form.selling_points && (
+                <div className="col-span-2"><span className="text-slate-500">卖点：</span> <span>{form.selling_points}</span></div>
+              )}
               {form.certifications.length > 0 && (
                 <div className="col-span-2">
                   <span className="text-slate-500">认证：</span>{" "}
@@ -693,7 +591,6 @@ export default function CreateProductPage() {
                 </div>
               </div>
             )}
-            {/* 图片预览 */}
             {imagePreviews.length > 0 && (
               <div className="mt-4">
                 <h4 className="mb-2 text-sm font-medium text-slate-700">商品图片 ({imageFiles.length} 张)</h4>
@@ -704,9 +601,10 @@ export default function CreateProductPage() {
                 </div>
               </div>
             )}
-            <p className="mt-4 text-xs text-slate-400">
-              商品将保存为草稿，图片同步上传。保存后可绑定供应商，然后上架发布。
-            </p>
+            <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-[13px] text-blue-700">
+              <p className="font-medium">保存后下一步</p>
+              <p className="mt-1 text-[12px]">SPU 将保存为草稿。保存后跳转详情页，在那里添加 SKU 变体、设置阶梯价、绑定供应商，然后上架发布。</p>
+            </div>
           </div>
         )}
       </div>
@@ -732,7 +630,7 @@ export default function CreateProductPage() {
             </button>
           ) : (
             <button
-              onClick={() => handleSave(true)}
+              onClick={handleSave}
               disabled={saving}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
