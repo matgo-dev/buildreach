@@ -63,7 +63,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ❌ NextAuth.js(我们直接管 token)
 - ❌ Prisma(后端是 FastAPI + SQLAlchemy)
 - ❌ Redis(MVP 单机内存足够)
-- ❌ 任何 OAuth / SSO / 2FA / 邮件 / 短信库
+- ⚠️ OAuth / SSO / 2FA / 邮件 / 短信 — 当前不需要，后续如需邮箱验证等再按需引入
 - ❌ K8s / Swarm / 镜像 registry(单机 compose 足够)
 - ⚠️ Nginx / HTTPS / 域名 — 海外部署时需要，部署方案待定
 
