@@ -32,8 +32,8 @@ export function normalizeLocale(raw: string | null | undefined): string {
   // 尝试基础语言码
   const base = key.includes("-") ? key.split("-")[0] : key;
   if (base in LOCALE_MAP) return LOCALE_MAP[base];
-  // 防御性兜底，实际不会触发（平台只允许注册支持的语言）
-  return "zh";
+  // 不认识的语言大概率是外国用户，回退到 en 比 zh 更合理
+  return "en";
 }
 
 /** @deprecated Use normalizeLocale instead. Kept for backwards compatibility. */
