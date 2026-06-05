@@ -65,7 +65,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ❌ Redis(MVP 单机内存足够)
 - ❌ 任何 OAuth / SSO / 2FA / 邮件 / 短信库
 - ❌ K8s / Swarm / 镜像 registry(单机 compose 足够)
-- ❌ Nginx / HTTPS / 域名(MVP 阶段公网 IP 直连)
+- ⚠️ Nginx / HTTPS / 域名 — 海外部署时需要，部署方案待定
 
 **注**:Docker / docker-compose 已用于部署(见「部署架构」章节),
 但**本地开发不要走 Docker**,仍用 `uvicorn --reload` + `pnpm dev`。
