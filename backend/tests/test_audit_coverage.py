@@ -52,6 +52,8 @@ AUDIT_EXEMPT_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/credit/recompute-all"),
     # 搜索历史删除:用户删自己的搜索记录,低风险清理操作
     ("DELETE", "/api/v1/credit/search-history/{history_id}"),
+    # 语言偏好切换:个人设置,低风险
+    ("PATCH", "/api/v1/auth/me/language"),
 }
 
 
