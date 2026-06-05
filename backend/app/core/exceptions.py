@@ -24,12 +24,14 @@ class BusinessError(HTTPException):
         message: str,
         data: Any = None,
         message_key: str | None = None,
+        message_params: dict | None = None,
     ):
         super().__init__(status_code=http_status, detail=message)
         self.biz_code = biz_code
         self.biz_message = message
         self.biz_data = data
         self.message_key = message_key
+        self.message_params = message_params
 
 
 class InvalidCredentialsError(BusinessError):
@@ -54,7 +56,7 @@ class NotAuthenticatedError(BusinessError):
 
 class AccountDisabledError(BusinessError):
     def __init__(self, message: str = "Account disabled"):
-        super().__init__(status.HTTP_403_FORBIDDEN, 40005, message)
+        super().__init__(status.HTTP_403_FORBIDDEN, 40005, message, message_key=MessageKey.ACCOUNT_DISABLED)
 
 
 class ValidationFailedError(BusinessError):
@@ -66,12 +68,12 @@ class PasswordChangeRequiredError(BusinessError):
     """must_change_password=True 的账号访问非豁免端点时抛出。"""
 
     def __init__(self, message: str = "Password change required"):
-        super().__init__(status.HTTP_403_FORBIDDEN, 40007, message)
+        super().__init__(status.HTTP_403_FORBIDDEN, 40007, message, message_key=MessageKey.PASSWORD_CHANGE_REQUIRED)
 
 
 class ConflictError(BusinessError):
     def __init__(self, message: str = "Resource conflict"):
-        super().__init__(status.HTTP_409_CONFLICT, 40009, message)
+        super().__init__(status.HTTP_409_CONFLICT, 40009, message, message_key=MessageKey.CONFLICT)
 
 
 class SupplierAlreadyRegisteredError(BusinessError):
@@ -85,7 +87,7 @@ class SupplierAlreadyRegisteredError(BusinessError):
         self,
         message: str = "当前企业已在平台注册。如需加入,请联系您所在企业的平台管理员添加账号。",
     ):
-        super().__init__(status.HTTP_409_CONFLICT, 40901, message)
+        super().__init__(status.HTTP_409_CONFLICT, 40901, message, message_key=MessageKey.SUPPLIER_ALREADY_REGISTERED)
 
 
 class EmailAlreadyRegisteredError(BusinessError):
@@ -100,6 +102,7 @@ class EmailAlreadyRegisteredError(BusinessError):
             40902,
             message,
             data={"errors": [{"field": "email", "code": 40902, "message": message}]},
+            message_key=MessageKey.EMAIL_ALREADY_REGISTERED,
         )
 
 
@@ -115,6 +118,7 @@ class PhoneAlreadyRegisteredError(BusinessError):
             40903,
             message,
             data={"errors": [{"field": "phone", "code": 40903, "message": message}]},
+            message_key=MessageKey.PHONE_ALREADY_REGISTERED,
         )
 
 
@@ -143,6 +147,7 @@ class MultipleValidationError(BusinessError):
             top_code,
             top_message,
             data={"errors": errors},
+            message_key=MessageKey.MULTIPLE_VALIDATION_ERRORS,
         )
 
 

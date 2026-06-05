@@ -1,17 +1,40 @@
-import { routing } from "./routing";
+// TODO: 后端 backend/app/i18n/locale_utils.py 中的 normalize_locale 使用相同规则,两端必须保持同步
 
 /**
- * 将 BCP 47 language_preference 映射到 next-intl 支持的 locale
- * "zh-CN" → "zh", "en" → "en", "km-KH" → "en"(非中文一律 fallback 到 en)
- * null → "zh"(采购方/管理员/运营默认中文)
+ * Explicit BCP 47 → locale mapping. Add entries for new locales.
+ * Reserved: zh-tw/zh-hk/zh-hant for future Traditional Chinese.
  */
-export function preferenceToLocale(pref: string | null | undefined): string {
-  if (!pref) return "zh";
-  // 中文系(zh / zh-CN / zh-TW 等)
-  if (pref.startsWith("zh")) return "zh";
-  // 当前支持的 locale 直接匹配
-  const base = pref.split("-")[0];
-  if (routing.locales.includes(base as (typeof routing.locales)[number])) return base;
-  // 其他语言 fallback 到 en
-  return "en";
+const LOCALE_MAP: Record<string, string> = {
+  zh: "zh",
+  "zh-cn": "zh",
+  "zh-tw": "zh", // Reserved for future zh-hant support
+  "zh-hk": "zh", // Reserved
+  "zh-hant": "zh", // Reserved
+  en: "en",
+  "en-us": "en",
+  "en-gb": "en",
+  "en-au": "en",
+};
+
+/**
+ * Normalize a BCP 47 language preference string to a supported next-intl locale.
+ *
+ * Resolution order:
+ * 1. null/empty → "zh" (default for domestic users)
+ * 2. Exact match in LOCALE_MAP
+ * 3. Base language code match (e.g., "en-nz" → "en")
+ * 4. Unsupported → "en" (international fallback)
+ */
+export function normalizeLocale(raw: string | null | undefined): string {
+  if (!raw) return "zh";
+  const key = raw.trim().toLowerCase();
+  if (key in LOCALE_MAP) return LOCALE_MAP[key];
+  // 尝试基础语言码
+  const base = key.includes("-") ? key.split("-")[0] : key;
+  if (base in LOCALE_MAP) return LOCALE_MAP[base];
+  // 防御性兜底，实际不会触发（平台只允许注册支持的语言）
+  return "zh";
 }
+
+/** @deprecated Use normalizeLocale instead. Kept for backwards compatibility. */
+export const preferenceToLocale = normalizeLocale;
