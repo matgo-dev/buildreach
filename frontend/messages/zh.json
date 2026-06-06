@@ -41,14 +41,39 @@
       "password_change_required": "请先修改密码"
     },
     "validation": {
-      "failed": "输入校验失败,请检查表单"
+      "failed": "输入校验失败,请检查表单",
+      "request_body": "请求体校验失败",
+      "multiple_errors": "请修正以下问题"
+    },
+    "business": {
+      "supplier_already_registered": "当前企业已在平台注册",
+      "email_already_registered": "该邮箱已注册",
+      "phone_already_registered": "该手机号已注册"
     },
     "general": {
       "not_found": "请求的资源不存在",
       "internal_error": "服务器内部错误,请稍后重试",
       "rate_limited": "请求过于频繁,请稍后重试",
       "rate_limited_with_params": "请求过于频繁,请 {retry_after} 秒后重试",
-      "conflict": "资源冲突"
+      "conflict": "资源冲突",
+      "client_error": "请求错误"
+    },
+    "product": {
+      "invalid_status": "无效的状态值: {status}",
+      "spu_code_exists": "SPU 编码已存在",
+      "sku_code_exists": "SKU 编码已存在",
+      "publish_validation_failed": "商品无法上架,请检查发布条件",
+      "only_draft_deletable": "仅草稿状态的商品可以删除",
+      "supplier_already_bound": "该供应商已绑定此 SKU",
+      "max_images_exceeded": "每个商品最多上传 {max} 张图片",
+      "image_format_invalid": "允许的图片格式: {formats}",
+      "image_too_large": "图片大小不能超过 5MB",
+      "image_too_small": "图片过小,最小尺寸 200×200 像素",
+      "price_tier_first_min_qty": "首档最小数量须等于 SKU 起订量",
+      "price_tier_max_null_not_last": "仅最后一档可不设最大数量",
+      "price_tier_not_continuous": "阶梯价档位必须连续",
+      "price_tier_price_not_decreasing": "单价须随档位递减",
+      "sku_not_in_product": "SKU {sku_id} 不属于商品 {product_id}"
     }
   },
   "unit": {

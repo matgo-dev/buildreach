@@ -14,7 +14,22 @@ from sqlalchemy import delete as sa_delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import BusinessError, NotFoundError
+from app.core.exceptions import (
+    NotFoundError,
+    ImageFormatInvalidError,
+    ImageTooLargeError,
+    ImageTooSmallError,
+    InvalidProductStatusError,
+    MaxImagesExceededError,
+    OnlyDraftDeletableError,
+    PriceTierInvalidError,
+    PublishValidationFailedError,
+    SkuCodeExistsError,
+    SkuNotInProductError,
+    SpuCodeExistsError,
+    SupplierAlreadyBoundError,
+)
+from app.core.message_keys import MessageKey
 from app.core.i18n_write import apply_i18n_create, apply_i18n_edit
 from app.core.locale import SUPPORTED_LOCALES
 from app.db.models.attr_template import AttrTemplate
@@ -114,7 +129,7 @@ async def create_product(
     if (await db.execute(
         select(Product.id).where(Product.spu_code == spu_code)
     )).scalar_one_or_none():
-        raise BusinessError(400, 50003, "SPU code already exists")
+        raise SpuCodeExistsError()
 
     source_lang = data.source_lang or "zh"
     product = Product(
@@ -205,10 +220,7 @@ async def _add_attrs(
                 )
             )).scalar_one_or_none()
             if sku_row is None:
-                raise BusinessError(
-                    400, 50013,
-                    f"SKU {sku_id} does not belong to product {product_id}",
-                )
+                raise SkuNotInProductError(sku_id, product_id)
         db.add(ProductAttr(
             product_id=product_id,
             sku_id=sku_id,
@@ -223,7 +235,7 @@ async def update_product_status(
     db: AsyncSession, product_id: int, new_status: str,
 ) -> Product:
     if new_status not in ProductStatus.ALL:
-        raise BusinessError(400, 50002, f"Invalid status: {new_status}")
+        raise InvalidProductStatusError(new_status)
 
     product = await _get_product_or_404(db, product_id, load_relations=True)
 
@@ -243,7 +255,7 @@ async def update_product_status(
             errors.append("At least 1 image required")
 
         if errors:
-            raise BusinessError(400, 50004, "; ".join(errors))
+            raise PublishValidationFailedError(errors)
 
     product.status = new_status
     await db.commit()
@@ -254,7 +266,7 @@ async def update_product_status(
 async def delete_product(db: AsyncSession, product_id: int) -> None:
     product = await _get_product_or_404(db, product_id)
     if product.status != ProductStatus.DRAFT:
-        raise BusinessError(400, 50006, "Only DRAFT products can be deleted")
+        raise OnlyDraftDeletableError()
     await db.delete(product)
     await db.commit()
 
@@ -353,7 +365,7 @@ async def create_sku(
     if (await db.execute(
         select(ProductSku.id).where(ProductSku.sku_code == sku_code)
     )).scalar_one_or_none():
-        raise BusinessError(400, 50003, "SKU code already exists")
+        raise SkuCodeExistsError()
 
     # 默认 SKU 唯一性处理
     if data.is_default:
@@ -478,39 +490,42 @@ def _validate_price_tiers(tiers: list[PriceTierCreate], moq: int) -> None:
     sorted_tiers = sorted(tiers, key=lambda t: t.min_qty)
 
     if sorted_tiers[0].min_qty != moq:
-        raise BusinessError(
-            400, 50012,
+        raise PriceTierInvalidError(
             f"First tier min_qty must equal SKU moq ({moq})",
+            message_key=MessageKey.PRODUCT_PRICE_TIER_FIRST_MIN_QTY,
+            message_params={"moq": moq},
         )
 
     for i, tier in enumerate(sorted_tiers):
         if i > 0:
             prev = sorted_tiers[i - 1]
             if prev.max_qty is None:
-                raise BusinessError(
-                    400, 50012,
+                raise PriceTierInvalidError(
                     "Only the last tier can have max_qty=null",
+                    message_key=MessageKey.PRODUCT_PRICE_TIER_MAX_NULL_NOT_LAST,
                 )
             if prev.max_qty + 1 != tier.min_qty:
-                raise BusinessError(
-                    400, 50012,
+                raise PriceTierInvalidError(
                     f"Tiers must be continuous: tier {i} min_qty should be "
                     f"{prev.max_qty + 1}, got {tier.min_qty}",
+                    message_key=MessageKey.PRODUCT_PRICE_TIER_NOT_CONTINUOUS,
+                    message_params={"tier": i, "expected": prev.max_qty + 1, "actual": tier.min_qty},
                 )
 
         if i > 0:
             if tier.unit_price >= sorted_tiers[i - 1].unit_price:
-                raise BusinessError(
-                    400, 50012,
+                raise PriceTierInvalidError(
                     f"unit_price must decrease: tier {i} "
                     f"({tier.unit_price}) >= tier {i-1} "
                     f"({sorted_tiers[i-1].unit_price})",
+                    message_key=MessageKey.PRODUCT_PRICE_TIER_PRICE_NOT_DECREASING,
+                    message_params={"tier": i, "price": str(tier.unit_price), "prev_price": str(sorted_tiers[i-1].unit_price)},
                 )
 
         if i < len(sorted_tiers) - 1 and tier.max_qty is None:
-            raise BusinessError(
-                400, 50012,
+            raise PriceTierInvalidError(
                 "Only the last tier can have max_qty=null",
+                message_key=MessageKey.PRODUCT_PRICE_TIER_MAX_NULL_NOT_LAST,
             )
 
 
@@ -548,7 +563,7 @@ async def add_sku_supplier(
             ProductSupplier.supplier_org_id == data.supplier_org_id,
         )
     )).scalar_one_or_none():
-        raise BusinessError(400, 50007, "Supplier already bound to this SKU")
+        raise SupplierAlreadyBoundError()
 
     if not (await db.execute(
         select(SupplierOrganization.id).where(
@@ -657,7 +672,7 @@ def _process_image(content: bytes) -> tuple[bytes, int, int]:
 
     w, h = img.size
     if w < 200 or h < 200:
-        raise BusinessError(400, 50011, "Image too small, minimum 200x200")
+        raise ImageTooSmallError()
 
     img.thumbnail(TARGET_SIZE, Image.LANCZOS)
 
@@ -688,15 +703,15 @@ async def add_product_image(
             raise NotFoundError("SKU not found under this product")
 
     if len(product.images) >= MAX_IMAGES_PER_PRODUCT:
-        raise BusinessError(400, 50008, f"Maximum {MAX_IMAGES_PER_PRODUCT} images per product")
+        raise MaxImagesExceededError(MAX_IMAGES_PER_PRODUCT)
 
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise BusinessError(400, 50009, f"Allowed formats: {', '.join(ALLOWED_EXTENSIONS)}")
+        raise ImageFormatInvalidError(", ".join(ALLOWED_EXTENSIONS))
 
     content = await file.read()
     if len(content) > MAX_IMAGE_SIZE:
-        raise BusinessError(400, 50010, "Image size must be under 5MB")
+        raise ImageTooLargeError()
 
     processed_bytes, img_w, img_h = _process_image(content)
 
