@@ -15,6 +15,7 @@ from app.audit.context import get_trace_id
 from app.audit.middleware import RequestIDMiddleware
 from app.core.config import settings
 from app.core.exceptions import BusinessError, success
+from app.core.message_keys import MessageKey
 from app.core.logging_config import setup_logging
 from app.db.session import AsyncSessionLocal
 from app.rbac.sync import sync_rbac
@@ -88,6 +89,8 @@ async def validation_exc_handler(request: Request, exc: RequestValidationError) 
         content=jsonable_encoder({
             "code": 42200,
             "message": "Validation error",
+            "message_key": MessageKey.VALIDATION_FAILED,
+            "message_params": None,
             "data": {"errors": exc.errors()},
             "trace_id": get_trace_id(),
         }),
@@ -101,6 +104,8 @@ async def http_exc_handler(request: Request, exc: StarletteHTTPException) -> JSO
         content={
             "code": 40000,
             "message": str(exc.detail) if exc.detail else "Error",
+            "message_key": MessageKey.CLIENT_ERROR,
+            "message_params": None,
             "data": None,
             "trace_id": get_trace_id(),
         },
@@ -115,6 +120,8 @@ async def unhandled_exc_handler(request: Request, exc: Exception) -> JSONRespons
         content={
             "code": 50000,
             "message": "Internal server error",
+            "message_key": MessageKey.INTERNAL_ERROR,
+            "message_params": None,
             "data": None,
             "trace_id": get_trace_id(),
         },
