@@ -78,7 +78,7 @@ async def _create_test_sku(
 ) -> int:
     payload = {
         "sku_code": sku_code,
-        "unit": "pcs",
+        "unit": "PCS",
         "moq": 500,
         "price_min": 2.50,
         "price_max": 4.80,
@@ -349,10 +349,27 @@ async def test_create_sku_duplicate_code(client: AsyncClient):
     r = await client.post(
         f"/api/v1/operator/products/{pid}/skus",
         headers=headers,
-        json={"sku_code": "DUP-SKU-CODE", "unit": "pcs", "moq": 1, "source_lang": "zh"},
+        json={"sku_code": "DUP-SKU-CODE", "unit": "PCS", "moq": 1, "source_lang": "zh"},
     )
     assert r.status_code == 400
     assert r.json()["code"] == 50003
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_unit", ["pcs", "件", "INVALID"])
+async def test_create_sku_invalid_unit_rejected(client: AsyncClient, bad_unit: str):
+    """非法 unit code（小写 / 中文 / 未注册值）被 422 拒绝。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, f"UNIT-BAD-{bad_unit}")
+
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={"sku_code": f"UNIT-BAD-SKU-{bad_unit}", "unit": bad_unit, "moq": 100, "source_lang": "zh"},
+    )
+    assert r.status_code == 422
+    assert r.json()["code"] == 42200
 
 
 @pytest.mark.asyncio
@@ -451,7 +468,7 @@ async def test_price_tier_first_min_qty_must_equal_moq(client: AsyncClient):
     r = await client.post(
         f"/api/v1/operator/products/{pid}/skus",
         headers=headers,
-        json={"sku_code": "TIER-MOQ-S001", "unit": "pcs", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
+        json={"sku_code": "TIER-MOQ-S001", "unit": "PCS", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
     )
     assert r.status_code == 400
     assert r.json()["code"] == 50012
@@ -470,7 +487,7 @@ async def test_price_tier_must_be_continuous(client: AsyncClient):
     r = await client.post(
         f"/api/v1/operator/products/{pid}/skus",
         headers=headers,
-        json={"sku_code": "TIER-CONT-S001", "unit": "pcs", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
+        json={"sku_code": "TIER-CONT-S001", "unit": "PCS", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
     )
     assert r.status_code == 400
     assert r.json()["code"] == 50012
@@ -489,7 +506,7 @@ async def test_price_tier_must_decrease(client: AsyncClient):
     r = await client.post(
         f"/api/v1/operator/products/{pid}/skus",
         headers=headers,
-        json={"sku_code": "TIER-DEC-S001", "unit": "pcs", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
+        json={"sku_code": "TIER-DEC-S001", "unit": "PCS", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
     )
     assert r.status_code == 400
     assert r.json()["code"] == 50012
@@ -568,7 +585,7 @@ async def test_publish_sku_no_price_fails(client: AsyncClient):
     r = await client.post(
         f"/api/v1/operator/products/{pid}/skus",
         headers=headers,
-        json={"sku_code": "PUB-NP-SKU", "unit": "pcs", "moq": 100, "is_default": True, "source_lang": "zh"},
+        json={"sku_code": "PUB-NP-SKU", "unit": "PCS", "moq": 100, "is_default": True, "source_lang": "zh"},
     )
     assert r.status_code == 200
 

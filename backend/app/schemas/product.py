@@ -11,6 +11,8 @@ from typing import List, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.constants.sku_unit import SkuUnitCode
+
 
 # ---------- 图片 ----------
 
@@ -139,7 +141,7 @@ class SkuCreate(BaseModel):
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     currency: str = "TZS"
-    unit: str = Field(max_length=20)
+    unit: SkuUnitCode
     moq: int = Field(gt=0)
     lead_time_min: int | None = Field(default=None, ge=0)
     lead_time_max: int | None = Field(default=None, ge=0)
@@ -161,7 +163,7 @@ class SkuUpdate(BaseModel):
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     currency: str | None = None
-    unit: str | None = Field(default=None, max_length=20)
+    unit: SkuUnitCode | None = None
     moq: int | None = Field(default=None, gt=0)
     lead_time_min: int | None = Field(default=None, ge=0)
     lead_time_max: int | None = Field(default=None, ge=0)
