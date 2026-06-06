@@ -69,6 +69,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.SUPPLIER_APPROVE,
         Permissions.SUPPLIER_REJECT,
         Permissions.PRODUCT_READ,
+        Permissions.PRODUCT_WRITE,
         Permissions.PRODUCT_APPROVE,
         Permissions.PRODUCT_REJECT,
         Permissions.COUNTRY_READ,

@@ -3,15 +3,18 @@
 每个 SPU 下可有多个 SKU，以颜色/材质/型号区分。
 is_default=TRUE 的 SKU 用于列表页展示价格和主图。
 price_min/max 为 TZS 展示价，可空（运营后补录）。
+
+多语言:v2 分列模式(name_zh / name_en),继承 I18nMixin 获得 source_lang + trans_meta。
 """
 from __future__ import annotations
 
 from sqlalchemy import (
-    Boolean, DECIMAL, ForeignKey, Index, Integer, JSON, String,
+    Boolean, DECIMAL, ForeignKey, Index, Integer, String,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampUpdateMixin
+from app.db.i18n_mixin import I18nMixin
 
 
 class SkuStatus:
@@ -20,7 +23,7 @@ class SkuStatus:
     ALL = (ACTIVE, INACTIVE)
 
 
-class ProductSku(Base, TimestampUpdateMixin):
+class ProductSku(Base, TimestampUpdateMixin, I18nMixin):
     __tablename__ = "product_skus"
     __table_args__ = (
         Index("ix_product_skus_product_id", "product_id"),
@@ -43,13 +46,13 @@ class ProductSku(Base, TimestampUpdateMixin):
     sku_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     manufacturer_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    # SKU 特有名称（空则继承 SPU）
-    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    name_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    color: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    color_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    material: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    material_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 多语言分列
+    name_zh: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    name_en: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    color_zh: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    color_en: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    material_zh: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    material_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # 定价（TZS 展示价，可空——运营后补录）
     price_min: Mapped[float | None] = mapped_column(DECIMAL(12, 2), nullable=True)

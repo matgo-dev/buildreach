@@ -14,6 +14,8 @@ class AuditResourceType(str, Enum):
     SUPPLIER_ORG = "supplier_org"
     BUYER_MEMBER = "buyer_member"
     SUPPLIER_MEMBER = "supplier_member"
+    PRODUCT = "product"
+    PRODUCT_SKU = "product_sku"
 
 
 class AuditAction(str, Enum):
@@ -37,3 +39,4 @@ class AuditAction(str, Enum):
     FORCE_LOGOUT = "FORCE_LOGOUT"     # 管理员强制下线(bump token_version)
     ROLE_ASSIGN = "ROLE_ASSIGN"
     ROLE_REVOKE = "ROLE_REVOKE"
+    STATUS_CHANGE = "STATUS_CHANGE"

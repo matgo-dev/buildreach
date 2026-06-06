@@ -10,6 +10,8 @@ from app.api.v1 import (
     categories,
     credit,
     debug,
+    operator_products,
+    products,
     suppliers,
     test_rbac,
 )
@@ -22,6 +24,8 @@ api_router.include_router(admin_audit.router)
 api_router.include_router(test_rbac.router)
 api_router.include_router(categories.router)
 api_router.include_router(credit.router)
+api_router.include_router(products.router)
+api_router.include_router(operator_products.router)
 api_router.include_router(suppliers.router)
 
 # /api/v1/_debug/* 仅当 ENABLE_DEBUG_API=true 时挂载(默认 true,生产应关)

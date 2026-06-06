@@ -6,13 +6,24 @@ from __future__ import annotations
 
 import pytest
 
+from sqlalchemy import delete, text
+
 from app.db.base import _utcnow
 from app.db.models import Category
 from app.services import category as cs
 
 
 async def _seed(db_session, rows: list[tuple]):
-    """插入 (code, name_zh, level, parent_code, sort_order, is_active) 元组。"""
+    """插入 (code, name_zh, level, parent_code, sort_order, is_active) 元组。
+
+    先清理可能由 seed_categories 种入的品类(外键约束:先删 L3→L2→L1)。
+    """
+    # seed_categories 可能已种入同 code 品类,先清理(按 FK 降序删)
+    await db_session.execute(text("DELETE FROM categories WHERE level = 3"))
+    await db_session.execute(text("DELETE FROM categories WHERE level = 2"))
+    await db_session.execute(text("DELETE FROM categories WHERE level = 1"))
+    await db_session.commit()
+
     now = _utcnow()
     for code, name_zh, level, parent_code, sort_order, is_active in rows:
         db_session.add(
