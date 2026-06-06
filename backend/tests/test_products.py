@@ -855,6 +855,134 @@ async def test_attr_templates_endpoint(client: AsyncClient):
     assert isinstance(r.json()["data"], list)
 
 
+# ── 属性模板祖先链继承 ────────────────────────────────────
+
+async def _seed_template_hierarchy(db_session):
+    """构建 3 级品类 + 各级属性模板,用于祖先链继承测试。"""
+    from sqlalchemy import text
+    from app.db.base import _utcnow
+    from app.db.models.category import Category
+    from app.db.models.attr_template import AttrTemplate
+
+    now = _utcnow()
+
+    # 插入测试品类(T 前缀避免与 seed 冲突)
+    for code, name, level, parent in [
+        ("T1", "测试一级", 1, None),
+        ("T1.001", "测试二级", 2, "T1"),
+        ("T1.001.001", "测试三级", 3, "T1.001"),
+    ]:
+        db_session.add(Category(
+            code=code, name_zh=name, level=level, parent_code=parent,
+            sort_order=0, is_active=True, created_at=now, updated_at=now,
+        ))
+    await db_session.flush()
+
+    # L1 模板: 2 个属性
+    db_session.add(AttrTemplate(
+        category_code="T1", attr_key="brand", display_name="品牌",
+        attr_type="text", sort_order=10,
+    ))
+    db_session.add(AttrTemplate(
+        category_code="T1", attr_key="cert", display_name="认证",
+        attr_type="text", sort_order=20,
+    ))
+    # L2 模板: 1 个属性
+    db_session.add(AttrTemplate(
+        category_code="T1.001", attr_key="material", display_name="材质",
+        attr_type="text", sort_order=10,
+    ))
+    # L3 模板: 1 个属性 + 1 个覆盖 L1 的 brand
+    db_session.add(AttrTemplate(
+        category_code="T1.001.001", attr_key="thickness", display_name="厚度",
+        attr_type="text", sort_order=10,
+    ))
+    db_session.add(AttrTemplate(
+        category_code="T1.001.001", attr_key="brand", display_name="品牌(L3覆盖)",
+        attr_type="select", sort_order=20,
+    ))
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_attr_template_l3_inherits_l1(client: AsyncClient, db_session):
+    """L3 分类能继承到 L1 的模板(不再返回空)。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+
+    r = await client.get(
+        "/api/v1/operator/products/attr-templates/T1.001.001",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    keys = [t["attr_key"] for t in r.json()["data"]]
+    # L1(brand, cert) + L2(material) + L3(thickness, brand覆盖) → 去重后 4 个
+    assert len(keys) == 4
+    assert "brand" in keys
+    assert "cert" in keys
+    assert "material" in keys
+    assert "thickness" in keys
+
+
+@pytest.mark.asyncio
+async def test_attr_template_leaf_overrides_ancestor(client: AsyncClient, db_session):
+    """同一 attr_key 在多级出现时,取最深(L3)版本。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+
+    r = await client.get(
+        "/api/v1/operator/products/attr-templates/T1.001.001",
+        headers=headers,
+    )
+    data = r.json()["data"]
+    brand = next(t for t in data if t["attr_key"] == "brand")
+    # L3 覆盖 L1:display_name 和 attr_type 应为 L3 版本
+    assert brand["display_name"] == "品牌(L3覆盖)"
+    assert brand["attr_type"] == "select"
+
+
+@pytest.mark.asyncio
+async def test_attr_template_sorted_by_level_then_sort_order(client: AsyncClient, db_session):
+    """返回按 level 升序(L1→L2→L3),同级按 sort_order 升序。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+
+    r = await client.get(
+        "/api/v1/operator/products/attr-templates/T1.001.001",
+        headers=headers,
+    )
+    keys = [t["attr_key"] for t in r.json()["data"]]
+    # L1: cert(brand 被 L3 覆盖,不出现在 L1 位置) → L2: material → L3: thickness, brand
+    assert keys == ["cert", "material", "thickness", "brand"]
+
+
+@pytest.mark.asyncio
+async def test_attr_template_l1_only_returns_own(client: AsyncClient, db_session):
+    """传 L1 分类只返回其自身模板,无祖先。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+
+    r = await client.get(
+        "/api/v1/operator/products/attr-templates/T1",
+        headers=headers,
+    )
+    keys = [t["attr_key"] for t in r.json()["data"]]
+    assert keys == ["brand", "cert"]
+
+
+@pytest.mark.asyncio
+async def test_attr_template_nonexistent_code_returns_empty(client: AsyncClient):
+    """传不存在的 code 返回空列表。"""
+    headers = await _login_operator(client)
+
+    r = await client.get(
+        "/api/v1/operator/products/attr-templates/DOES_NOT_EXIST",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["data"] == []
+
+
 # ── 属性 SKU 维度(v0.7) ──────────────────────────────────
 
 @pytest.mark.asyncio
