@@ -35,6 +35,7 @@ class ProductAttrSchema(BaseModel):
     attr_value: str
     attr_unit: str | None = None
     sort_order: int = 0
+    sku_id: int | None = None
 
 
 class ProductAttrCreate(BaseModel):
@@ -42,6 +43,7 @@ class ProductAttrCreate(BaseModel):
     attr_value: str
     attr_unit: str | None = None
     sort_order: int = 0
+    sku_id: int | None = None
 
 
 # ---------- 属性模板 ----------
