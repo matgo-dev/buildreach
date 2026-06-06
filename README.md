@@ -50,13 +50,32 @@ bash dev.sh
 |------|------|
 | **供应商注册** | 9 国注册规则、国别注册号校验、全量错误一次性返回 |
 | **信用评估** | AI 评分引擎、雷达图、AI 对话 |
-| **品类管理** | 三级分类、种子数据 (9 大品类 + 照明 L2/L3) |
+| **商品目录** | SPU+SKU 两层、v2 i18n 分列、阶梯价、图片、供货关系、属性(商品/SKU 维度) |
+| **品类管理** | 三级分类 (13 L1 / 130 L2 / 853 L3)、44 条属性模板 |
+
+## 初始化品类数据
+
+品类树和属性模板不随服务启动自动种入，需手动执行：
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# 预览（不连数据库，仅查看解析结果）
+python scripts/seed_categories.py --dry-run
+
+# 执行（upsert 写入数据库）
+python scripts/seed_categories.py
+```
+
+数据源为 `data/categories.csv`（996 条三级品类）和 `data/attr_templates.csv`（44 条属性模板），英文名来自 `data/category_names_en.json`。脚本为 upsert 模式，重复运行安全，不影响已有商品数据。
 
 ## 目录结构
 
 ```
 buildlink-ea/
 ├── dev.sh               一键启动脚本
+├── data/                品类 CSV + 英文翻译 JSON（seed 数据源）
 ├── backend/
 │   ├── app/
 │   │   ├── core/        配置 / 安全 / 异常 / i18n / locale
@@ -65,6 +84,7 @@ buildlink-ea/
 │   │   ├── services/    业务逻辑 / 翻译服务
 │   │   ├── rbac/        权限配置 / Guard / 同步
 │   │   └── audit/       审计中间件
+│   ├── scripts/         手动执行脚本（seed 等）
 │   └── tests/           pytest 测试
 ├── frontend/
 │   ├── src/

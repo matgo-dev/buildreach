@@ -83,6 +83,9 @@ async def client(test_engine) -> AsyncGenerator[AsyncClient, None]:
     # 同步 RBAC + 种子(测试库)
     async with SessionLocal() as db:
         await sync_rbac(db)
+        # 品类 seed 已从 run_all_seeds 移除(改为手动脚本),测试中仍需种入
+        from app.seed_categories import seed_categories
+        await seed_categories(db)
         await run_all_seeds(db)
 
     async def override_get_db():
