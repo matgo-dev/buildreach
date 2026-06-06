@@ -146,14 +146,7 @@ async def create_product(
 
     # 品类属性
     if data.attributes:
-        for attr in data.attributes:
-            db.add(ProductAttr(
-                product_id=product.id,
-                attr_key=attr.attr_key,
-                attr_value=attr.attr_value,
-                attr_unit=attr.attr_unit,
-                sort_order=attr.sort_order,
-            ))
+        await _add_attrs(db, product.id, data.attributes)
 
     await db.commit()
     await db.refresh(product)
@@ -189,18 +182,41 @@ async def update_product(
         await db.execute(
             sa_delete(ProductAttr).where(ProductAttr.product_id == product_id)
         )
-        for attr in data.attributes:
-            db.add(ProductAttr(
-                product_id=product_id,
-                attr_key=attr.attr_key,
-                attr_value=attr.attr_value,
-                attr_unit=attr.attr_unit,
-                sort_order=attr.sort_order,
-            ))
+        await _add_attrs(db, product_id, data.attributes)
 
     await db.commit()
     await db.refresh(product)
     return product
+
+
+async def _add_attrs(
+    db: AsyncSession,
+    product_id: int,
+    attrs: list,
+) -> None:
+    """添加属性,sku_id 非空时校验隶属关系。"""
+    for attr in attrs:
+        sku_id = getattr(attr, "sku_id", None)
+        if sku_id is not None:
+            sku_row = (await db.execute(
+                select(ProductSku.id).where(
+                    ProductSku.id == sku_id,
+                    ProductSku.product_id == product_id,
+                )
+            )).scalar_one_or_none()
+            if sku_row is None:
+                raise BusinessError(
+                    400, 50013,
+                    f"SKU {sku_id} does not belong to product {product_id}",
+                )
+        db.add(ProductAttr(
+            product_id=product_id,
+            sku_id=sku_id,
+            attr_key=attr.attr_key,
+            attr_value=attr.attr_value,
+            attr_unit=attr.attr_unit,
+            sort_order=attr.sort_order,
+        ))
 
 
 async def update_product_status(
