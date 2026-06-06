@@ -73,7 +73,10 @@
       "price_tier_max_null_not_last": "Only the last tier can have unlimited maximum quantity",
       "price_tier_not_continuous": "Price tiers must be continuous",
       "price_tier_price_not_decreasing": "Unit price must decrease with each tier",
-      "sku_not_in_product": "SKU {sku_id} does not belong to product {product_id}"
+      "sku_not_in_product": "SKU {sku_id} does not belong to product {product_id}",
+      "attr_key_not_in_template": "Attribute {attr_key} is not defined in the category template",
+      "required_attr_missing": "Required attributes missing: {keys}",
+      "attr_scope_mismatch": "Attribute {attr_key} scope should be {expected_scope}"
     }
   },
   "unit": {

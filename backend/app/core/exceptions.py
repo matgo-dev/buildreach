@@ -300,5 +300,35 @@ class SkuNotInProductError(BusinessError):
         )
 
 
+class AttrKeyNotInTemplateError(BusinessError):
+    def __init__(self, attr_key: str, category_code: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40213,
+            f"Attribute '{attr_key}' not in template for category '{category_code}'",
+            message_key=MessageKey.PRODUCT_ATTR_KEY_NOT_IN_TEMPLATE,
+            message_params={"attr_key": attr_key, "category_code": category_code},
+        )
+
+
+class RequiredAttrMissingError(BusinessError):
+    def __init__(self, missing_keys: list[str]):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40214,
+            f"Required attributes missing: {', '.join(missing_keys)}",
+            message_key=MessageKey.PRODUCT_REQUIRED_ATTR_MISSING,
+            message_params={"keys": ", ".join(missing_keys)},
+        )
+
+
+class AttrScopeMismatchError(BusinessError):
+    def __init__(self, attr_key: str, expected_scope: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40215,
+            f"Attribute '{attr_key}' scope should be {expected_scope}",
+            message_key=MessageKey.PRODUCT_ATTR_SCOPE_MISMATCH,
+            message_params={"attr_key": attr_key, "expected_scope": expected_scope},
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}
