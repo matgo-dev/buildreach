@@ -1,7 +1,12 @@
-"""商品品类属性（EAV 简化版）。"""
+"""商品品类属性（EAV 简化版）。
+
+sku_id 为空 = 商品级公共属性（SPU 共用）。
+sku_id 非空 = 该 SKU 的规格属性。
+唯一性按维度判定:商品级(sku_id 空)内 attr_key 唯一;SKU 级(同一 sku_id)内 attr_key 唯一。
+"""
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -11,7 +16,21 @@ class ProductAttr(Base):
     __tablename__ = "product_attrs"
     __table_args__ = (
         Index("ix_product_attrs_product_id", "product_id"),
-        UniqueConstraint("product_id", "attr_key", name="uq_product_attrs_product_key"),
+        Index("ix_product_attrs_sku_id", "sku_id"),
+        # 商品级维度内唯一(sku_id IS NULL)
+        Index(
+            "uq_product_attrs_product_key",
+            "product_id", "attr_key",
+            unique=True,
+            postgresql_where="sku_id IS NULL",
+        ),
+        # SKU 级维度内唯一(sku_id IS NOT NULL)
+        Index(
+            "uq_product_attrs_sku_key",
+            "sku_id", "attr_key",
+            unique=True,
+            postgresql_where="sku_id IS NOT NULL",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -19,6 +38,11 @@ class ProductAttr(Base):
         Integer,
         ForeignKey("products.id", name="fk_product_attrs_product_id", ondelete="CASCADE"),
         nullable=False,
+    )
+    sku_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("product_skus.id", name="fk_product_attrs_sku_id", ondelete="CASCADE"),
+        nullable=True,
     )
     attr_key: Mapped[str] = mapped_column(String(50), nullable=False)
     attr_value: Mapped[str] = mapped_column(String(200), nullable=False)
