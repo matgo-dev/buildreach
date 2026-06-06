@@ -1,113 +1,184 @@
-"""品类种子：九大 L1 品类 + C01 照明的 L2/L3 示例。
+"""品类 + 属性模板种子：以 CSV 为唯一数据源,全量覆盖。
 
-数据来源：docs/east-Africa/03_东非平台_商品品类矩阵与SKU建模_v0.1.md
-幂等：按 code 查重，已存在则跳过。
+数据源:
+- data/categories.csv — 每行一个 L3,带所属 L1/L2 名,853 行
+- data/attr_templates.csv — 每行一个 L1 下的属性,44 行
+
+code 派生:按 CSV 首次出现顺序编号。
+落库:先清空 attr_templates → categories,再按 L1→L2→L3 插入,最后插入 attr_templates。
+幂等:全量覆盖,重复运行结果一致。
 """
 from __future__ import annotations
 
+import csv
 import logging
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.category import Category, CategoryLevel
+from app.db.models.attr_template import AttrTemplate
+from app.db.models.category import Category
 
 logger = logging.getLogger(__name__)
 
-# ── 九大 L1 品类 ──────────────────────────────────────────────
-L1_CATEGORIES = [
-    ("01", "照明", "Lighting", 10),
-    ("02", "电气", "Electrical", 20),
-    ("03", "卫浴洁具", "Sanitary & Bath", 30),
-    ("04", "五金工具", "Tools & Hardware", 40),
-    ("05", "板材", "Boards & Panels", 50),
-    ("06", "管件", "Pipes & Fittings", 60),
-    ("07", "吊顶装饰", "Ceiling & Decoration", 70),
-    ("08", "劳保用品", "Safety & PPE", 80),
-    ("09", "结构建材", "Structural & Chemical", 90),
-]
-
-# ── C01 照明 L2 ──────────────────────────────────────────────
-L2_LIGHTING = [
-    ("01.001", "LED 面板灯", "LED Panel Light", 10),
-    ("01.002", "LED 灯管", "LED Tube Light", 20),
-    ("01.003", "筒灯", "Downlight", 30),
-    ("01.004", "投光灯", "Floodlight", 40),
-]
-
-# ── C01 照明 L3（挂在 LED 面板灯下） ─────────────────────────
-L3_LED_PANEL = [
-    ("01.001.001", "嵌入式面板灯", "Recessed LED Panel", 10),
-    ("01.001.002", "明装面板灯", "Surface Mounted LED Panel", 20),
-    ("01.001.003", "超薄面板灯", "Slim LED Panel", 30),
-]
-
-# ── C01 照明 L3（挂在筒灯下） ────────────────────────────────
-L3_DOWNLIGHT = [
-    ("01.003.001", "固定式筒灯", "Fixed Downlight", 10),
-    ("01.003.002", "可调角筒灯", "Adjustable Downlight", 20),
-]
+_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
-async def _upsert_category(
-    db: AsyncSession,
-    *,
-    code: str,
-    name_zh: str,
-    name_en: str,
-    level: int,
-    parent_code: str | None = None,
-    sort_order: int = 0,
-) -> bool:
-    row = await db.execute(select(Category).where(Category.code == code))
-    if row.scalar_one_or_none() is not None:
-        return False
-    db.add(Category(
-        code=code,
-        name_zh=name_zh,
-        name_en=name_en,
-        level=level,
-        parent_code=parent_code,
-        sort_order=sort_order,
-    ))
-    return True
+def _parse_categories_csv() -> list[dict]:
+    """读取 categories.csv,派生 code / level / parent_code / sort_order。"""
+    path = _DATA_DIR / "categories.csv"
+    rows: list[dict] = []
+
+    # 跟踪首次出现顺序,派生编号
+    l1_map: dict[str, str] = {}   # name_zh → code
+    l1_seq = 0
+    l2_map: dict[str, str] = {}   # "L1_name|L2_name" → code
+    l2_counter: dict[str, int] = {}  # l1_code → next seq
+    l3_counter: dict[str, int] = {}  # l2_code → next seq
+
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            l1_name = row["一级分类"].strip()
+            l2_name = row["二级分类"].strip()
+            l3_name = row["三级分类"].strip()
+
+            if not l1_name or not l2_name or not l3_name:
+                continue
+
+            # L1
+            if l1_name not in l1_map:
+                l1_seq += 1
+                l1_code = f"{l1_seq:02d}"
+                l1_map[l1_name] = l1_code
+                l2_counter[l1_code] = 0
+                rows.append({
+                    "code": l1_code,
+                    "name_zh": l1_name,
+                    "level": 1,
+                    "parent_code": None,
+                    "sort_order": l1_seq * 10,
+                })
+            l1_code = l1_map[l1_name]
+
+            # L2
+            l2_key = f"{l1_name}|{l2_name}"
+            if l2_key not in l2_map:
+                l2_counter[l1_code] += 1
+                l2_code = f"{l1_code}.{l2_counter[l1_code]:03d}"
+                l2_map[l2_key] = l2_code
+                l3_counter[l2_code] = 0
+                rows.append({
+                    "code": l2_code,
+                    "name_zh": l2_name,
+                    "level": 2,
+                    "parent_code": l1_code,
+                    "sort_order": l2_counter[l1_code] * 10,
+                })
+            l2_code = l2_map[l2_key]
+
+            # L3
+            l3_counter[l2_code] += 1
+            l3_code = f"{l2_code}.{l3_counter[l2_code]:03d}"
+            rows.append({
+                "code": l3_code,
+                "name_zh": l3_name,
+                "level": 3,
+                "parent_code": l2_code,
+                "sort_order": l3_counter[l2_code] * 10,
+            })
+
+    return rows
+
+
+def _parse_attr_templates_csv(l1_map: dict[str, str]) -> list[dict]:
+    """读取 attr_templates.csv,关联 L1 code。"""
+    path = _DATA_DIR / "attr_templates.csv"
+    rows: list[dict] = []
+    l1_attr_counter: dict[str, int] = {}
+
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            l1_name = row["一级分类"].strip()
+            attr_name = row["属性名"].strip()
+            if not l1_name or not attr_name:
+                continue
+
+            l1_code = l1_map.get(l1_name)
+            if l1_code is None:
+                logger.warning("attr_templates: L1 '%s' not found, skipping '%s'", l1_name, attr_name)
+                continue
+
+            l1_attr_counter.setdefault(l1_code, 0)
+            l1_attr_counter[l1_code] += 1
+            rows.append({
+                "category_code": l1_code,
+                "attr_key": attr_name,
+                "display_name": attr_name,
+                "attr_type": "text",
+                "attr_unit": None,
+                "options": None,
+                "is_required": False,
+                "sort_order": l1_attr_counter[l1_code] * 10,
+            })
+
+    return rows
 
 
 async def seed_categories(db: AsyncSession) -> None:
-    """种入九大 L1 品类 + C01 照明 L2/L3 示例数据。"""
-    created = 0
+    """全量覆盖品类树 + 属性模板。"""
+    cat_rows = _parse_categories_csv()
 
-    for code, name_zh, name_en, sort_order in L1_CATEGORIES:
-        if await _upsert_category(
-            db, code=code, name_zh=name_zh, name_en=name_en,
-            level=CategoryLevel.L1, sort_order=sort_order,
-        ):
-            created += 1
+    # 提取 L1 name→code 映射给 attr_templates 用
+    l1_map = {r["name_zh"]: r["code"] for r in cat_rows if r["level"] == 1}
+    attr_rows = _parse_attr_templates_csv(l1_map)
 
-    for code, name_zh, name_en, sort_order in L2_LIGHTING:
-        if await _upsert_category(
-            db, code=code, name_zh=name_zh, name_en=name_en,
-            level=CategoryLevel.L2, parent_code="01", sort_order=sort_order,
-        ):
-            created += 1
+    # 清空(按 FK 依赖顺序:先删引用方,再删被引用方)
+    # products 引用 categories.code,需先清商品相关表
+    await db.execute(text("DELETE FROM product_suppliers"))
+    await db.execute(text("DELETE FROM sku_price_tiers"))
+    await db.execute(text("DELETE FROM product_images"))
+    await db.execute(text("DELETE FROM product_attrs"))
+    await db.execute(text("DELETE FROM product_skus"))
+    await db.execute(text("DELETE FROM products"))
+    await db.execute(text("DELETE FROM attr_templates"))
+    await db.execute(text("DELETE FROM categories WHERE level = 3"))
+    await db.execute(text("DELETE FROM categories WHERE level = 2"))
+    await db.execute(text("DELETE FROM categories WHERE level = 1"))
 
-    for code, name_zh, name_en, sort_order in L3_LED_PANEL:
-        if await _upsert_category(
-            db, code=code, name_zh=name_zh, name_en=name_en,
-            level=CategoryLevel.L3, parent_code="01.001", sort_order=sort_order,
-        ):
-            created += 1
+    # 插入品类(L1→L2→L3,父先于子)
+    for item in cat_rows:
+        db.add(Category(
+            code=item["code"],
+            name_zh=item["name_zh"],
+            level=item["level"],
+            parent_code=item["parent_code"],
+            sort_order=item["sort_order"],
+            is_active=True,
+        ))
+    await db.flush()
 
-    for code, name_zh, name_en, sort_order in L3_DOWNLIGHT:
-        if await _upsert_category(
-            db, code=code, name_zh=name_zh, name_en=name_en,
-            level=CategoryLevel.L3, parent_code="01.003", sort_order=sort_order,
-        ):
-            created += 1
+    # 插入属性模板
+    for item in attr_rows:
+        db.add(AttrTemplate(
+            category_code=item["category_code"],
+            attr_key=item["attr_key"],
+            display_name=item["display_name"],
+            attr_type=item["attr_type"],
+            attr_unit=item["attr_unit"],
+            options=item["options"],
+            is_required=item["is_required"],
+            sort_order=item["sort_order"],
+        ))
 
     await db.commit()
 
-    if created:
-        logger.warning("Seed: %d categories created (9 L1 + C01 照明 L2/L3).", created)
-    else:
-        logger.info("Seed: all categories already exist — skipped.")
+    l1_count = sum(1 for r in cat_rows if r["level"] == 1)
+    l2_count = sum(1 for r in cat_rows if r["level"] == 2)
+    l3_count = sum(1 for r in cat_rows if r["level"] == 3)
+    logger.warning(
+        "Seed: categories L1=%d L2=%d L3=%d (total %d), attr_templates=%d.",
+        l1_count, l2_count, l3_count, len(cat_rows), len(attr_rows),
+    )
