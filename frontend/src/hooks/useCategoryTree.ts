@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import useSWR from "swr";
 
 import { categoriesApi, type CategoryTreeNode } from "@/lib/api/categories";
@@ -7,11 +8,12 @@ import { categoriesApi, type CategoryTreeNode } from "@/lib/api/categories";
 /**
  * 拉取商品分类三层嵌套树(GET /api/v1/categories/tree)。
  *
- * 全量数据 < 2000 条,一次拉完缓存到 SWR;数据变更频率极低,无需自动刷新。
+ * SWR key 包含 locale,语言切换时自动重新请求以获取对应语言的 name。
  */
 export function useCategoryTree() {
+  const locale = useLocale();
   const { data, error, isLoading, mutate } = useSWR<CategoryTreeNode[]>(
-    "/api/v1/categories/tree",
+    `/api/v1/categories/tree?locale=${locale}`,
     () => categoriesApi.tree(),
     {
       revalidateOnFocus: false,
