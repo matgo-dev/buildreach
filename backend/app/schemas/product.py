@@ -38,14 +38,12 @@ class ProductAttrSchema(BaseModel):
     attr_unit: str | None = None
     sort_order: int = 0
     sku_id: int | None = None
+    display_name: str | None = None
 
 
 class ProductAttrCreate(BaseModel):
     attr_key: str
     attr_value: str
-    attr_unit: str | None = None
-    sort_order: int = 0
-    sku_id: int | None = None
 
 
 # ---------- 属性模板 ----------
@@ -61,6 +59,7 @@ class AttrTemplateSchema(BaseModel):
     options: dict | list | None = None
     is_required: bool = False
     sort_order: int = 0
+    scope: str = "SKU"
 
 
 # ---------- 阶梯价 ----------
@@ -153,6 +152,7 @@ class SkuCreate(BaseModel):
     is_default: bool = False
     status: str = "ACTIVE"
     price_tiers: List[PriceTierCreate] | None = None
+    attributes: List[ProductAttrCreate] | None = None
 
 
 class SkuUpdate(BaseModel):
@@ -175,6 +175,7 @@ class SkuUpdate(BaseModel):
     is_default: bool | None = None
     status: str | None = None
     price_tiers: List[PriceTierCreate] | None = None
+    attributes: List[ProductAttrCreate] | None = None
 
 
 # SKU 买方响应（不含供应商）
@@ -197,6 +198,7 @@ class SkuPublic(BaseModel):
     status: str
     price_tiers: List[PriceTierSchema] = []
     images: List[ProductImageSchema] = []
+    attributes: List[ProductAttrSchema] = []
 
 
 # SKU 运营响应（含供应商 + 物流参数 + i18n 分列原始值）
