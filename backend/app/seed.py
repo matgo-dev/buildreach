@@ -276,6 +276,8 @@ async def run_all_seeds(db: AsyncSession) -> None:
     - demo 内容(中建三局 / admin / operator / buyer demo 账号):
       仅当 settings.SEED_DEMO_ACCOUNTS=true 时种入
     """
+    from app.seed_categories import seed_categories
+    await seed_categories(db)
     await seed_bootstrap_admin(db)
     await seed_glossary(db)
     if settings.SEED_DEMO_ACCOUNTS:

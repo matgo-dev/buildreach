@@ -4,18 +4,18 @@ SPU(Standard Product Unit) = 一款产品，共享描述/品牌/品类/卖点。
 SKU 变体(颜色/材质/型号)在 product_skus 表。
 供货关系挂在 SKU 上（product_suppliers.sku_id）。
 
-多语言约定：name/description/brand/origin 存运营填的原始值，
-对应的 _i18n 字段存 JSON {"zh": "...", "en": "...", "sw": "..."}，
-后端用 get_localized() 按请求 locale 自动选取。
+多语言:v2 分列模式(name_zh / name_en),继承 I18nMixin 获得 source_lang + trans_meta。
+写入经 i18n_write,读出经 get_localized。
 """
 from __future__ import annotations
 
 from sqlalchemy import (
-    Boolean, ForeignKey, Index, Integer, JSON, String, Text,
+    JSON, Boolean, ForeignKey, Index, Integer, String, Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampUpdateMixin
+from app.db.i18n_mixin import I18nMixin
 
 
 class ProductStatus:
@@ -25,7 +25,7 @@ class ProductStatus:
     ALL = (DRAFT, ACTIVE, INACTIVE)
 
 
-class Product(Base, TimestampUpdateMixin):
+class Product(Base, TimestampUpdateMixin, I18nMixin):
     __tablename__ = "products"
     __table_args__ = (
         Index("ix_products_category_code", "category_code"),
@@ -41,20 +41,20 @@ class Product(Base, TimestampUpdateMixin):
     )
     spu_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-    # 多语言文本字段：原始值 + i18n JSON
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    name_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    description_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    brand: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    brand_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    origin: Mapped[str] = mapped_column(String(100), nullable=False, default="China")
-    origin_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 多语言分列
+    name_zh: Mapped[str] = mapped_column(String(200), nullable=False)
+    name_en: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand_zh: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    brand_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    origin_zh: Mapped[str] = mapped_column(String(100), nullable=False, default="中国")
+    origin_en: Mapped[str | None] = mapped_column(String(100), nullable=True, default="China")
+    selling_points_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    selling_points_en: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certifications: Mapped[dict | None] = mapped_column(JSON, default=list)
-    selling_points: Mapped[str | None] = mapped_column(Text, nullable=True)
-    selling_points_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
     created_by: Mapped[int | None] = mapped_column(
