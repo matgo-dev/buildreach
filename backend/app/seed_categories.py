@@ -125,6 +125,11 @@ def _parse_attr_templates_csv(l1_map: dict[str, str]) -> list[dict]:
                 logger.warning("attr_templates: L1 '%s' not found, skipping '%s'", l1_name, attr_name)
                 continue
 
+            scope = row.get("scope", "").strip().upper() or "SKU"
+            if scope not in ("SPU", "SKU"):
+                logger.warning("attr_templates: invalid scope '%s' for '%s', defaulting to SKU", scope, attr_name)
+                scope = "SKU"
+
             l1_attr_counter.setdefault(l1_code, 0)
             l1_attr_counter[l1_code] += 1
             rows.append({
@@ -136,6 +141,7 @@ def _parse_attr_templates_csv(l1_map: dict[str, str]) -> list[dict]:
                 "options": None,
                 "is_required": False,
                 "sort_order": l1_attr_counter[l1_code] * 10,
+                "scope": scope,
             })
 
     return rows
@@ -198,6 +204,7 @@ async def seed_categories(db: AsyncSession) -> None:
             existing.options = item["options"]
             existing.is_required = item["is_required"]
             existing.sort_order = item["sort_order"]
+            existing.scope = item["scope"]
             attr_updated += 1
         else:
             db.add(AttrTemplate(
@@ -209,6 +216,7 @@ async def seed_categories(db: AsyncSession) -> None:
                 options=item["options"],
                 is_required=item["is_required"],
                 sort_order=item["sort_order"],
+                scope=item["scope"],
             ))
             attr_created += 1
 
