@@ -46,6 +46,23 @@ router = APIRouter(prefix="/operator/products", tags=["operator-products"])
 
 # ── 序列化工具 ───────────────────────────────────────────
 
+def _enrich_attrs(attrs, template_map: dict) -> list[dict]:
+    """属性序列化：attr_unit/sort_order/display_name 从模板取。"""
+    result = []
+    for attr in attrs:
+        tpl = template_map.get(attr.attr_key)
+        result.append({
+            "attr_key": attr.attr_key,
+            "attr_value": attr.attr_value,
+            "attr_unit": tpl.attr_unit if tpl else attr.attr_unit,
+            "sort_order": tpl.sort_order if tpl else attr.sort_order,
+            "sku_id": attr.sku_id,
+            "display_name": tpl.display_name if tpl else attr.attr_key,
+        })
+    result.sort(key=lambda x: x["sort_order"])
+    return result
+
+
 def _img_to_dict(img) -> dict:
     d = ProductImageSchema.model_validate(img).model_dump()
     d["full_url"] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
@@ -252,6 +269,23 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ):
     p = await product_svc.get_product(db, product_id)
+    tpl_map = {t.attr_key: t for t in await product_svc.get_attr_templates(db, p.category_code)}
+
+    # SPU 级属性
+    spu_attrs = [a for a in p.attrs if a.sku_id is None]
+
+    # SKU 级属性按 sku_id 分组
+    sku_attr_groups: dict[int, list] = {}
+    for a in p.attrs:
+        if a.sku_id is not None:
+            sku_attr_groups.setdefault(a.sku_id, []).append(a)
+
+    # SKU 序列化带属性
+    skus_data = []
+    for s in p.skus:
+        d = _sku_to_operator(s)
+        d["attributes"] = _enrich_attrs(sku_attr_groups.get(s.id, []), tpl_map)
+        skus_data.append(d)
 
     data = ProductOperatorDetail(
         id=p.id,
@@ -277,9 +311,9 @@ async def get_product(
         source_lang=p.source_lang,
         is_featured=p.is_featured,
         status=p.status,
-        skus=[_sku_to_operator(s) for s in p.skus],
+        skus=skus_data,
         images=[_img_to_dict(img) for img in p.images],
-        attributes=[ProductAttrSchema.model_validate(attr) for attr in p.attrs],
+        attributes=_enrich_attrs(spu_attrs, tpl_map),
         created_at=p.created_at,
         updated_at=p.updated_at,
     ).model_dump()
