@@ -281,6 +281,37 @@ async def update_product_status(
         if not product.images:
             errors.append("At least 1 image required")
 
+        # 必填属性校验
+        tpl_map = await _load_template_map(db, product.category_code)
+        required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
+        required_sku = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SKU"]
+
+        # SPU 级必填
+        spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
+        missing_spu = [k for k in required_spu if k not in spu_attr_keys]
+        if missing_spu:
+            errors.append(f"Missing required SPU attributes: {', '.join(missing_spu)}")
+
+        # SKU 级必填：每个 active SKU 都需有值
+        if required_sku and active_skus:
+            sku_attrs_q = await db.execute(
+                select(ProductAttr.sku_id, ProductAttr.attr_key)
+                .where(
+                    ProductAttr.product_id == product.id,
+                    ProductAttr.sku_id.isnot(None),
+                )
+            )
+            sku_attr_map: dict[int, set[str]] = {}
+            for row in sku_attrs_q:
+                sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key)
+            for sku in active_skus:
+                sku_keys = sku_attr_map.get(sku.id, set())
+                missing = [k for k in required_sku if k not in sku_keys]
+                if missing:
+                    errors.append(
+                        f"SKU {sku.sku_code}: missing required attributes: {', '.join(missing)}"
+                    )
+
         if errors:
             raise PublishValidationFailedError(errors)
 
