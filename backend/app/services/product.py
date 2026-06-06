@@ -791,16 +791,56 @@ async def update_image_sort(
 
 # ── 属性模板 ─────────────────────────────────────────────
 
+async def _resolve_ancestor_codes(
+    db: AsyncSession, category_code: str,
+) -> list[tuple[str, int]]:
+    """沿 parent_code 上溯,返回 [(code, level), ...],叶→根,最多 3 级。"""
+    chain: list[tuple[str, int]] = []
+    current_code: str | None = category_code
+    for _ in range(3):
+        if current_code is None:
+            break
+        row = (await db.execute(
+            select(Category.code, Category.level, Category.parent_code)
+            .where(Category.code == current_code)
+        )).one_or_none()
+        if row is None:
+            break
+        chain.append((row.code, row.level))
+        current_code = row.parent_code
+    return chain
+
+
 async def get_attr_templates(
     db: AsyncSession, category_code: str,
 ) -> list[AttrTemplate]:
+    chain = await _resolve_ancestor_codes(db, category_code)
+    if not chain:
+        return []
+
+    ancestor_codes = [code for code, _ in chain]
+    code_to_level = {code: level for code, level in chain}
+
     q = (
         select(AttrTemplate)
-        .where(AttrTemplate.category_code == category_code)
-        .order_by(AttrTemplate.sort_order)
+        .where(AttrTemplate.category_code.in_(ancestor_codes))
     )
-    rows = (await db.execute(q)).scalars().all()
-    return list(rows)
+    all_templates = (await db.execute(q)).scalars().all()
+
+    # 按 attr_key 去重:同一 key 取最深(level 最大)的一条
+    best: dict[str, AttrTemplate] = {}
+    for t in all_templates:
+        t_level = code_to_level.get(t.category_code, 0)
+        existing = best.get(t.attr_key)
+        if existing is None or t_level > code_to_level.get(existing.category_code, 0):
+            best[t.attr_key] = t
+
+    # 排序:按所属分类 level 升序(L1→L2→L3),同级按 sort_order 升序
+    result = sorted(
+        best.values(),
+        key=lambda t: (code_to_level.get(t.category_code, 0), t.sort_order),
+    )
+    return result
 
 
 # ── 内部工具 ─────────────────────────────────────────────
