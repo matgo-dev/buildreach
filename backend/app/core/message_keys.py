@@ -25,7 +25,28 @@ class MessageKey:
     RATE_LIMITED = "error.general.rate_limited"
     CONFLICT = "error.general.conflict"
 
+    # general — 兜底处理器
+    CLIENT_ERROR = "error.general.client_error"
+    VALIDATION_REQUEST_BODY = "error.validation.request_body"
+
     # business
     SUPPLIER_ALREADY_REGISTERED = "error.business.supplier_already_registered"
     EMAIL_ALREADY_REGISTERED = "error.business.email_already_registered"
     PHONE_ALREADY_REGISTERED = "error.business.phone_already_registered"
+
+    # product — 商品模块 402xx
+    PRODUCT_INVALID_STATUS = "error.product.invalid_status"
+    PRODUCT_SPU_CODE_EXISTS = "error.product.spu_code_exists"
+    PRODUCT_SKU_CODE_EXISTS = "error.product.sku_code_exists"
+    PRODUCT_PUBLISH_VALIDATION_FAILED = "error.product.publish_validation_failed"
+    PRODUCT_ONLY_DRAFT_DELETABLE = "error.product.only_draft_deletable"
+    PRODUCT_SUPPLIER_ALREADY_BOUND = "error.product.supplier_already_bound"
+    PRODUCT_MAX_IMAGES_EXCEEDED = "error.product.max_images_exceeded"
+    PRODUCT_IMAGE_FORMAT_INVALID = "error.product.image_format_invalid"
+    PRODUCT_IMAGE_TOO_LARGE = "error.product.image_too_large"
+    PRODUCT_IMAGE_TOO_SMALL = "error.product.image_too_small"
+    PRODUCT_PRICE_TIER_FIRST_MIN_QTY = "error.product.price_tier_first_min_qty"
+    PRODUCT_PRICE_TIER_MAX_NULL_NOT_LAST = "error.product.price_tier_max_null_not_last"
+    PRODUCT_PRICE_TIER_NOT_CONTINUOUS = "error.product.price_tier_not_continuous"
+    PRODUCT_PRICE_TIER_PRICE_NOT_DECREASING = "error.product.price_tier_price_not_decreasing"
+    PRODUCT_SKU_NOT_IN_PRODUCT = "error.product.sku_not_in_product"
