@@ -18,7 +18,9 @@ async def _seed(db_session, rows: list[tuple]):
 
     先清理可能由 seed_categories 种入的品类(外键约束:先删 L3→L2→L1)。
     """
-    # seed_categories 可能已种入同 code 品类,先清理(按 FK 降序删)
+    # seed_categories 全量覆盖可能已种入品类 + 属性模板,按 FK 依赖顺序清理
+    await db_session.execute(text("DELETE FROM attr_templates"))
+    await db_session.execute(text("DELETE FROM product_attrs"))
     await db_session.execute(text("DELETE FROM categories WHERE level = 3"))
     await db_session.execute(text("DELETE FROM categories WHERE level = 2"))
     await db_session.execute(text("DELETE FROM categories WHERE level = 1"))
