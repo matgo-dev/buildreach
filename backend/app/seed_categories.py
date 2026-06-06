@@ -1,12 +1,13 @@
-"""品类 + 属性模板种子：以 CSV 为唯一数据源,全量覆盖。
+"""品类 + 属性模板种子：以 CSV 为唯一数据源,upsert 模式。
 
 数据源:
 - data/categories.csv — 每行一个 L3,带所属 L1/L2 名,853 行
 - data/attr_templates.csv — 每行一个 L1 下的属性,44 行
 
 code 派生:按 CSV 首次出现顺序编号。
-落库:先清空 attr_templates → categories,再按 L1→L2→L3 插入,最后插入 attr_templates。
-幂等:全量覆盖,重复运行结果一致。
+落库:按 code / (category_code, attr_key) 查重,存在则更新,不存在则插入。
+不删除任何已有数据,商品等引用品类的业务数据不受影响。
+幂等:重复运行结果一致。
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ import json
 import logging
 from pathlib import Path
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.attr_template import AttrTemplate
@@ -141,51 +142,75 @@ def _parse_attr_templates_csv(l1_map: dict[str, str]) -> list[dict]:
 
 
 async def seed_categories(db: AsyncSession) -> None:
-    """全量覆盖品类树 + 属性模板。"""
+    """upsert 品类树 + 属性模板（按 code / 唯一键查重,存在则更新,不存在则插入）。
+
+    不删除任何已有数据,商品等引用品类的业务数据不受影响。
+    """
     cat_rows = _parse_categories_csv()
 
     # 提取 L1 name→code 映射给 attr_templates 用
     l1_map = {r["name_zh"]: r["code"] for r in cat_rows if r["level"] == 1}
     attr_rows = _parse_attr_templates_csv(l1_map)
 
-    # 清空(按 FK 依赖顺序:先删引用方,再删被引用方)
-    # products 引用 categories.code,需先清商品相关表
-    await db.execute(text("DELETE FROM product_suppliers"))
-    await db.execute(text("DELETE FROM sku_price_tiers"))
-    await db.execute(text("DELETE FROM product_images"))
-    await db.execute(text("DELETE FROM product_attrs"))
-    await db.execute(text("DELETE FROM product_skus"))
-    await db.execute(text("DELETE FROM products"))
-    await db.execute(text("DELETE FROM attr_templates"))
-    await db.execute(text("DELETE FROM categories WHERE level = 3"))
-    await db.execute(text("DELETE FROM categories WHERE level = 2"))
-    await db.execute(text("DELETE FROM categories WHERE level = 1"))
-
-    # 插入品类(L1→L2→L3,父先于子)
+    # upsert 品类(L1→L2→L3,父先于子,JSON 已保证 FK 安全)
+    cat_created, cat_updated = 0, 0
     for item in cat_rows:
-        db.add(Category(
-            code=item["code"],
-            name_zh=item["name_zh"],
-            name_en=item.get("name_en"),
-            level=item["level"],
-            parent_code=item["parent_code"],
-            sort_order=item["sort_order"],
-            is_active=True,
-        ))
+        row = await db.execute(
+            select(Category).where(Category.code == item["code"])
+        )
+        existing = row.scalar_one_or_none()
+        if existing is not None:
+            existing.name_zh = item["name_zh"]
+            existing.name_en = item.get("name_en")
+            existing.level = item["level"]
+            existing.parent_code = item["parent_code"]
+            existing.sort_order = item["sort_order"]
+            existing.is_active = True
+            cat_updated += 1
+        else:
+            db.add(Category(
+                code=item["code"],
+                name_zh=item["name_zh"],
+                name_en=item.get("name_en"),
+                level=item["level"],
+                parent_code=item["parent_code"],
+                sort_order=item["sort_order"],
+                is_active=True,
+            ))
+            cat_created += 1
+
     await db.flush()
 
-    # 插入属性模板
+    # upsert 属性模板(按唯一键 category_code + attr_key 查重)
+    attr_created, attr_updated = 0, 0
     for item in attr_rows:
-        db.add(AttrTemplate(
-            category_code=item["category_code"],
-            attr_key=item["attr_key"],
-            display_name=item["display_name"],
-            attr_type=item["attr_type"],
-            attr_unit=item["attr_unit"],
-            options=item["options"],
-            is_required=item["is_required"],
-            sort_order=item["sort_order"],
-        ))
+        row = await db.execute(
+            select(AttrTemplate).where(
+                AttrTemplate.category_code == item["category_code"],
+                AttrTemplate.attr_key == item["attr_key"],
+            )
+        )
+        existing = row.scalar_one_or_none()
+        if existing is not None:
+            existing.display_name = item["display_name"]
+            existing.attr_type = item["attr_type"]
+            existing.attr_unit = item["attr_unit"]
+            existing.options = item["options"]
+            existing.is_required = item["is_required"]
+            existing.sort_order = item["sort_order"]
+            attr_updated += 1
+        else:
+            db.add(AttrTemplate(
+                category_code=item["category_code"],
+                attr_key=item["attr_key"],
+                display_name=item["display_name"],
+                attr_type=item["attr_type"],
+                attr_unit=item["attr_unit"],
+                options=item["options"],
+                is_required=item["is_required"],
+                sort_order=item["sort_order"],
+            ))
+            attr_created += 1
 
     await db.commit()
 
@@ -193,6 +218,7 @@ async def seed_categories(db: AsyncSession) -> None:
     l2_count = sum(1 for r in cat_rows if r["level"] == 2)
     l3_count = sum(1 for r in cat_rows if r["level"] == 3)
     logger.warning(
-        "Seed: categories L1=%d L2=%d L3=%d (total %d), attr_templates=%d.",
-        l1_count, l2_count, l3_count, len(cat_rows), len(attr_rows),
+        "Seed: categories L1=%d L2=%d L3=%d (total %d, +%d/~%d), attr_templates=%d (+%d/~%d).",
+        l1_count, l2_count, l3_count, len(cat_rows),
+        cat_created, cat_updated, len(attr_rows), attr_created, attr_updated,
     )
