@@ -41,14 +41,39 @@
       "password_change_required": "Please change your password first"
     },
     "validation": {
-      "failed": "Validation failed, please check the form"
+      "failed": "Validation failed, please check the form",
+      "request_body": "Request body validation failed",
+      "multiple_errors": "Please fix the following issues"
+    },
+    "business": {
+      "supplier_already_registered": "This company is already registered on the platform",
+      "email_already_registered": "This email is already registered",
+      "phone_already_registered": "This phone number is already registered"
     },
     "general": {
       "not_found": "The requested resource was not found",
       "internal_error": "Internal server error, please try again later",
       "rate_limited": "Too many requests, please try again later",
       "rate_limited_with_params": "Too many requests, please try again in {retry_after} seconds",
-      "conflict": "Resource conflict"
+      "conflict": "Resource conflict",
+      "client_error": "Request error"
+    },
+    "product": {
+      "invalid_status": "Invalid status: {status}",
+      "spu_code_exists": "SPU code already exists",
+      "sku_code_exists": "SKU code already exists",
+      "publish_validation_failed": "Product cannot be published, please check requirements",
+      "only_draft_deletable": "Only draft products can be deleted",
+      "supplier_already_bound": "Supplier already bound to this SKU",
+      "max_images_exceeded": "Maximum {max} images per product",
+      "image_format_invalid": "Allowed image formats: {formats}",
+      "image_too_large": "Image size must be under 5MB",
+      "image_too_small": "Image too small, minimum 200×200 pixels",
+      "price_tier_first_min_qty": "First tier minimum quantity must equal SKU MOQ",
+      "price_tier_max_null_not_last": "Only the last tier can have unlimited maximum quantity",
+      "price_tier_not_continuous": "Price tiers must be continuous",
+      "price_tier_price_not_decreasing": "Unit price must decrease with each tier",
+      "sku_not_in_product": "SKU {sku_id} does not belong to product {product_id}"
     }
   },
   "unit": {

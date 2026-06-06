@@ -177,5 +177,128 @@ class NotFoundError(BusinessError):
         super().__init__(status.HTTP_404_NOT_FOUND, 40008, message, message_key=MessageKey.NOT_FOUND)
 
 
+# ── 商品模块 402xx ──────────────────────────────────────────
+
+
+class InvalidProductStatusError(BusinessError):
+    def __init__(self, status_value: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40201,
+            f"Invalid status: {status_value}",
+            message_key=MessageKey.PRODUCT_INVALID_STATUS,
+            message_params={"status": status_value},
+        )
+
+
+class SpuCodeExistsError(BusinessError):
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40202,
+            "SPU code already exists",
+            message_key=MessageKey.PRODUCT_SPU_CODE_EXISTS,
+        )
+
+
+class SkuCodeExistsError(BusinessError):
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40203,
+            "SKU code already exists",
+            message_key=MessageKey.PRODUCT_SKU_CODE_EXISTS,
+        )
+
+
+class PublishValidationFailedError(BusinessError):
+    def __init__(self, errors: list[str]):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40204,
+            "; ".join(errors),
+            message_key=MessageKey.PRODUCT_PUBLISH_VALIDATION_FAILED,
+            message_params={"errors": errors},
+        )
+
+
+class OnlyDraftDeletableError(BusinessError):
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40205,
+            "Only DRAFT products can be deleted",
+            message_key=MessageKey.PRODUCT_ONLY_DRAFT_DELETABLE,
+        )
+
+
+class SupplierAlreadyBoundError(BusinessError):
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40206,
+            "Supplier already bound to this SKU",
+            message_key=MessageKey.PRODUCT_SUPPLIER_ALREADY_BOUND,
+        )
+
+
+class MaxImagesExceededError(BusinessError):
+    def __init__(self, max_count: int):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40207,
+            f"Maximum {max_count} images per product",
+            message_key=MessageKey.PRODUCT_MAX_IMAGES_EXCEEDED,
+            message_params={"max": max_count},
+        )
+
+
+class ImageFormatInvalidError(BusinessError):
+    def __init__(self, allowed: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40208,
+            f"Allowed formats: {allowed}",
+            message_key=MessageKey.PRODUCT_IMAGE_FORMAT_INVALID,
+            message_params={"formats": allowed},
+        )
+
+
+class ImageTooLargeError(BusinessError):
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40209,
+            "Image size must be under 5MB",
+            message_key=MessageKey.PRODUCT_IMAGE_TOO_LARGE,
+        )
+
+
+class ImageTooSmallError(BusinessError):
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40210,
+            "Image too small, minimum 200x200",
+            message_key=MessageKey.PRODUCT_IMAGE_TOO_SMALL,
+        )
+
+
+class PriceTierInvalidError(BusinessError):
+    """阶梯价校验失败,同码 40211,按子条件分 message_key。"""
+    def __init__(
+        self,
+        message: str,
+        message_key: str = MessageKey.PRODUCT_PRICE_TIER_FIRST_MIN_QTY,
+        message_params: dict | None = None,
+    ):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40211,
+            message,
+            message_key=message_key,
+            message_params=message_params,
+        )
+
+
+class SkuNotInProductError(BusinessError):
+    def __init__(self, sku_id: int, product_id: int):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40212,
+            f"SKU {sku_id} does not belong to product {product_id}",
+            message_key=MessageKey.PRODUCT_SKU_NOT_IN_PRODUCT,
+            message_params={"sku_id": sku_id, "product_id": product_id},
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

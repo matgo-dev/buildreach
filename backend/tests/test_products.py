@@ -261,7 +261,7 @@ async def test_create_product_duplicate_spu(client: AsyncClient):
         json={"category_code": cat_code, "spu_code": "DUP-SPU-001", "name": "Dup", "source_lang": "zh"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50003
+    assert r.json()["code"] == 40202
 
 
 @pytest.mark.asyncio
@@ -352,7 +352,7 @@ async def test_create_sku_duplicate_code(client: AsyncClient):
         json={"sku_code": "DUP-SKU-CODE", "unit": "PCS", "moq": 1, "source_lang": "zh"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50003
+    assert r.json()["code"] == 40203
 
 
 @pytest.mark.asyncio
@@ -471,7 +471,7 @@ async def test_price_tier_first_min_qty_must_equal_moq(client: AsyncClient):
         json={"sku_code": "TIER-MOQ-S001", "unit": "PCS", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50012
+    assert r.json()["code"] == 40211
 
 
 @pytest.mark.asyncio
@@ -490,7 +490,7 @@ async def test_price_tier_must_be_continuous(client: AsyncClient):
         json={"sku_code": "TIER-CONT-S001", "unit": "PCS", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50012
+    assert r.json()["code"] == 40211
 
 
 @pytest.mark.asyncio
@@ -509,7 +509,7 @@ async def test_price_tier_must_decrease(client: AsyncClient):
         json={"sku_code": "TIER-DEC-S001", "unit": "PCS", "moq": 500, "price_tiers": tiers, "source_lang": "zh"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50012
+    assert r.json()["code"] == 40211
 
 
 @pytest.mark.asyncio
@@ -555,7 +555,7 @@ async def test_publish_no_sku_fails(client: AsyncClient):
         headers=headers, json={"status": "ACTIVE"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50004
+    assert r.json()["code"] == 40204
     assert "SKU" in r.json()["message"]
 
 
@@ -571,7 +571,7 @@ async def test_publish_no_image_fails(client: AsyncClient):
         headers=headers, json={"status": "ACTIVE"},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50004
+    assert r.json()["code"] == 40204
     assert "image" in r.json()["message"].lower()
 
 
@@ -594,7 +594,7 @@ async def test_publish_sku_no_price_fails(client: AsyncClient):
         headers=headers, json={"status": "ACTIVE"},
     )
     assert r2.status_code == 400
-    assert r2.json()["code"] == 50004
+    assert r2.json()["code"] == 40204
     assert "price" in r2.json()["message"].lower()
 
 
@@ -712,7 +712,7 @@ async def test_duplicate_supplier_binding(client: AsyncClient):
         headers=headers, json=payload,
     )
     assert r2.status_code == 400
-    assert r2.json()["code"] == 50007
+    assert r2.json()["code"] == 40206
 
 
 # ── 审计断言（通过 audit API 查询）────────────────────────
@@ -971,7 +971,7 @@ async def test_attr_sku_not_belong_to_product_rejected(client: AsyncClient):
         ]},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 50013
+    assert r.json()["code"] == 40212
 
 
 @pytest.mark.asyncio
