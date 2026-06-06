@@ -11,6 +11,7 @@ code 派生:按 CSV 首次出现顺序编号。
 from __future__ import annotations
 
 import csv
+import json
 import logging
 from pathlib import Path
 
@@ -25,9 +26,18 @@ logger = logging.getLogger(__name__)
 _DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
+def _load_en_names() -> dict[str, str]:
+    """加载中英文名称映射。"""
+    path = _DATA_DIR / "category_names_en.json"
+    if path.exists():
+        return json.load(path.open(encoding="utf-8"))
+    return {}
+
+
 def _parse_categories_csv() -> list[dict]:
-    """读取 categories.csv,派生 code / level / parent_code / sort_order。"""
+    """读取 categories.csv,派生 code / level / parent_code / sort_order,关联英文名。"""
     path = _DATA_DIR / "categories.csv"
+    en_names = _load_en_names()
     rows: list[dict] = []
 
     # 跟踪首次出现顺序,派生编号
@@ -56,6 +66,7 @@ def _parse_categories_csv() -> list[dict]:
                 rows.append({
                     "code": l1_code,
                     "name_zh": l1_name,
+                    "name_en": en_names.get(l1_name),
                     "level": 1,
                     "parent_code": None,
                     "sort_order": l1_seq * 10,
@@ -72,6 +83,7 @@ def _parse_categories_csv() -> list[dict]:
                 rows.append({
                     "code": l2_code,
                     "name_zh": l2_name,
+                    "name_en": en_names.get(l2_name),
                     "level": 2,
                     "parent_code": l1_code,
                     "sort_order": l2_counter[l1_code] * 10,
@@ -84,6 +96,7 @@ def _parse_categories_csv() -> list[dict]:
             rows.append({
                 "code": l3_code,
                 "name_zh": l3_name,
+                "name_en": en_names.get(l3_name),
                 "level": 3,
                 "parent_code": l2_code,
                 "sort_order": l3_counter[l2_code] * 10,
@@ -153,6 +166,7 @@ async def seed_categories(db: AsyncSession) -> None:
         db.add(Category(
             code=item["code"],
             name_zh=item["name_zh"],
+            name_en=item.get("name_en"),
             level=item["level"],
             parent_code=item["parent_code"],
             sort_order=item["sort_order"],
