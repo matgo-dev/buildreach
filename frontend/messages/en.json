@@ -50,5 +50,22 @@
       "rate_limited_with_params": "Too many requests, please try again in {retry_after} seconds",
       "conflict": "Resource conflict"
     }
+  },
+  "unit": {
+    "PCS": "Piece",
+    "SET": "Set",
+    "PAIR": "Pair",
+    "M": "Meter",
+    "M2": "Square Meter",
+    "M3": "Cubic Meter",
+    "KG": "Kilogram",
+    "TON": "Ton",
+    "ROLL": "Roll",
+    "SHEET": "Sheet",
+    "BOX": "Box",
+    "BAG": "Bag",
+    "BARREL": "Barrel",
+    "L": "Liter",
+    "BUNDLE": "Bundle"
   }
 }

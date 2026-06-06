@@ -50,5 +50,22 @@
       "rate_limited_with_params": "请求过于频繁,请 {retry_after} 秒后重试",
       "conflict": "资源冲突"
     }
+  },
+  "unit": {
+    "PCS": "件",
+    "SET": "套",
+    "PAIR": "双",
+    "M": "米",
+    "M2": "平方米",
+    "M3": "立方米",
+    "KG": "千克",
+    "TON": "吨",
+    "ROLL": "卷",
+    "SHEET": "张",
+    "BOX": "箱",
+    "BAG": "袋",
+    "BARREL": "桶",
+    "L": "升",
+    "BUNDLE": "捆"
   }
 }
