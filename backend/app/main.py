@@ -99,7 +99,7 @@ async def http_exc_handler(request: Request, exc: StarletteHTTPException) -> JSO
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "code": exc.status_code * 100,
+            "code": 40000,
             "message": str(exc.detail) if exc.detail else "Error",
             "data": None,
             "trace_id": get_trace_id(),

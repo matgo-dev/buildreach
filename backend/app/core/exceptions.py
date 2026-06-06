@@ -1,9 +1,30 @@
 """业务异常 + 统一响应格式。
 
-业务码约定:
-- 0       成功
-- 4xxxx   客户端错误(40001 凭证错误,40002 限流,40003 权限不足 ...)
-- 5xxxx   服务器错误
+业务码(body.code)与 HTTP status 解耦,仅承载业务语义。
+
+格式 5 位:C MM SS
+- C : 4=客户端类, 5=服务端类
+- MM: 模块段
+- SS: 模块内顺序号(01–99)
+
+模块段位:
+  MM | 模块             | 现有码
+  00 | 通用与鉴权       | 40001–40009
+  01 | 供应商(注册/资质) | 预留
+  02 | 商品             | 预留
+  03 | 品类             | 预留
+  04 | 信用             | 预留(credit 类型化时填)
+  05–08 | 预留           | —
+  09 | 注册冲突聚合     | 40901/40902/40903(前端冻结,沿用)
+
+兜底码:
+  40000 = 通用客户端兜底(裸 HTTPException 降级)
+  50000 = 通用服务端兜底(未处理异常)
+
+既存例外(不纳入 4MMSS,标注为 422 派生):
+  42200 = 请求体校验失败(handler 级,前端冻结)
+
+成功码: 0
 """
 from __future__ import annotations
 
@@ -153,7 +174,7 @@ class MultipleValidationError(BusinessError):
 
 class NotFoundError(BusinessError):
     def __init__(self, message: str = "Not found"):
-        super().__init__(status.HTTP_404_NOT_FOUND, 40400, message, message_key=MessageKey.NOT_FOUND)
+        super().__init__(status.HTTP_404_NOT_FOUND, 40008, message, message_key=MessageKey.NOT_FOUND)
 
 
 def success(data: Any = None, message: str = "ok") -> dict:
