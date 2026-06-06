@@ -18,15 +18,12 @@ export function LocaleSwitcher({ variant = "compact" }: Props) {
   const label = locale === "zh" ? "EN" : "中";
   const fullLabel = locale === "zh" ? "English" : "中文";
 
-  const handleSwitch = async () => {
+  const handleSwitch = () => {
     if (!user) return;
-    try {
-      await api.patch("/api/v1/auth/me/language", {
-        language_preference: otherLocale === "zh" ? "zh-CN" : "en",
-      });
-    } catch {
-      // 写 DB 失败不阻塞切换
-    }
+    // fire-and-forget: 不阻塞 Link 导航
+    api.patch("/api/v1/auth/me/language", {
+      language_preference: otherLocale === "zh" ? "zh-CN" : "en",
+    }).catch(() => {});
   };
 
   if (variant === "full") {
