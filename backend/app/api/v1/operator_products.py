@@ -233,10 +233,13 @@ async def update_status(
     product_id: int,
     request: Request,
     data: ProductStatusUpdate,
+    force: bool = Query(False, description="跳过上架校验(测试用)"),
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_APPROVE)),
     db: AsyncSession = Depends(get_db),
 ):
-    product = await product_svc.update_product_status(db, product_id, data.status)
+    product = await product_svc.update_product_status(
+        db, product_id, data.status, skip_validation=force,
+    )
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.STATUS_CHANGE,
         user_id=current.id, user_email=current.email,

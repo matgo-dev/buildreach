@@ -19,7 +19,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Package,
-  PackagePlus,
+
   Receipt,
   ScrollText,
   Send,
@@ -195,7 +195,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { path: "/operator/dashboard",       label: "管理首页",     labelEn: "Dashboard",     icon: LayoutDashboard, resource: null,       requiredPermissions: [],                                description: "全平台数据概览" },
           { path: "/operator/supplier-review", label: "供应商审核",   labelEn: "Suppliers",     icon: Inspect,         resource: "supplier", requiredPermissions: [Permissions.SUPPLIER_APPROVE],     description: "入驻审批 / 评分 / 分层" },
-          { path: "/operator/products/create", label: "创建商品",     labelEn: "Create Product", icon: PackagePlus,     resource: "product",  requiredPermissions: [Permissions.PRODUCT_WRITE],        description: "录入商品资料并发布上架" },
+          { path: "/operator/products",        label: "商品管理",     labelEn: "Products",      icon: Package,         resource: "product",  requiredPermissions: [Permissions.PRODUCT_READ],         description: "SPU 列表 / 上下架 / 进入编辑详情" },
           { path: "/operator/product-review",  label: "商品审核",     labelEn: "Products",      icon: Inspect,         resource: "product",  requiredPermissions: [Permissions.PRODUCT_APPROVE],      description: "SKU 上架 + 国别准入资质审核" },
           { path: "/operator/orders",          label: "订单总览",     labelEn: "Orders",        icon: Receipt,         resource: "order",    requiredPermissions: [Permissions.ORDER_READ],           description: "全平台订单监控" },
           { path: "/operator/countries",       label: "国别数据维护", labelEn: "Countries",     icon: Globe,           resource: "country",  requiredPermissions: [Permissions.COUNTRY_WRITE],        description: "8 国 × 品类准入规则维护" },
