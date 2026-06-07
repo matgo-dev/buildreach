@@ -7,7 +7,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Package, Plus, Search 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { ApiError } from "@/lib/api";
 import {
   operatorProductsApi,
@@ -145,7 +145,6 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 // ===================== 主页面 =====================
 
 function ProductListInner() {
-  const router = useRouter();
   const t = useTranslations("productList");
   const { hasPermission } = usePermissions();
   const { tree: categoryTree } = useCategoryTree();
@@ -482,8 +481,7 @@ function ProductListInner() {
                 return (
                   <tr
                     key={item.id}
-                    onClick={() => router.push(`/operator/products/${item.id}`)}
-                    className="cursor-pointer hover:bg-slate-50 transition-colors"
+                    className="hover:bg-slate-50 transition-colors"
                   >
                     {canApprove && (
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -508,12 +506,16 @@ function ProductListInner() {
                             src={item.main_image}
                             alt={item.name}
                             className="h-11 w-11 rounded-lg object-cover bg-slate-100"
+                            onError={(e) => {
+                              // 图片加载失败时隐藏 img，显示占位
+                              (e.target as HTMLImageElement).style.display = "none";
+                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                            }}
                           />
-                        ) : (
-                          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100">
-                            <Package className="h-5 w-5 text-slate-400" />
-                          </div>
-                        )}
+                        ) : null}
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100${item.main_image ? " hidden" : ""}`}>
+                          <Package className="h-5 w-5 text-slate-400" />
+                        </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900 max-w-[200px]">{item.name}</p>
                           {item.created_by_name && (
@@ -558,10 +560,12 @@ function ProductListInner() {
 
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
+                        {/* TODO: 编辑页未实现,暂禁用 */}
                         {canWrite && (
                           <button
-                            onClick={() => router.push(`/operator/products/${item.id}/edit`)}
-                            className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
+                            disabled
+                            className="rounded px-2 py-1 text-xs text-slate-400 cursor-not-allowed"
+                            title="编辑页开发中"
                           >
                             {t("edit")}
                           </button>
