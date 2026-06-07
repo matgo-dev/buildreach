@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ export function CategoryCascader({
   disabled,
   className,
 }: CategoryCascaderProps) {
+  const t = useTranslations("category");
   const { tree, isLoading, error } = useCategoryTree();
 
   const level1Node = React.useMemo<CategoryTreeNode | undefined>(
@@ -100,7 +102,7 @@ export function CategoryCascader({
   if (error) {
     return (
       <div className={cn("text-sm text-red-600", className)}>
-        加载分类失败:{error.message}
+        {t("load_error")}: {error.message}
       </div>
     );
   }
@@ -108,7 +110,7 @@ export function CategoryCascader({
   if (!isLoading && tree.length === 0) {
     return (
       <div className={cn("text-sm text-slate-500", className)}>
-        暂无分类数据,请联系管理员
+        {t("no_data")}
       </div>
     );
   }
@@ -117,7 +119,7 @@ export function CategoryCascader({
     <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-3", className)}>
       <div className="space-y-1">
         <label className={LABEL_CLS}>
-          一级分类{required && <span className="ml-1 text-red-500">*</span>}
+          {t("level1")}{required && <span className="ml-1 text-red-500">*</span>}
         </label>
         <select
           className={SELECT_CLS}
@@ -125,7 +127,7 @@ export function CategoryCascader({
           onChange={(e) => handleL1(e.target.value)}
           disabled={baseDisabled}
         >
-          <option value="">{isLoading ? "加载中…" : "请选择一级"}</option>
+          <option value="">{isLoading ? t("loading") : t("select_level1")}</option>
           {tree.map((n) => (
             <option key={n.code} value={n.code}>
               {n.name}
@@ -136,7 +138,7 @@ export function CategoryCascader({
 
       <div className="space-y-1">
         <label className={LABEL_CLS}>
-          二级分类{required && <span className="ml-1 text-red-500">*</span>}
+          {t("level2")}{required && <span className="ml-1 text-red-500">*</span>}
         </label>
         <select
           className={SELECT_CLS}
@@ -145,7 +147,7 @@ export function CategoryCascader({
           disabled={baseDisabled || !value.level1Code}
         >
           <option value="">
-            {value.level1Code ? "请选择二级" : "请先选上级"}
+            {value.level1Code ? t("select_level2") : t("select_parent_first")}
           </option>
           {level2Options.map((n) => (
             <option key={n.code} value={n.code}>
@@ -157,7 +159,7 @@ export function CategoryCascader({
 
       <div className="space-y-1">
         <label className={LABEL_CLS}>
-          三级分类{required && <span className="ml-1 text-red-500">*</span>}
+          {t("level3")}{required && <span className="ml-1 text-red-500">*</span>}
         </label>
         <select
           className={SELECT_CLS}
@@ -166,7 +168,7 @@ export function CategoryCascader({
           disabled={baseDisabled || !value.level2Code}
         >
           <option value="">
-            {value.level2Code ? "请选择三级" : "请先选上级"}
+            {value.level2Code ? t("select_level3") : t("select_parent_first")}
           </option>
           {level3Options.map((n) => (
             <option key={n.code} value={n.code}>

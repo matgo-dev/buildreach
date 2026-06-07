@@ -79,6 +79,18 @@
       "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}"
     }
   },
+  "category": {
+    "level1": "一级分类",
+    "level2": "二级分类",
+    "level3": "三级分类",
+    "loading": "加载中…",
+    "select_level1": "请选择一级",
+    "select_level2": "请选择二级",
+    "select_level3": "请选择三级",
+    "select_parent_first": "请先选上级",
+    "load_error": "加载分类失败",
+    "no_data": "暂无分类数据,请联系管理员"
+  },
   "productCreate": {
     "page_title": "创建商品",
     "anchor_basic": "基本信息",

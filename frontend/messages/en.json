@@ -79,6 +79,18 @@
       "attr_scope_mismatch": "Attribute {attr_key} scope should be {expected_scope}"
     }
   },
+  "category": {
+    "level1": "Level 1",
+    "level2": "Level 2",
+    "level3": "Level 3",
+    "loading": "Loading…",
+    "select_level1": "Select level 1",
+    "select_level2": "Select level 2",
+    "select_level3": "Select level 3",
+    "select_parent_first": "Select parent first",
+    "load_error": "Failed to load categories",
+    "no_data": "No categories available, please contact admin"
+  },
   "productCreate": {
     "page_title": "Create Product",
     "anchor_basic": "Basic Info",
