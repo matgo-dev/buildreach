@@ -372,9 +372,63 @@ gunzip -c backup.sql.gz | docker compose exec -T db psql -U "$POSTGRES_USER" -d 
 
 ### 本地开发(不变,不要用 Docker 跑开发)
 
-- 后端:`cd backend && uvicorn app.main:app --reload --port 8000`
+#### macOS / Linux
+
+- 后端:`cd backend && uvicorn app.main:app --reload --port 8001`
 - 前端:`cd frontend && pnpm dev`
 - 数据库:本机 brew PostgreSQL @5433
+- 一键启动:`bash dev.sh`
+
+#### Windows
+
+**前提:安装 PostgreSQL 16(密码必须设为 `postgres`)、Python 3.12+、Node.js 20+、pnpm、uv**
+
+**1. 首次搭建**
+
+```powershell
+# PostgreSQL:加 PATH + 建库
+$env:Path += ";C:\Program Files\PostgreSQL\16\bin"
+$env:PGPASSWORD = "postgres"
+createdb -h 127.0.0.1 -U postgres overseas_supply_dev
+createdb -h 127.0.0.1 -U postgres overseas_supply_test
+
+# 后端
+cd backend
+uv venv
+.venv\Scripts\Activate.ps1
+uv pip install -e ".[dev]"
+copy .env.example .env
+# 编辑 .env,将 DATABASE_URL 改为:
+#   DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/overseas_supply_dev
+alembic upgrade head
+
+# 前端
+cd ..\frontend
+copy .env.local.example .env.local
+# 编辑 .env.local,将端口改为:
+#   NEXT_PUBLIC_API_BASE_URL=http://localhost:8001
+pnpm install
+```
+
+**2. 日常启动(两个 PowerShell 窗口)**
+
+```powershell
+# 窗口1 — 后端
+cd backend
+.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --port 8001
+
+# 窗口2 — 前端
+cd frontend
+pnpm dev
+```
+
+浏览器访问 `http://localhost:3000`
+
+**Windows 常见坑:**
+- PostgreSQL 安装后 `psql` 不在 PATH → 手动加 `C:\Program Files\PostgreSQL\16\bin`
+- `localhost` 默认走 IPv6 连不上 PostgreSQL → `.env` 里用 `127.0.0.1` 代替 `localhost`
+- 忘记 PostgreSQL 密码 → 卸载时勾选删除数据目录,重装时密码设 `postgres`
 
 ### 演示 / 生产部署(Docker compose)
 
