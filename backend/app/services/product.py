@@ -25,6 +25,8 @@ from app.core.exceptions import (
     PriceTierInvalidError,
     PublishValidationFailedError,
     SkuCodeExistsError,
+    AttrKeyNotInTemplateError,
+    AttrScopeMismatchError,
     SkuNotInProductError,
     SpuCodeExistsError,
     SupplierAlreadyBoundError,
@@ -159,9 +161,15 @@ async def create_product(
     db.add(product)
     await db.flush()
 
-    # 品类属性
+    # SPU 级属性
     if data.attributes:
-        await _add_attrs(db, product.id, data.attributes)
+        tpl_map = await _load_template_map(db, data.category_code)
+        await _add_attrs(
+            db, product.id, data.attributes,
+            template_map=tpl_map,
+            category_code=data.category_code,
+            expected_scope="SPU",
+        )
 
     await db.commit()
     await db.refresh(product)
@@ -192,42 +200,61 @@ async def update_product(
             old_value = getattr(product, f"{field}_{source_lang}", None)
             await apply_i18n_edit(product, field, source_lang, value, old_value, domain="product")
 
-    # 属性整体替换
+    # SPU 级属性整体替换
     if data.attributes is not None:
         await db.execute(
-            sa_delete(ProductAttr).where(ProductAttr.product_id == product_id)
+            sa_delete(ProductAttr).where(
+                ProductAttr.product_id == product_id,
+                ProductAttr.sku_id.is_(None),
+            )
         )
-        await _add_attrs(db, product_id, data.attributes)
+        if data.attributes:
+            tpl_map = await _load_template_map(db, product.category_code)
+            await _add_attrs(
+                db, product_id, data.attributes,
+                template_map=tpl_map,
+                category_code=product.category_code,
+                expected_scope="SPU",
+            )
 
     await db.commit()
     await db.refresh(product)
     return product
 
 
+async def _load_template_map(
+    db: AsyncSession, category_code: str,
+) -> dict[str, "AttrTemplate"]:
+    """加载品类(含祖先链)的属性模板,返回 {attr_key: template} 映射。"""
+    templates = await get_attr_templates(db, category_code)
+    return {t.attr_key: t for t in templates}
+
+
 async def _add_attrs(
     db: AsyncSession,
     product_id: int,
     attrs: list,
+    *,
+    template_map: dict[str, "AttrTemplate"],
+    category_code: str,
+    expected_scope: str,
+    sku_id: int | None = None,
 ) -> None:
-    """添加属性,sku_id 非空时校验隶属关系。"""
+    """添加属性,校验 attr_key ∈ 模板 + scope 一致性,unit/sort_order 从模板取。"""
     for attr in attrs:
-        sku_id = getattr(attr, "sku_id", None)
-        if sku_id is not None:
-            sku_row = (await db.execute(
-                select(ProductSku.id).where(
-                    ProductSku.id == sku_id,
-                    ProductSku.product_id == product_id,
-                )
-            )).scalar_one_or_none()
-            if sku_row is None:
-                raise SkuNotInProductError(sku_id, product_id)
+        tpl = template_map.get(attr.attr_key)
+        if tpl is None:
+            raise AttrKeyNotInTemplateError(attr.attr_key, category_code)
+        if tpl.scope != expected_scope:
+            raise AttrScopeMismatchError(attr.attr_key, tpl.scope)
+
         db.add(ProductAttr(
             product_id=product_id,
             sku_id=sku_id,
             attr_key=attr.attr_key,
             attr_value=attr.attr_value,
-            attr_unit=attr.attr_unit,
-            sort_order=attr.sort_order,
+            attr_unit=tpl.attr_unit,
+            sort_order=tpl.sort_order,
         ))
 
 
@@ -253,6 +280,37 @@ async def update_product_status(
                     )
         if not product.images:
             errors.append("At least 1 image required")
+
+        # 必填属性校验
+        tpl_map = await _load_template_map(db, product.category_code)
+        required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
+        required_sku = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SKU"]
+
+        # SPU 级必填
+        spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
+        missing_spu = [k for k in required_spu if k not in spu_attr_keys]
+        if missing_spu:
+            errors.append(f"Missing required SPU attributes: {', '.join(missing_spu)}")
+
+        # SKU 级必填：每个 active SKU 都需有值
+        if required_sku and active_skus:
+            sku_attrs_q = await db.execute(
+                select(ProductAttr.sku_id, ProductAttr.attr_key)
+                .where(
+                    ProductAttr.product_id == product.id,
+                    ProductAttr.sku_id.isnot(None),
+                )
+            )
+            sku_attr_map: dict[int, set[str]] = {}
+            for row in sku_attrs_q:
+                sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key)
+            for sku in active_skus:
+                sku_keys = sku_attr_map.get(sku.id, set())
+                missing = [k for k in required_sku if k not in sku_keys]
+                if missing:
+                    errors.append(
+                        f"SKU {sku.sku_code}: missing required attributes: {', '.join(missing)}"
+                    )
 
         if errors:
             raise PublishValidationFailedError(errors)
@@ -406,6 +464,17 @@ async def create_sku(
     db.add(sku)
     await db.flush()
 
+    # SKU 级属性
+    if data.attributes:
+        tpl_map = await _load_template_map(db, product.category_code)
+        await _add_attrs(
+            db, product_id, data.attributes,
+            template_map=tpl_map,
+            category_code=product.category_code,
+            expected_scope="SKU",
+            sku_id=sku.id,
+        )
+
     # 阶梯价
     if data.price_tiers:
         await _replace_price_tiers(db, sku, data.price_tiers)
@@ -429,7 +498,7 @@ async def update_sku(
             .values(is_default=False)
         )
 
-    update_data = data.model_dump(exclude_unset=True, exclude={"price_tiers"})
+    update_data = data.model_dump(exclude_unset=True, exclude={"price_tiers", "attributes"})
     i18n_fields_to_update = {}
 
     for field in list(update_data.keys()):
@@ -443,6 +512,22 @@ async def update_sku(
         if value is not None:
             old_value = getattr(sku, f"{field}_{source_lang}", None)
             await apply_i18n_edit(sku, field, source_lang, value, old_value, domain="product")
+
+    # SKU 级属性整体替换
+    if data.attributes is not None:
+        await db.execute(
+            sa_delete(ProductAttr).where(ProductAttr.sku_id == sku_id)
+        )
+        if data.attributes:
+            product = await _get_product_or_404(db, sku.product_id)
+            tpl_map = await _load_template_map(db, product.category_code)
+            await _add_attrs(
+                db, sku.product_id, data.attributes,
+                template_map=tpl_map,
+                category_code=product.category_code,
+                expected_scope="SKU",
+                sku_id=sku_id,
+            )
 
     # 阶梯价整体替换
     if data.price_tiers is not None:

@@ -881,25 +881,25 @@ async def _seed_template_hierarchy(db_session):
     # L1 模板: 2 个属性
     db_session.add(AttrTemplate(
         category_code="T1", attr_key="brand", display_name="品牌",
-        attr_type="text", sort_order=10,
+        attr_type="text", sort_order=10, scope="SPU",
     ))
     db_session.add(AttrTemplate(
         category_code="T1", attr_key="cert", display_name="认证",
-        attr_type="text", sort_order=20,
+        attr_type="text", sort_order=20, scope="SPU",
     ))
     # L2 模板: 1 个属性
     db_session.add(AttrTemplate(
         category_code="T1.001", attr_key="material", display_name="材质",
-        attr_type="text", sort_order=10,
+        attr_type="text", sort_order=10, scope="SKU",
     ))
     # L3 模板: 1 个属性 + 1 个覆盖 L1 的 brand
     db_session.add(AttrTemplate(
         category_code="T1.001.001", attr_key="thickness", display_name="厚度",
-        attr_type="text", sort_order=10,
+        attr_type="text", sort_order=10, scope="SKU",
     ))
     db_session.add(AttrTemplate(
         category_code="T1.001.001", attr_key="brand", display_name="品牌(L3覆盖)",
-        attr_type="select", sort_order=20,
+        attr_type="select", sort_order=20, scope="SPU",
     ))
     await db_session.commit()
 
@@ -983,20 +983,33 @@ async def test_attr_template_nonexistent_code_returns_empty(client: AsyncClient)
     assert r.json()["data"] == []
 
 
-# ── 属性 SKU 维度(v0.7) ──────────────────────────────────
+# ── 属性治理(v0.8) ────────────────────────────────────────
+
+
+async def _create_product_in_test_category(
+    client: AsyncClient, headers: dict, db_session,
+    spu_code: str,
+) -> tuple[int, str]:
+    """在测试品类 T1.001.001 下创建商品,返回 (product_id, category_code)。
+    需先调用 _seed_template_hierarchy 建立测试品类和模板。
+    """
+    cat_code = "T1.001.001"
+    pid = await _create_test_product(client, headers, cat_code, spu_code)
+    return pid, cat_code
+
 
 @pytest.mark.asyncio
-async def test_attr_product_level_create_and_read(client: AsyncClient):
-    """商品级属性(sku_id 空)创建 / 读出。"""
+async def test_attr_spu_level_create_and_read(client: AsyncClient, db_session):
+    """SPU 级属性(scope=SPU)通过 update_product 创建/读出,unit/sort_order/display_name 从模板取。"""
+    await _seed_template_hierarchy(db_session)
     headers = await _login_operator(client)
-    cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "ATTR-PROD-001")
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-SPU-001")
 
     r = await client.put(
         f"/api/v1/operator/products/{pid}",
         headers=headers,
         json={"attributes": [
-            {"attr_key": "voltage", "attr_value": "220V", "attr_unit": "V"},
+            {"attr_key": "brand", "attr_value": "OEM"},
         ]},
     )
     assert r.status_code == 200
@@ -1004,129 +1017,224 @@ async def test_attr_product_level_create_and_read(client: AsyncClient):
     r2 = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
     attrs = r2.json()["data"]["attributes"]
     assert len(attrs) == 1
-    assert attrs[0]["attr_key"] == "voltage"
+    assert attrs[0]["attr_key"] == "brand"
+    assert attrs[0]["attr_value"] == "OEM"
+    assert attrs[0]["display_name"] == "品牌(L3覆盖)"
     assert attrs[0]["sku_id"] is None
 
 
 @pytest.mark.asyncio
-async def test_attr_sku_level_create_and_read(client: AsyncClient):
-    """SKU 级属性(sku_id 非空)创建 / 读出。"""
+async def test_attr_sku_level_via_sku_create(client: AsyncClient, db_session):
+    """SKU 级属性通过 SkuCreate.attributes 创建,落库为 SKU 级。"""
+    await _seed_template_hierarchy(db_session)
     headers = await _login_operator(client)
-    cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "ATTR-SKU-001")
-    sku_id = await _create_test_sku(client, headers, pid, "ATTR-SKU-S001")
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-SKU-002")
+
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={
+            "unit": "PCS", "moq": 100,
+            "attributes": [
+                {"attr_key": "thickness", "attr_value": "2mm"},
+            ],
+        },
+    )
+    assert r.status_code == 200
+    sku_id = r.json()["data"]["id"]
+
+    # 商品详情中 SKU 应有属性
+    detail = (await client.get(f"/api/v1/operator/products/{pid}", headers=headers)).json()["data"]
+    sku = next(s for s in detail["skus"] if s["id"] == sku_id)
+    assert len(sku["attributes"]) == 1
+    assert sku["attributes"][0]["attr_key"] == "thickness"
+    assert sku["attributes"][0]["attr_value"] == "2mm"
+
+
+@pytest.mark.asyncio
+async def test_attr_sku_level_via_sku_update(client: AsyncClient, db_session):
+    """SKU 级属性通过 SkuUpdate.attributes 编辑(整体替换)。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-SKUUP-001")
+
+    # 创建 SKU 带属性
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={
+            "unit": "PCS", "moq": 50,
+            "attributes": [
+                {"attr_key": "thickness", "attr_value": "1mm"},
+            ],
+        },
+    )
+    sku_id = r.json()["data"]["id"]
+
+    # 编辑 SKU 属性(整体替换)
+    r2 = await client.put(
+        f"/api/v1/operator/products/{pid}/skus/{sku_id}",
+        headers=headers,
+        json={
+            "attributes": [
+                {"attr_key": "material", "attr_value": "铝合金"},
+                {"attr_key": "thickness", "attr_value": "3mm"},
+            ],
+        },
+    )
+    assert r2.status_code == 200
+
+    detail = (await client.get(f"/api/v1/operator/products/{pid}", headers=headers)).json()["data"]
+    sku = next(s for s in detail["skus"] if s["id"] == sku_id)
+    keys = {a["attr_key"] for a in sku["attributes"]}
+    assert keys == {"material", "thickness"}
+
+
+@pytest.mark.asyncio
+async def test_attr_key_not_in_template_rejected(client: AsyncClient, db_session):
+    """传模板外的 attr_key 触发 40213。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-INV-001")
 
     r = await client.put(
         f"/api/v1/operator/products/{pid}",
         headers=headers,
         json={"attributes": [
-            {"attr_key": "power", "attr_value": "60W", "attr_unit": "W", "sku_id": sku_id},
-        ]},
-    )
-    assert r.status_code == 200
-
-    r2 = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
-    attrs = r2.json()["data"]["attributes"]
-    assert len(attrs) == 1
-    assert attrs[0]["attr_key"] == "power"
-    assert attrs[0]["sku_id"] == sku_id
-
-
-@pytest.mark.asyncio
-async def test_attr_product_and_sku_same_key_coexist(client: AsyncClient):
-    """商品级与 SKU 级同一 attr_key 共存、互不冲突。"""
-    headers = await _login_operator(client)
-    cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "ATTR-COEX-001")
-    sku_id = await _create_test_sku(client, headers, pid, "ATTR-COEX-S001")
-
-    r = await client.put(
-        f"/api/v1/operator/products/{pid}",
-        headers=headers,
-        json={"attributes": [
-            {"attr_key": "voltage", "attr_value": "220V"},
-            {"attr_key": "voltage", "attr_value": "110V", "sku_id": sku_id},
-        ]},
-    )
-    assert r.status_code == 200
-
-    r2 = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
-    attrs = r2.json()["data"]["attributes"]
-    assert len(attrs) == 2
-    prod_attr = next(a for a in attrs if a["sku_id"] is None)
-    sku_attr = next(a for a in attrs if a["sku_id"] == sku_id)
-    assert prod_attr["attr_value"] == "220V"
-    assert sku_attr["attr_value"] == "110V"
-
-
-@pytest.mark.asyncio
-async def test_attr_same_dimension_duplicate_key_rejected(client: AsyncClient):
-    """同维度内重复 attr_key 触发唯一性错误(DB 部分唯一索引拦截)。"""
-    headers = await _login_operator(client)
-    cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "ATTR-DUP-001")
-
-    try:
-        r = await client.put(
-            f"/api/v1/operator/products/{pid}",
-            headers=headers,
-            json={"attributes": [
-                {"attr_key": "voltage", "attr_value": "220V"},
-                {"attr_key": "voltage", "attr_value": "110V"},
-            ]},
-        )
-        # 全局异常处理器捕获 IntegrityError 返回 500
-        assert r.status_code in (400, 500)
-    except Exception:
-        # IntegrityError 在 ASGI 传输层可能直接抛出
-        pass
-
-
-@pytest.mark.asyncio
-async def test_attr_sku_not_belong_to_product_rejected(client: AsyncClient):
-    """sku_id 指向的 SKU 不属于该 product 时,创建被拒。"""
-    headers = await _login_operator(client)
-    cat_code = await _get_first_category_code(client)
-    pid1 = await _create_test_product(client, headers, cat_code, "ATTR-NOBELONG-001")
-    pid2 = await _create_test_product(client, headers, cat_code, "ATTR-NOBELONG-002")
-    sku_id = await _create_test_sku(client, headers, pid2, "ATTR-NOBELONG-S001")
-
-    r = await client.put(
-        f"/api/v1/operator/products/{pid1}",
-        headers=headers,
-        json={"attributes": [
-            {"attr_key": "power", "attr_value": "60W", "sku_id": sku_id},
+            {"attr_key": "不存在的属性", "attr_value": "xxx"},
         ]},
     )
     assert r.status_code == 400
-    assert r.json()["code"] == 40212
+    assert r.json()["code"] == 40213
 
 
 @pytest.mark.asyncio
-async def test_attr_cascade_delete_with_sku(client: AsyncClient):
-    """删除 SKU 时其 SKU 级属性级联删除。"""
+async def test_attr_scope_mismatch_sku_attr_on_spu(client: AsyncClient, db_session):
+    """SKU 级属性(scope=SKU)放到商品级 → 40215。"""
+    await _seed_template_hierarchy(db_session)
     headers = await _login_operator(client)
-    cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "ATTR-CASCADE-001")
-    sku_id = await _create_test_sku(client, headers, pid, "ATTR-CASCADE-S001")
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-MIS-001")
 
-    # 创建商品级 + SKU 级属性
+    # thickness 是 SKU 级属性,不能放商品级
     r = await client.put(
         f"/api/v1/operator/products/{pid}",
         headers=headers,
         json={"attributes": [
-            {"attr_key": "cert", "attr_value": "CE"},
-            {"attr_key": "power", "attr_value": "60W", "sku_id": sku_id},
+            {"attr_key": "thickness", "attr_value": "2mm"},
         ]},
     )
-    assert r.status_code == 200
+    assert r.status_code == 400
+    assert r.json()["code"] == 40215
+
+
+@pytest.mark.asyncio
+async def test_attr_scope_mismatch_spu_attr_on_sku(client: AsyncClient, db_session):
+    """SPU 级属性(scope=SPU)放到 SKU 级 → 40215。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-MIS-002")
+
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={
+            "unit": "PCS", "moq": 10,
+            "attributes": [
+                {"attr_key": "brand", "attr_value": "OEM"},
+            ],
+        },
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40215
+
+
+@pytest.mark.asyncio
+async def test_attr_spu_update_does_not_delete_sku_attrs(client: AsyncClient, db_session):
+    """商品属性整体替换只影响 SPU 级,SKU 级属性不受影响。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-ISOL-001")
+
+    # 先创建 SPU 级属性
+    await client.put(
+        f"/api/v1/operator/products/{pid}",
+        headers=headers,
+        json={"attributes": [{"attr_key": "cert", "attr_value": "CE"}]},
+    )
+
+    # 创建 SKU 带属性
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={
+            "unit": "PCS", "moq": 100,
+            "attributes": [{"attr_key": "thickness", "attr_value": "5mm"}],
+        },
+    )
+    sku_id = r.json()["data"]["id"]
+
+    # 替换 SPU 属性
+    await client.put(
+        f"/api/v1/operator/products/{pid}",
+        headers=headers,
+        json={"attributes": [{"attr_key": "brand", "attr_value": "ABC"}]},
+    )
+
+    # SKU 属性应保留
+    detail = (await client.get(f"/api/v1/operator/products/{pid}", headers=headers)).json()["data"]
+    assert len(detail["attributes"]) == 1
+    assert detail["attributes"][0]["attr_key"] == "brand"
+    sku = next(s for s in detail["skus"] if s["id"] == sku_id)
+    assert len(sku["attributes"]) == 1
+    assert sku["attributes"][0]["attr_key"] == "thickness"
+
+
+@pytest.mark.asyncio
+async def test_attr_cascade_delete_with_sku(client: AsyncClient, db_session):
+    """删除 SKU 时其 SKU 级属性级联删除,SPU 级属性保留。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+    pid, _ = await _create_product_in_test_category(client, headers, db_session, "ATTR-CASC-001")
+
+    # SPU 级属性
+    await client.put(
+        f"/api/v1/operator/products/{pid}",
+        headers=headers,
+        json={"attributes": [{"attr_key": "cert", "attr_value": "CE"}]},
+    )
+
+    # 创建 SKU 带属性
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={
+            "unit": "PCS", "moq": 100,
+            "attributes": [{"attr_key": "thickness", "attr_value": "3mm"}],
+        },
+    )
+    sku_id = r.json()["data"]["id"]
 
     # 删除 SKU
     await client.delete(f"/api/v1/operator/products/{pid}/skus/{sku_id}", headers=headers)
 
-    # SKU 级属性应已级联删除,商品级属性保留
-    r2 = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
-    attrs = r2.json()["data"]["attributes"]
-    assert len(attrs) == 1
-    assert attrs[0]["attr_key"] == "cert"
-    assert attrs[0]["sku_id"] is None
+    # SKU 级属性应已级联删除,SPU 级属性保留
+    detail = (await client.get(f"/api/v1/operator/products/{pid}", headers=headers)).json()["data"]
+    assert len(detail["attributes"]) == 1
+    assert detail["attributes"][0]["attr_key"] == "cert"
+
+
+@pytest.mark.asyncio
+async def test_attr_template_returns_scope(client: AsyncClient, db_session):
+    """get_attr_templates 返回含 scope 字段。"""
+    await _seed_template_hierarchy(db_session)
+    headers = await _login_operator(client)
+
+    r = await client.get(
+        "/api/v1/operator/products/attr-templates/T1",
+        headers=headers,
+    )
+    data = r.json()["data"]
+    assert len(data) == 2
+    for t in data:
+        assert "scope" in t
+        assert t["scope"] == "SPU"

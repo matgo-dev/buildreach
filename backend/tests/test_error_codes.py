@@ -66,6 +66,12 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls("test")
     if name == "SkuNotInProductError":
         return cls(1, 2)
+    if name == "AttrKeyNotInTemplateError":
+        return cls("test_key", "01")
+    if name == "RequiredAttrMissingError":
+        return cls(["key1"])
+    if name == "AttrScopeMismatchError":
+        return cls("test_key", "SPU")
     return cls()
 
 
@@ -259,3 +265,12 @@ def test_product_error_codes():
     assert ImageTooSmallError().biz_code == 40210
     assert PriceTierInvalidError("msg").biz_code == 40211
     assert SkuNotInProductError(1, 2).biz_code == 40212
+
+    from app.core.exceptions import (
+        AttrKeyNotInTemplateError,
+        RequiredAttrMissingError,
+        AttrScopeMismatchError,
+    )
+    assert AttrKeyNotInTemplateError("k", "01").biz_code == 40213
+    assert RequiredAttrMissingError(["k"]).biz_code == 40214
+    assert AttrScopeMismatchError("k", "SPU").biz_code == 40215
