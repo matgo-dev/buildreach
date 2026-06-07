@@ -26,6 +26,7 @@ from app.schemas.product import (
     SkuPublic,
 )
 from app.services import product as product_svc
+from app.services.product import spu_price_range, default_sku_fields
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -73,7 +74,8 @@ def _default_sku(p):
 
 
 def _to_public(p) -> dict:
-    ds = _default_sku(p)
+    prices = spu_price_range(p)
+    ds_fields = default_sku_fields(p)
     active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE)
     return ProductPublic(
         id=p.id,
@@ -85,9 +87,13 @@ def _to_public(p) -> dict:
         certifications=p.certifications,
         is_featured=p.is_featured,
         main_image=_get_main_image_url(p),
-        price_min=ds.price_min if ds else None,
-        price_max=ds.price_max if ds else None,
-        currency=ds.currency if ds else None,
+        price_min=prices["price_min"],
+        price_max=prices["price_max"],
+        currency=prices["currency"],
+        moq=ds_fields["moq"],
+        unit=ds_fields["unit"],
+        lead_time_min=ds_fields["lead_time_min"],
+        lead_time_max=ds_fields["lead_time_max"],
         sku_count=active_count,
     ).model_dump()
 
@@ -166,6 +172,7 @@ async def get_product(
         d["attributes"] = _enrich_attrs(sku_attr_groups.get(s.id, []), tpl_map)
         skus_data.append(d)
 
+    prices = spu_price_range(p)
     data = ProductPublicDetail(
         id=p.id,
         spu_code=p.spu_code,
@@ -178,6 +185,8 @@ async def get_product(
         certifications=p.certifications,
         selling_points=get_localized(p, "selling_points"),
         is_featured=p.is_featured,
+        price_min=prices["price_min"],
+        price_max=prices["price_max"],
         skus=skus_data,
         images=[_img_to_dict(img) for img in p.images],
         attributes=_enrich_attrs(spu_attrs, tpl_map),

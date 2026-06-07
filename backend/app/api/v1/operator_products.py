@@ -11,6 +11,8 @@ from typing import List
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
 from app.core.config import settings
@@ -19,6 +21,7 @@ from app.core.exceptions import success
 from app.core.i18n import get_localized
 from app.db.models.product_image import ImageType
 from app.db.models.product_sku import SkuStatus
+from app.db.models.user import User
 from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_permission
@@ -40,6 +43,7 @@ from app.schemas.product import (
     SupplierRelationUpdate,
 )
 from app.services import product as product_svc
+from app.services.product import spu_price_range
 
 router = APIRouter(prefix="/operator/products", tags=["operator-products"])
 
@@ -146,9 +150,12 @@ def _sku_to_operator(sku) -> dict:
     ).model_dump()
 
 
-def _to_operator(p) -> dict:
-    ds = _default_sku(p)
+def _to_operator(p, creator_name_map: dict | None = None) -> dict:
+    prices = spu_price_range(p)
     active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE) if p.skus else 0
+    created_by_name = ""
+    if creator_name_map and p.created_by:
+        created_by_name = creator_name_map.get(p.created_by, "")
     return ProductOperator(
         id=p.id,
         spu_code=p.spu_code,
@@ -161,9 +168,10 @@ def _to_operator(p) -> dict:
         is_featured=p.is_featured,
         main_image=_get_main_image_url(p),
         status=p.status,
-        price_min=ds.price_min if ds else None,
-        price_max=ds.price_max if ds else None,
-        currency=ds.currency if ds else None,
+        created_by_name=created_by_name,
+        price_min=prices["price_min"],
+        price_max=prices["price_max"],
+        currency=prices["currency"],
         sku_count=active_count,
         created_at=p.created_at,
         updated_at=p.updated_at,
@@ -186,8 +194,18 @@ async def list_products(
         db, category_code=category_code, status=status,
         keyword=keyword, page=page, size=size,
     )
+
+    # 批量查创建人名称，避免 N+1
+    creator_ids = {p.created_by for p in items if p.created_by}
+    creator_name_map: dict[int, str] = {}
+    if creator_ids:
+        rows = (await db.execute(
+            select(User.id, User.name).where(User.id.in_(creator_ids))
+        )).all()
+        creator_name_map = {r.id: r.name for r in rows}
+
     return success({
-        "items": [_to_operator(p) for p in items],
+        "items": [_to_operator(p, creator_name_map) for p in items],
         "total": total,
         "page": page,
         "size": size,
@@ -274,6 +292,14 @@ async def get_product(
     p = await product_svc.get_product(db, product_id)
     tpl_map = {t.attr_key: t for t in await product_svc.get_attr_templates(db, p.category_code)}
 
+    # 查创建人名称
+    created_by_name = ""
+    if p.created_by:
+        row = (await db.execute(
+            select(User.name).where(User.id == p.created_by)
+        )).scalar_one_or_none()
+        created_by_name = row or ""
+
     # SPU 级属性
     spu_attrs = [a for a in p.attrs if a.sku_id is None]
 
@@ -314,6 +340,7 @@ async def get_product(
         source_lang=p.source_lang,
         is_featured=p.is_featured,
         status=p.status,
+        created_by_name=created_by_name,
         skus=skus_data,
         images=[_img_to_dict(img) for img in p.images],
         attributes=_enrich_attrs(spu_attrs, tpl_map),
