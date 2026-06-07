@@ -215,7 +215,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
             <span className="ml-1 text-[10px] text-slate-400">({t("field_price_tiers_hint")})</span>
             {sku.price_tiers.length > 0 && (
               <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">
-                {sku.price_tiers.length} 档
+                {sku.price_tiers.length} {t("tier_title")}
               </span>
             )}
           </div>
@@ -227,7 +227,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
             <h4 className="mb-2.5 border-b border-slate-100 pb-1.5 text-[13px] font-medium text-slate-600">
               {t("sku_section_attrs")}
               <span className="ml-1.5 text-[10px] font-normal text-slate-400">
-                {t("sku_section_attrs_hint")} · {templates.length} 项
+                {t("sku_section_attrs_hint")} · {templates.length}
               </span>
             </h4>
             <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
@@ -244,7 +244,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
                       value={sku.attributes[tpl.attr_key] ?? ""}
                       onChange={(e) => setAttr(tpl.attr_key, e.target.value)}
                     >
-                      <option value="">请选择</option>
+                      <option value="">--</option>
                       {(Array.isArray(tpl.options) ? tpl.options : Object.keys(tpl.options)).map(
                         (opt: unknown) => (
                           <option key={String(opt)} value={String(opt)}>
@@ -330,7 +330,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
               <label className={LABEL_CLS}>{t("field_gross_weight")}</label>
               <input
                 type="number"
-                min="0"
+                min="0.01"
                 step="0.01"
                 className={INPUT_CLS}
                 value={sku.gross_weight_kg}
@@ -341,7 +341,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
               <label className={LABEL_CLS}>{t("field_volume")}</label>
               <input
                 type="number"
-                min="0"
+                min="0.001"
                 step="0.001"
                 className={INPUT_CLS}
                 value={sku.volume_cbm}

@@ -155,6 +155,8 @@
     "btn_publish": "提交上架",
     "btn_publishing": "提交中...",
     "btn_saving": "保存中...",
+    "attr_loading": "加载属性模板中...",
+    "price_tier_count": "{count} 档",
     "validate_category_required": "请选择商品品类（需选到三级叶子分类）",
     "validate_name_required": "请填写商品名称",
     "validate_sku_required": "至少需要一个 SKU",

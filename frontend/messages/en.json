@@ -155,6 +155,8 @@
     "btn_publish": "Publish",
     "btn_publishing": "Publishing...",
     "btn_saving": "Saving...",
+    "attr_loading": "Loading attribute templates...",
+    "price_tier_count": "{count} tier(s)",
     "validate_category_required": "Please select a product category (must be a level-3 leaf)",
     "validate_name_required": "Please enter the product name",
     "validate_sku_required": "At least one SKU is required",
