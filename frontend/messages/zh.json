@@ -73,7 +73,10 @@
       "price_tier_max_null_not_last": "仅最后一档可不设最大数量",
       "price_tier_not_continuous": "阶梯价档位必须连续",
       "price_tier_price_not_decreasing": "单价须随档位递减",
-      "sku_not_in_product": "SKU {sku_id} 不属于商品 {product_id}"
+      "sku_not_in_product": "SKU {sku_id} 不属于商品 {product_id}",
+      "attr_key_not_in_template": "属性 {attr_key} 不在品类模板中",
+      "required_attr_missing": "缺少必填属性: {keys}",
+      "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}"
     }
   },
   "unit": {

@@ -50,3 +50,6 @@ class MessageKey:
     PRODUCT_PRICE_TIER_NOT_CONTINUOUS = "error.product.price_tier_not_continuous"
     PRODUCT_PRICE_TIER_PRICE_NOT_DECREASING = "error.product.price_tier_price_not_decreasing"
     PRODUCT_SKU_NOT_IN_PRODUCT = "error.product.sku_not_in_product"
+    PRODUCT_ATTR_KEY_NOT_IN_TEMPLATE = "error.product.attr_key_not_in_template"
+    PRODUCT_REQUIRED_ATTR_MISSING = "error.product.required_attr_missing"
+    PRODUCT_ATTR_SCOPE_MISMATCH = "error.product.attr_scope_mismatch"
