@@ -237,6 +237,10 @@ class ProductPublic(BaseModel):
     price_min: Decimal | None = None
     price_max: Decimal | None = None
     currency: str | None = None
+    moq: int | None = None
+    unit: str | None = None
+    lead_time_min: int | None = None
+    lead_time_max: int | None = None
     sku_count: int = 0
 
 
@@ -254,6 +258,8 @@ class ProductPublicDetail(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool
+    price_min: Decimal | None = None
+    price_max: Decimal | None = None
     skus: List[SkuPublic] = []
     images: List[ProductImageSchema] = []
     attributes: List[ProductAttrSchema] = []
