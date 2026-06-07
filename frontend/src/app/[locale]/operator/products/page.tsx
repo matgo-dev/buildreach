@@ -201,14 +201,17 @@ function ProductListInner() {
     [keyword, categoryCode, statusFilter, t]
   );
 
+  // 初始加载 + 筛选变更自动重载（回第 1 页）
+  const isFirstRender = useMemo(() => ({ current: true }), []);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      void load(1);
+      return;
+    }
     void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onFilterChange = useCallback(() => {
-    void load(1);
-  }, [load]);
+  }, [categoryCode, statusFilter]);
 
   // ---------- 行内操作 ----------
   const handleAction = useCallback(
@@ -298,7 +301,7 @@ function ProductListInner() {
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onFilterChange()}
+            onKeyDown={(e) => e.key === "Enter" && load(1)}
             placeholder={t("searchPlaceholder")}
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
@@ -306,10 +309,7 @@ function ProductListInner() {
 
         <select
           value={categoryCode}
-          onChange={(e) => {
-            setCategoryCode(e.target.value);
-            setTimeout(() => onFilterChange(), 0);
-          }}
+          onChange={(e) => setCategoryCode(e.target.value)}
           className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         >
           <option value="">{t("allCategories")}</option>
@@ -320,10 +320,7 @@ function ProductListInner() {
 
         <select
           value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setTimeout(() => onFilterChange(), 0);
-          }}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         >
           <option value="">{t("allStatus")}</option>
@@ -333,7 +330,7 @@ function ProductListInner() {
         </select>
 
         <button
-          onClick={onFilterChange}
+          onClick={() => void load(1)}
           className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
         >
           {t("search")}
