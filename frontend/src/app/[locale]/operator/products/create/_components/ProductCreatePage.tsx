@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory } from "@/components/category/CategoryCascader";
 import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type SkuCreateInput, type PriceTierInput } from "@/lib/api/operatorProducts";
 import { SKU_UNITS, type SkuUnitCode } from "@/lib/api/operatorProducts";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { SectionAnchorNav } from "./SectionAnchorNav";
 import { SkuCard } from "./SkuCard";
@@ -94,14 +95,52 @@ const INITIAL_SPU: SpuFormState = {
   spuAttributes: {},
 };
 
+// ---------- sessionStorage 持久化 ----------
+
+const STORAGE_KEY = "product_create_draft";
+
+interface DraftState {
+  category: SelectedCategory;
+  spu: SpuFormState;
+  skus: SkuFormState[];
+  // File 对象无法序列化，图片不缓存
+}
+
+function saveDraft(category: SelectedCategory, spu: SpuFormState, skus: SkuFormState[]) {
+  try {
+    // 去掉 imageFiles（File 对象不可序列化）
+    const cleanSkus = skus.map(({ imageFiles, ...rest }) => ({ ...rest, imageFiles: [] }));
+    const draft: DraftState = { category, spu, skus: cleanSkus };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+  } catch { /* 超出存储限制则静默失败 */ }
+}
+
+function loadDraft(): DraftState | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DraftState;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft() {
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
 // ---------- 主组件 ----------
 
 export function ProductCreatePage() {
   const t = useTranslations("productCreate");
   const tUnit = useTranslations("unit");
+  const tError = useTranslations("error");
+
+  // 从 sessionStorage 恢复草稿
+  const draft = useRef(loadDraft());
 
   // 品类选择
-  const [category, setCategory] = useState<SelectedCategory>(EMPTY_CATEGORY);
+  const [category, setCategory] = useState<SelectedCategory>(draft.current?.category ?? EMPTY_CATEGORY);
   const isLeafSelected = !!category.level3Code;
 
   // 属性模板
@@ -111,17 +150,40 @@ export function ProductCreatePage() {
   const skuTemplates = attrTemplates.filter((t) => t.scope === "SKU");
 
   // SPU 表单
-  const [spu, setSpu] = useState<SpuFormState>(INITIAL_SPU);
+  const [spu, setSpu] = useState<SpuFormState>(draft.current?.spu ?? INITIAL_SPU);
 
   // SKU 列表
-  const [skus, setSkus] = useState<SkuFormState[]>([createEmptySku(true)]);
+  const [skus, setSkus] = useState<SkuFormState[]>(draft.current?.skus ?? [createEmptySku(true)]);
 
-  // SPU 图片
+  // SPU 图片（File 不可序列化，不缓存）
   const [spuImageFiles, setSpuImageFiles] = useState<File[]>([]);
+
+  // 恢复草稿时自动拉属性模板
+  useEffect(() => {
+    const d = draft.current;
+    if (d?.category.level3Code) {
+      setAttrLoading(true);
+      operatorProductsApi.getAttrTemplates(d.category.level3Code)
+        .then(setAttrTemplates)
+        .catch(() => setAttrTemplates([]))
+        .finally(() => setAttrLoading(false));
+    }
+    draft.current = null; // 只恢复一次
+  }, []);
+
+  // 表单变更时自动保存到 sessionStorage
+  useEffect(() => {
+    saveDraft(category, spu, skus);
+  }, [category, spu, skus]);
 
   // 提交状态
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // 出错的 SKU clientId，用于高亮卡片
+  const [errorSkuId, setErrorSkuId] = useState<string | null>(null);
+  // 断点续传：已创建的 SPU ID 和 SKU 映射
+  const createdProductIdRef = useRef<number | null>(null);
+  const createdSkuMapRef = useRef<Map<string, number>>(new Map());
 
   // 阶梯价弹窗
   const [tierModalSkuId, setTierModalSkuId] = useState<string | null>(null);
@@ -196,9 +258,28 @@ export function ProductCreatePage() {
     setSkus((prev) => prev.map((s) => (s._clientId === clientId ? { ...s, ...patch } : s)));
   }, []);
 
-  // ---------- 提交编排 ----------
+  // ---------- 错误信息提取（走 i18n） ----------
+  const extractErrorMsg = useCallback((err: unknown): string => {
+    if (err instanceof ApiError && err.messageKey) {
+      // messageKey 格式: "error.product.xxx" → 拆成 namespace path
+      try {
+        // 先尝试用 messageKey 的完整路径（去掉 "error." 前缀后在 tError 里查）
+        const keyPath = err.messageKey.startsWith("error.")
+          ? err.messageKey.slice(6) // "error.product.xxx" → "product.xxx"
+          : err.messageKey;
+        return tError(keyPath);
+      } catch {
+        // i18n key 不存在，回退到 message
+      }
+    }
+    if (err instanceof Error) return err.message;
+    return String(err);
+  }, [tError]);
+
+  // ---------- 提交编排（断点续传） ----------
   const handleSubmit = useCallback(async (publish: boolean) => {
     setSubmitError(null);
+    setErrorSkuId(null);
 
     // 前端预校验
     if (!category.level3Code) {
@@ -224,29 +305,35 @@ export function ProductCreatePage() {
 
     setSubmitting(true);
     try {
-      // 1) 建 SPU
-      const spuAttrs: ProductAttrInput[] = Object.entries(spu.spuAttributes)
-        .filter(([, v]) => v.trim())
-        .map(([k, v]) => ({ attr_key: k, attr_value: v }));
+      // 1) 建 SPU（断点续传：已创建则跳过）
+      let productId = createdProductIdRef.current;
+      if (!productId) {
+        const spuAttrs: ProductAttrInput[] = Object.entries(spu.spuAttributes)
+          .filter(([, v]) => v.trim())
+          .map(([k, v]) => ({ attr_key: k, attr_value: v }));
 
-      const { id: productId } = await operatorProductsApi.create({
-        category_code: category.level3Code,
-        spu_code: spu.spu_code || undefined,
-        name: spu.name,
-        description: spu.description || undefined,
-        origin: spu.origin || "中国",
-        hs_code: spu.hs_code || undefined,
-        brand: spu.brand || undefined,
-        certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
-        selling_points: spu.selling_points || undefined,
-        is_featured: spu.is_featured,
-        status: "DRAFT",
-        attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
-      });
+        const result = await operatorProductsApi.create({
+          category_code: category.level3Code,
+          spu_code: spu.spu_code || undefined,
+          name: spu.name,
+          description: spu.description || undefined,
+          origin: spu.origin || "中国",
+          hs_code: spu.hs_code || undefined,
+          brand: spu.brand || undefined,
+          certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
+          selling_points: spu.selling_points || undefined,
+          is_featured: spu.is_featured,
+          status: "DRAFT",
+          attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
+        });
+        productId = result.id;
+        createdProductIdRef.current = productId;
+      }
 
-      // 2) 逐个建 SKU
-      const skuIdMap: Map<string, number> = new Map();
+      // 2) 逐个建 SKU（断点续传：已创建的跳过）
       for (const sku of skus) {
+        if (createdSkuMapRef.current.has(sku._clientId)) continue;
+
         const skuAttrs: ProductAttrInput[] = Object.entries(sku.attributes)
           .filter(([, v]) => v.trim())
           .map(([k, v]) => ({ attr_key: k, attr_value: v }));
@@ -274,8 +361,16 @@ export function ProductCreatePage() {
           attributes: skuAttrs.length > 0 ? skuAttrs : undefined,
         };
 
-        const { id: skuId } = await operatorProductsApi.createSku(productId, skuData);
-        skuIdMap.set(sku._clientId, skuId);
+        try {
+          const { id: skuId } = await operatorProductsApi.createSku(productId, skuData);
+          createdSkuMapRef.current.set(sku._clientId, skuId);
+        } catch (err) {
+          // SKU 创建失败 → 标记出错的 SKU，滚动到该卡片
+          setErrorSkuId(sku._clientId);
+          setSubmitError(extractErrorMsg(err));
+          sectionRefs.sku.current?.scrollIntoView({ behavior: "smooth" });
+          return; // 中断，用户修正后重试会从断点继续
+        }
       }
 
       // 3) 上传 SPU 图片
@@ -285,7 +380,7 @@ export function ProductCreatePage() {
 
       // 4) 上传 SKU 图片
       for (const sku of skus) {
-        const skuId = skuIdMap.get(sku._clientId);
+        const skuId = createdSkuMapRef.current.get(sku._clientId);
         if (skuId && sku.imageFiles.length > 0) {
           for (const file of sku.imageFiles) {
             await operatorProductsApi.uploadImage(productId, file, skuId);
@@ -298,16 +393,18 @@ export function ProductCreatePage() {
         await operatorProductsApi.updateStatus(productId, { status: "ACTIVE" });
       }
 
-      // 成功提示 + 跳转
+      // 成功 → 清断点状态 + 清草稿缓存 + 跳转
+      createdProductIdRef.current = null;
+      createdSkuMapRef.current.clear();
+      clearDraft();
       alert(publish ? t("success_publish") : t("success_draft"));
       window.history.back();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setSubmitError(msg);
+      setSubmitError(extractErrorMsg(err));
     } finally {
       setSubmitting(false);
     }
-  }, [category, spu, skus, spuImageFiles, t, sectionRefs]);
+  }, [category, spu, skus, spuImageFiles, t, sectionRefs, extractErrorMsg]);
 
   // ---------- 渲染 ----------
   return (
@@ -542,6 +639,7 @@ export function ProductCreatePage() {
               onRemove={() => removeSku(sku._clientId)}
               onSetDefault={() => setDefaultSku(sku._clientId)}
               onOpenTiers={() => setTierModalSkuId(sku._clientId)}
+              error={errorSkuId === sku._clientId ? submitError : null}
               t={t}
               tUnit={tUnit}
             />
