@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory } from "@/components/category/CategoryCascader";
 import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type SkuCreateInput, type PriceTierInput } from "@/lib/api/operatorProducts";
@@ -135,6 +135,7 @@ export function ProductCreatePage() {
   const t = useTranslations("productCreate");
   const tUnit = useTranslations("unit");
   const tError = useTranslations("error");
+  const locale = useLocale();
 
   // 从 sessionStorage 恢复草稿
   const draft = useRef(loadDraft());
@@ -323,6 +324,7 @@ export function ProductCreatePage() {
           certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
           selling_points: spu.selling_points || undefined,
           is_featured: spu.is_featured,
+          source_lang: locale,
           status: "DRAFT",
           attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
         });
@@ -437,7 +439,7 @@ export function ProductCreatePage() {
                 </div>
                 <CategoryCascader value={category} onChange={handleCategoryChange} required />
                 {attrLoading && (
-                  <p className="mt-1 text-xs text-slate-400">加载属性模板中...</p>
+                  <p className="mt-1 text-xs text-slate-400">{t("attr_loading")}</p>
                 )}
               </div>
 
@@ -450,6 +452,7 @@ export function ProductCreatePage() {
                   className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={spu.spu_code}
                   onChange={(e) => updateSpu("spu_code", e.target.value)}
+                  maxLength={50}
                   placeholder="AG-10-001-003-001"
                 />
               </div>
@@ -464,6 +467,7 @@ export function ProductCreatePage() {
                   className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={spu.name}
                   onChange={(e) => updateSpu("name", e.target.value)}
+                  maxLength={200}
                 />
               </div>
 
@@ -582,7 +586,7 @@ export function ProductCreatePage() {
                   <h4 className="mb-2 border-b border-slate-100 pb-1.5 text-sm font-medium text-slate-600">
                     {t("sku_section_attrs")}
                     <span className="ml-1.5 text-[10px] font-normal text-slate-400">
-                      SPU 级 · {spuTemplates.length} 项
+                      SPU · {spuTemplates.length}
                     </span>
                   </h4>
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
