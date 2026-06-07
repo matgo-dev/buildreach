@@ -13,6 +13,7 @@ interface Props {
   onRemove: () => void;
   onSetDefault: () => void;
   onOpenTiers: () => void;
+  error: string | null;
   t: (key: string) => string;
   tUnit: (key: string) => string;
 }
@@ -23,7 +24,7 @@ const SELECT_CLS =
   "h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none";
 const LABEL_CLS = "text-xs text-slate-500";
 
-export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, t, tUnit }: Props) {
+export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, error, t, tUnit }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = useCallback(
@@ -58,11 +59,23 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
   );
 
   const isDefault = sku.is_default;
-  const borderCls = isDefault ? "border-2 border-blue-500" : "border border-slate-200";
-  const headerBg = isDefault ? "bg-blue-50" : "bg-slate-50";
+  const hasError = !!error;
+  const borderCls = hasError
+    ? "border-2 border-red-500"
+    : isDefault
+      ? "border-2 border-blue-500"
+      : "border border-slate-200";
+  const headerBg = hasError ? "bg-red-50" : isDefault ? "bg-blue-50" : "bg-slate-50";
 
   return (
     <div className={`mb-4 overflow-hidden rounded-xl ${borderCls}`}>
+      {/* 错误提示 */}
+      {hasError && (
+        <div className="flex items-center gap-2 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+          <span className="font-medium">⚠</span>
+          <span>{error}</span>
+        </div>
+      )}
       {/* 卡片头 */}
       <div className={`flex items-center justify-between px-4 py-3 ${headerBg}`}>
         <div className="flex items-center gap-2.5">
