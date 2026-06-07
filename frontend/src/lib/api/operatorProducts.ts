@@ -247,7 +247,9 @@ export const operatorProductsApi = {
   sortImages: (productId: number, imageIds: number[]) =>
     api.patch(`${PREFIX}/${productId}/images/sort`, imageIds),
 
-  /** 改状态（上架/下架） */
-  updateStatus: (productId: number, data: ProductStatusInput) =>
-    api.patch<{ id: number; status: string }>(`${PREFIX}/${productId}/status`, data),
+  /** 改状态（上架/下架）；force=true 跳过上架校验 */
+  updateStatus: (productId: number, data: ProductStatusInput, force?: boolean) =>
+    api.patch<{ id: number; status: string }>(
+      `${PREFIX}/${productId}/status${force ? "?force=true" : ""}`, data,
+    ),
 };

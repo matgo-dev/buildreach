@@ -283,14 +283,15 @@ async def _add_attrs(
 
 async def update_product_status(
     db: AsyncSession, product_id: int, new_status: str,
+    *, skip_validation: bool = False,
 ) -> Product:
     if new_status not in ProductStatus.ALL:
         raise InvalidProductStatusError(new_status)
 
     product = await _get_product_or_404(db, product_id, load_relations=True)
 
-    # 上架校验
-    if new_status == ProductStatus.ACTIVE:
+    # 上架校验(skip_validation=True 时跳过，用于批量测试)
+    if new_status == ProductStatus.ACTIVE and not skip_validation:
         errors = []
         active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE]
         if not active_skus:

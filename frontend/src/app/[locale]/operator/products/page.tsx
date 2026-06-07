@@ -166,6 +166,10 @@ function ProductListInner() {
   const [categoryCode, setCategoryCode] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
+  // 批量选择
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+
   // 弹窗 / Toast
   const [confirmState, setConfirmState] = useState<{
     type: "publish" | "unpublish" | "delete";
@@ -241,6 +245,33 @@ function ProductListInner() {
     },
     [confirmState, items.length, page, load, t]
   );
+
+  // 批量上架(跳过校验)
+  const handleBatchPublish = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setBatchLoading(true);
+    setError("");
+    let successCount = 0;
+    const errors: string[] = [];
+    for (const id of selectedIds) {
+      try {
+        await operatorProductsApi.updateStatus(id, { status: "ACTIVE" }, true);
+        successCount++;
+      } catch (e) {
+        const name = items.find((i) => i.id === id)?.name ?? String(id);
+        errors.push(`${name}: ${e instanceof ApiError ? e.message : "failed"}`);
+      }
+    }
+    setBatchLoading(false);
+    setSelectedIds(new Set());
+    if (successCount > 0) {
+      setToast(`${successCount} 件商品已上架`);
+      void load(page);
+    }
+    if (errors.length > 0) {
+      setError(errors.join("; "));
+    }
+  }, [selectedIds, items, page, load]);
 
   const confirmConfig = useMemo(() => {
     if (!confirmState) return null;
@@ -350,11 +381,50 @@ function ProductListInner() {
         </div>
       )}
 
+      {/* 批量操作条 */}
+      {canApprove && selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <span className="text-sm text-blue-700">
+            已选 <strong>{selectedIds.size}</strong> 件商品
+          </span>
+          <button
+            onClick={() => void handleBatchPublish()}
+            disabled={batchLoading}
+            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {batchLoading && <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />}
+            批量上架（跳过校验）
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            取消选择
+          </button>
+        </div>
+      )}
+
       {/* 表格 */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
+              {canApprove && (
+                <th className="w-10 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={items.length > 0 && items.every((i) => selectedIds.has(i.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds(new Set(items.map((i) => i.id)));
+                      } else {
+                        setSelectedIds(new Set());
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
+              )}
               <th className="px-4 py-3 text-left font-semibold">{t("colProductInfo")}</th>
               <th className="px-4 py-3 text-left font-semibold">{t("colSpuCode")}</th>
               <th className="px-4 py-3 text-left font-semibold">{t("colCategory")}</th>
@@ -368,7 +438,7 @@ function ProductListInner() {
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={8} className="px-4 py-16 text-center text-slate-400">
+                <td colSpan={canApprove ? 9 : 8} className="px-4 py-16 text-center text-slate-400">
                   <Loader2 className="inline h-5 w-5 animate-spin" />
                   <span className="ml-2">{t("loading")}</span>
                 </td>
@@ -377,7 +447,7 @@ function ProductListInner() {
 
             {!loading && items.length === 0 && !hasFilters && (
               <tr>
-                <td colSpan={8} className="px-4 py-16 text-center">
+                <td colSpan={canApprove ? 9 : 8} className="px-4 py-16 text-center">
                   <Package className="mx-auto h-12 w-12 text-slate-300" />
                   <p className="mt-3 text-base font-medium text-slate-500">{t("emptyTitle")}</p>
                   <p className="mt-1 text-sm text-slate-400">{t("emptyHint")}</p>
@@ -395,7 +465,7 @@ function ProductListInner() {
 
             {!loading && items.length === 0 && hasFilters && (
               <tr>
-                <td colSpan={8} className="px-4 py-16 text-center">
+                <td colSpan={canApprove ? 9 : 8} className="px-4 py-16 text-center">
                   <Search className="mx-auto h-12 w-12 text-slate-300" />
                   <p className="mt-3 text-base font-medium text-slate-500">{t("noResultTitle")}</p>
                   <p className="mt-1 text-sm text-slate-400">{t("noResultHint")}</p>
@@ -415,6 +485,21 @@ function ProductListInner() {
                     onClick={() => router.push(`/operator/products/${item.id}`)}
                     className="cursor-pointer hover:bg-slate-50 transition-colors"
                   >
+                    {canApprove && (
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedIds);
+                            if (e.target.checked) next.add(item.id);
+                            else next.delete(item.id);
+                            setSelectedIds(next);
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {item.main_image ? (
