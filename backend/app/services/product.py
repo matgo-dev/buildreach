@@ -54,6 +54,7 @@ from app.schemas.product import (
     SupplierRelationCreate,
     SupplierRelationUpdate,
 )
+from app.db.models.user import User
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "products"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -429,7 +430,25 @@ async def list_products_public(
         q = q.where(keyword_filter)
         count_q = count_q.where(keyword_filter)
 
-    q = q.order_by(Product.created_at.desc())
+    # 排序分支
+    if sort in ("price_asc", "price_desc"):
+        # 子查询：每个 SPU 的 active SKU 最低价
+        price_sub = (
+            select(
+                ProductSku.product_id,
+                func.min(ProductSku.price_min).label("min_price"),
+            )
+            .where(ProductSku.status == SkuStatus.ACTIVE)
+            .group_by(ProductSku.product_id)
+            .subquery()
+        )
+        q = q.outerjoin(price_sub, Product.id == price_sub.c.product_id)
+        if sort == "price_asc":
+            q = q.order_by(price_sub.c.min_price.asc().nulls_last())
+        else:
+            q = q.order_by(price_sub.c.min_price.desc().nulls_last())
+    else:
+        q = q.order_by(Product.created_at.desc())
 
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * size).limit(size)
@@ -952,6 +971,47 @@ async def get_attr_templates(
         key=lambda t: (code_to_level.get(t.category_code, 0), t.sort_order),
     )
     return result
+
+
+# ── 公共序列化 helper（供 public / operator 路由复用）──────
+
+
+def spu_price_range(p) -> dict:
+    """SPU 级价格汇总：取所有 ACTIVE SKU 的 price_min/max 极值。"""
+    active = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
+    if not active:
+        return {"price_min": None, "price_max": None, "currency": None}
+    mins = [s.price_min for s in active if s.price_min is not None]
+    maxs = [s.price_max for s in active if s.price_max is not None]
+    return {
+        "price_min": min(mins) if mins else None,
+        "price_max": max(maxs) if maxs else None,
+        "currency": active[0].currency,
+    }
+
+
+def default_sku_fields(p) -> dict:
+    """从默认 SKU 取 moq/unit/lead_time，供列表卡片用。"""
+    ds = _default_sku_pick(p)
+    if not ds:
+        return {"moq": None, "unit": None, "lead_time_min": None, "lead_time_max": None}
+    return {
+        "moq": ds.moq,
+        "unit": ds.unit,
+        "lead_time_min": ds.lead_time_min,
+        "lead_time_max": ds.lead_time_max,
+    }
+
+
+def _default_sku_pick(p):
+    """取默认 SKU：优先 is_default → 首个 active → 兜底首个。"""
+    if not p.skus:
+        return None
+    default = next((s for s in p.skus if s.is_default), None)
+    if not default:
+        active = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
+        default = active[0] if active else p.skus[0]
+    return default
 
 
 # ── 内部工具 ─────────────────────────────────────────────
