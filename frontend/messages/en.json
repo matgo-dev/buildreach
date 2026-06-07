@@ -76,7 +76,8 @@
       "sku_not_in_product": "SKU {sku_id} does not belong to product {product_id}",
       "attr_key_not_in_template": "Attribute {attr_key} is not defined in the category template",
       "required_attr_missing": "Required attributes missing: {keys}",
-      "attr_scope_mismatch": "Attribute {attr_key} scope should be {expected_scope}"
+      "attr_scope_mismatch": "Attribute {attr_key} scope should be {expected_scope}",
+      "category_not_leaf": "Category {category_code} is not a leaf node; only level-3 categories are allowed"
     }
   },
   "unit": {
