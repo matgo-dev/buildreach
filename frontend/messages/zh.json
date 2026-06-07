@@ -76,7 +76,8 @@
       "sku_not_in_product": "SKU {sku_id} 不属于商品 {product_id}",
       "attr_key_not_in_template": "属性 {attr_key} 不在品类模板中",
       "required_attr_missing": "缺少必填属性: {keys}",
-      "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}"
+      "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}",
+      "category_not_leaf": "品类 {category_code} 不是叶子节点,仅允许选择三级品类"
     }
   },
   "unit": {
