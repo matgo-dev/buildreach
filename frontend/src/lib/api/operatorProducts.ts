@@ -132,9 +132,69 @@ export interface ProductStatusInput {
   status: string;  // DRAFT / ACTIVE / INACTIVE
 }
 
+// ---------- 列表项(对齐 ProductOperator schema) ----------
+
+export interface ProductOperatorItem {
+  id: number;
+  spu_code: string;
+  name: string;
+  name_zh: string | null;
+  name_en: string | null;
+  category_code: string;
+  category_name: string;
+  origin: string;
+  brand: string | null;
+  is_featured: boolean;
+  main_image: string | null;
+  status: string;
+  created_by_name: string;
+  price_min: number | null;
+  price_max: number | null;
+  currency: string | null;
+  sku_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductListParams {
+  category_code?: string;
+  status?: string;
+  keyword?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface ProductPage {
+  items: ProductOperatorItem[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
 // ---------- API 函数 ----------
 
 export const operatorProductsApi = {
+  /** 商品列表(分页 + 筛选) */
+  list: (params?: ProductListParams) => {
+    const qs = new URLSearchParams();
+    if (params?.category_code) qs.set("category_code", params.category_code);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.keyword) qs.set("keyword", params.keyword);
+    if (params?.page !== undefined) qs.set("page", String(params.page));
+    if (params?.size !== undefined) qs.set("size", String(params.size));
+    const q = qs.toString();
+    return api.get<ProductPage>(`${PREFIX}${q ? `?${q}` : ""}`);
+  },
+
+  /** 商品详情 */
+  detail: (id: number) =>
+    api.get(`${PREFIX}/${id}`),
+
+  /** 删除草稿商品 */
+  remove: (id: number) =>
+    api.delete(`${PREFIX}/${id}`),
+
   /** 品类属性模板（传 L3 叶子 code，后端按祖先链合并返回） */
   getAttrTemplates: (categoryCode: string) =>
     api.get<AttrTemplate[]>(`${PREFIX}/attr-templates/${categoryCode}`),
@@ -187,7 +247,9 @@ export const operatorProductsApi = {
   sortImages: (productId: number, imageIds: number[]) =>
     api.patch(`${PREFIX}/${productId}/images/sort`, imageIds),
 
-  /** 改状态（上架/下架） */
-  updateStatus: (productId: number, data: ProductStatusInput) =>
-    api.patch<{ id: number; status: string }>(`${PREFIX}/${productId}/status`, data),
+  /** 改状态（上架/下架）；force=true 跳过上架校验 */
+  updateStatus: (productId: number, data: ProductStatusInput, force?: boolean) =>
+    api.patch<{ id: number; status: string }>(
+      `${PREFIX}/${productId}/status${force ? "?force=true" : ""}`, data,
+    ),
 };
