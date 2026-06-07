@@ -53,3 +53,4 @@ class MessageKey:
     PRODUCT_ATTR_KEY_NOT_IN_TEMPLATE = "error.product.attr_key_not_in_template"
     PRODUCT_REQUIRED_ATTR_MISSING = "error.product.required_attr_missing"
     PRODUCT_ATTR_SCOPE_MISMATCH = "error.product.attr_scope_mismatch"
+    PRODUCT_CATEGORY_NOT_LEAF = "error.product.category_not_leaf"

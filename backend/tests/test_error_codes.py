@@ -72,6 +72,8 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls(["key1"])
     if name == "AttrScopeMismatchError":
         return cls("test_key", "SPU")
+    if name == "CategoryNotLeafError":
+        return cls("01")
     return cls()
 
 
@@ -274,3 +276,6 @@ def test_product_error_codes():
     assert AttrKeyNotInTemplateError("k", "01").biz_code == 40213
     assert RequiredAttrMissingError(["k"]).biz_code == 40214
     assert AttrScopeMismatchError("k", "SPU").biz_code == 40215
+
+    from app.core.exceptions import CategoryNotLeafError
+    assert CategoryNotLeafError("01").biz_code == 40216

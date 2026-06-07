@@ -27,6 +27,7 @@ from app.core.exceptions import (
     SkuCodeExistsError,
     AttrKeyNotInTemplateError,
     AttrScopeMismatchError,
+    CategoryNotLeafError,
     SkuNotInProductError,
     SpuCodeExistsError,
     SupplierAlreadyBoundError,
@@ -71,6 +72,25 @@ _PREFIX_MAP = {
     "06": "PF", "07": "CD", "08": "SP", "09": "SC",
     "10": "WT", "11": "AG", "12": "EN", "13": "SF",
 }
+
+
+async def _descendant_category_codes(
+    db: AsyncSession, category_code: str,
+) -> list[str]:
+    """返回以 category_code 为根的整棵子树 code 集(含自身),有界迭代 ≤3 层。"""
+    codes: list[str] = [category_code]
+    current_layer = [category_code]
+    for _ in range(2):  # 最多再向下 2 层(L1→L2→L3)
+        if not current_layer:
+            break
+        rows = (await db.execute(
+            select(Category.code).where(Category.parent_code.in_(current_layer))
+        )).scalars().all()
+        if not rows:
+            break
+        codes.extend(rows)
+        current_layer = list(rows)
+    return codes
 
 
 async def _generate_spu_code(db: AsyncSession, category_code: str) -> str:
@@ -119,12 +139,15 @@ async def _generate_sku_code(
 async def create_product(
     db: AsyncSession, data: ProductCreate, operator_id: int,
 ) -> Product:
-    # 品类存在校验
+    # 品类存在 + 叶子校验
     cat = await db.execute(
         select(Category).where(Category.code == data.category_code)
     )
-    if not cat.scalar_one_or_none():
+    category = cat.scalar_one_or_none()
+    if not category:
         raise NotFoundError("Category not found")
+    if category.level != 3:
+        raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
 
@@ -349,8 +372,9 @@ async def list_products_operator(
     count_q = select(func.count(Product.id))
 
     if category_code:
-        q = q.where(Product.category_code == category_code)
-        count_q = count_q.where(Product.category_code == category_code)
+        codes = await _descendant_category_codes(db, category_code)
+        q = q.where(Product.category_code.in_(codes))
+        count_q = count_q.where(Product.category_code.in_(codes))
     if status:
         q = q.where(Product.status == status)
         count_q = count_q.where(Product.status == status)
@@ -388,8 +412,9 @@ async def list_products_public(
     count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE)
 
     if category_code:
-        q = q.where(Product.category_code == category_code)
-        count_q = count_q.where(Product.category_code == category_code)
+        codes = await _descendant_category_codes(db, category_code)
+        q = q.where(Product.category_code.in_(codes))
+        count_q = count_q.where(Product.category_code.in_(codes))
     if featured is not None:
         q = q.where(Product.is_featured == featured)
         count_q = count_q.where(Product.is_featured == featured)
