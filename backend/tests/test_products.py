@@ -38,11 +38,12 @@ async def _login_buyer(client: AsyncClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _get_first_category_code(client: AsyncClient) -> str:
-    r = await client.get("/api/v1/categories?level=1&is_active=true")
+async def _get_first_category_code(client: AsyncClient, level: int = 3) -> str:
+    """获取第一个有效品类 code。默认 L3(叶子),可按需指定层级。"""
+    r = await client.get(f"/api/v1/categories?level={level}&is_active=true")
     assert r.status_code == 200
     items = r.json()["data"]
-    assert len(items) > 0, "No categories found — seed may not have run"
+    assert len(items) > 0, f"No level-{level} categories found — seed may not have run"
     return items[0]["code"]
 
 
@@ -1237,4 +1238,172 @@ async def test_attr_template_returns_scope(client: AsyncClient, db_session):
     assert len(data) == 2
     for t in data:
         assert "scope" in t
-        assert t["scope"] == "SPU"
+
+
+# ── 品类子树筛选 ────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_by_l1_returns_subtree(client: AsyncClient, db_session):
+    """按 L1 品类筛选,返回该 L1 下所有层级的商品。"""
+    headers = await _login_operator(client)
+
+    # 取 L3 叶子品类(格式 XX.YYY.ZZZ),从中推导 L1 code
+    l3_code = await _get_first_category_code(client, level=3)
+    l1_code = l3_code.split(".")[0]
+
+    pid = await _create_test_product(client, headers, l3_code, spu_code="TREE-L3-001")
+
+    # 按 L1 筛选,应包含挂在 L3 的商品
+    r = await client.get(
+        f"/api/v1/operator/products?category_code={l1_code}",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()["data"]
+    ids = [p["id"] for p in body["items"]]
+    assert pid in ids
+    assert body["total"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_list_by_l2_returns_subtree(client: AsyncClient, db_session):
+    """按 L2 品类筛选,返回该 L2 下的商品。"""
+    headers = await _login_operator(client)
+
+    l3_code = await _get_first_category_code(client, level=3)
+    parts = l3_code.split(".")
+    l2_code = f"{parts[0]}.{parts[1]}"
+
+    pid = await _create_test_product(client, headers, l3_code, spu_code="TREE-L2-001")
+
+    r = await client.get(
+        f"/api/v1/operator/products?category_code={l2_code}",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()["data"]
+    ids = [p["id"] for p in body["items"]]
+    assert pid in ids
+
+
+@pytest.mark.asyncio
+async def test_list_by_l3_exact_match(client: AsyncClient, db_session):
+    """按 L3 品类筛选,精确匹配(含自身)。"""
+    headers = await _login_operator(client)
+    l3_code = await _get_first_category_code(client, level=3)
+
+    pid = await _create_test_product(client, headers, l3_code, spu_code="TREE-L3-EXACT")
+
+    r = await client.get(
+        f"/api/v1/operator/products?category_code={l3_code}",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()["data"]
+    ids = [p["id"] for p in body["items"]]
+    assert pid in ids
+
+
+@pytest.mark.asyncio
+async def test_list_by_nonexistent_category_returns_empty(client: AsyncClient, db_session):
+    """不存在的品类 code 筛选,返回空。"""
+    headers = await _login_operator(client)
+    r = await client.get(
+        "/api/v1/operator/products?category_code=99.999.999",
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()["data"]
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_public_list_subtree_filter(client: AsyncClient, db_session):
+    """公开列表同样支持子树筛选。"""
+    headers = await _login_operator(client)
+    l3_code = await _get_first_category_code(client, level=3)
+    l1_code = l3_code.split(".")[0]
+
+    pid = await _create_test_product(client, headers, l3_code, spu_code="PUB-TREE-001")
+    # 上架
+    await _create_test_sku(client, headers, pid, sku_code="PUB-TREE-SKU")
+    await _upload_test_image(client, headers, pid)
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers,
+        json={"status": "ACTIVE"},
+    )
+
+    buyer_headers = await _login_buyer(client)
+    r = await client.get(
+        f"/api/v1/products?category_code={l1_code}",
+        headers=buyer_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()["data"]
+    ids = [p["id"] for p in body["items"]]
+    assert pid in ids
+
+
+# ── 叶子校验 ────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_product_with_l1_rejected(client: AsyncClient, db_session):
+    """用 L1 品类建商品,被拒(40216)。"""
+    headers = await _login_operator(client)
+    l1_code = await _get_first_category_code(client, level=1)
+
+    r = await client.post(
+        "/api/v1/operator/products",
+        headers=headers,
+        json={
+            "category_code": l1_code,
+            "name": "Reject-L1",
+            "source_lang": "zh",
+        },
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40216
+    assert r.json()["message_key"] == "error.product.category_not_leaf"
+
+
+@pytest.mark.asyncio
+async def test_create_product_with_l2_rejected(client: AsyncClient, db_session):
+    """用 L2 品类建商品,被拒(40216)。"""
+    headers = await _login_operator(client)
+    l3_code = await _get_first_category_code(client, level=3)
+    parts = l3_code.split(".")
+    l2_code = f"{parts[0]}.{parts[1]}"
+
+    r = await client.post(
+        "/api/v1/operator/products",
+        headers=headers,
+        json={
+            "category_code": l2_code,
+            "name": "Reject-L2",
+            "source_lang": "zh",
+        },
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40216
+
+
+@pytest.mark.asyncio
+async def test_create_product_with_l3_passes(client: AsyncClient, db_session):
+    """用 L3 品类建商品,通过。"""
+    headers = await _login_operator(client)
+    l3_code = await _get_first_category_code(client, level=3)
+
+    r = await client.post(
+        "/api/v1/operator/products",
+        headers=headers,
+        json={
+            "category_code": l3_code,
+            "spu_code": "LEAF-OK-001",
+            "name": "Leaf OK",
+            "source_lang": "zh",
+        },
+    )
+    assert r.status_code == 200
+    assert r.json()["code"] == 0

@@ -330,5 +330,15 @@ class AttrScopeMismatchError(BusinessError):
         )
 
 
+class CategoryNotLeafError(BusinessError):
+    def __init__(self, category_code: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40216,
+            f"Category '{category_code}' is not a leaf node; only level-3 categories are allowed",
+            message_key=MessageKey.PRODUCT_CATEGORY_NOT_LEAF,
+            message_params={"category_code": category_code},
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}
