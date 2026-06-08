@@ -167,6 +167,7 @@
     "validate_sku_required": "At least one SKU is required",
     "validate_sku_price_required": "Please fill in SKU prices",
     "validate_image_required": "At least one SPU image is required to publish",
+    "validate_fields_need_correction": "{count} field(s) need correction",
     "success_draft": "Draft saved successfully",
     "success_publish": "Product published successfully",
     "tier_min_qty": "Min Qty",

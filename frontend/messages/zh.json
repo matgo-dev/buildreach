@@ -167,6 +167,7 @@
     "validate_sku_required": "至少需要一个 SKU",
     "validate_sku_price_required": "请填写 SKU 价格",
     "validate_image_required": "上架至少需要一张 SPU 图片",
+    "validate_fields_need_correction": "{count} 个字段需要修正",
     "success_draft": "草稿保存成功",
     "success_publish": "商品上架成功",
     "tier_min_qty": "最小数量",

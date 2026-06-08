@@ -185,6 +185,8 @@ export function ProductCreatePage() {
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
   // 出错的 SKU clientId，用于高亮卡片
   const [errorSkuId, setErrorSkuId] = useState<string | null>(null);
+  // 字段级错误，key 为字段标识，value 为 i18n 后的错误文案
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // 阶梯价弹窗
   const [tierModalSkuId, setTierModalSkuId] = useState<string | null>(null);
@@ -199,9 +201,20 @@ export function ProductCreatePage() {
     images: useRef<HTMLDivElement>(null),
   };
 
+  // 清除单个字段错误（用户编辑时调用）
+  const clearFieldError = useCallback((key: string) => {
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
   // ---------- 品类选择变更 → 拉属性模板 ----------
   const handleCategoryChange = useCallback(async (val: SelectedCategory) => {
     setCategory(val);
+    clearFieldError("category");
     if (val.level3Code) {
       setAttrLoading(true);
       try {
@@ -215,12 +228,14 @@ export function ProductCreatePage() {
     } else {
       setAttrTemplates([]);
     }
-  }, []);
+  }, [clearFieldError]);
 
   // ---------- SPU 字段更新 ----------
   const updateSpu = useCallback(<K extends keyof SpuFormState>(key: K, value: SpuFormState[K]) => {
     setSpu((prev) => ({ ...prev, [key]: value }));
-  }, []);
+    // 编辑 name 时清除对应字段错误
+    if (key === "name") clearFieldError("name");
+  }, [clearFieldError]);
 
   // ---------- 认证标签 ----------
   const addCertification = useCallback(() => {
@@ -238,7 +253,8 @@ export function ProductCreatePage() {
   // ---------- SKU 操作 ----------
   const addSku = useCallback(() => {
     setSkus((prev) => [...prev, createEmptySku(prev.length === 0)]);
-  }, []);
+    clearFieldError("skus");
+  }, [clearFieldError]);
 
   const removeSku = useCallback((clientId: string) => {
     setSkus((prev) => {
@@ -257,7 +273,11 @@ export function ProductCreatePage() {
 
   const updateSku = useCallback((clientId: string, patch: Partial<SkuFormState>) => {
     setSkus((prev) => prev.map((s) => (s._clientId === clientId ? { ...s, ...patch } : s)));
-  }, []);
+    // 编辑价格时清除对应 SKU 价格错误
+    if ("price_min" in patch || "price_max" in patch) {
+      clearFieldError(`sku_price_${clientId}`);
+    }
+  }, [clearFieldError]);
 
   // ---------- 错误信息提取（走 i18n） ----------
   const extractErrorMsg = useCallback((err: unknown): string => {
@@ -283,27 +303,38 @@ export function ProductCreatePage() {
     setErrorSkuId(null);
     setCreatedProductId(null);
 
-    // 前端预校验
+    // 前端预校验 — 收集所有字段错误
+    const errors: Record<string, string> = {};
+
     if (!category.level3Code) {
-      setSubmitError(t("validate_category_required"));
-      sectionRefs.basic.current?.scrollIntoView({ behavior: "smooth" });
-      return;
+      errors.category = t("validate_category_required");
     }
     if (!spu.name.trim()) {
-      setSubmitError(t("validate_name_required"));
-      sectionRefs.basic.current?.scrollIntoView({ behavior: "smooth" });
-      return;
+      errors.name = t("validate_name_required");
     }
     if (skus.length === 0) {
-      setSubmitError(t("validate_sku_required"));
-      sectionRefs.sku.current?.scrollIntoView({ behavior: "smooth" });
-      return;
+      errors.skus = t("validate_sku_required");
     }
     if (publish && spuImageFiles.length === 0) {
-      setSubmitError(t("validate_image_required"));
-      sectionRefs.images.current?.scrollIntoView({ behavior: "smooth" });
+      errors.images = t("validate_image_required");
+    }
+
+    // SKU 级别字段校验（单位/MOQ 已有默认值，这里校验价格）
+    for (const sku of skus) {
+      if (!sku.price_min && !sku.price_max) {
+        errors[`sku_price_${sku._clientId}`] = t("validate_sku_price_required");
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // 滚动到第一个出错字段
+      requestAnimationFrame(() => {
+        document.querySelector("[data-field-error=\"true\"]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       return;
     }
+    setFieldErrors({});
 
     setSubmitting(true);
     let createdId: number | null = null;
@@ -347,7 +378,7 @@ export function ProductCreatePage() {
       });
 
       const result = await operatorProductsApi.createAggregate({
-        category_code: category.level3Code,
+        category_code: category.level3Code!,
         spu_code: spu.spu_code || undefined,
         name: spu.name,
         description: spu.description || undefined,
@@ -411,7 +442,7 @@ export function ProductCreatePage() {
           <div className="rounded-lg border border-slate-200 bg-white p-5">
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               {/* 品类级联 - 全宽 */}
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-2" data-field-error={!!fieldErrors.category || undefined}>
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <span className="text-sm font-medium text-slate-700">
                     {t("field_category")} <span className="text-red-500">*</span>
@@ -420,7 +451,10 @@ export function ProductCreatePage() {
                     {t("field_category_hint")}
                   </span>
                 </div>
-                <CategoryCascader value={category} onChange={handleCategoryChange} required />
+                <div className={fieldErrors.category ? "rounded-md ring-1 ring-red-500" : ""}>
+                  <CategoryCascader value={category} onChange={handleCategoryChange} required />
+                </div>
+                {fieldErrors.category && <p className="mt-1 text-xs text-red-500">{fieldErrors.category}</p>}
                 {attrLoading && (
                   <p className="mt-1 text-xs text-slate-400">{t("attr_loading")}</p>
                 )}
@@ -441,17 +475,22 @@ export function ProductCreatePage() {
               </div>
 
               {/* 商品名称 */}
-              <div>
+              <div data-field-error={!!fieldErrors.name || undefined}>
                 <label className="text-sm font-medium text-slate-700">
                   {t("field_name")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`mt-1.5 h-9 w-full rounded-md border bg-white px-3 text-sm focus:outline-none focus:ring-2 ${
+                    fieldErrors.name
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                  }`}
                   value={spu.name}
                   onChange={(e) => updateSpu("name", e.target.value)}
                   maxLength={200}
                 />
+                {fieldErrors.name && <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>}
               </div>
 
               {/* 产地 */}
@@ -615,6 +654,11 @@ export function ProductCreatePage() {
           <div className="mb-3.5 rounded border-l-[3px] border-amber-500 bg-amber-50 px-2.5 py-1.5 text-xs text-slate-500">
             {t("section_sku_hint")}
           </div>
+          {fieldErrors.skus && (
+            <div data-field-error="true" className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {fieldErrors.skus}
+            </div>
+          )}
 
           {skus.map((sku, idx) => (
             <SkuCard
@@ -627,6 +671,7 @@ export function ProductCreatePage() {
               onSetDefault={() => setDefaultSku(sku._clientId)}
               onOpenTiers={() => setTierModalSkuId(sku._clientId)}
               error={errorSkuId === sku._clientId ? submitError : null}
+              fieldErrors={fieldErrors}
               t={t}
               tUnit={tUnit}
             />
@@ -653,14 +698,26 @@ export function ProductCreatePage() {
           <div className="mb-3.5 rounded border-l-[3px] border-pink-500 bg-pink-50 px-2.5 py-1.5 text-xs text-slate-500">
             {t("section_images_hint")}
           </div>
-          <SpuImageUploader files={spuImageFiles} onChange={setSpuImageFiles} t={t} />
+          <SpuImageUploader files={spuImageFiles} onChange={(files) => { setSpuImageFiles(files); clearFieldError("images"); }} t={t} />
+          {fieldErrors.images && (
+            <div data-field-error="true" className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {fieldErrors.images}
+            </div>
+          )}
         </section>
       </div>
 
       {/* 底部操作栏 */}
       <div className="fixed bottom-0 left-0 right-0 z-10 border-t-2 border-slate-200 bg-white px-5 py-3.5">
         <div className="mx-auto flex max-w-5xl justify-end gap-2.5">
-          {submitError && (
+          {/* 字段级错误摘要 */}
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="mr-auto self-center text-sm text-red-600">
+              <span>{t("validate_fields_need_correction", { count: Object.keys(fieldErrors).length })}</span>
+            </div>
+          )}
+          {/* API 级错误 */}
+          {submitError && Object.keys(fieldErrors).length === 0 && (
             <div className="mr-auto self-center text-sm text-red-600">
               <span>{submitError}</span>
               {createdProductId != null && (
