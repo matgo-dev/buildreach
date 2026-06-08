@@ -77,7 +77,8 @@
       "attr_key_not_in_template": "属性 {attr_key} 不在品类模板中",
       "required_attr_missing": "缺少必填属性: {keys}",
       "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}",
-      "category_not_leaf": "品类 {category_code} 不是叶子节点,仅允许选择三级品类"
+      "category_not_leaf": "品类 {category_code} 不是叶子节点,仅允许选择三级品类",
+      "invalid_range": "{min_field} 不能大于 {max_field}"
     }
   },
   "category": {
@@ -308,8 +309,8 @@
     "sellingPoints": "卖点",
     "description": "描述",
     "isFeatured": "精选商品",
-    "skuVariants": "SKU 变体",
-    "skuCode": "SKU / 型号",
+    "skuVariants": "规格型号",
+    "skuCode": "SKU 编码",
     "specs": "规格",
     "priceRange": "价格区间",
     "status": "状态",
