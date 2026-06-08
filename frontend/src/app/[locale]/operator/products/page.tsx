@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Package, Plus, Search } from "lucide-react";
+import { AlertCircle, Loader2, Package, Plus, Search } from "lucide-react";
+
+import Pagination from "@/components/ui/Pagination";
 
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -550,25 +552,12 @@ function ProductListInner() {
 
       {/* 分页 */}
       {pages > 0 && (
-        <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>{t("pagination", { total, page, pages })}</span>
-          <div className="flex gap-2">
-            <button
-              disabled={page <= 1 || loading}
-              onClick={() => void load(page - 1)}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="h-4 w-4" /> {t("prevPage")}
-            </button>
-            <button
-              disabled={page >= pages || loading}
-              onClick={() => void load(page + 1)}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {t("nextPage")} <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          current={page}
+          total={pages}
+          totalItems={total}
+          onChange={(p) => void load(p)}
+        />
       )}
 
       {/* 确认弹窗 */}

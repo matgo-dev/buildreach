@@ -323,6 +323,12 @@
     "L": "Liter",
     "BUNDLE": "Bundle"
   },
+  "pagination": {
+    "totalItems": "{count} items",
+    "pageInfo": "Page {current} / {total}",
+    "prev": "Previous",
+    "next": "Next"
+  },
   "productDetail": {
     "backToList": "Back to List",
     "edit": "Edit",
