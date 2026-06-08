@@ -198,6 +198,18 @@ export default function ProductDetailPage() {
   // 保存
   const handleSave = async () => {
     if (!product) return;
+    // 前端预校验：必填项
+    const validationErrors: string[] = [];
+    if (!spuForm.name?.trim()) validationErrors.push(locale === "en" ? "Product name is required" : "商品名称不能为空");
+    // 检查新增 SKU 必填字段
+    for (const sku of skuChanges.added) {
+      if (!sku.unit) validationErrors.push(locale === "en" ? `New SKU: unit is required` : `新增 SKU：单位为必填`);
+      if (!sku.moq || sku.moq <= 0) validationErrors.push(locale === "en" ? `New SKU: MOQ is required` : `新增 SKU：MOQ 为必填`);
+    }
+    if (validationErrors.length > 0) {
+      setSaveError(validationErrors.join("；"));
+      return;
+    }
     setSaving(true); setSaveError(null);
     try {
       await operatorProductsApi.update(product.id, spuForm);
