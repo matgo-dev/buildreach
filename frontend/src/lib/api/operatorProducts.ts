@@ -132,6 +132,149 @@ export interface ProductStatusInput {
   status: string;  // DRAFT / ACTIVE / INACTIVE
 }
 
+// ---------- 供应商关系(详情用) ----------
+
+export interface SupplierRelationDetail {
+  id: number;
+  sku_id: number;
+  supplier_org_id: number;
+  supplier_org_name: string;
+  supplier_price: number;
+  supplier_currency: string;
+  cif_price_usd: number | null;
+  supplier_moq: number | null;
+  supplier_lead_time_days: number | null;
+  pvoc_status: string | null;
+  has_coc: boolean;
+  is_preferred: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------- 属性详情 ----------
+
+export interface ProductAttrDetail {
+  attr_key: string;
+  attr_value: string;
+  attr_unit: string | null;
+  sort_order: number;
+  sku_id: number | null;
+  display_name: string | null;
+}
+
+// ---------- SKU 详情(运营端) ----------
+
+export interface SkuOperatorDetail {
+  id: number;
+  sku_code: string;
+  name: string | null;
+  name_zh: string | null;
+  name_en: string | null;
+  color: string | null;
+  color_zh: string | null;
+  color_en: string | null;
+  material: string | null;
+  material_zh: string | null;
+  material_en: string | null;
+  manufacturer_model: string | null;
+  source_lang: string;
+  price_min: number | null;
+  price_max: number | null;
+  currency: string;
+  unit: string;
+  moq: number;
+  lead_time_min: number | null;
+  lead_time_max: number | null;
+  packing_quantity: number | null;
+  gross_weight_kg: number | null;
+  volume_cbm: number | null;
+  can_consolidate: boolean;
+  cargo_type: string | null;
+  is_default: boolean;
+  status: string;
+  price_tiers: PriceTierSchema[];
+  images: ProductImage[];
+  attributes: ProductAttrDetail[];
+  supplier_relations: SupplierRelationDetail[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------- 商品详情(运营端) ----------
+
+export interface ProductOperatorDetail {
+  id: number;
+  spu_code: string;
+  name: string;
+  name_zh: string | null;
+  name_en: string | null;
+  description: string | null;
+  description_zh: string | null;
+  description_en: string | null;
+  category_code: string;
+  category_name: string;
+  origin: string;
+  origin_zh: string | null;
+  origin_en: string | null;
+  brand: string | null;
+  brand_zh: string | null;
+  brand_en: string | null;
+  hs_code: string | null;
+  certifications: string[] | null;
+  selling_points: string | null;
+  selling_points_zh: string | null;
+  selling_points_en: string | null;
+  source_lang: string;
+  is_featured: boolean;
+  status: string;
+  created_by_name: string;
+  skus: SkuOperatorDetail[];
+  images: ProductImage[];
+  attributes: ProductAttrDetail[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------- SPU 更新入参 ----------
+
+export interface ProductUpdateInput {
+  name?: string | null;
+  description?: string | null;
+  origin?: string | null;
+  hs_code?: string | null;
+  brand?: string | null;
+  certifications?: string[] | null;
+  selling_points?: string | null;
+  is_featured?: boolean | null;
+  attributes?: ProductAttrInput[] | null;
+}
+
+// ---------- SKU 更新入参 ----------
+
+export interface SkuUpdateInput {
+  manufacturer_model?: string | null;
+  name?: string | null;
+  color?: string | null;
+  material?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  currency?: string | null;
+  unit?: SkuUnitCode | null;
+  moq?: number | null;
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  packing_quantity?: number | null;
+  gross_weight_kg?: number | null;
+  volume_cbm?: number | null;
+  can_consolidate?: boolean | null;
+  cargo_type?: string | null;
+  is_default?: boolean | null;
+  status?: string | null;
+  price_tiers?: PriceTierInput[] | null;
+  attributes?: ProductAttrInput[] | null;
+}
+
 // ---------- 列表项(对齐 ProductOperator schema) ----------
 
 export interface ProductOperatorItem {
@@ -189,7 +332,19 @@ export const operatorProductsApi = {
 
   /** 商品详情 */
   detail: (id: number) =>
-    api.get(`${PREFIX}/${id}`),
+    api.get<ProductOperatorDetail>(`${PREFIX}/${id}`),
+
+  /** 更新商品(SPU) */
+  update: (id: number, data: ProductUpdateInput) =>
+    api.put<{ id: number }>(`${PREFIX}/${id}`, data),
+
+  /** 更新 SKU */
+  updateSku: (productId: number, skuId: number, data: SkuUpdateInput) =>
+    api.put<{ id: number; sku_code: string }>(`${PREFIX}/${productId}/skus/${skuId}`, data),
+
+  /** 删除 SKU */
+  deleteSku: (productId: number, skuId: number) =>
+    api.delete(`${PREFIX}/${productId}/skus/${skuId}`),
 
   /** 删除草稿商品 */
   remove: (id: number) =>
