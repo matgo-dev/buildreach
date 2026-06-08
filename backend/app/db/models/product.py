@@ -24,6 +24,23 @@ class ProductStatus:
     INACTIVE = "INACTIVE"
     ALL = (DRAFT, ACTIVE, INACTIVE)
 
+    # 状态机：合法转换路径
+    TRANSITIONS: dict[str, tuple[str, ...]] = {
+        DRAFT: (ACTIVE,),           # 草稿 → 上架
+        ACTIVE: (INACTIVE,),        # 已上架 → 下架
+        INACTIVE: (ACTIVE,),        # 已下架 → 重新上架
+    }
+
+    # 可编辑的状态（ACTIVE 不可编辑，需先下架）
+    EDITABLE = (DRAFT, INACTIVE)
+
+    # 可删除的状态
+    DELETABLE = (DRAFT, INACTIVE)
+
+    @classmethod
+    def can_transition(cls, current: str, target: str) -> bool:
+        return target in cls.TRANSITIONS.get(current, ())
+
 
 class Product(Base, TimestampUpdateMixin, I18nMixin):
     __tablename__ = "products"

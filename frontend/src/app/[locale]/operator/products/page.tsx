@@ -564,7 +564,7 @@ function ProductListInner() {
 
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        {canWrite && (
+                        {canWrite && (item.status === "DRAFT" || item.status === "INACTIVE") && (
                           <button
                             onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/operator/products/${item.id}?edit=true`); }}
                             className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
@@ -596,9 +596,9 @@ function ProductListInner() {
                             {t("publish")}
                           </button>
                         )}
-                        {item.status === "DRAFT" && canWrite && (
+                        {(item.status === "DRAFT" || item.status === "INACTIVE") && canWrite && (
                           <button
-                            onClick={() => setConfirmState({ type: "delete", item })}
+                            onClick={(e) => { e.stopPropagation(); setConfirmState({ type: "delete", item }); }}
                             className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
                           >
                             {t("delete")}

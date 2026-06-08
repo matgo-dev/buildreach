@@ -222,8 +222,28 @@ class OnlyDraftDeletableError(BusinessError):
     def __init__(self):
         super().__init__(
             status.HTTP_400_BAD_REQUEST, 40205,
-            "Only DRAFT products can be deleted",
+            "Only DRAFT or INACTIVE products can be deleted",
             message_key=MessageKey.PRODUCT_ONLY_DRAFT_DELETABLE,
+        )
+
+
+class IllegalTransitionError(BusinessError):
+    def __init__(self, current: str, target: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40206,
+            f"Cannot transition from {current} to {target}",
+            message_key=MessageKey.PRODUCT_ILLEGAL_TRANSITION,
+            message_params={"current": current, "target": target},
+        )
+
+
+class ProductNotEditableError(BusinessError):
+    def __init__(self, current_status: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40207,
+            f"Product in {current_status} status is not editable. Take it offline first.",
+            message_key=MessageKey.PRODUCT_NOT_EDITABLE,
+            message_params={"status": current_status},
         )
 
 
@@ -337,6 +357,16 @@ class CategoryNotLeafError(BusinessError):
             f"Category '{category_code}' is not a leaf node; only level-3 categories are allowed",
             message_key=MessageKey.PRODUCT_CATEGORY_NOT_LEAF,
             message_params={"category_code": category_code},
+        )
+
+
+class ProductRangeInvalidError(BusinessError):
+    def __init__(self, min_field: str, max_field: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40217,
+            f"{min_field} must be less than or equal to {max_field}",
+            message_key=MessageKey.PRODUCT_INVALID_RANGE,
+            message_params={"min_field": min_field, "max_field": max_field},
         )
 
 
