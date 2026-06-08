@@ -507,14 +507,14 @@ export default function ProductDetailPage() {
               {isEditing && <button type="button" onClick={() => openSkuModal(null, true)} className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ {t("addSku")}</button>}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="min-w-[700px] w-full text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-3 py-2.5 text-left text-slate-500 font-medium">{t("skuCode")}</th>
-                    <th className="px-3 py-2.5 text-left text-slate-500 font-medium">{t("specs")}</th>
-                    <th className="px-3 py-2.5 text-right text-slate-500 font-medium">{t("priceRange")}</th>
-                    <th className="px-3 py-2.5 text-right text-slate-500 font-medium">MOQ</th>
-                    <th className="px-3 py-2.5 text-center text-slate-500 font-medium">{t("status")}</th>
+                    <th className="px-3 py-2.5 text-left text-slate-500 font-medium whitespace-nowrap">{t("skuCode")}</th>
+                    <th className="px-3 py-2.5 text-left text-slate-500 font-medium whitespace-nowrap">{t("specs")}</th>
+                    <th className="px-3 py-2.5 text-right text-slate-500 font-medium whitespace-nowrap">{t("priceRange")}</th>
+                    <th className="px-3 py-2.5 text-right text-slate-500 font-medium whitespace-nowrap">MOQ</th>
+                    <th className="px-3 py-2.5 text-center text-slate-500 font-medium whitespace-nowrap">{t("status")}</th>
                     <th className="px-3 py-2.5 text-center text-slate-500 font-medium w-20"></th>
                   </tr>
                 </thead>

@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex flex-1">
           <AppSidebar />
           <main className="flex-1 overflow-x-auto">
-            <div className="mx-auto max-w-5xl p-6">{children}</div>
+            <div className="p-6">{children}</div>
           </main>
         </div>
       </div>
