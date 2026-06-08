@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import useSWR from "swr";
 import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
-  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
+  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
@@ -102,7 +102,7 @@ export default function ProductDetailPage() {
   const [skuModalData, setSkuModalData] = useState<{ sku: SkuOperatorDetail | null; isNew: boolean }>({ sku: null, isNew: true });
   const [discardModal, setDiscardModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ type: "publish" | "unpublish" | "delete"; loading: boolean } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
   const [lightbox, setLightbox] = useState<{ images: { url: string }[]; index: number } | null>(null);
@@ -152,7 +152,7 @@ export default function ProductDetailPage() {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [imageChange.added]);
 
-  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); } }, [toast]);
+  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); } }, [toast]);
 
   // i18n 字段取值
   const localized = useCallback(
@@ -175,11 +175,13 @@ export default function ProductDetailPage() {
     };
     const parts = code.split(".");
     if (parts.length === 3) {
+      const l1Code = parts[0];
       const l2Code = `${parts[0]}.${parts[1]}`;
+      const l1Name = findNode(categoryTree, l1Code);
       const l2Name = findNode(categoryTree, l2Code);
       const l3Name = findNode(categoryTree, code);
-      if (l2Name && l3Name) return `${l2Name} > ${l3Name}`;
-      if (l3Name) return l3Name;
+      const names = [l1Name, l2Name, l3Name].filter(Boolean);
+      if (names.length) return names.join(" > ");
     }
     return findNode(categoryTree, code) || code;
   }, [product, categoryTree]);
@@ -352,7 +354,7 @@ export default function ProductDetailPage() {
 
       await mutate();
       setIsEditing(false);
-      setToast(t("saveSuccess"));
+      setToast({ message: t("saveSuccess"), type: "success" });
       if (searchParams.get("edit")) {
         router.replace(`/${locale}/operator/products/${product.id}`, { scroll: false });
       }
@@ -368,12 +370,12 @@ export default function ProductDetailPage() {
     try {
       if (confirmModal.type === "delete") {
         await operatorProductsApi.remove(product.id);
-        setToast(tList("toastDeleted"));
+        setToast({ message: tList("toastDeleted"), type: "success" });
         setTimeout(() => router.push(`/${locale}/operator/products`), 500);
       } else {
         const newStatus = confirmModal.type === "publish" ? "ACTIVE" : "INACTIVE";
         await operatorProductsApi.updateStatus(product.id, { status: newStatus });
-        setToast(confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"));
+        setToast({ message: confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"), type: "success" });
         await mutate();
       }
       setConfirmModal(null);
@@ -418,7 +420,7 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
+      <div className={`sticky top-0 z-10 border-b px-6 py-4 transition-colors ${isEditing ? "bg-blue-50 border-blue-200" : "bg-white border-slate-200"}`}>
         <div className="flex items-center justify-between max-w-[1400px] mx-auto">
           <div className="flex items-center gap-3">
             <button onClick={() => router.push(`/${locale}/operator/products`)} className="text-slate-500 hover:text-slate-700 flex items-center gap-1 text-sm">
@@ -722,10 +724,14 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Toast */}
+      {/* Toast — 顶部居中悬浮 */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-800 px-4 py-3 text-sm text-white shadow-lg flex items-center gap-2">
-          {toast}<button onClick={() => setToast(null)}><X className="h-3.5 w-3.5" /></button>
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 rounded-lg px-5 py-3 text-sm font-medium shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
+          toast.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"
+        }`}>
+          {toast.type === "success" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-red-500" />}
+          {toast.message}
+          <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
     </div>
