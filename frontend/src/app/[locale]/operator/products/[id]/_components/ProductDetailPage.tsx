@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import useSWR from "swr";
 import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
-  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle, CheckCircle2,
+  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
@@ -25,6 +25,7 @@ import {
   AggregateSkuInput,
   ImageRefInput,
 } from "@/lib/api/operatorProducts";
+import { useToast } from "@/components/ui/Toast";
 import EditBasicInfo from "./EditBasicInfo";
 import EditImages, { ImageChange } from "./EditImages";
 import SkuEditModal, { SkuFormData } from "./SkuEditModal";
@@ -102,7 +103,7 @@ export default function ProductDetailPage() {
   const [skuModalData, setSkuModalData] = useState<{ sku: SkuOperatorDetail | null; isNew: boolean }>({ sku: null, isNew: true });
   const [discardModal, setDiscardModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ type: "publish" | "unpublish" | "delete"; loading: boolean } | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const { success: toastSuccess } = useToast();
   const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
   const [lightbox, setLightbox] = useState<{ images: { url: string }[]; index: number } | null>(null);
@@ -151,8 +152,6 @@ export default function ProductDetailPage() {
     setImagePreviews(urls);
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [imageChange.added]);
-
-  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); } }, [toast]);
 
   // i18n 字段取值
   const localized = useCallback(
@@ -354,7 +353,7 @@ export default function ProductDetailPage() {
 
       await mutate();
       setIsEditing(false);
-      setToast({ message: t("saveSuccess"), type: "success" });
+      toastSuccess(t("saveSuccess"));
       if (searchParams.get("edit")) {
         router.replace(`/${locale}/operator/products/${product.id}`, { scroll: false });
       }
@@ -370,12 +369,12 @@ export default function ProductDetailPage() {
     try {
       if (confirmModal.type === "delete") {
         await operatorProductsApi.remove(product.id);
-        setToast({ message: tList("toastDeleted"), type: "success" });
+        toastSuccess(tList("toastDeleted"));
         setTimeout(() => router.push(`/${locale}/operator/products`), 500);
       } else {
         const newStatus = confirmModal.type === "publish" ? "ACTIVE" : "INACTIVE";
         await operatorProductsApi.updateStatus(product.id, { status: newStatus });
-        setToast({ message: confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"), type: "success" });
+        toastSuccess(confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"));
         await mutate();
       }
       setConfirmModal(null);
@@ -724,16 +723,6 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Toast — 顶部居中悬浮 */}
-      {toast && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 rounded-lg px-5 py-3 text-sm font-medium shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
-          toast.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"
-        }`}>
-          {toast.type === "success" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-red-500" />}
-          {toast.message}
-          <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70"><X className="h-3.5 w-3.5" /></button>
-        </div>
-      )}
     </div>
   );
 }
