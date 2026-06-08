@@ -73,14 +73,15 @@ function formatTime(iso: string | null): string {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function formatPrice(min: number | null, max: number | null): string | null {
+function formatPrice(min: number | null, max: number | null, currency?: string | null): string | null {
   if (min == null && max == null) return null;
+  const suffix = currency ? ` ${currency}` : "";
   if (min != null && max != null) {
-    if (min === max) return Number(min).toLocaleString();
-    return `${Number(min).toLocaleString()} - ${Number(max).toLocaleString()}`;
+    if (min === max) return Number(min).toLocaleString() + suffix;
+    return `${Number(min).toLocaleString()} - ${Number(max).toLocaleString()}${suffix}`;
   }
   const val = min ?? max;
-  return Number(val).toLocaleString();
+  return Number(val).toLocaleString() + suffix;
 }
 
 // ---------- 可排序表头 ----------
@@ -261,7 +262,7 @@ function ProductListInner() {
     [confirmState, items.length, page, load, t]
   );
 
-  // 批量上架(跳过校验)
+  // 批量上架（走正常校验）
   const handleBatchPublish = useCallback(async () => {
     if (selectedIds.size === 0) return;
     setBatchLoading(true);
@@ -270,7 +271,7 @@ function ProductListInner() {
     const errors: string[] = [];
     for (const id of selectedIds) {
       try {
-        await operatorProductsApi.updateStatus(id, { status: "ACTIVE" }, true);
+        await operatorProductsApi.updateStatus(id, { status: "ACTIVE" });
         successCount++;
       } catch (e) {
         const name = items.find((i) => i.id === id)?.name ?? String(id);
@@ -280,13 +281,13 @@ function ProductListInner() {
     setBatchLoading(false);
     setSelectedIds(new Set());
     if (successCount > 0) {
-      toastSuccess(`${successCount} 件商品已上架`);
+      toastSuccess(t("batchPublishSuccess", { count: successCount }));
       void load(page);
     }
     if (errors.length > 0) {
       setError(errors.join("; "));
     }
-  }, [selectedIds, items, page, load]);
+  }, [selectedIds, items, page, load, t]);
 
   const confirmConfig = useMemo(() => {
     if (!confirmState) return null;
@@ -397,7 +398,7 @@ function ProductListInner() {
       {canApprove && selectedIds.size > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
           <span className="text-sm text-blue-700">
-            已选 <strong>{selectedIds.size}</strong> 件商品
+            {t("batchSelected", { count: selectedIds.size })}
           </span>
           <button
             onClick={() => void handleBatchPublish()}
@@ -405,13 +406,13 @@ function ProductListInner() {
             className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {batchLoading && <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />}
-            批量上架（跳过校验）
+            {t("batchPublish")}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
             className="text-sm text-blue-600 hover:underline"
           >
-            取消选择
+            {t("batchCancel")}
           </button>
         </div>
       )}
@@ -488,7 +489,7 @@ function ProductListInner() {
             {!loading &&
               sortedItems.map((item) => {
                 const statusStyle = STATUS_STYLES[item.status] ?? STATUS_STYLES.DRAFT;
-                const priceText = formatPrice(item.price_min, item.price_max);
+                const priceText = formatPrice(item.price_min, item.price_max, item.currency);
                 const catName = resolveCategoryName(item.category_code, catMap);
 
                 return (

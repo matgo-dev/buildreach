@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X, Plus, Trash2 } from "lucide-react";
+import Toggle from "@/components/ui/Toggle";
 import { SKU_UNITS, AttrTemplate, ProductAttrInput, PriceTierInput } from "@/lib/api/operatorProducts";
 
 export interface SkuFormData {
@@ -116,7 +117,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
           {/* 基础信息 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">SKU Code</label>
+              <label className="text-xs text-slate-500 mb-1 block">{t("fieldSkuCode")}</label>
               <input type="text" value={form.sku_code || ""} onChange={(e) => set("sku_code", e.target.value || null)} disabled={!isNew} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" placeholder={t("skuCodePlaceholder")} />
             </div>
             <div>
@@ -137,14 +138,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs text-slate-500">{t("default")}</label>
-              <button type="button" onClick={() => set("is_default", !form.is_default)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.is_default ? "bg-blue-500" : "bg-slate-300"}`}>
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${form.is_default ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
-              </button>
-              <label className="text-xs text-slate-500 ml-4">{t("status")}</label>
-              <select value={form.status} onChange={(e) => set("status", e.target.value)} className="h-7 px-2 rounded border border-slate-200 text-xs">
-                <option value="ACTIVE">{t("skuStatusActive")}</option>
-                <option value="INACTIVE">{t("skuStatusInactive")}</option>
-              </select>
+              <Toggle checked={form.is_default} onChange={() => set("is_default", !form.is_default)} size="md" />
             </div>
           </div>
           {/* 商务参数 */}
@@ -158,7 +152,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">MOQ <span className="text-red-500">*</span></label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldMoq")} <span className="text-red-500">*</span></label>
                 <input type="number" value={form.moq || ""} onChange={(e) => set("moq", Number(e.target.value) || 0)} min={1} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
               <div>
@@ -182,11 +176,11 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
             <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("logistics")}</h4>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("leadTime")} (min)</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldLeadTimeMin")}</label>
                 <input type="number" value={form.lead_time_min ?? ""} onChange={(e) => set("lead_time_min", e.target.value ? Number(e.target.value) : null)} min={0} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("leadTime")} (max)</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldLeadTimeMax")}</label>
                 <input type="number" value={form.lead_time_max ?? ""} onChange={(e) => set("lead_time_max", e.target.value ? Number(e.target.value) : null)} min={0} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
               <div>
@@ -203,9 +197,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               </div>
               <div className="flex items-end gap-3 pb-1">
                 <label className="text-xs text-slate-500">{t("canConsolidate")}</label>
-                <button type="button" onClick={() => set("can_consolidate", !form.can_consolidate)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.can_consolidate ? "bg-blue-500" : "bg-slate-300"}`}>
-                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${form.can_consolidate ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
-                </button>
+                <Toggle checked={form.can_consolidate} onChange={() => set("can_consolidate", !form.can_consolidate)} size="md" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">{t("cargoType")}</label>
@@ -226,7 +218,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 {form.price_tiers.map((tier, i) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
                     <div>
-                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}{i === 0 && <span className="text-slate-300 ml-1">(= MOQ)</span>}</label>
+                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}{i === 0 && <span className="text-slate-300 ml-1">({t("tierEqualsModq")})</span>}</label>
                       <input type="number" value={i === 0 ? (form.moq || 1) : tier.min_qty} readOnly={i === 0} onChange={(e) => updateTier(i, { min_qty: Number(e.target.value) || 0 })} className={`w-full h-7 px-2 rounded border border-slate-200 text-xs ${i === 0 ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} min={1} />
                     </div>
                     <div>
@@ -284,7 +276,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               {form.imageFiles.map((file, i) => (
                 <div key={`new-${i}`} className="relative w-[72px] h-[72px] rounded-md border border-dashed border-blue-300 overflow-hidden group">
                   <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
-                  <span className="absolute top-0 left-0 bg-blue-400 text-white text-[8px] px-1 rounded-br">NEW</span>
+                  <span className="absolute top-0 left-0 bg-blue-400 text-white text-[8px] px-1 rounded-br">{t("newLabel")}</span>
                   <button type="button" onClick={() => removeNewImage(i)} className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white opacity-0 group-hover:opacity-100">×</button>
                 </div>
               ))}

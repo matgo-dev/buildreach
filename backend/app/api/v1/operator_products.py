@@ -262,8 +262,10 @@ async def update_status(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_APPROVE)),
     db: AsyncSession = Depends(get_db),
 ):
+    # force 仅在 ENABLE_DEBUG_API=True 时生效，生产环境硬拦截
+    effective_force = force and settings.ENABLE_DEBUG_API
     product = await product_svc.update_product_status(
-        db, product_id, data.status, skip_validation=force,
+        db, product_id, data.status, skip_validation=effective_force,
     )
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.STATUS_CHANGE,
@@ -461,14 +463,19 @@ async def update_sku_status(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    sku = await product_svc.update_sku_status(db, product_id, sku_id, data.status)
+    result = await product_svc.update_sku_status(db, product_id, sku_id, data.status)
+    sku = result["sku"]
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.STATUS_CHANGE,
         user_id=current.id, user_email=current.email,
         resource_id=sku.id, request=request,
-        extra={"new_status": sku.status},
+        extra={"new_status": sku.status, "product_auto_delisted": result["product_auto_delisted"]},
     )
-    return success({"id": sku.id, "status": sku.status})
+    return success({
+        "id": sku.id,
+        "status": sku.status,
+        "product_auto_delisted": result["product_auto_delisted"],
+    })
 
 
 # ── 图片（SPU + SKU 维度）────────────────────────────────
@@ -500,7 +507,7 @@ async def delete_image(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await product_svc.delete_product_image(db, image_id)
+    await product_svc.delete_product_image(db, product_id, image_id)
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.DELETE,
         user_id=current.id, user_email=current.email,
