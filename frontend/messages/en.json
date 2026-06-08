@@ -358,6 +358,9 @@
     "draftRecovered": "Unsaved changes detected and recovered",
     "uploadImage": "Upload Image",
     "setAsMain": "Set as Main",
-    "deleteImage": "Delete"
+    "deleteImage": "Delete",
+    "publishFailedTitle": "Cannot Publish",
+    "publishFailedHint": "Please fix the following issues before publishing:",
+    "goEdit": "Go to Edit"
   }
 }

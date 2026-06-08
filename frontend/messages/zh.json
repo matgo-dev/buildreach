@@ -358,6 +358,9 @@
     "draftRecovered": "检测到未保存的修改，已恢复",
     "uploadImage": "上传图片",
     "setAsMain": "设为主图",
-    "deleteImage": "删除"
+    "deleteImage": "删除",
+    "publishFailedTitle": "无法上架",
+    "publishFailedHint": "以下问题需要修复后才能上架，请点击「去编辑」补充完整：",
+    "goEdit": "去编辑"
   }
 }
