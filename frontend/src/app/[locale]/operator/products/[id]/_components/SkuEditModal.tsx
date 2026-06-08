@@ -56,6 +56,8 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
     if (open) setForm(initial || emptySkuForm());
   }, [open, initial]);
 
+  const skuFileRef = useRef<HTMLInputElement>(null);
+
   if (!open) return null;
 
   const set = <K extends keyof SkuFormData>(key: K, val: SkuFormData[K]) => setForm((prev) => ({ ...prev, [key]: val }));
@@ -74,8 +76,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
     else set("attributes", [...form.attributes, { attr_key: key, attr_value: value }]);
   };
 
-  // SKU 图片
-  const skuFileRef = useRef<HTMLInputElement>(null);
+  // SKU 图片 handlers are below (ref declared before early return)
   const handleSkuImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const valid = files.filter((f) => f.size <= 5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(f.type));
