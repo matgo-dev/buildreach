@@ -370,5 +370,16 @@ class ProductRangeInvalidError(BusinessError):
         )
 
 
+class ImageNotOwnedError(BusinessError):
+    """聚合保存时引用了不属于本商品的 image_id。"""
+    def __init__(self, image_id: int, product_id: int):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40218,
+            f"Image {image_id} does not belong to product {product_id}",
+            message_key=MessageKey.PRODUCT_IMAGE_NOT_OWNED,
+            message_params={"image_id": image_id, "product_id": product_id},
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

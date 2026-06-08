@@ -24,10 +24,12 @@ from app.db.models.product_sku import SkuStatus
 from app.db.models.user import User
 from app.db.session import get_db
 from app.rbac.constants import Permissions
-from app.rbac.guards import require_permission
+from app.rbac.guards import require_any_role, require_permission
 from app.schemas.product import (
     AttrTemplateSchema,
     PriceTierSchema,
+    ProductAggregateCreate,
+    ProductAggregateSave,
     ProductAttrSchema,
     ProductCreate,
     ProductImageSchema,
@@ -35,6 +37,7 @@ from app.schemas.product import (
     ProductOperatorDetail,
     ProductStatusUpdate,
     ProductUpdate,
+    SkuStatusUpdate,
     SkuCreate,
     SkuOperator,
     SkuUpdate,
@@ -45,7 +48,11 @@ from app.schemas.product import (
 from app.services import product as product_svc
 from app.services.product import spu_price_range
 
-router = APIRouter(prefix="/operator/products", tags=["operator-products"])
+router = APIRouter(
+    prefix="/operator/products",
+    tags=["operator-products"],
+    dependencies=[Depends(require_any_role("OPERATOR"))],
+)
 
 
 # ── 序列化工具 ───────────────────────────────────────────
@@ -350,6 +357,37 @@ async def get_product(
     return success(data)
 
 
+# ── 聚合保存（单事务）─────────────────────────────────────
+
+@router.post("/aggregate", summary="聚合创建商品（SPU+SKU 单事务）")
+async def create_product_aggregate(
+    request: Request,
+    data: ProductAggregateCreate,
+    current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await product_svc.create_product_aggregate(
+        db, data,
+        actor_id=current.id, actor_email=current.email, request=request,
+    )
+    return success({"id": product.id, "spu_code": product.spu_code})
+
+
+@router.put("/{product_id}/aggregate", summary="聚合保存商品（SPU+SKU diff 单事务）")
+async def save_product_aggregate(
+    product_id: int,
+    request: Request,
+    data: ProductAggregateSave,
+    current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await product_svc.save_product_aggregate(
+        db, product_id, data,
+        actor_id=current.id, actor_email=current.email, request=request,
+    )
+    return success({"id": product.id})
+
+
 # ── SKU CRUD ─────────────────────────────────────────────
 
 @router.get("/{product_id}/skus", summary="SKU 列表")
@@ -412,6 +450,25 @@ async def delete_sku(
         resource_id=sku_id, request=request,
     )
     return success()
+
+
+@router.patch("/{product_id}/skus/{sku_id}/status", summary="SKU 启用/停用")
+async def update_sku_status(
+    product_id: int,
+    sku_id: int,
+    request: Request,
+    data: SkuStatusUpdate,
+    current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
+    db: AsyncSession = Depends(get_db),
+):
+    sku = await product_svc.update_sku_status(db, product_id, sku_id, data.status)
+    await write_audit(
+        db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.STATUS_CHANGE,
+        user_id=current.id, user_email=current.email,
+        resource_id=sku.id, request=request,
+        extra={"new_status": sku.status},
+    )
+    return success({"id": sku.id, "status": sku.status})
 
 
 # ── 图片（SPU + SKU 维度）────────────────────────────────

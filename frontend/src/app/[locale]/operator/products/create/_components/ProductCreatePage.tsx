@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 
 import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory } from "@/components/category/CategoryCascader";
-import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type SkuCreateInput, type PriceTierInput } from "@/lib/api/operatorProducts";
+import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type PriceTierInput, type AggregateSkuInput } from "@/lib/api/operatorProducts";
 import { SKU_UNITS, type SkuUnitCode } from "@/lib/api/operatorProducts";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,7 @@ function clearDraft() {
 // ---------- 主组件 ----------
 
 export function ProductCreatePage() {
+  const router = useRouter();
   const t = useTranslations("productCreate");
   const tUnit = useTranslations("unit");
   const tError = useTranslations("error");
@@ -180,11 +182,9 @@ export function ProductCreatePage() {
   // 提交状态
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdProductId, setCreatedProductId] = useState<number | null>(null);
   // 出错的 SKU clientId，用于高亮卡片
   const [errorSkuId, setErrorSkuId] = useState<string | null>(null);
-  // 断点续传：已创建的 SPU ID 和 SKU 映射
-  const createdProductIdRef = useRef<number | null>(null);
-  const createdSkuMapRef = useRef<Map<string, number>>(new Map());
 
   // 阶梯价弹窗
   const [tierModalSkuId, setTierModalSkuId] = useState<string | null>(null);
@@ -277,10 +277,11 @@ export function ProductCreatePage() {
     return String(err);
   }, [tError]);
 
-  // ---------- 提交编排（断点续传） ----------
+  // ---------- 提交（单事务聚合） ----------
   const handleSubmit = useCallback(async (publish: boolean) => {
     setSubmitError(null);
     setErrorSkuId(null);
+    setCreatedProductId(null);
 
     // 前端预校验
     if (!category.level3Code) {
@@ -305,43 +306,24 @@ export function ProductCreatePage() {
     }
 
     setSubmitting(true);
+    let createdId: number | null = null;
     try {
-      // 1) 建 SPU（断点续传：已创建则跳过）
-      let productId = createdProductIdRef.current;
-      if (!productId) {
-        const spuAttrs: ProductAttrInput[] = Object.entries(spu.spuAttributes)
-          .filter(([, v]) => v.trim())
-          .map(([k, v]) => ({ attr_key: k, attr_value: v }));
+      // 1) 先上传图片拿 image_id（上传与保存解耦，图片先传后引用）
+      // 创建时需要一个临时 SPU 来挂图片，但聚合端点在事务内处理，
+      // 所以图片必须在聚合保存前先上传。创建流程中图片可在聚合保存后单独上传。
+      // 暂不在创建聚合 payload 中引用图片 ID（创建时图片还没有 product_id）。
 
-        const result = await operatorProductsApi.create({
-          category_code: category.level3Code,
-          spu_code: spu.spu_code || undefined,
-          name: spu.name,
-          description: spu.description || undefined,
-          origin: spu.origin || "中国",
-          hs_code: spu.hs_code || undefined,
-          brand: spu.brand || undefined,
-          certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
-          selling_points: spu.selling_points || undefined,
-          is_featured: spu.is_featured,
-          source_lang: locale,
-          status: "DRAFT",
-          attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
-        });
-        productId = result.id;
-        createdProductIdRef.current = productId;
-      }
+      // 2) 组装聚合 payload — 一次调用完成 SPU + 全部 SKU
+      const spuAttrs: ProductAttrInput[] = Object.entries(spu.spuAttributes)
+        .filter(([, v]) => v.trim())
+        .map(([k, v]) => ({ attr_key: k, attr_value: v }));
 
-      // 2) 逐个建 SKU（断点续传：已创建的跳过）
-      for (const sku of skus) {
-        if (createdSkuMapRef.current.has(sku._clientId)) continue;
-
+      const aggregateSkus: AggregateSkuInput[] = skus.map((sku) => {
         const skuAttrs: ProductAttrInput[] = Object.entries(sku.attributes)
           .filter(([, v]) => v.trim())
           .map(([k, v]) => ({ attr_key: k, attr_value: v }));
 
-        const skuData: SkuCreateInput = {
-          sku_code: sku.sku_code || undefined,
+        return {
           manufacturer_model: sku.manufacturer_model || undefined,
           name: sku.name || undefined,
           color: sku.color || undefined,
@@ -362,51 +344,52 @@ export function ProductCreatePage() {
           price_tiers: sku.price_tiers.length > 0 ? sku.price_tiers : undefined,
           attributes: skuAttrs.length > 0 ? skuAttrs : undefined,
         };
+      });
 
-        try {
-          const { id: skuId } = await operatorProductsApi.createSku(productId, skuData);
-          createdSkuMapRef.current.set(sku._clientId, skuId);
-        } catch (err) {
-          // SKU 创建失败 → 标记出错的 SKU，滚动到该卡片
-          setErrorSkuId(sku._clientId);
-          setSubmitError(extractErrorMsg(err));
-          sectionRefs.sku.current?.scrollIntoView({ behavior: "smooth" });
-          return; // 中断，用户修正后重试会从断点继续
-        }
-      }
+      const result = await operatorProductsApi.createAggregate({
+        category_code: category.level3Code,
+        spu_code: spu.spu_code || undefined,
+        name: spu.name,
+        description: spu.description || undefined,
+        origin: spu.origin || "中国",
+        hs_code: spu.hs_code || undefined,
+        brand: spu.brand || undefined,
+        certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
+        selling_points: spu.selling_points || undefined,
+        source_lang: locale,
+        is_featured: spu.is_featured,
+        attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
+        skus: aggregateSkus,
+      });
 
-      // 3) 上传 SPU 图片
+      const productId = result.id;
+      createdId = productId;
+
+      // 3) 上传 SPU 图片（聚合保存后，product_id 已确定）
       for (const file of spuImageFiles) {
         await operatorProductsApi.uploadImage(productId, file);
       }
 
-      // 4) 上传 SKU 图片
-      for (const sku of skus) {
-        const skuId = createdSkuMapRef.current.get(sku._clientId);
-        if (skuId && sku.imageFiles.length > 0) {
-          for (const file of sku.imageFiles) {
-            await operatorProductsApi.uploadImage(productId, file, skuId);
-          }
-        }
-      }
-
-      // 5) 发布（如果是上架）
+      // 4) 发布（如果是上架）
       if (publish) {
         await operatorProductsApi.updateStatus(productId, { status: "ACTIVE" });
       }
 
-      // 成功 → 清断点状态 + 清草稿缓存 + 跳转
-      createdProductIdRef.current = null;
-      createdSkuMapRef.current.clear();
+      // 成功 → 清草稿缓存 + 跳转
       clearDraft();
       alert(publish ? t("success_publish") : t("success_draft"));
-      window.history.back();
+      router.push(`/${locale}/operator/products/${productId}`);
     } catch (err: unknown) {
-      setSubmitError(extractErrorMsg(err));
+      if (createdId != null) {
+        setCreatedProductId(createdId);
+        setSubmitError(`${extractErrorMsg(err)}；商品已保存为草稿，可进入详情继续编辑。`);
+      } else {
+        setSubmitError(extractErrorMsg(err));
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [category, spu, skus, spuImageFiles, t, sectionRefs, extractErrorMsg]);
+  }, [category, spu, skus, spuImageFiles, t, sectionRefs, extractErrorMsg, locale, router]);
 
   // ---------- 渲染 ----------
   return (
@@ -678,7 +661,18 @@ export function ProductCreatePage() {
       <div className="fixed bottom-0 left-0 right-0 z-10 border-t-2 border-slate-200 bg-white px-5 py-3.5">
         <div className="mx-auto flex max-w-5xl justify-end gap-2.5">
           {submitError && (
-            <p className="mr-auto self-center text-sm text-red-600">{submitError}</p>
+            <div className="mr-auto self-center text-sm text-red-600">
+              <span>{submitError}</span>
+              {createdProductId != null && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/${locale}/operator/products/${createdProductId}?edit=true`)}
+                  className="ml-3 rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                >
+                  进入详情
+                </button>
+              )}
+            </div>
           )}
           <Button
             variant="outline"

@@ -150,7 +150,6 @@ class SkuCreate(BaseModel):
     can_consolidate: bool = True
     cargo_type: str | None = Field(default=None, max_length=20)
     is_default: bool = False
-    status: str = "ACTIVE"
     price_tiers: List[PriceTierCreate] | None = None
     attributes: List[ProductAttrCreate] | None = None
 
@@ -173,7 +172,6 @@ class SkuUpdate(BaseModel):
     can_consolidate: bool | None = None
     cargo_type: str | None = Field(default=None, max_length=20)
     is_default: bool | None = None
-    status: str | None = None
     price_tiers: List[PriceTierCreate] | None = None
     attributes: List[ProductAttrCreate] | None = None
 
@@ -338,7 +336,6 @@ class ProductCreate(BaseModel):
     selling_points: str | None = None
     source_lang: str = "zh"
     is_featured: bool = False
-    status: str = "DRAFT"
     attributes: List[ProductAttrCreate] | None = None
 
 
@@ -358,6 +355,87 @@ class ProductUpdate(BaseModel):
 
 class ProductStatusUpdate(BaseModel):
     status: str  # DRAFT / ACTIVE / INACTIVE
+
+
+class SkuStatusUpdate(BaseModel):
+    status: str  # ACTIVE / INACTIVE
+
+
+# ---------- 聚合保存 ----------
+
+class ImageRefInput(BaseModel):
+    """图片引用（先传后引用，保存时按 ID 关联）。"""
+    image_id: int
+    image_type: Literal["MAIN", "GALLERY", "DETAIL"] = "GALLERY"
+    sort_order: int = 0
+
+
+class AggregateSkuCreate(BaseModel):
+    """聚合创建时的 SKU 子项（无 id，服务端生成 sku_code）。"""
+    model_config = ConfigDict(extra="forbid")
+
+    manufacturer_model: str | None = Field(default=None, max_length=100)
+    name: str | None = Field(default=None, max_length=200)
+    color: str | None = Field(default=None, max_length=50)
+    material: str | None = Field(default=None, max_length=100)
+    source_lang: str = "zh"
+    price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
+    price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
+    currency: str = "TZS"
+    unit: SkuUnitCode
+    moq: int = Field(gt=0)
+    lead_time_min: int | None = Field(default=None, ge=0)
+    lead_time_max: int | None = Field(default=None, ge=0)
+    packing_quantity: int | None = Field(default=None, gt=0)
+    gross_weight_kg: Decimal | None = Field(default=None, gt=0)
+    volume_cbm: Decimal | None = Field(default=None, gt=0)
+    can_consolidate: bool = True
+    cargo_type: str | None = Field(default=None, max_length=20)
+    is_default: bool = False
+    price_tiers: List[PriceTierCreate] | None = None
+    attributes: List[ProductAttrCreate] | None = None
+
+
+class AggregateSkuSave(AggregateSkuCreate):
+    """聚合保存时的 SKU 子项（带可选 id：有 id=更新，无 id=新建）。"""
+    id: int | None = None
+
+
+class ProductAggregateCreate(BaseModel):
+    """聚合创建：一次事务建 SPU + 全部 SKU + 图片引用。"""
+    model_config = ConfigDict(extra="forbid")
+
+    category_code: str
+    spu_code: str | None = Field(default=None, max_length=50)
+    name: str = Field(max_length=200)
+    description: str | None = None
+    origin: str = "中国"
+    hs_code: str | None = None
+    brand: str | None = None
+    certifications: list | None = None
+    selling_points: str | None = None
+    source_lang: str = "zh"
+    is_featured: bool = False
+    attributes: List[ProductAttrCreate] | None = None
+    skus: List[AggregateSkuCreate] = []
+    images: List[ImageRefInput] | None = None
+
+
+class ProductAggregateSave(BaseModel):
+    """聚合保存：一次事务更新 SPU + SKU diff + 图片引用。"""
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, max_length=200)
+    description: str | None = None
+    origin: str | None = None
+    hs_code: str | None = None
+    brand: str | None = None
+    certifications: list | None = None
+    selling_points: str | None = None
+    is_featured: bool | None = None
+    attributes: List[ProductAttrCreate] | None = None
+    skus: List[AggregateSkuSave] | None = None
+    images: List[ImageRefInput] | None = None
 
 
 # ---------- 分页 ----------
