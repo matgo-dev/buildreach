@@ -343,7 +343,8 @@ class ProductCreate(BaseModel):
 
 
 class ProductUpdate(BaseModel):
-    category_code: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, max_length=200)
     description: str | None = None
     origin: str | None = None

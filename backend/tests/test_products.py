@@ -292,6 +292,22 @@ async def test_update_product(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_update_product_rejects_category_code(client: AsyncClient):
+    """普通商品编辑不允许改类目;类目迁移需走单独设计。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "UPD-CAT-LOCK")
+
+    r = await client.put(
+        f"/api/v1/operator/products/{pid}",
+        headers=headers,
+        json={"category_code": "01"},
+    )
+    assert r.status_code == 422
+    assert r.json()["code"] == 42200
+
+
+@pytest.mark.asyncio
 async def test_delete_draft_product(client: AsyncClient):
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
@@ -374,6 +390,28 @@ async def test_create_sku_invalid_unit_rejected(client: AsyncClient, bad_unit: s
 
 
 @pytest.mark.asyncio
+async def test_create_sku_rejects_invalid_price_range(client: AsyncClient):
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "SKU-BAD-PRICE")
+
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/skus",
+        headers=headers,
+        json={
+            "sku_code": "SKU-BAD-PRICE-S001",
+            "unit": "PCS",
+            "moq": 100,
+            "price_min": 5.00,
+            "price_max": 3.00,
+            "source_lang": "zh",
+        },
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40217
+
+
+@pytest.mark.asyncio
 async def test_update_sku(client: AsyncClient):
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
@@ -390,6 +428,38 @@ async def test_update_sku(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_update_sku_rejects_invalid_lead_time_range(client: AsyncClient):
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "SKU-BAD-LEAD")
+    sku_id = await _create_test_sku(client, headers, pid, "SKU-BAD-LEAD-S001")
+
+    r = await client.put(
+        f"/api/v1/operator/products/{pid}/skus/{sku_id}",
+        headers=headers,
+        json={"lead_time_min": 30, "lead_time_max": 7},
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40217
+
+
+@pytest.mark.asyncio
+async def test_update_sku_requires_product_ownership(client: AsyncClient):
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid1 = await _create_test_product(client, headers, cat_code, "SKU-OWN-P1")
+    pid2 = await _create_test_product(client, headers, cat_code, "SKU-OWN-P2")
+    sku1 = await _create_test_sku(client, headers, pid1, "SKU-OWN-P1-S001")
+
+    r = await client.put(
+        f"/api/v1/operator/products/{pid2}/skus/{sku1}",
+        headers=headers,
+        json={"moq": 200},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_delete_sku(client: AsyncClient):
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
@@ -400,6 +470,21 @@ async def test_delete_sku(client: AsyncClient):
         f"/api/v1/operator/products/{pid}/skus/{sku_id}", headers=headers,
     )
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_sku_requires_product_ownership(client: AsyncClient):
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid1 = await _create_test_product(client, headers, cat_code, "SKU-DEL-OWN-P1")
+    pid2 = await _create_test_product(client, headers, cat_code, "SKU-DEL-OWN-P2")
+    sku1 = await _create_test_sku(client, headers, pid1, "SKU-DEL-OWN-S001")
+
+    r = await client.delete(
+        f"/api/v1/operator/products/{pid2}/skus/{sku1}",
+        headers=headers,
+    )
+    assert r.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -714,6 +799,45 @@ async def test_duplicate_supplier_binding(client: AsyncClient):
     )
     assert r2.status_code == 400
     assert r2.json()["code"] == 40206
+
+
+@pytest.mark.asyncio
+async def test_sku_supplier_requires_product_and_sku_ownership(client: AsyncClient):
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid1 = await _create_test_product(client, headers, cat_code, "SUP-OWN-P1")
+    pid2 = await _create_test_product(client, headers, cat_code, "SUP-OWN-P2")
+    sku1 = await _create_test_sku(client, headers, pid1, "SUP-OWN-P1-S001")
+    sku2 = await _create_test_sku(client, headers, pid2, "SUP-OWN-P2-S001")
+
+    create_resp = await client.post(
+        f"/api/v1/operator/products/{pid1}/skus/{sku1}/suppliers",
+        headers=headers,
+        json={"supplier_org_id": 1, "supplier_price": 2.00},
+    )
+    if create_resp.status_code == 404:
+        pytest.skip("No supplier org with id=1")
+    assert create_resp.status_code == 200, create_resp.text
+    ps_id = create_resp.json()["data"]["id"]
+
+    list_resp = await client.get(
+        f"/api/v1/operator/products/{pid2}/skus/{sku1}/suppliers",
+        headers=headers,
+    )
+    assert list_resp.status_code == 404
+
+    update_resp = await client.put(
+        f"/api/v1/operator/products/{pid2}/skus/{sku2}/suppliers/{ps_id}",
+        headers=headers,
+        json={"supplier_price": 3.00},
+    )
+    assert update_resp.status_code == 404
+
+    delete_resp = await client.delete(
+        f"/api/v1/operator/products/{pid2}/skus/{sku2}/suppliers/{ps_id}",
+        headers=headers,
+    )
+    assert delete_resp.status_code == 404
 
 
 # ── 审计断言（通过 audit API 查询）────────────────────────
