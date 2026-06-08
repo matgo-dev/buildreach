@@ -40,6 +40,8 @@ class MessageKey:
     PRODUCT_SKU_CODE_EXISTS = "error.product.sku_code_exists"
     PRODUCT_PUBLISH_VALIDATION_FAILED = "error.product.publish_validation_failed"
     PRODUCT_ONLY_DRAFT_DELETABLE = "error.product.only_draft_deletable"
+    PRODUCT_ILLEGAL_TRANSITION = "error.product.illegal_transition"
+    PRODUCT_NOT_EDITABLE = "error.product.not_editable"
     PRODUCT_SUPPLIER_ALREADY_BOUND = "error.product.supplier_already_bound"
     PRODUCT_MAX_IMAGES_EXCEEDED = "error.product.max_images_exceeded"
     PRODUCT_IMAGE_FORMAT_INVALID = "error.product.image_format_invalid"
@@ -54,3 +56,4 @@ class MessageKey:
     PRODUCT_REQUIRED_ATTR_MISSING = "error.product.required_attr_missing"
     PRODUCT_ATTR_SCOPE_MISMATCH = "error.product.attr_scope_mismatch"
     PRODUCT_CATEGORY_NOT_LEAF = "error.product.category_not_leaf"
+    PRODUCT_INVALID_RANGE = "error.product.invalid_range"

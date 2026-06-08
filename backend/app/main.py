@@ -135,6 +135,16 @@ async def healthz():
     return success({"status": "ok"})
 
 
+# ----- 静态文件(商品图片) -----
+
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+_uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+_uploads_dir.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(_uploads_dir)), name="static")
+
+
 # ----- 业务路由 -----
 
 from app.api.v1.router import api_router  # noqa: E402
