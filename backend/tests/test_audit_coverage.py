@@ -47,6 +47,11 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/operator/products/{product_id}/skus"),
     ("PUT", "/api/v1/operator/products/{product_id}/skus/{sku_id}"),
     ("DELETE", "/api/v1/operator/products/{product_id}/skus/{sku_id}"),
+    # product — 聚合保存(service 内 write_audit + 单事务 commit)
+    ("POST", "/api/v1/operator/products/aggregate"),
+    ("PUT", "/api/v1/operator/products/{product_id}/aggregate"),
+    # product SKU — SKU 状态变更
+    ("PATCH", "/api/v1/operator/products/{product_id}/skus/{sku_id}/status"),
     # product supplier — 供货关系管理
     ("POST", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers"),
     ("PUT", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers/{ps_id}"),

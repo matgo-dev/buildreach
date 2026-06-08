@@ -40,12 +40,6 @@ function buildCategoryMap(nodes: CategoryTreeNode[], map: Map<string, CategoryTr
 function resolveCategoryName(code: string, catMap: Map<string, CategoryTreeNode>): string {
   const node = catMap.get(code);
   if (!node) return code;
-  const parts = code.split(".");
-  if (parts.length === 3) {
-    const l2Code = `${parts[0]}.${parts[1]}`;
-    const l2 = catMap.get(l2Code);
-    if (l2) return `${l2.name} > ${node.name}`;
-  }
   return node.name;
 }
 

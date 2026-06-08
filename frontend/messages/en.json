@@ -78,7 +78,10 @@
       "required_attr_missing": "Required attributes missing: {keys}",
       "attr_scope_mismatch": "Attribute {attr_key} scope should be {expected_scope}",
       "category_not_leaf": "Category {category_code} is not a leaf node; only level-3 categories are allowed",
-      "invalid_range": "{min_field} cannot be greater than {max_field}"
+      "invalid_range": "{min_field} cannot be greater than {max_field}",
+      "illegal_transition": "Cannot transition from {current} to {target}",
+      "image_not_owned": "Image {image_id} does not belong to product {product_id}",
+      "not_editable": "Product is not editable in {current_status} status"
     }
   },
   "category": {

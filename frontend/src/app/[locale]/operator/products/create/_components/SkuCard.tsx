@@ -143,7 +143,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
 
           {/* 最低价 */}
           <div>
-            <label className={LABEL_CLS}>{t("field_price_min")} ({sku.currency})</label>
+            <label className={LABEL_CLS}>{t("field_price_min")} ({sku.currency}) <span className="text-red-500">*</span></label>
             <input
               type="number"
               min="0"
@@ -156,7 +156,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
 
           {/* 最高价 */}
           <div>
-            <label className={LABEL_CLS}>{t("field_price_max")} ({sku.currency})</label>
+            <label className={LABEL_CLS}>{t("field_price_max")} ({sku.currency}) <span className="text-red-500">*</span></label>
             <input
               type="number"
               min="0"
