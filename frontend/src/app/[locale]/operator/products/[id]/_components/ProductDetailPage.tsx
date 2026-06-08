@@ -323,10 +323,10 @@ export default function ProductDetailPage() {
               </>
             ) : (
               <>
-                {canWrite && <button onClick={enterEditMode} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><Edit3 className="h-3.5 w-3.5" />{t("edit")}</button>}
+                {canWrite && (product.status === "DRAFT" || product.status === "INACTIVE") && <button onClick={enterEditMode} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><Edit3 className="h-3.5 w-3.5" />{t("edit")}</button>}
                 {canApprove && (product.status === "DRAFT" || product.status === "INACTIVE") && <button onClick={() => setConfirmModal({ type: "publish", loading: false })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"><TrendingUp className="h-3.5 w-3.5" />{tList("publish")}</button>}
                 {canApprove && product.status === "ACTIVE" && <button onClick={() => setConfirmModal({ type: "unpublish", loading: false })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"><TrendingDown className="h-3.5 w-3.5" />{tList("unpublish")}</button>}
-                {canWrite && product.status === "DRAFT" && <button onClick={() => setConfirmModal({ type: "delete", loading: false })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"><Trash2 className="h-3.5 w-3.5" />{tList("delete")}</button>}
+                {canWrite && (product.status === "DRAFT" || product.status === "INACTIVE") && <button onClick={() => setConfirmModal({ type: "delete", loading: false })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"><Trash2 className="h-3.5 w-3.5" />{tList("delete")}</button>}
               </>
             )}
           </div>

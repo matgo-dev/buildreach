@@ -22,13 +22,15 @@ from app.core.exceptions import (
     InvalidProductStatusError,
     MaxImagesExceededError,
     OnlyDraftDeletableError,
+    IllegalTransitionError,
+    ProductNotEditableError,
     PriceTierInvalidError,
     PublishValidationFailedError,
     SkuCodeExistsError,
     AttrKeyNotInTemplateError,
     AttrScopeMismatchError,
     CategoryNotLeafError,
-    SkuNotInProductError,
+    ProductRangeInvalidError,
     SpuCodeExistsError,
     SupplierAlreadyBoundError,
 )
@@ -204,6 +206,11 @@ async def update_product(
     db: AsyncSession, product_id: int, data: ProductUpdate,
 ) -> Product:
     product = await _get_product_or_404(db, product_id)
+
+    # 状态机：ACTIVE 不可编辑，需先下架
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+
     source_lang = product.source_lang
 
     update_data = data.model_dump(exclude_unset=True, exclude={"attributes"})
@@ -291,6 +298,10 @@ async def update_product_status(
 
     product = await _get_product_or_404(db, product_id, load_relations=True)
 
+    # 状态机校验：只允许合法转换
+    if not ProductStatus.can_transition(product.status, new_status):
+        raise IllegalTransitionError(product.status, new_status)
+
     # 上架校验(skip_validation=True 时跳过，用于批量测试)
     if new_status == ProductStatus.ACTIVE and not skip_validation:
         errors = []
@@ -302,6 +313,18 @@ async def update_product_status(
                 if sku.price_min is None or sku.price_max is None:
                     errors.append(
                         f"SKU {sku.sku_code}: price_min and price_max must be set"
+                    )
+                elif sku.price_min > sku.price_max:
+                    errors.append(
+                        f"SKU {sku.sku_code}: price_min must be less than or equal to price_max"
+                    )
+                if (
+                    sku.lead_time_min is not None
+                    and sku.lead_time_max is not None
+                    and sku.lead_time_min > sku.lead_time_max
+                ):
+                    errors.append(
+                        f"SKU {sku.sku_code}: lead_time_min must be less than or equal to lead_time_max"
                     )
         if not product.images:
             errors.append("At least 1 image required")
@@ -348,7 +371,7 @@ async def update_product_status(
 
 async def delete_product(db: AsyncSession, product_id: int) -> None:
     product = await _get_product_or_404(db, product_id)
-    if product.status != ProductStatus.DRAFT:
+    if product.status not in ProductStatus.DELETABLE:
         raise OnlyDraftDeletableError()
     await db.delete(product)
     await db.commit()
@@ -462,6 +485,12 @@ async def create_sku(
     db: AsyncSession, product_id: int, data: SkuCreate,
 ) -> ProductSku:
     product = await _get_product_or_404(db, product_id)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+    _validate_sku_ranges(
+        data.price_min, data.price_max,
+        data.lead_time_min, data.lead_time_max,
+    )
 
     sku_code = data.sku_code or await _generate_sku_code(db, product.spu_code, product_id)
 
@@ -530,9 +559,12 @@ async def create_sku(
 
 
 async def update_sku(
-    db: AsyncSession, sku_id: int, data: SkuUpdate,
+    db: AsyncSession, product_id: int, sku_id: int, data: SkuUpdate,
 ) -> ProductSku:
-    sku = await _get_sku_or_404(db, sku_id)
+    product = await _get_product_or_404(db, product_id)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+    sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
     source_lang = sku.source_lang
 
     # 默认 SKU 唯一性处理
@@ -553,6 +585,11 @@ async def update_sku(
     for field, value in update_data.items():
         setattr(sku, field, value)
 
+    _validate_sku_ranges(
+        sku.price_min, sku.price_max,
+        sku.lead_time_min, sku.lead_time_max,
+    )
+
     for field, value in i18n_fields_to_update.items():
         if value is not None:
             old_value = getattr(sku, f"{field}_{source_lang}", None)
@@ -564,7 +601,7 @@ async def update_sku(
             sa_delete(ProductAttr).where(ProductAttr.sku_id == sku_id)
         )
         if data.attributes:
-            product = await _get_product_or_404(db, sku.product_id)
+            product = await _get_product_or_404(db, product_id)
             tpl_map = await _load_template_map(db, product.category_code)
             await _add_attrs(
                 db, sku.product_id, data.attributes,
@@ -583,8 +620,11 @@ async def update_sku(
     return sku
 
 
-async def delete_sku(db: AsyncSession, sku_id: int) -> None:
-    sku = await _get_sku_or_404(db, sku_id)
+async def delete_sku(db: AsyncSession, product_id: int, sku_id: int) -> None:
+    product = await _get_product_or_404(db, product_id)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+    sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
     await db.delete(sku)
     await db.commit()
 
@@ -659,6 +699,23 @@ def _validate_price_tiers(tiers: list[PriceTierCreate], moq: int) -> None:
             )
 
 
+def _validate_sku_ranges(
+    price_min,
+    price_max,
+    lead_time_min: int | None,
+    lead_time_max: int | None,
+) -> None:
+    """校验 SKU 数值区间本身合法,不判断商业合理性。"""
+    if price_min is not None and price_max is not None and price_min > price_max:
+        raise ProductRangeInvalidError("price_min", "price_max")
+    if (
+        lead_time_min is not None
+        and lead_time_max is not None
+        and lead_time_min > lead_time_max
+    ):
+        raise ProductRangeInvalidError("lead_time_min", "lead_time_max")
+
+
 async def _replace_price_tiers(
     db: AsyncSession,
     sku: ProductSku,
@@ -683,9 +740,9 @@ async def _replace_price_tiers(
 # ── 供货关系（挂 SKU）────────────────────────────────────
 
 async def add_sku_supplier(
-    db: AsyncSession, sku_id: int, data: SupplierRelationCreate,
+    db: AsyncSession, product_id: int, sku_id: int, data: SupplierRelationCreate,
 ) -> ProductSupplier:
-    await _get_sku_or_404(db, sku_id)
+    await _get_sku_under_product_or_404(db, product_id, sku_id)
 
     if (await db.execute(
         select(ProductSupplier.id).where(
@@ -722,14 +779,10 @@ async def add_sku_supplier(
 
 
 async def update_sku_supplier(
-    db: AsyncSession, ps_id: int, data: SupplierRelationUpdate,
+    db: AsyncSession, product_id: int, sku_id: int, ps_id: int, data: SupplierRelationUpdate,
 ) -> ProductSupplier:
-    row = await db.execute(
-        select(ProductSupplier).where(ProductSupplier.id == ps_id)
-    )
-    ps = row.scalar_one_or_none()
-    if not ps:
-        raise NotFoundError("Supplier relation not found")
+    await _get_sku_under_product_or_404(db, product_id, sku_id)
+    ps = await _get_supplier_relation_under_sku_or_404(db, sku_id, ps_id)
 
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(ps, field, value)
@@ -739,21 +792,19 @@ async def update_sku_supplier(
     return ps
 
 
-async def remove_sku_supplier(db: AsyncSession, ps_id: int) -> None:
-    row = await db.execute(
-        select(ProductSupplier).where(ProductSupplier.id == ps_id)
-    )
-    ps = row.scalar_one_or_none()
-    if not ps:
-        raise NotFoundError("Supplier relation not found")
+async def remove_sku_supplier(
+    db: AsyncSession, product_id: int, sku_id: int, ps_id: int,
+) -> None:
+    await _get_sku_under_product_or_404(db, product_id, sku_id)
+    ps = await _get_supplier_relation_under_sku_or_404(db, sku_id, ps_id)
     await db.delete(ps)
     await db.commit()
 
 
 async def list_sku_suppliers(
-    db: AsyncSession, sku_id: int,
+    db: AsyncSession, product_id: int, sku_id: int,
 ) -> list[dict]:
-    await _get_sku_or_404(db, sku_id)
+    await _get_sku_under_product_or_404(db, product_id, sku_id)
     q = (
         select(ProductSupplier, SupplierOrganization.name)
         .join(
@@ -1050,3 +1101,38 @@ async def _get_sku_or_404(
     if not sku:
         raise NotFoundError("SKU not found")
     return sku
+
+
+async def _get_sku_under_product_or_404(
+    db: AsyncSession, product_id: int, sku_id: int, *, load_relations: bool = False,
+) -> ProductSku:
+    q = select(ProductSku).where(
+        ProductSku.id == sku_id,
+        ProductSku.product_id == product_id,
+    )
+    if load_relations:
+        q = q.options(
+            selectinload(ProductSku.price_tiers),
+            selectinload(ProductSku.images),
+            selectinload(ProductSku.supplier_relations),
+        )
+    row = await db.execute(q)
+    sku = row.scalar_one_or_none()
+    if not sku:
+        raise NotFoundError("SKU not found")
+    return sku
+
+
+async def _get_supplier_relation_under_sku_or_404(
+    db: AsyncSession, sku_id: int, ps_id: int,
+) -> ProductSupplier:
+    row = await db.execute(
+        select(ProductSupplier).where(
+            ProductSupplier.id == ps_id,
+            ProductSupplier.sku_id == sku_id,
+        )
+    )
+    ps = row.scalar_one_or_none()
+    if not ps:
+        raise NotFoundError("Supplier relation not found")
+    return ps
