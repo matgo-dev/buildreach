@@ -11,6 +11,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
+import { ApiError } from "@/lib/api";
 import {
   operatorProductsApi,
   ProductOperatorDetail,
@@ -85,7 +86,7 @@ export default function ProductDetailPage() {
   const [discardModal, setDiscardModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ type: "publish" | "unpublish" | "delete"; loading: boolean } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
 
   const toggleSkuExpand = (skuId: number) => {
@@ -245,7 +246,12 @@ export default function ProductDetailPage() {
       }
       setConfirmModal(null);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      // 解析上架校验错误列表
+      if (err instanceof ApiError && err.messageParams && Array.isArray(err.messageParams.errors)) {
+        setActionError({ message: err.message, errors: err.messageParams.errors as string[] });
+      } else {
+        setActionError({ message: err instanceof Error ? err.message : String(err) });
+      }
       setConfirmModal({ ...confirmModal, loading: false });
     }
   };
@@ -488,7 +494,22 @@ export default function ProductDetailPage() {
               {confirmModal.type === "unpublish" && tList("confirmUnpublishMsg", { name: product.name })}
               {confirmModal.type === "delete" && tList("confirmDeleteMsg", { name: product.name })}
             </p>
-            {actionError && <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{actionError}</div>}
+            {actionError && (
+              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                <p className="font-medium mb-1.5">{actionError.message}</p>
+                {actionError.errors && actionError.errors.length > 0 && (
+                  <ul className="space-y-1 ml-1">
+                    {actionError.errors.map((e, i) => {
+                      const isSkuErr = e.startsWith("SKU ");
+                      const isImgErr = e.includes("image");
+                      const isAttrErr = e.includes("attribute");
+                      const icon = isSkuErr ? "📦" : isImgErr ? "🖼️" : isAttrErr ? "📋" : "⚠️";
+                      return <li key={i} className="flex items-start gap-1.5"><span>{icon}</span><span>{e}</span></li>;
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <button onClick={() => { setConfirmModal(null); setActionError(null); }} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50" disabled={confirmModal.loading}>{tList("cancel")}</button>
               <button onClick={handleStatusAction} disabled={confirmModal.loading} className={`px-4 py-2 text-sm rounded-lg text-white flex items-center gap-1.5 ${confirmModal.type === "publish" ? "bg-emerald-600 hover:bg-emerald-700" : confirmModal.type === "unpublish" ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"} disabled:opacity-60`}>
