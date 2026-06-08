@@ -27,11 +27,11 @@ import EditBasicInfo from "./EditBasicInfo";
 import EditImages, { ImageChange } from "./EditImages";
 import SkuEditModal, { SkuFormData } from "./SkuEditModal";
 
-// 状态颜色映射
-const STATUS_STYLES: Record<string, { dot: string; bg: string; text: string; label_zh: string; label_en: string }> = {
-  DRAFT: { dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-700", label_zh: "草稿", label_en: "Draft" },
-  ACTIVE: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700", label_zh: "已上架", label_en: "Listed" },
-  INACTIVE: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-slate-600", label_zh: "已下架", label_en: "Delisted" },
+// 状态颜色映射（label 通过 t() 读取，不在此硬编码）
+const STATUS_STYLES: Record<string, { dot: string; bg: string; text: string; labelKey: string }> = {
+  DRAFT: { dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-700", labelKey: "statusDraft" },
+  ACTIVE: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700", labelKey: "statusActive" },
+  INACTIVE: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-slate-600", labelKey: "statusInactive" },
 };
 
 function formatPrice(min: number | null, max: number | null, currency: string | null): string {
@@ -59,6 +59,21 @@ export default function ProductDetailPage() {
   const locale = useLocale();
   const t = useTranslations("productDetail");
   const tList = useTranslations("productList");
+  const tError = useTranslations("error");
+
+  // 将后端 ApiError 的 messageKey 翻译为当前语言，回退到原始 message
+  const translateError = useCallback((err: unknown): string => {
+    if (err instanceof ApiError && err.messageKey) {
+      // messageKey 格式: "error.product.xxx" → tError key: "product.xxx"
+      const key = err.messageKey.replace(/^error\./, "");
+      try {
+        return tError(key, (err.messageParams ?? {}) as Record<string, string>);
+      } catch {
+        return err.message;
+      }
+    }
+    return err instanceof Error ? err.message : String(err);
+  }, [tError]);
   const { hasPermission } = usePermissions();
   const { tree: categoryTree } = useCategoryTree();
 
@@ -201,11 +216,11 @@ export default function ProductDetailPage() {
     if (!product) return;
     // 前端预校验：必填项
     const validationErrors: string[] = [];
-    if (!spuForm.name?.trim()) validationErrors.push(locale === "en" ? "Product name is required" : "商品名称不能为空");
+    if (!spuForm.name?.trim()) validationErrors.push(t("validationNameRequired"));
     // 检查新增 SKU 必填字段
     for (const sku of skuChanges.added) {
-      if (!sku.unit) validationErrors.push(locale === "en" ? `New SKU: unit is required` : `新增 SKU：单位为必填`);
-      if (!sku.moq || sku.moq <= 0) validationErrors.push(locale === "en" ? `New SKU: MOQ is required` : `新增 SKU：MOQ 为必填`);
+      if (!sku.unit) validationErrors.push(t("validationSkuUnitRequired"));
+      if (!sku.moq || sku.moq <= 0) validationErrors.push(t("validationSkuMoqRequired"));
     }
     if (validationErrors.length > 0) {
       setSaveError(validationErrors.join("；"));
@@ -238,7 +253,7 @@ export default function ProductDetailPage() {
         router.replace(`/${locale}/operator/products/${product.id}`, { scroll: false });
       }
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      setSaveError(translateError(err));
     } finally { setSaving(false); }
   };
 
@@ -261,9 +276,9 @@ export default function ProductDetailPage() {
     } catch (err: unknown) {
       // 解析上架校验错误列表
       if (err instanceof ApiError && err.messageParams && Array.isArray(err.messageParams.errors)) {
-        setActionError({ message: err.message, errors: err.messageParams.errors as string[] });
+        setActionError({ message: translateError(err), errors: err.messageParams.errors as string[] });
       } else {
-        setActionError({ message: err instanceof Error ? err.message : String(err) });
+        setActionError({ message: translateError(err) });
       }
       setConfirmModal({ ...confirmModal, loading: false });
     }
@@ -311,7 +326,7 @@ export default function ProductDetailPage() {
             </h1>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-              {locale === "en" ? status.label_en : status.label_zh}
+              {t(status.labelKey)}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -465,7 +480,7 @@ export default function ProductDetailPage() {
             <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("productStatus")}</h4>
             <div className="flex items-center gap-2 mb-3">
               <span className={`w-2.5 h-2.5 rounded-full ${status.dot}`} />
-              <span className={`text-sm font-medium ${status.text}`}>{locale === "en" ? status.label_en : status.label_zh}</span>
+              <span className={`text-sm font-medium ${status.text}`}>{t(status.labelKey)}</span>
             </div>
             <div className="text-xs text-slate-500 space-y-1.5">
               <div>{t("createdAt")}：{formatTime(product.created_at)}</div>
@@ -622,7 +637,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
   sku: SkuOperatorDetail; locale: string; localized: (zh: string | null, en: string | null, fallback?: string | null) => string;
   expanded: boolean; onToggle: () => void; t: ReturnType<typeof useTranslations>; isEditing?: boolean; onEdit?: () => void; onDelete?: () => void;
 }) {
-  const skuStatus = sku.status === "ACTIVE" ? { bg: "bg-emerald-50", text: "text-emerald-700", label: locale === "en" ? "Active" : "活跃" } : { bg: "bg-slate-100", text: "text-slate-600", label: locale === "en" ? "Inactive" : "停用" };
+  const skuStatus = sku.status === "ACTIVE" ? { bg: "bg-emerald-50", text: "text-emerald-700", label: t("skuStatusActive") } : { bg: "bg-slate-100", text: "text-slate-600", label: t("skuStatusInactive") };
   const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), sku.unit].filter(Boolean).join(" / ");
   return (
     <>
@@ -667,11 +682,11 @@ function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale
       {/* 第一行：SKU 基础信息网格 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-2">
         <div><span className="text-slate-400">SKU</span><div className="font-mono text-slate-800 mt-0.5">{sku.sku_code}</div></div>
-        <div><span className="text-slate-400">{locale === "en" ? "Model" : "型号"}</span><div className="mt-0.5"><Val v={sku.manufacturer_model} /></div></div>
-        <div><span className="text-slate-400">{locale === "en" ? "Name" : "名称"}</span><div className="mt-0.5"><Val v={loc(sku.name_zh, sku.name_en, sku.name)} /></div></div>
-        <div><span className="text-slate-400">{locale === "en" ? "Color" : "颜色"}</span><div className="mt-0.5"><Val v={loc(sku.color_zh, sku.color_en, sku.color)} /></div></div>
-        <div><span className="text-slate-400">{locale === "en" ? "Material" : "材质"}</span><div className="mt-0.5"><Val v={loc(sku.material_zh, sku.material_en, sku.material)} /></div></div>
-        <div><span className="text-slate-400">{locale === "en" ? "Currency" : "币种"}</span><div className="mt-0.5"><Val v={sku.currency} /></div></div>
+        <div><span className="text-slate-400">{t("model")}</span><div className="mt-0.5"><Val v={sku.manufacturer_model} /></div></div>
+        <div><span className="text-slate-400">{t("name")}</span><div className="mt-0.5"><Val v={loc(sku.name_zh, sku.name_en, sku.name)} /></div></div>
+        <div><span className="text-slate-400">{t("color")}</span><div className="mt-0.5"><Val v={loc(sku.color_zh, sku.color_en, sku.color)} /></div></div>
+        <div><span className="text-slate-400">{t("material")}</span><div className="mt-0.5"><Val v={loc(sku.material_zh, sku.material_en, sku.material)} /></div></div>
+        <div><span className="text-slate-400">{t("currency")}</span><div className="mt-0.5"><Val v={sku.currency} /></div></div>
       </div>
 
       <div className="border-t border-slate-100" />
@@ -692,7 +707,7 @@ function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale
                 </tr>
               ))}</tbody>
             </table>
-          ) : <p className="text-slate-400">{locale === "en" ? "No price tiers" : "暂无阶梯价"}</p>}
+          ) : <p className="text-slate-400">{t("noPriceTiers")}</p>}
         </div>
 
         {/* 物流参数 */}
@@ -720,7 +735,7 @@ function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale
                 </div>
               ))}
             </div>
-          ) : <p className="text-slate-400">{locale === "en" ? "No attributes" : "暂无属性"}</p>}
+          ) : <p className="text-slate-400">{t("noAttributes")}</p>}
         </div>
       </div>
 
@@ -729,7 +744,7 @@ function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sku.images.length > 0 && (
             <div className="bg-white border border-slate-100 rounded-lg p-3">
-              <h5 className="font-semibold text-slate-700 mb-2">{locale === "en" ? "SKU Images" : "SKU 图片"} ({sku.images.length})</h5>
+              <h5 className="font-semibold text-slate-700 mb-2">{t("skuImages")} ({sku.images.length})</h5>
               <div className="flex flex-wrap gap-2">
                 {sku.images.map((img) => (
                   <div key={img.id} className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50">
@@ -741,7 +756,7 @@ function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale
           )}
           {sku.supplier_relations.length > 0 && (
             <div className="bg-white border border-slate-100 rounded-lg p-3">
-              <h5 className="font-semibold text-slate-700 mb-2">{locale === "en" ? "Suppliers" : "供应商"} ({sku.supplier_relations.length})</h5>
+              <h5 className="font-semibold text-slate-700 mb-2">{t("suppliers")} ({sku.supplier_relations.length})</h5>
               <div className="space-y-2">
                 {sku.supplier_relations.map((sr) => (
                   <div key={sr.id} className="flex items-start justify-between">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { X, Plus, Trash2 } from "lucide-react";
 import { SKU_UNITS, AttrTemplate, ProductAttrInput, PriceTierInput } from "@/lib/api/operatorProducts";
 
@@ -49,7 +49,6 @@ function emptySkuForm(): SkuFormData {
 
 export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew, skuTemplates }: SkuEditModalProps) {
   const t = useTranslations("productDetail");
-  const locale = useLocale();
   const [form, setForm] = useState<SkuFormData>(initial || emptySkuForm());
 
   useEffect(() => {
@@ -101,22 +100,22 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">SKU Code</label>
-              <input type="text" value={form.sku_code || ""} onChange={(e) => set("sku_code", e.target.value || null)} disabled={!isNew} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" placeholder={locale === "en" ? "Auto if empty" : "留空自动生成"} />
+              <input type="text" value={form.sku_code || ""} onChange={(e) => set("sku_code", e.target.value || null)} disabled={!isNew} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" placeholder={t("skuCodePlaceholder")} />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Model" : "型号"}</label>
+              <label className="text-xs text-slate-500 mb-1 block">{t("fieldModel")}</label>
               <input type="text" value={form.manufacturer_model || ""} onChange={(e) => set("manufacturer_model", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Name" : "名称"}</label>
+              <label className="text-xs text-slate-500 mb-1 block">{t("fieldName")}</label>
               <input type="text" value={form.name || ""} onChange={(e) => set("name", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Color" : "颜色"}</label>
+              <label className="text-xs text-slate-500 mb-1 block">{t("fieldColor")}</label>
               <input type="text" value={form.color || ""} onChange={(e) => set("color", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Material" : "材质"}</label>
+              <label className="text-xs text-slate-500 mb-1 block">{t("fieldMaterial")}</label>
               <input type="text" value={form.material || ""} onChange={(e) => set("material", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
             <div className="flex items-center gap-3">
@@ -126,17 +125,17 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               </button>
               <label className="text-xs text-slate-500 ml-4">{t("status")}</label>
               <select value={form.status} onChange={(e) => set("status", e.target.value)} className="h-7 px-2 rounded border border-slate-200 text-xs">
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
+                <option value="ACTIVE">{t("skuStatusActive")}</option>
+                <option value="INACTIVE">{t("skuStatusInactive")}</option>
               </select>
             </div>
           </div>
           {/* 商务参数 */}
           <div>
-            <h4 className="text-xs font-semibold text-slate-700 mb-3">{locale === "en" ? "Commercial" : "商务参数"}</h4>
+            <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("sectionCommercial")}</h4>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Unit" : "单位"} <span className="text-red-500">*</span></label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldUnit")} <span className="text-red-500">*</span></label>
                 <select value={form.unit} onChange={(e) => set("unit", e.target.value)} className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs focus:border-blue-500 outline-none">
                   {SKU_UNITS.map((u) => (<option key={u} value={u}>{u}</option>))}
                 </select>
@@ -146,17 +145,17 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 <input type="number" value={form.moq || ""} onChange={(e) => set("moq", Number(e.target.value) || 0)} min={1} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Currency" : "币种"}</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldCurrency")}</label>
                 <select value={form.currency} onChange={(e) => set("currency", e.target.value)} className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs focus:border-blue-500 outline-none">
                   {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Price Min" : "最低价"}</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMin")}</label>
                 <input type="number" value={form.price_min ?? ""} onChange={(e) => set("price_min", e.target.value ? Number(e.target.value) : null)} min={0} step={0.01} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{locale === "en" ? "Price Max" : "最高价"}</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMax")}</label>
                 <input type="number" value={form.price_max ?? ""} onChange={(e) => set("price_max", e.target.value ? Number(e.target.value) : null)} min={0} step={0.01} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
             </div>
@@ -202,7 +201,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-semibold text-slate-700">{t("priceTiers")}</h4>
               <button type="button" onClick={addTier} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
-                <Plus className="h-3 w-3" /> {locale === "en" ? "Add Tier" : "添加阶梯"}
+                <Plus className="h-3 w-3" /> {t("addTier")}
               </button>
             </div>
             {form.price_tiers.length > 0 && (
@@ -210,15 +209,15 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 {form.price_tiers.map((tier, i) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
                     <div>
-                      <label className="text-[10px] text-slate-400">{locale === "en" ? "Min Qty" : "最小量"}</label>
+                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}</label>
                       <input type="number" value={tier.min_qty} onChange={(e) => updateTier(i, { min_qty: Number(e.target.value) || 0 })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" min={1} />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400">{locale === "en" ? "Max Qty" : "最大量"}</label>
+                      <label className="text-[10px] text-slate-400">{t("tierMaxQty")}</label>
                       <input type="number" value={tier.max_qty ?? ""} onChange={(e) => updateTier(i, { max_qty: e.target.value ? Number(e.target.value) : null })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" placeholder="∞" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400">{locale === "en" ? "Unit Price" : "单价"}</label>
+                      <label className="text-[10px] text-slate-400">{t("tierUnitPrice")}</label>
                       <input type="number" value={tier.unit_price || ""} onChange={(e) => updateTier(i, { unit_price: Number(e.target.value) || 0 })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" min={0} step={0.01} />
                     </div>
                     <button type="button" onClick={() => removeTier(i)} className="h-7 w-7 flex items-center justify-center text-red-400 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -257,7 +256,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
           )}
           {/* SKU 图片 */}
           <div>
-            <h4 className="text-xs font-semibold text-slate-700 mb-3">{locale === "en" ? "SKU Images" : "SKU 图片"} <span className="text-slate-400 font-normal">({locale === "en" ? "max 5" : "最多 5 张"})</span></h4>
+            <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("skuImagesLabel")} <span className="text-slate-400 font-normal">({t("skuImagesMax")})</span></h4>
             <div className="flex flex-wrap gap-2">
               {form.existingImages.map((img) => (
                 <div key={img.id} className="relative w-[72px] h-[72px] rounded-md border border-slate-200 overflow-hidden group">
@@ -275,7 +274,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               {(form.existingImages.length + form.imageFiles.length) < 5 && (
                 <button type="button" onClick={() => skuFileRef.current?.click()} className="flex w-[72px] h-[72px] flex-col items-center justify-center rounded-md border border-dashed border-slate-300 hover:border-blue-400">
                   <span className="text-lg text-slate-400">+</span>
-                  <span className="text-[9px] text-slate-400">{locale === "en" ? "Upload" : "上传"}</span>
+                  <span className="text-[9px] text-slate-400">{t("upload")}</span>
                 </button>
               )}
             </div>
@@ -283,8 +282,8 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
           </div>
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-200">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{locale === "en" ? "Cancel" : "取消"}</button>
-          <button type="button" onClick={() => onConfirm(form)} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{locale === "en" ? "Confirm" : "确定"}</button>
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{t("cancel")}</button>
+          <button type="button" onClick={() => onConfirm(form)} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t("confirm")}</button>
         </div>
       </div>
     </div>
