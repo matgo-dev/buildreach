@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Plus, X } from "lucide-react";
+import Toggle from "@/components/ui/Toggle";
 import type { ProductOperatorDetail, ProductUpdateInput } from "@/lib/api/operatorProducts";
 
 interface EditBasicInfoProps {
@@ -93,13 +94,7 @@ export default function EditBasicInfo({ product, value, onChange }: EditBasicInf
         {/* 是否精选 */}
         <div className="flex items-center gap-3">
           <label className="text-xs text-slate-500">{t("isFeatured")}</label>
-          <button
-            type="button"
-            onClick={() => onChange({ ...value, is_featured: !value.is_featured })}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${value.is_featured ? "bg-blue-500" : "bg-slate-300"}`}
-          >
-            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value.is_featured ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
-          </button>
+          <Toggle checked={!!value.is_featured} onChange={() => onChange({ ...value, is_featured: !value.is_featured })} size="md" />
         </div>
         {/* 认证 */}
         <div className="sm:col-span-2">

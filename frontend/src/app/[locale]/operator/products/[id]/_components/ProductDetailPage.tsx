@@ -8,6 +8,7 @@ import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
   Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
 } from "lucide-react";
+import Toggle from "@/components/ui/Toggle";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
@@ -108,10 +109,43 @@ export default function ProductDetailPage() {
   const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
   const [lightbox, setLightbox] = useState<{ images: { url: string }[]; index: number } | null>(null);
+  const [skuStatusLoading, setSkuStatusLoading] = useState<number | null>(null);
 
   const toggleSkuExpand = (skuId: number) => {
     setExpandedSkus((prev) => { const next = new Set(prev); if (next.has(skuId)) next.delete(skuId); else next.add(skuId); return next; });
   };
+
+  // SKU 状态切换确认弹窗
+  const [skuStatusConfirm, setSkuStatusConfirm] = useState<{ skuId: number; skuCode: string; currentStatus: string; isLastActive: boolean } | null>(null);
+
+  const requestSkuStatusToggle = useCallback((skuId: number, currentStatus: string, skuCode: string) => {
+    if (!product) return;
+    // 判断是否是最后一个在售 SKU（仅在停售时需要检测）
+    const isLastActive = currentStatus === "ACTIVE" &&
+      product.skus.filter((s) => s.status === "ACTIVE").length === 1;
+    setSkuStatusConfirm({ skuId, skuCode, currentStatus, isLastActive });
+  }, [product]);
+
+  const executeSkuStatusToggle = useCallback(async () => {
+    if (!product || !skuStatusConfirm) return;
+    const { skuId, currentStatus } = skuStatusConfirm;
+    const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    setSkuStatusConfirm(null);
+    setSkuStatusLoading(skuId);
+    try {
+      const res = await operatorProductsApi.updateSkuStatus(product.id, skuId, { status: newStatus as "ACTIVE" | "INACTIVE" });
+      await mutate();
+      if (res.product_auto_delisted) {
+        toastSuccess(t("skuDeactivatedAndProductDelisted"));
+      } else {
+        toastSuccess(newStatus === "ACTIVE" ? t("skuActivated") : t("skuDeactivated"));
+      }
+    } catch (e) {
+      setSaveError(e instanceof ApiError ? e.message : t("actionError"));
+    } finally {
+      setSkuStatusLoading(null);
+    }
+  }, [product, skuStatusConfirm, mutate, toastSuccess, t]);
 
   // 进入编辑态
   const enterEditMode = useCallback(() => {
@@ -520,7 +554,7 @@ export default function ProductDetailPage() {
                 </thead>
                 <tbody>
                   {product.skus.filter((s) => !skuChanges.removed.includes(s.id)).map((sku) => (
-                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} />
+                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} />
                   ))}
                   {skuChanges.added.map((added, i) => (
                     <tr key={`new-${i}`} className="border-b border-slate-50 bg-blue-50/30">
@@ -693,6 +727,24 @@ export default function ProductDetailPage() {
         onCancel={() => setDiscardModal(false)}
       />
 
+      {/* SKU 状态切换确认 */}
+      <ConfirmModal
+        open={!!skuStatusConfirm}
+        title={skuStatusConfirm?.currentStatus === "ACTIVE" ? t("skuDeactivateTitle") : t("skuActivateTitle")}
+        description={
+          skuStatusConfirm?.isLastActive && product?.status === "ACTIVE"
+            ? t("skuLastActiveWarning", { code: skuStatusConfirm.skuCode })
+            : skuStatusConfirm?.currentStatus === "ACTIVE"
+              ? t("skuDeactivateMsg", { code: skuStatusConfirm?.skuCode ?? "" })
+              : t("skuActivateMsg", { code: skuStatusConfirm?.skuCode ?? "" })
+        }
+        confirmLabel={skuStatusConfirm?.currentStatus === "ACTIVE" ? t("skuDeactivateBtn") : t("skuActivateBtn")}
+        cancelLabel={tList("cancel")}
+        variant={skuStatusConfirm?.isLastActive && product?.status === "ACTIVE" ? "danger" : "warning"}
+        onConfirm={executeSkuStatusToggle}
+        onCancel={() => setSkuStatusConfirm(null)}
+      />
+
       {/* SKU Modal */}
       <SkuEditModal
         open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates}
@@ -728,9 +780,10 @@ function FieldDisplay({ label, value, mono }: { label: string; value: string | n
   return (<div><span className="text-slate-400 text-xs">{label}</span><div className={`mt-0.5 text-slate-800 text-sm ${mono ? "font-mono" : ""}`}>{value || "—"}</div></div>);
 }
 
-function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEdit, onDelete }: {
+function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEdit, onDelete, onStatusToggle, statusLoading }: {
   sku: SkuOperatorDetail; locale: string; localized: (zh: string | null, en: string | null, fallback?: string | null) => string;
   expanded: boolean; onToggle: () => void; t: ReturnType<typeof useTranslations>; isEditing?: boolean; onEdit?: () => void; onDelete?: () => void;
+  onStatusToggle?: () => void; statusLoading?: boolean;
 }) {
   const skuStatus = sku.status === "ACTIVE" ? { bg: "bg-emerald-50", text: "text-emerald-700", label: t("skuStatusActive") } : { bg: "bg-slate-100", text: "text-slate-600", label: t("skuStatusInactive") };
   const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), sku.unit].filter(Boolean).join(" / ");
@@ -751,7 +804,19 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
         <td className="px-3 py-2.5 text-slate-600">{specs || "—"}</td>
         <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{formatPrice(sku.price_min ? Number(sku.price_min) : null, sku.price_max ? Number(sku.price_max) : null, sku.currency)}</td>
         <td className="px-3 py-2.5 text-right text-slate-600">{sku.moq} {sku.unit?.toLowerCase()}</td>
-        <td className="px-3 py-2.5 text-center"><span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${skuStatus.bg} ${skuStatus.text}`}>{skuStatus.label}</span></td>
+        <td className="px-3 py-2.5 text-center">
+          {onStatusToggle && !isEditing ? (
+            <Toggle
+              checked={sku.status === "ACTIVE"}
+              onChange={onStatusToggle}
+              label={skuStatus.label}
+              loading={statusLoading}
+              title={sku.status === "ACTIVE" ? t("skuDeactivate") : t("skuActivate")}
+            />
+          ) : (
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${skuStatus.bg} ${skuStatus.text}`}>{skuStatus.label}</span>
+          )}
+        </td>
         <td className="px-3 py-2.5 text-center">
           {isEditing ? (
             <div className="flex items-center justify-center gap-2">
