@@ -45,12 +45,13 @@ function resolveCategoryName(code: string, catMap: Map<string, CategoryTreeNode>
 
 function collectLeafNodes(nodes: CategoryTreeNode[]): { code: string; name: string }[] {
   const leaves: { code: string; name: string }[] = [];
-  function walk(ns: CategoryTreeNode[], parentName?: string) {
+  function walk(ns: CategoryTreeNode[], ancestors: string[] = []) {
     for (const n of ns) {
       if (n.children?.length) {
-        walk(n.children, n.name);
+        walk(n.children, [...ancestors, n.name]);
       } else {
-        leaves.push({ code: n.code, name: parentName ? `${parentName} > ${n.name}` : n.name });
+        const path = [...ancestors, n.name].join(" > ");
+        leaves.push({ code: n.code, name: path });
       }
     }
   }
