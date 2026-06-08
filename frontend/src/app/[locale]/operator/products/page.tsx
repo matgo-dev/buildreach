@@ -69,15 +69,14 @@ function formatTime(iso: string | null): string {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function formatPrice(min: number | null, max: number | null, currency: string | null): string | null {
+function formatPrice(min: number | null, max: number | null): string | null {
   if (min == null && max == null) return null;
-  const c = currency ?? "TZS";
   if (min != null && max != null) {
-    if (min === max) return `${c} ${Number(min).toLocaleString()}`;
-    return `${c} ${Number(min).toLocaleString()} - ${Number(max).toLocaleString()}`;
+    if (min === max) return Number(min).toLocaleString();
+    return `${Number(min).toLocaleString()} - ${Number(max).toLocaleString()}`;
   }
   const val = min ?? max;
-  return `${c} ${Number(val).toLocaleString()}`;
+  return Number(val).toLocaleString();
 }
 
 // ---------- 确认弹窗 ----------
@@ -403,7 +402,7 @@ function ProductListInner() {
 
       {/* 表格 */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full text-sm">
+        <table className="min-w-[1100px] w-full text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               {canApprove && (
@@ -422,14 +421,14 @@ function ProductListInner() {
                   />
                 </th>
               )}
-              <th className="px-4 py-3 text-left font-semibold">{t("colProductInfo")}</th>
-              <th className="px-4 py-3 text-left font-semibold">{t("colSpuCode")}</th>
-              <th className="px-4 py-3 text-left font-semibold">{t("colCategory")}</th>
-              <th className="px-4 py-3 text-right font-semibold">{t("colPrice")}</th>
-              <th className="px-4 py-3 text-center font-semibold">{t("colSkuCount")}</th>
-              <th className="px-4 py-3 text-left font-semibold">{t("colStatus")}</th>
-              <th className="px-4 py-3 text-left font-semibold">{t("colUpdatedAt")}</th>
-              <th className="px-4 py-3 text-right font-semibold">{t("colActions")}</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colProductInfo")}</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colSpuCode")}</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colCategory")}</th>
+              <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">{t("colPrice")}</th>
+              <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">{t("colSkuCount")}</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colStatus")}</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colUpdatedAt")}</th>
+              <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">{t("colActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -473,13 +472,13 @@ function ProductListInner() {
             {!loading &&
               items.map((item) => {
                 const statusStyle = STATUS_STYLES[item.status] ?? STATUS_STYLES.DRAFT;
-                const priceText = formatPrice(item.price_min, item.price_max, item.currency);
+                const priceText = formatPrice(item.price_min, item.price_max);
                 const catName = resolveCategoryName(item.category_code, catMap);
 
                 return (
                   <tr
                     key={item.id}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="even:bg-slate-50/50 hover:bg-blue-50/50 transition-colors cursor-pointer"
                     onClick={() => router.push(`/${locale}/operator/products/${item.id}`)}
                   >
                     {canApprove && (
@@ -516,7 +515,7 @@ function ProductListInner() {
                           <Package className="h-5 w-5 text-slate-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-900 max-w-[200px]">{item.name}</p>
+                          <p className="truncate font-medium text-slate-900 max-w-[280px]">{item.name}</p>
                           {item.created_by_name && (
                             <p className="truncate text-xs text-slate-400">{item.created_by_name}</p>
                           )}
@@ -526,7 +525,7 @@ function ProductListInner() {
 
                     <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.spu_code}</td>
 
-                    <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">{catName}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{catName}</td>
 
                     <td className="px-4 py-3 text-right">
                       {priceText ? (
