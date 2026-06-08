@@ -655,110 +655,103 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
 }
 
 function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations> }) {
-  const localized = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
+  const loc = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
+  const Val = ({ v }: { v: string | number | null | undefined }) => <span className="text-slate-800">{v != null && v !== "" ? String(v) : "—"}</span>;
+
   return (
-    <div className="space-y-4 text-xs">
-      {/* 基础信息行 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded px-3 py-2 border border-slate-100">
-          <span className="text-slate-400 text-[11px]">SKU Code</span>
-          <div className="text-slate-800 font-mono mt-0.5">{sku.sku_code}</div>
-        </div>
-        {sku.manufacturer_model && (
-          <div className="bg-white rounded px-3 py-2 border border-slate-100">
-            <span className="text-slate-400 text-[11px]">{locale === "en" ? "Model" : "型号"}</span>
-            <div className="text-slate-800 mt-0.5">{sku.manufacturer_model}</div>
-          </div>
-        )}
-        {(sku.name || sku.name_zh || sku.name_en) && (
-          <div className="bg-white rounded px-3 py-2 border border-slate-100">
-            <span className="text-slate-400 text-[11px]">{locale === "en" ? "Name" : "名称"}</span>
-            <div className="text-slate-800 mt-0.5">{localized(sku.name_zh, sku.name_en, sku.name)}</div>
-          </div>
-        )}
-        <div className="bg-white rounded px-3 py-2 border border-slate-100">
-          <span className="text-slate-400 text-[11px]">{locale === "en" ? "Currency" : "币种"}</span>
-          <div className="text-slate-800 mt-0.5">{sku.currency}</div>
-        </div>
+    <div className="space-y-5 text-xs">
+      {/* 第一行：SKU 基础信息网格 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-2">
+        <div><span className="text-slate-400">SKU</span><div className="font-mono text-slate-800 mt-0.5">{sku.sku_code}</div></div>
+        <div><span className="text-slate-400">{locale === "en" ? "Model" : "型号"}</span><div className="mt-0.5"><Val v={sku.manufacturer_model} /></div></div>
+        <div><span className="text-slate-400">{locale === "en" ? "Name" : "名称"}</span><div className="mt-0.5"><Val v={loc(sku.name_zh, sku.name_en, sku.name)} /></div></div>
+        <div><span className="text-slate-400">{locale === "en" ? "Color" : "颜色"}</span><div className="mt-0.5"><Val v={loc(sku.color_zh, sku.color_en, sku.color)} /></div></div>
+        <div><span className="text-slate-400">{locale === "en" ? "Material" : "材质"}</span><div className="mt-0.5"><Val v={loc(sku.material_zh, sku.material_en, sku.material)} /></div></div>
+        <div><span className="text-slate-400">{locale === "en" ? "Currency" : "币种"}</span><div className="mt-0.5"><Val v={sku.currency} /></div></div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="border-t border-slate-100" />
+
+      {/* 第二行：商务 + 物流 + 属性，分卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+
         {/* 阶梯价 */}
-        <div>
-          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{t("priceTiers")}</h5>
+        <div className="bg-white border border-slate-100 rounded-lg p-3">
+          <h5 className="font-semibold text-slate-700 mb-2">{t("priceTiers")}</h5>
           {sku.price_tiers.length > 0 ? (
             <table className="w-full">
-              <thead><tr className="text-slate-400"><th className="text-left pb-1.5 font-medium">{t("tierQty")}</th><th className="text-right pb-1.5 font-medium">{t("tierPrice")}</th></tr></thead>
+              <thead><tr className="text-slate-400 border-b border-slate-100"><th className="text-left pb-1.5 font-medium">{t("tierQty")}</th><th className="text-right pb-1.5 font-medium">{t("tierPrice")}</th></tr></thead>
               <tbody>{sku.price_tiers.map((tier, i) => (
-                <tr key={i} className="border-t border-slate-100">
+                <tr key={i} className="border-b border-slate-50 last:border-0">
                   <td className="py-1.5 text-slate-600">{tier.min_qty}{tier.max_qty ? ` - ${tier.max_qty}` : "+"} {sku.unit?.toLowerCase()}</td>
-                  <td className="py-1.5 text-right text-slate-800 font-medium">{tier.currency} {Number(tier.unit_price).toLocaleString()}</td>
+                  <td className="py-1.5 text-right font-medium text-slate-800">{tier.currency} {Number(tier.unit_price).toLocaleString()}</td>
                 </tr>
               ))}</tbody>
             </table>
-          ) : (
-            <p className="text-slate-400 italic">{locale === "en" ? "No price tiers" : "暂无阶梯价"}</p>
-          )}
+          ) : <p className="text-slate-400">{locale === "en" ? "No price tiers" : "暂无阶梯价"}</p>}
         </div>
 
         {/* 物流参数 */}
-        <div>
-          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{t("logistics")}</h5>
-          <div className="space-y-1.5 text-slate-600">
-            <div className="flex justify-between"><span className="text-slate-400">{t("leadTime")}</span><span>{sku.lead_time_min != null ? `${sku.lead_time_min}${sku.lead_time_max ? `-${sku.lead_time_max}` : ""} ${t("days")}` : "—"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">{t("packingQty")}</span><span>{sku.packing_quantity ?? "—"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">{t("grossWeight")}</span><span>{sku.gross_weight_kg != null ? `${Number(sku.gross_weight_kg)} kg` : "—"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">{t("volume")}</span><span>{sku.volume_cbm != null ? `${Number(sku.volume_cbm)} cbm` : "—"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">{t("canConsolidate")}</span><span>{sku.can_consolidate ? "✅ " + t("yes") : "❌ " + t("no")}</span></div>
-            {sku.cargo_type && <div className="flex justify-between"><span className="text-slate-400">{t("cargoType")}</span><span>{sku.cargo_type}</span></div>}
+        <div className="bg-white border border-slate-100 rounded-lg p-3">
+          <h5 className="font-semibold text-slate-700 mb-2">{t("logistics")}</h5>
+          <div className="space-y-1.5">
+            <div className="flex justify-between"><span className="text-slate-400">{t("leadTime")}</span><Val v={sku.lead_time_min != null ? `${sku.lead_time_min}${sku.lead_time_max ? `-${sku.lead_time_max}` : ""} ${t("days")}` : null} /></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("packingQty")}</span><Val v={sku.packing_quantity} /></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("grossWeight")}</span><Val v={sku.gross_weight_kg != null ? `${Number(sku.gross_weight_kg)} kg` : null} /></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("volume")}</span><Val v={sku.volume_cbm != null ? `${Number(sku.volume_cbm)} cbm` : null} /></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("canConsolidate")}</span><span>{sku.can_consolidate ? "✅" : "❌"}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("cargoType")}</span><Val v={sku.cargo_type} /></div>
           </div>
         </div>
 
         {/* SKU 属性 */}
-        <div>
-          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{t("skuAttributes")}</h5>
+        <div className="bg-white border border-slate-100 rounded-lg p-3">
+          <h5 className="font-semibold text-slate-700 mb-2">{t("skuAttributes")}</h5>
           {sku.attributes.length > 0 ? (
-            <div className="space-y-1.5 text-slate-600">
+            <div className="space-y-1.5">
               {sku.attributes.map((attr) => (
                 <div key={attr.attr_key} className="flex justify-between">
                   <span className="text-slate-400">{attr.display_name || attr.attr_key}</span>
-                  <span>{attr.attr_value}{attr.attr_unit ? ` ${attr.attr_unit}` : ""}</span>
+                  <span className="text-slate-800">{attr.attr_value}{attr.attr_unit ? ` ${attr.attr_unit}` : ""}</span>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-slate-400 italic">{locale === "en" ? "No attributes" : "暂无属性"}</p>
-          )}
+          ) : <p className="text-slate-400">{locale === "en" ? "No attributes" : "暂无属性"}</p>}
         </div>
       </div>
 
-      {/* SKU 图片 */}
-      {sku.images.length > 0 && (
-        <div>
-          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{locale === "en" ? "SKU Images" : "SKU 图片"} ({sku.images.length})</h5>
-          <div className="flex flex-wrap gap-2">
-            {sku.images.map((img) => (
-              <div key={img.id} className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-100">
-                <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+      {/* SKU 图片 + 供应商 */}
+      {(sku.images.length > 0 || sku.supplier_relations.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {sku.images.length > 0 && (
+            <div className="bg-white border border-slate-100 rounded-lg p-3">
+              <h5 className="font-semibold text-slate-700 mb-2">{locale === "en" ? "SKU Images" : "SKU 图片"} ({sku.images.length})</h5>
+              <div className="flex flex-wrap gap-2">
+                {sku.images.map((img) => (
+                  <div key={img.id} className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                    <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 供应商关系（如果有） */}
-      {sku.supplier_relations.length > 0 && (
-        <div>
-          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{locale === "en" ? "Suppliers" : "供应商"} ({sku.supplier_relations.length})</h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {sku.supplier_relations.map((sr) => (
-              <div key={sr.id} className="bg-white rounded px-3 py-2 border border-slate-100 text-slate-600">
-                <div className="font-medium text-slate-800">{sr.supplier_org_name} {sr.is_preferred && "⭐"}</div>
-                <div className="mt-0.5">{locale === "en" ? "Price" : "供价"}: {sr.supplier_currency} {Number(sr.supplier_price).toLocaleString()}{sr.cif_price_usd ? ` · CIF $${Number(sr.cif_price_usd)}` : ""}</div>
-                {sr.supplier_lead_time_days && <div>{t("leadTime")}: {sr.supplier_lead_time_days}{t("days")}</div>}
+            </div>
+          )}
+          {sku.supplier_relations.length > 0 && (
+            <div className="bg-white border border-slate-100 rounded-lg p-3">
+              <h5 className="font-semibold text-slate-700 mb-2">{locale === "en" ? "Suppliers" : "供应商"} ({sku.supplier_relations.length})</h5>
+              <div className="space-y-2">
+                {sku.supplier_relations.map((sr) => (
+                  <div key={sr.id} className="flex items-start justify-between">
+                    <div>
+                      <span className="text-slate-800 font-medium">{sr.supplier_org_name}</span>
+                      {sr.is_preferred && <span className="ml-1">⭐</span>}
+                      <div className="text-slate-500 mt-0.5">{sr.supplier_currency} {Number(sr.supplier_price).toLocaleString()}{sr.cif_price_usd ? ` · CIF $${Number(sr.cif_price_usd)}` : ""}</div>
+                    </div>
+                    {sr.supplier_lead_time_days && <span className="text-slate-500">{sr.supplier_lead_time_days}d</span>}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
