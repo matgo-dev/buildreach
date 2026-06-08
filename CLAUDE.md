@@ -158,21 +158,14 @@ buildlink-ea/
 **强制要求**:
 - 模型类上定义 `TRANSITIONS` 字典,明确合法转换路径
 - Service 层 `update_status` 必须校验 `new_status in TRANSITIONS[current_status]`,不合法直接拒绝
-- 可编辑性由状态决定(`EDITABLE` 集合),不可编辑状态下 PUT/POST/DELETE 写操作一律拒绝
+- 可编辑性由状态决定(`EDITABLE` 集合),不可编辑状态下写操作一律拒绝
 - 前端按钮显隐严格跟 `TRANSITIONS` 走,不靠散落的 if/else
-
-**商品状态机(已实施)**:
-
-| 当前状态 | 可转到 | 可编辑 | 可删除 |
-|---------|--------|--------|--------|
-| DRAFT | ACTIVE | ✅ | ✅ |
-| ACTIVE | INACTIVE | ❌(需先下架) | ❌ |
-| INACTIVE | ACTIVE | ✅ | ✅ |
+- 具体转换表定义在模型类上,不放 CLAUDE.md(避免文件膨胀)
 
 **绝对禁止**:
-- ❌ 直接 `product.status = new_status` 不经状态机校验
-- ❌ ACTIVE 状态下允许编辑(买方会看到改了一半的数据)
-- ❌ 前端按钮跟状态机不一致(如 ACTIVE 还显示编辑按钮)
+- ❌ 直接 `obj.status = new_status` 不经状态机校验
+- ❌ 对外可见状态下允许编辑(如商品 ACTIVE 时买方可见,必须先下架再改)
+- ❌ 前端按钮跟状态机不一致
 
 ### 4. AI 能力的"留占位 + 可降级"
 
