@@ -56,8 +56,9 @@ install_pkg() {
   esac
 }
 
-# ---- 2. PostgreSQL 16 ----
-PG_PORT=5433
+# ---- 2. PostgreSQL ----
+# Mac: brew postgresql@16, 默认 5433
+# Linux/WSL: 系统 PG 或自装, 从 .env 读端口
 
 if [ "$OS" = "mac" ]; then
   if ! brew list postgresql@16 &>/dev/null; then
@@ -80,27 +81,81 @@ else
       sudo postgresql-setup --initdb 2>/dev/null || true
     fi
   fi
-  # Linux 默认端口 5432
-  PG_PORT=5432
-  if ! sudo systemctl is-active --quiet postgresql; then
-    sudo systemctl start postgresql
-    sudo systemctl enable postgresql
-    sleep 2
+  # 尝试启动系统 PG 服务（WSL 下可能没有 systemctl，忽略错误）
+  if command -v systemctl &>/dev/null; then
+    sudo systemctl start postgresql 2>/dev/null || true
+    sudo systemctl enable postgresql 2>/dev/null || true
+    sleep 1
   fi
 fi
 
-# 创建数据库（已存在则忽略）
-if [ "$OS" = "mac" ]; then
-  createdb -p $PG_PORT overseas_supply_dev 2>/dev/null || true
-  createdb -p $PG_PORT overseas_supply_test 2>/dev/null || true
-else
-  sudo -u postgres createdb overseas_supply_dev 2>/dev/null || true
-  sudo -u postgres createdb overseas_supply_test 2>/dev/null || true
-  # 创建应用用户（密码和 .env 里一致）
-  sudo -u postgres psql -c "CREATE USER overseas_app WITH PASSWORD 'overseas_app_dev';" 2>/dev/null || true
-  sudo -u postgres psql -c "GRANT ALL ON DATABASE overseas_supply_dev TO overseas_app;" 2>/dev/null || true
-  sudo -u postgres psql -c "GRANT ALL ON DATABASE overseas_supply_test TO overseas_app;" 2>/dev/null || true
+# ---- 确保 backend/.env 存在（建库需要从中读连接信息）----
+cd "$PROJECT_DIR/backend"
+if [ ! -f .env ]; then
+  if [ ! -f .env.example ]; then
+    fail "backend/.env.example 不存在，无法生成 .env"
+  fi
+  cp .env.example .env
+  JWT_KEY=$(openssl rand -hex 32)
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=$JWT_KEY|" .env
+  else
+    sed -i "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=$JWT_KEY|" .env
+  fi
+  # Linux/WSL: .env.example 里默认端口是 5433(Mac)，自动改成 5432
+  if [ "$OS" != "mac" ]; then
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+      sed -i "s|localhost:5433|localhost:5432|" .env
+    fi
+  fi
+  info "已生成 backend/.env 并自动填入 JWT 密钥"
 fi
+cd "$PROJECT_DIR"
+
+# ---- 从 backend/.env 解析数据库连接信息 ----
+_parse_db_url() {
+  local env_file="$PROJECT_DIR/backend/.env"
+  local raw
+  raw=$(grep -E '^DATABASE_URL=' "$env_file" | head -1 | sed 's/^DATABASE_URL=//')
+  if [ -n "$raw" ]; then
+    # 去掉 driver 前缀 postgresql+asyncpg://
+    local clean
+    clean=$(echo "$raw" | sed -E 's|^postgresql(\+[a-z]+)?://||')
+    DB_PG_USER=$(echo "$clean" | sed -E 's/@.*//' | cut -d: -f1)
+    DB_PG_PASS=$(echo "$clean" | sed -E 's/@.*//' | grep -o ':.*' | sed 's/^://' || true)
+    DB_PG_HOST=$(echo "$clean" | sed -E 's/^[^@]+@//' | sed -E 's|/.*||' | cut -d: -f1)
+    DB_PG_PORT=$(echo "$clean" | sed -E 's/^[^@]+@//' | sed -E 's|/.*||' | grep -o ':[0-9]*' | sed 's/^://' || true)
+    DB_PG_NAME=$(echo "$clean" | sed -E 's|^.*/||' | sed -E 's|\?.*||')
+  fi
+  # 兜底默认值
+  DB_PG_USER="${DB_PG_USER:-postgres}"
+  DB_PG_PASS="${DB_PG_PASS:-}"
+  DB_PG_HOST="${DB_PG_HOST:-localhost}"
+  DB_PG_PORT="${DB_PG_PORT:-5432}"
+  DB_PG_NAME="${DB_PG_NAME:-overseas_supply_dev}"
+}
+_parse_db_url
+
+PG_PORT="$DB_PG_PORT"
+info "数据库连接: ${DB_PG_USER}@${DB_PG_HOST}:${PG_PORT}/${DB_PG_NAME}"
+
+# 检查 PG 是否可达
+if command -v pg_isready &>/dev/null; then
+  if ! pg_isready -h "$DB_PG_HOST" -p "$PG_PORT" -U "$DB_PG_USER" -q 2>/dev/null; then
+    fail "PostgreSQL 未就绪(${DB_PG_HOST}:${PG_PORT})，请先启动数据库"
+  fi
+fi
+
+# 建库（如不存在）— 统一用 psql + PGPASSWORD，Mac/Linux/WSL 通用
+export PGPASSWORD="${DB_PG_PASS}"
+DB_EXISTS=$(psql -h "$DB_PG_HOST" -p "$PG_PORT" -U "$DB_PG_USER" -tAc \
+  "SELECT 1 FROM pg_database WHERE datname='${DB_PG_NAME}'" postgres 2>/dev/null || true)
+if [ "$DB_EXISTS" != "1" ]; then
+  warn "数据库 ${DB_PG_NAME} 不存在，正在创建..."
+  createdb -h "$DB_PG_HOST" -p "$PG_PORT" -U "$DB_PG_USER" "$DB_PG_NAME"
+  info "数据库 ${DB_PG_NAME} 已创建"
+fi
+unset PGPASSWORD
 info "PostgreSQL 就绪 (端口 $PG_PORT)"
 
 # ---- 3. Python + uv ----
@@ -139,24 +194,7 @@ fi
 source .venv/bin/activate
 uv pip install -e ".[dev]" --quiet
 
-# .env 文件
-if [ ! -f .env ]; then
-  cp .env.example .env
-  JWT_KEY=$(openssl rand -hex 32)
-  # 替换 JWT 密钥
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=$JWT_KEY|" .env
-  else
-    sed -i "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=$JWT_KEY|" .env
-  fi
-  # Linux 需要调整数据库连接端口
-  if [ "$OS" != "mac" ]; then
-    if [[ "$OSTYPE" != "darwin"* ]]; then
-      sed -i "s|5433|5432|" .env
-    fi
-  fi
-  info "已生成 .env 并自动填入 JWT 密钥"
-fi
+# .env 已在前面确保生成，此处无需重复
 
 alembic upgrade head
 info "后端依赖 + 数据库迁移就绪"
