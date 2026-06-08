@@ -365,7 +365,7 @@ export default function ProductDetailPage() {
           )}
 
           {/* SKU 变体表格 */}
-          <section className="bg-white rounded-lg shadow-sm p-5">
+          <section id="sku-section" className="bg-white rounded-lg shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-800">
                 {t("skuVariants")} <span className="text-slate-400 font-normal">({product.skus.filter((s) => !skuChanges.removed.includes(s.id)).length + skuChanges.added.length})</span>
@@ -408,9 +408,11 @@ export default function ProductDetailPage() {
 
           {/* 商品图片 */}
           {isEditing ? (
-            <EditImages images={product.images} imageChange={imageChange} onChange={setImageChange} previews={imagePreviews} />
+            <div id="image-section">
+              <EditImages images={product.images} imageChange={imageChange} onChange={setImageChange} previews={imagePreviews} />
+            </div>
           ) : (
-            <section className="bg-white rounded-lg shadow-sm p-5">
+            <section id="image-section" className="bg-white rounded-lg shadow-sm p-5">
               <h3 className="text-sm font-semibold text-slate-800 mb-4">{t("productImages")} <span className="text-slate-400 font-normal">({product.images.length}/8)</span></h3>
               <div className="flex flex-wrap gap-3">
                 {product.images.map((img) => (
@@ -502,7 +504,18 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="flex justify-end gap-2">
                   <button onClick={() => { setConfirmModal(null); setActionError(null); }} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{tList("cancel")}</button>
-                  <button onClick={() => { setConfirmModal(null); setActionError(null); enterEditMode(); }} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t("goEdit")}</button>
+                  <button onClick={() => {
+                    // 根据错误类型决定滚动目标
+                    const errors = actionError?.errors || [];
+                    const hasSkuErr = errors.some((e) => e.toLowerCase().includes("sku") || e.toLowerCase().includes("price"));
+                    const hasImgErr = errors.some((e) => e.toLowerCase().includes("image"));
+                    setConfirmModal(null); setActionError(null); enterEditMode();
+                    // 进入编辑态后滚动到问题区域
+                    setTimeout(() => {
+                      const target = hasSkuErr ? "sku-section" : hasImgErr ? "image-section" : null;
+                      if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 100);
+                  }} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t("goEdit")}</button>
                 </div>
               </>
             ) : (
