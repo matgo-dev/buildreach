@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Package, Plus, Search } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
+import { useToast } from "@/components/ui/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { Link } from "@/i18n/navigation";
@@ -122,21 +123,6 @@ function ConfirmDialog({
   );
 }
 
-// ---------- Toast ----------
-
-function Toast({ message, onClose }: { message: string; onClose: () => void }) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-800 px-4 py-3 text-sm text-white shadow-lg">
-      {message}
-    </div>
-  );
-}
-
 // ===================== 主页面 =====================
 
 function ProductListInner() {
@@ -172,7 +158,7 @@ function ProductListInner() {
     item: ProductOperatorItem;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [toast, setToast] = useState("");
+  const { success: toastSuccess } = useToast();
 
   const canWrite = hasPermission(Permissions.PRODUCT_WRITE);
   const canApprove = hasPermission(Permissions.PRODUCT_APPROVE);
@@ -222,13 +208,13 @@ function ProductListInner() {
         const { type, item } = confirmState;
         if (type === "publish") {
           await operatorProductsApi.updateStatus(item.id, { status: "ACTIVE" });
-          setToast(t("toastPublished"));
+          toastSuccess(t("toastPublished"));
         } else if (type === "unpublish") {
           await operatorProductsApi.updateStatus(item.id, { status: "INACTIVE" });
-          setToast(t("toastUnpublished"));
+          toastSuccess(t("toastUnpublished"));
         } else if (type === "delete") {
           await operatorProductsApi.remove(item.id);
-          setToast(t("toastDeleted"));
+          toastSuccess(t("toastDeleted"));
         }
         setConfirmState(null);
         void load(type === "delete" && items.length === 1 && page > 1 ? page - 1 : page);
@@ -261,7 +247,7 @@ function ProductListInner() {
     setBatchLoading(false);
     setSelectedIds(new Set());
     if (successCount > 0) {
-      setToast(`${successCount} 件商品已上架`);
+      toastSuccess(`${successCount} 件商品已上架`);
       void load(page);
     }
     if (errors.length > 0) {
@@ -645,8 +631,6 @@ function ProductListInner() {
         />
       )}
 
-      {/* Toast */}
-      {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </div>
   );
 }
