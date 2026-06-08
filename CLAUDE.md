@@ -576,6 +576,29 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 6. **TODO 注释带编号**(如 `TODO(Q22): ...`),便于追溯
 7. **提交前自测**:后端 `pytest` + `verify.sh`,前端手动跑一遍登录流程
 
+### 新功能开发前必须输出的清单(强制)
+
+每个新功能模块**动手写代码之前**,必须先列出以下清单并确认:
+
+**① RBAC 权限清单**:
+- 本功能涉及哪些权限点(如 `order:read`、`order:write`、`order:approve`)
+- 每个角色(BUYER/SUPPLIER/OPERATOR/ADMIN)分别有哪些权限
+- 前端路由守卫用什么(`allowRoles` / `requiredPermissions`)
+- 后端端点用什么 Guard(`require_permission` / `require_any_role`)
+
+**② i18n 字段清单**:
+- 哪些数据库字段是多语言的(需要 `_zh` / `_en` 分列 + `I18nMixin`)
+- 前端新增了哪些翻译 key(namespace + key 列表)
+- 后端新增了哪些 `MessageKey`(错误信息)
+
+**③ 状态机清单**(如有 status 字段):
+- 状态枚举值
+- 合法转换路径(`TRANSITIONS`)
+- 每个状态下的可编辑性 / 可删除性
+- 前端按钮与状态的映射关系
+
+不列清单就动手 = 必然漏权限、漏翻译、漏状态校验。
+
 ---
 
 ## Bug 修复纪律 ⭐
