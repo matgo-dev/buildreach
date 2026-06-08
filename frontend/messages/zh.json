@@ -309,7 +309,7 @@
     "sellingPoints": "卖点",
     "description": "描述",
     "isFeatured": "精选商品",
-    "skuVariants": "规格型号",
+    "skuVariants": "SKU 详情",
     "skuCode": "SKU 编码",
     "specs": "规格",
     "priceRange": "价格区间",

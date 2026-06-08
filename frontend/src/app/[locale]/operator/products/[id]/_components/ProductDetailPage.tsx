@@ -632,7 +632,11 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
             <span className="font-mono text-slate-700">{sku.sku_code}</span>
             {sku.is_default && <span className="bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">{t("default")}</span>}
           </div>
-          {sku.manufacturer_model && <div className="text-slate-400 text-[11px] mt-0.5">{sku.manufacturer_model}</div>}
+          {(localized(sku.name_zh, sku.name_en, sku.name) || sku.manufacturer_model) && (
+            <div className="text-slate-400 text-[11px] mt-0.5">
+              {localized(sku.name_zh, sku.name_en, sku.name)}{localized(sku.name_zh, sku.name_en, sku.name) && sku.manufacturer_model ? " · " : ""}{sku.manufacturer_model || ""}
+            </div>
+          )}
         </td>
         <td className="px-3 py-2.5 text-slate-600">{specs || "—"}</td>
         <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{formatPrice(sku.price_min ? Number(sku.price_min) : null, sku.price_max ? Number(sku.price_max) : null, sku.currency)}</td>
