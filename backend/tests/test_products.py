@@ -1531,3 +1531,110 @@ async def test_create_product_with_l3_passes(client: AsyncClient, db_session):
     )
     assert r.status_code == 200
     assert r.json()["code"] == 0
+
+
+# ── 聚合保存 SKU 归属校验 ────────────────────────────────
+
+def _sku_payload(**overrides) -> dict:
+    """构造聚合保存 SKU 子项的最小有效载荷。"""
+    base = {
+        "unit": "PCS",
+        "moq": 100,
+        "price_min": 1.00,
+        "price_max": 3.00,
+        "currency": "TZS",
+        "source_lang": "zh",
+    }
+    base.update(overrides)
+    return base
+
+
+@pytest.mark.asyncio
+async def test_aggregate_save_reject_nonexistent_sku_id(client: AsyncClient, db_session):
+    """带不存在的 SKU id → 404,无新 SKU 落库,整笔回滚。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat, spu_code="AGG-OWN-001")
+
+    # 先建一条真实 SKU
+    real_sku_id = await _create_test_sku(client, headers, pid, sku_code="AGG-SKU-R1")
+
+    # 聚合保存: 保留真实 SKU + 插入一条带不存在 id 的 SKU
+    fake_id = 999999
+    r = await client.put(
+        f"/api/v1/operator/products/{pid}/aggregate",
+        headers=headers,
+        json={
+            "skus": [
+                _sku_payload(id=real_sku_id),
+                _sku_payload(id=fake_id),
+            ],
+        },
+    )
+    assert r.status_code == 404
+
+    # 断言无新 SKU 落库（仍然只有最初的 1 条）
+    r2 = await client.get(f"/api/v1/operator/products/{pid}/skus", headers=headers)
+    assert r2.status_code == 200
+    assert len(r2.json()["data"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_aggregate_save_reject_foreign_sku_id(client: AsyncClient, db_session):
+    """带另一商品 SKU id → 404,另一商品 SKU 未受影响。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+
+    pid_a = await _create_test_product(client, headers, cat, spu_code="AGG-OWN-A")
+    pid_b = await _create_test_product(client, headers, cat, spu_code="AGG-OWN-B")
+
+    sku_a = await _create_test_sku(client, headers, pid_a, sku_code="AGG-SKU-A1")
+    sku_b = await _create_test_sku(client, headers, pid_b, sku_code="AGG-SKU-B1")
+
+    # 对商品 A 聚合保存，传入商品 B 的 SKU id
+    r = await client.put(
+        f"/api/v1/operator/products/{pid_a}/aggregate",
+        headers=headers,
+        json={
+            "skus": [
+                _sku_payload(id=sku_a),
+                _sku_payload(id=sku_b),  # 外来 id
+            ],
+        },
+    )
+    assert r.status_code == 404
+
+    # 商品 B 的 SKU 未被修改/删除
+    r2 = await client.get(f"/api/v1/operator/products/{pid_b}/skus", headers=headers)
+    assert r2.status_code == 200
+    skus_b = r2.json()["data"]
+    assert len(skus_b) == 1
+    assert skus_b[0]["id"] == sku_b
+
+
+@pytest.mark.asyncio
+async def test_aggregate_save_new_sku_without_id(client: AsyncClient, db_session):
+    """不带 id → 仍新建;带本商品已有 id → 仍更新。回归测试。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat, spu_code="AGG-OWN-REG")
+    existing_sku = await _create_test_sku(client, headers, pid, sku_code="AGG-SKU-E1")
+
+    # 聚合保存: 更新已有 + 新建一条
+    r = await client.put(
+        f"/api/v1/operator/products/{pid}/aggregate",
+        headers=headers,
+        json={
+            "skus": [
+                _sku_payload(id=existing_sku, moq=200),  # 更新
+                _sku_payload(moq=300),                    # 新建（无 id）
+            ],
+        },
+    )
+    assert r.status_code == 200
+    assert r.json()["code"] == 0
+
+    # 确认有 2 条 SKU
+    r2 = await client.get(f"/api/v1/operator/products/{pid}/skus", headers=headers)
+    assert r2.status_code == 200
+    assert len(r2.json()["data"]) == 2

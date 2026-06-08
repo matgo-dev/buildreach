@@ -1205,8 +1205,11 @@ async def save_product_aggregate(
                 )
                 incoming_ids.add(sku_data.id)
                 change_summary["updated"] += 1
+            elif sku_data.id is not None:
+                # 带 id 但不属于本商品 → 拒绝（与逐实体 update_sku 行为一致）
+                raise NotFoundError("SKU not found")
             else:
-                # 新建 SKU
+                # 不带 id → 新建 SKU
                 await _create_sku_in_aggregate(
                     db, product, sku_data, tpl_map=tpl_map, source_lang=source_lang,
                 )
