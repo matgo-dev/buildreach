@@ -1638,3 +1638,175 @@ async def test_aggregate_save_new_sku_without_id(client: AsyncClient, db_session
     r2 = await client.get(f"/api/v1/operator/products/{pid}/skus", headers=headers)
     assert r2.status_code == 200
     assert len(r2.json()["data"]) == 2
+
+
+# ── 图片操作：状态校验 + 归属校验 ──────────────────────────
+
+
+async def _make_active_product_with_image(client: AsyncClient, headers: dict, cat: str, spu_code: str):
+    """创建 DRAFT 商品 + SKU + 图片，然后上架，返回 (product_id, image_id)。"""
+    pid = await _create_test_product(client, headers, cat, spu_code)
+    await _create_test_sku(client, headers, pid, sku_code=f"{spu_code}-SKU")
+    img_id = await _upload_test_image(client, headers, pid)
+    # 上架
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers,
+        json={"status": "ACTIVE"},
+    )
+    assert r.status_code == 200, r.text
+    return pid, img_id
+
+
+@pytest.mark.asyncio
+async def test_upload_image_blocked_when_active(client: AsyncClient):
+    """ACTIVE 商品不能上传图片。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid, _ = await _make_active_product_with_image(client, headers, cat, "IMG-ACT-UP")
+
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (100, 100), color=(0, 255, 0)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/images",
+        headers=headers,
+        files={"file": ("new.png", buf, "image/png")},
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40207  # ProductNotEditableError
+
+
+@pytest.mark.asyncio
+async def test_delete_image_blocked_when_active(client: AsyncClient):
+    """ACTIVE 商品不能删图片。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid, img_id = await _make_active_product_with_image(client, headers, cat, "IMG-ACT-DEL")
+
+    r = await client.delete(
+        f"/api/v1/operator/products/{pid}/images/{img_id}",
+        headers=headers,
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40207
+
+
+@pytest.mark.asyncio
+async def test_set_main_image_blocked_when_active(client: AsyncClient):
+    """ACTIVE 商品不能设主图。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid, img_id = await _make_active_product_with_image(client, headers, cat, "IMG-ACT-MAIN")
+
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/images/{img_id}/set-main",
+        headers=headers,
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40207
+
+
+@pytest.mark.asyncio
+async def test_sort_images_blocked_when_active(client: AsyncClient):
+    """ACTIVE 商品不能排序图片。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid, img_id = await _make_active_product_with_image(client, headers, cat, "IMG-ACT-SORT")
+
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/images/sort",
+        headers=headers,
+        json=[img_id],
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40207
+
+
+@pytest.mark.asyncio
+async def test_delete_image_wrong_product_id(client: AsyncClient):
+    """删图片传错 product_id 应返回 404。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+
+    # 创建两个不同商品
+    pid_a = await _create_test_product(client, headers, cat, "IMG-OWN-A")
+    pid_b = await _create_test_product(client, headers, cat, "IMG-OWN-B")
+    img_a = await _upload_test_image(client, headers, pid_a)
+
+    # 用 pid_b 去删 pid_a 的图片 → 404
+    r = await client.delete(
+        f"/api/v1/operator/products/{pid_b}/images/{img_a}",
+        headers=headers,
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_force_ignored_when_debug_api_disabled(client: AsyncClient):
+    """ENABLE_DEBUG_API=False 时 force=true 无效，上架校验仍执行。"""
+    from app.core.config import settings
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+
+    # 创建无 SKU/图片的空商品
+    pid = await _create_test_product(client, headers, cat, "FORCE-GATE-001")
+
+    original_val = settings.ENABLE_DEBUG_API
+    try:
+        # 模拟生产环境
+        object.__setattr__(settings, "ENABLE_DEBUG_API", False)
+        r = await client.patch(
+            f"/api/v1/operator/products/{pid}/status?force=true",
+            headers=headers,
+            json={"status": "ACTIVE"},
+        )
+        # 缺少 SKU/图片，校验应失败
+        assert r.status_code == 400
+    finally:
+        object.__setattr__(settings, "ENABLE_DEBUG_API", original_val)
+
+
+@pytest.mark.asyncio
+async def test_sku_status_toggle_on_active_product(client: AsyncClient):
+    """ACTIVE 商品下可以切换 SKU 状态（运营操作，不受可编辑限制）。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid, _ = await _make_active_product_with_image(client, headers, cat, "SKU-TOGGLE-ACT")
+
+    # 拿到唯一的 SKU
+    skus_r = await client.get(f"/api/v1/operator/products/{pid}/skus", headers=headers)
+    sku_id = skus_r.json()["data"][0]["id"]
+
+    # ACTIVE 商品下停售 SKU → 应成功，不报 ProductNotEditableError
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/skus/{sku_id}/status",
+        headers=headers,
+        json={"status": "INACTIVE"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["status"] == "INACTIVE"
+
+
+@pytest.mark.asyncio
+async def test_deactivate_last_sku_auto_delists_product(client: AsyncClient):
+    """停售 ACTIVE 商品下最后一个在售 SKU → 商品自动下架。"""
+    headers = await _login_operator(client)
+    cat = await _get_first_category_code(client)
+    pid, _ = await _make_active_product_with_image(client, headers, cat, "SKU-LAST-DELIST")
+
+    skus_r = await client.get(f"/api/v1/operator/products/{pid}/skus", headers=headers)
+    sku_id = skus_r.json()["data"][0]["id"]
+
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/skus/{sku_id}/status",
+        headers=headers,
+        json={"status": "INACTIVE"},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["product_auto_delisted"] is True
+
+    # 确认商品已自动变为 INACTIVE
+    detail = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
+    assert detail.json()["data"]["status"] == "INACTIVE"

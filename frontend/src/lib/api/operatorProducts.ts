@@ -468,9 +468,9 @@ export const operatorProductsApi = {
       `${PREFIX}/${productId}/status${force ? "?force=true" : ""}`, data,
     ),
 
-  /** 改 SKU 状态（启用/停用） */
+  /** 改 SKU 状态（启用/停用）；停售最后在售 SKU 时后端会自动下架商品 */
   updateSkuStatus: (productId: number, skuId: number, data: { status: "ACTIVE" | "INACTIVE" }) =>
-    api.patch<{ id: number; status: string }>(
+    api.patch<{ id: number; status: string; product_auto_delisted: boolean }>(
       `${PREFIX}/${productId}/skus/${skuId}/status`, data,
     ),
 

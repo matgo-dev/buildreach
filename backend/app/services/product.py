@@ -59,7 +59,6 @@ from app.schemas.product import (
     SupplierRelationCreate,
     SupplierRelationUpdate,
 )
-from app.db.models.user import User
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "products"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -629,19 +628,31 @@ async def update_sku(
 
 async def update_sku_status(
     db: AsyncSession, product_id: int, sku_id: int, new_status: str,
-) -> ProductSku:
+) -> dict:
+    """SKU 状态切换是运营操作，ACTIVE 商品下也允许（如缺货停售）。
+    停售最后一个在售 SKU 时自动下架商品，避免出现"可见但无可购变体"。
+    返回 dict 包含 sku 和可选的 product_status_changed 标记。
+    """
     if new_status not in SkuStatus.ALL:
         raise InvalidProductStatusError(new_status)
-    product = await _get_product_or_404(db, product_id)
-    if product.status not in ProductStatus.EDITABLE:
-        raise ProductNotEditableError(product.status)
+    product = await _get_product_or_404(db, product_id, load_relations=True)
     sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
     if sku.status == new_status:
-        return sku
+        return {"sku": sku, "product_auto_delisted": False}
+
     sku.status = new_status
+    product_auto_delisted = False
+
+    # 停售最后一个在售 SKU → 自动下架商品
+    if new_status == SkuStatus.INACTIVE and product.status == ProductStatus.ACTIVE:
+        active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE and s.id != sku_id]
+        if len(active_skus) == 0:
+            product.status = ProductStatus.INACTIVE
+            product_auto_delisted = True
+
     await db.commit()
     await db.refresh(sku)
-    return sku
+    return {"sku": sku, "product_auto_delisted": product_auto_delisted}
 
 
 async def delete_sku(db: AsyncSession, product_id: int, sku_id: int) -> None:
@@ -902,6 +913,10 @@ async def add_product_image(
 ) -> ProductImage:
     product = await _get_product_or_404(db, product_id, load_relations=True)
 
+    # 图片写操作受商品可编辑状态约束
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+
     if sku_id is not None:
         sku_exists = any(s.id == sku_id for s in product.skus)
         if not sku_exists:
@@ -949,7 +964,10 @@ async def add_product_image(
 
 
 async def set_main_image(db: AsyncSession, product_id: int, image_id: int) -> None:
-    await _get_product_or_404(db, product_id)
+    product = await _get_product_or_404(db, product_id)
+
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
 
     await db.execute(
         update(ProductImage)
@@ -966,9 +984,18 @@ async def set_main_image(db: AsyncSession, product_id: int, image_id: int) -> No
     await db.commit()
 
 
-async def delete_product_image(db: AsyncSession, image_id: int) -> None:
+async def delete_product_image(db: AsyncSession, product_id: int, image_id: int) -> None:
+    # 校验商品可编辑状态
+    product = await _get_product_or_404(db, product_id)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+
+    # 同时校验图片归属
     row = await db.execute(
-        select(ProductImage).where(ProductImage.id == image_id)
+        select(ProductImage).where(
+            ProductImage.id == image_id,
+            ProductImage.product_id == product_id,
+        )
     )
     img = row.scalar_one_or_none()
     if not img:
@@ -985,6 +1012,10 @@ async def delete_product_image(db: AsyncSession, image_id: int) -> None:
 async def update_image_sort(
     db: AsyncSession, product_id: int, image_ids: list[int],
 ) -> None:
+    product = await _get_product_or_404(db, product_id)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+
     for idx, img_id in enumerate(image_ids):
         await db.execute(
             update(ProductImage)
