@@ -78,7 +78,10 @@
       "required_attr_missing": "缺少必填属性: {keys}",
       "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}",
       "category_not_leaf": "品类 {category_code} 不是叶子节点,仅允许选择三级品类",
-      "invalid_range": "{min_field} 不能大于 {max_field}"
+      "invalid_range": "{min_field} 不能大于 {max_field}",
+      "illegal_transition": "不允许从 {current} 转换到 {target}",
+      "image_not_owned": "图片 {image_id} 不属于商品 {product_id}",
+      "not_editable": "当前状态 {current_status} 下不可编辑"
     }
   },
   "category": {

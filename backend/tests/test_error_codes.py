@@ -62,6 +62,8 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls()
     if name == "ImageTooSmallError":
         return cls()
+    if name == "ProductRangeInvalidError":
+        return cls("price_min", "price_max")
     if name == "PriceTierInvalidError":
         return cls("test")
     if name == "SkuNotInProductError":
@@ -74,6 +76,12 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls("test_key", "SPU")
     if name == "CategoryNotLeafError":
         return cls("01")
+    if name == "ProductNotEditableError":
+        return cls("ACTIVE")
+    if name == "IllegalTransitionError":
+        return cls("DRAFT", "ACTIVE")
+    if name == "ImageNotOwnedError":
+        return cls(1, 1)
     return cls()
 
 
