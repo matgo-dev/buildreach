@@ -21,9 +21,9 @@ function findCategoryLabel(
   for (const l1 of tree) {
     if (l1.code === code) return l1.name;
     for (const l2 of l1.children || []) {
-      if (l2.code === code) return `${l1.name} / ${l2.name}`;
+      if (l2.code === code) return l2.name;
       for (const l3 of l2.children || []) {
-        if (l3.code === code) return `${l1.name} / ${l2.name}`;
+        if (l3.code === code) return l3.name;
       }
     }
   }
