@@ -95,7 +95,6 @@ export interface SkuCreateInput {
   can_consolidate?: boolean;
   cargo_type?: string | null;
   is_default?: boolean;
-  status?: string;
   price_tiers?: PriceTierInput[] | null;
   attributes?: ProductAttrInput[] | null;
 }
@@ -119,7 +118,6 @@ export interface ProductCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
-  status?: string;
   attributes?: ProductAttrInput[] | null;
 }
 
@@ -270,7 +268,6 @@ export interface SkuUpdateInput {
   can_consolidate?: boolean | null;
   cargo_type?: string | null;
   is_default?: boolean | null;
-  status?: string | null;
   price_tiers?: PriceTierInput[] | null;
   attributes?: ProductAttrInput[] | null;
 }
@@ -313,6 +310,69 @@ export interface ProductPage {
   page: number;
   size: number;
   pages: number;
+}
+
+// ---------- 聚合保存 ----------
+
+export interface ImageRefInput {
+  image_id: number;
+  image_type: "MAIN" | "GALLERY" | "DETAIL";
+  sort_order: number;
+}
+
+export interface AggregateSkuInput {
+  id?: number | null;
+  manufacturer_model?: string | null;
+  name?: string | null;
+  color?: string | null;
+  material?: string | null;
+  source_lang?: string;
+  price_min?: number | null;
+  price_max?: number | null;
+  currency?: string;
+  unit: SkuUnitCode;
+  moq: number;
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  packing_quantity?: number | null;
+  gross_weight_kg?: number | null;
+  volume_cbm?: number | null;
+  can_consolidate?: boolean;
+  cargo_type?: string | null;
+  is_default?: boolean;
+  price_tiers?: PriceTierInput[] | null;
+  attributes?: ProductAttrInput[] | null;
+}
+
+export interface ProductAggregateCreateInput {
+  category_code: string;
+  spu_code?: string | null;
+  name: string;
+  description?: string | null;
+  origin?: string;
+  hs_code?: string | null;
+  brand?: string | null;
+  certifications?: unknown[] | null;
+  selling_points?: string | null;
+  source_lang?: string;
+  is_featured?: boolean;
+  attributes?: ProductAttrInput[] | null;
+  skus: AggregateSkuInput[];
+  images?: ImageRefInput[] | null;
+}
+
+export interface ProductAggregateSaveInput {
+  name?: string | null;
+  description?: string | null;
+  origin?: string | null;
+  hs_code?: string | null;
+  brand?: string | null;
+  certifications?: string[] | null;
+  selling_points?: string | null;
+  is_featured?: boolean | null;
+  attributes?: ProductAttrInput[] | null;
+  skus?: AggregateSkuInput[] | null;
+  images?: ImageRefInput[] | null;
 }
 
 // ---------- API 函数 ----------
@@ -407,4 +467,18 @@ export const operatorProductsApi = {
     api.patch<{ id: number; status: string }>(
       `${PREFIX}/${productId}/status${force ? "?force=true" : ""}`, data,
     ),
+
+  /** 改 SKU 状态（启用/停用） */
+  updateSkuStatus: (productId: number, skuId: number, data: { status: "ACTIVE" | "INACTIVE" }) =>
+    api.patch<{ id: number; status: string }>(
+      `${PREFIX}/${productId}/skus/${skuId}/status`, data,
+    ),
+
+  /** 聚合创建（SPU+SKU 单事务） */
+  createAggregate: (data: ProductAggregateCreateInput) =>
+    api.post<ProductCreatedResponse>(`${PREFIX}/aggregate`, data),
+
+  /** 聚合保存（SPU+SKU diff 单事务） */
+  saveAggregate: (productId: number, data: ProductAggregateSaveInput) =>
+    api.put<{ id: number }>(`${PREFIX}/${productId}/aggregate`, data),
 };

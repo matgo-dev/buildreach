@@ -17,6 +17,7 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import (
     NotFoundError,
     ImageFormatInvalidError,
+    ImageNotOwnedError,
     ImageTooLargeError,
     ImageTooSmallError,
     InvalidProductStatusError,
@@ -46,6 +47,8 @@ from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.supplier_organization import SupplierOrganization
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.schemas.product import (
     ProductAttrCreate,
     ProductCreate,
@@ -168,7 +171,7 @@ async def create_product(
         hs_code=data.hs_code,
         certifications=data.certifications or [],
         is_featured=data.is_featured,
-        status=data.status if data.status in ProductStatus.ALL else ProductStatus.DRAFT,
+        status=ProductStatus.DRAFT,
         created_by=operator_id,
     )
 
@@ -360,6 +363,10 @@ async def update_product_status(
                         f"SKU {sku.sku_code}: missing required attributes: {', '.join(missing)}"
                     )
 
+        # TODO: 设计未覆盖,采用最简实现 — 当前允许无供货关系上架。
+        # 后续需决策：是否强制每个 active SKU 至少绑定一个供应商才能上架。
+        # 如需强制,在此处检查 product_suppliers 表,缺失则 append error。
+
         if errors:
             raise PublishValidationFailedError(errors)
 
@@ -526,7 +533,7 @@ async def create_sku(
         can_consolidate=data.can_consolidate,
         cargo_type=data.cargo_type,
         is_default=data.is_default,
-        status=data.status if data.status in SkuStatus.ALL else SkuStatus.ACTIVE,
+        status=SkuStatus.ACTIVE,
     )
 
     # i18n 字段写入(flush 前设好)
@@ -617,6 +624,23 @@ async def update_sku(
 
     await db.commit()
     await db.refresh(sku, ["price_tiers"])
+    return sku
+
+
+async def update_sku_status(
+    db: AsyncSession, product_id: int, sku_id: int, new_status: str,
+) -> ProductSku:
+    if new_status not in SkuStatus.ALL:
+        raise InvalidProductStatusError(new_status)
+    product = await _get_product_or_404(db, product_id)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+    sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
+    if sku.status == new_status:
+        return sku
+    sku.status = new_status
+    await db.commit()
+    await db.refresh(sku)
     return sku
 
 
@@ -1022,6 +1046,374 @@ async def get_attr_templates(
         key=lambda t: (code_to_level.get(t.category_code, 0), t.sort_order),
     )
     return result
+
+
+# ── 聚合保存（单事务）────────────────────────────────────
+
+
+async def create_product_aggregate(
+    db: AsyncSession,
+    data,  # ProductAggregateCreate schema
+    *,
+    actor_id: int,
+    actor_email: str,
+    request=None,
+) -> Product:
+    """单事务内建 SPU + 全部 SKU（含属性、阶梯价）+ 图片引用。
+
+    service 持 commit；审计以 commit=False 写入，与业务写共用同一次 commit。
+    """
+    # 品类校验
+    cat = (await db.execute(
+        select(Category).where(Category.code == data.category_code)
+    )).scalar_one_or_none()
+    if not cat:
+        raise NotFoundError("Category not found")
+    if cat.level != 3:
+        raise CategoryNotLeafError(data.category_code)
+
+    spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
+    if (await db.execute(
+        select(Product.id).where(Product.spu_code == spu_code)
+    )).scalar_one_or_none():
+        raise SpuCodeExistsError()
+
+    source_lang = data.source_lang or "zh"
+    product = Product(
+        category_code=data.category_code,
+        spu_code=spu_code,
+        source_lang=source_lang,
+        name_zh="",
+        hs_code=data.hs_code,
+        certifications=data.certifications or [],
+        is_featured=data.is_featured,
+        status=ProductStatus.DRAFT,
+        created_by=actor_id,
+    )
+
+    # i18n 字段
+    for field in _PRODUCT_I18N_FIELDS:
+        value = getattr(data, field, None)
+        if value is not None:
+            await apply_i18n_create(product, field, value, source_lang, domain="product")
+
+    db.add(product)
+    await db.flush()  # 拿 product.id
+
+    # SPU 级属性
+    tpl_map = await _load_template_map(db, data.category_code)
+    if data.attributes:
+        await _add_attrs(
+            db, product.id, data.attributes,
+            template_map=tpl_map,
+            category_code=data.category_code,
+            expected_scope="SPU",
+        )
+
+    # 批量建 SKU
+    for sku_data in (data.skus or []):
+        await _create_sku_in_aggregate(
+            db, product, sku_data, tpl_map=tpl_map, source_lang=source_lang,
+        )
+
+    # 图片引用
+    if data.images:
+        await _apply_image_refs(db, product.id, data.images)
+
+    # 审计同事务
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.PRODUCT,
+        action=AuditAction.CREATE,
+        user_id=actor_id,
+        user_email=actor_email,
+        resource_id=product.id,
+        request=request,
+        extra={"sku_count": len(data.skus or [])},
+        commit=False,
+    )
+
+    await db.commit()
+    await db.refresh(product)
+    return product
+
+
+async def save_product_aggregate(
+    db: AsyncSession,
+    product_id: int,
+    data,  # ProductAggregateSave schema
+    *,
+    actor_id: int,
+    actor_email: str,
+    request=None,
+) -> Product:
+    """单事务内更新 SPU + SKU diff（增/改/删）+ 图片引用。
+
+    入参是「期望完整态」,服务端 diff 出变更并应用。
+    """
+    product = await _get_product_or_404(db, product_id, load_relations=True)
+    if product.status not in ProductStatus.EDITABLE:
+        raise ProductNotEditableError(product.status)
+
+    source_lang = product.source_lang
+
+    # ── 更新 SPU 字段 ──
+    spu_update_fields = {}
+    for field in _PRODUCT_I18N_FIELDS:
+        value = getattr(data, field, None)
+        if value is not None:
+            old_value = getattr(product, f"{field}_{source_lang}", None)
+            await apply_i18n_edit(product, field, source_lang, value, old_value, domain="product")
+
+    for field in ("hs_code", "certifications", "is_featured"):
+        value = getattr(data, field, None)
+        if value is not None:
+            setattr(product, field, value)
+
+    # SPU 级属性整体替换
+    if data.attributes is not None:
+        await db.execute(
+            sa_delete(ProductAttr).where(
+                ProductAttr.product_id == product_id,
+                ProductAttr.sku_id.is_(None),
+            )
+        )
+        tpl_map = await _load_template_map(db, product.category_code)
+        if data.attributes:
+            await _add_attrs(
+                db, product_id, data.attributes,
+                template_map=tpl_map,
+                category_code=product.category_code,
+                expected_scope="SPU",
+            )
+    else:
+        tpl_map = await _load_template_map(db, product.category_code)
+
+    # ── SKU diff ──
+    # skus=None 表示不修改 SKU；skus=[] 表示删掉所有 SKU
+    change_summary = {"added": 0, "updated": 0, "deleted": 0}
+
+    if data.skus is not None:
+        existing_skus = {s.id: s for s in product.skus}
+        incoming_ids = set()
+
+        for sku_data in data.skus:
+            if sku_data.id is not None and sku_data.id in existing_skus:
+                # 更新已有 SKU
+                await _update_sku_in_aggregate(
+                    db, product, existing_skus[sku_data.id], sku_data, tpl_map=tpl_map,
+                )
+                incoming_ids.add(sku_data.id)
+                change_summary["updated"] += 1
+            else:
+                # 新建 SKU
+                await _create_sku_in_aggregate(
+                    db, product, sku_data, tpl_map=tpl_map, source_lang=source_lang,
+                )
+                change_summary["added"] += 1
+
+        # 删除不在入参中的 SKU
+        for sku_id, sku in existing_skus.items():
+            if sku_id not in incoming_ids:
+                await db.delete(sku)
+                change_summary["deleted"] += 1
+
+    # ── 图片引用 ──
+    if data.images is not None:
+        await _apply_image_refs(db, product_id, data.images)
+
+    # 审计同事务
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.PRODUCT,
+        action=AuditAction.UPDATE,
+        user_id=actor_id,
+        user_email=actor_email,
+        resource_id=product_id,
+        request=request,
+        extra=change_summary,
+        commit=False,
+    )
+
+    await db.commit()
+    await db.refresh(product)
+    return product
+
+
+async def _create_sku_in_aggregate(
+    db: AsyncSession,
+    product: Product,
+    sku_data,
+    *,
+    tpl_map: dict[str, "AttrTemplate"],
+    source_lang: str,
+) -> ProductSku:
+    """聚合事务内创建单个 SKU（含属性、阶梯价），不 commit。"""
+    _validate_sku_ranges(
+        sku_data.price_min, sku_data.price_max,
+        sku_data.lead_time_min, sku_data.lead_time_max,
+    )
+
+    sku_code = await _generate_sku_code(db, product.spu_code, product.id)
+
+    sku_source_lang = getattr(sku_data, "source_lang", None) or source_lang
+    sku = ProductSku(
+        product_id=product.id,
+        sku_code=sku_code,
+        manufacturer_model=sku_data.manufacturer_model,
+        source_lang=sku_source_lang,
+        price_min=sku_data.price_min,
+        price_max=sku_data.price_max,
+        currency=sku_data.currency,
+        unit=sku_data.unit,
+        moq=sku_data.moq,
+        lead_time_min=sku_data.lead_time_min,
+        lead_time_max=sku_data.lead_time_max,
+        packing_quantity=sku_data.packing_quantity,
+        gross_weight_kg=sku_data.gross_weight_kg,
+        volume_cbm=sku_data.volume_cbm,
+        can_consolidate=sku_data.can_consolidate,
+        cargo_type=sku_data.cargo_type,
+        is_default=sku_data.is_default,
+        status=SkuStatus.ACTIVE,
+    )
+
+    for field in _SKU_I18N_FIELDS:
+        value = getattr(sku_data, field, None)
+        if value is not None:
+            await apply_i18n_create(sku, field, value, sku_source_lang, domain="product")
+
+    # 默认 SKU 唯一性
+    if sku_data.is_default:
+        await db.execute(
+            update(ProductSku)
+            .where(ProductSku.product_id == product.id, ProductSku.is_default.is_(True))
+            .values(is_default=False)
+        )
+
+    db.add(sku)
+    await db.flush()  # 拿 sku.id
+
+    if sku_data.attributes:
+        await _add_attrs(
+            db, product.id, sku_data.attributes,
+            template_map=tpl_map,
+            category_code=product.category_code,
+            expected_scope="SKU",
+            sku_id=sku.id,
+        )
+
+    if sku_data.price_tiers:
+        await _replace_price_tiers(db, sku, sku_data.price_tiers)
+
+    return sku
+
+
+async def _update_sku_in_aggregate(
+    db: AsyncSession,
+    product: Product,
+    sku: ProductSku,
+    sku_data,
+    *,
+    tpl_map: dict[str, "AttrTemplate"],
+) -> ProductSku:
+    """聚合事务内更新单个 SKU（含属性、阶梯价），不 commit。"""
+    source_lang = sku.source_lang
+
+    # 默认 SKU 唯一性
+    if getattr(sku_data, "is_default", False) and not sku.is_default:
+        await db.execute(
+            update(ProductSku)
+            .where(ProductSku.product_id == product.id, ProductSku.is_default.is_(True))
+            .values(is_default=False)
+        )
+
+    # 普通字段
+    plain_fields = (
+        "manufacturer_model", "price_min", "price_max", "currency", "unit",
+        "moq", "lead_time_min", "lead_time_max", "packing_quantity",
+        "gross_weight_kg", "volume_cbm", "can_consolidate", "cargo_type",
+        "is_default",
+    )
+    for field in plain_fields:
+        value = getattr(sku_data, field, None)
+        if value is not None:
+            setattr(sku, field, value)
+
+    _validate_sku_ranges(
+        sku.price_min, sku.price_max,
+        sku.lead_time_min, sku.lead_time_max,
+    )
+
+    # i18n 字段
+    for field in _SKU_I18N_FIELDS:
+        value = getattr(sku_data, field, None)
+        if value is not None:
+            old_value = getattr(sku, f"{field}_{source_lang}", None)
+            await apply_i18n_edit(sku, field, source_lang, value, old_value, domain="product")
+
+    # SKU 级属性整体替换
+    if sku_data.attributes is not None:
+        await db.execute(
+            sa_delete(ProductAttr).where(ProductAttr.sku_id == sku.id)
+        )
+        if sku_data.attributes:
+            await _add_attrs(
+                db, product.id, sku_data.attributes,
+                template_map=tpl_map,
+                category_code=product.category_code,
+                expected_scope="SKU",
+                sku_id=sku.id,
+            )
+
+    # 阶梯价整体替换
+    if sku_data.price_tiers is not None:
+        await _replace_price_tiers(db, sku, sku_data.price_tiers)
+
+    return sku
+
+
+async def _apply_image_refs(
+    db: AsyncSession,
+    product_id: int,
+    image_refs: list,
+) -> None:
+    """根据入参图片引用列表，更新 image_type 和 sort_order。
+
+    校验所有 image_id 属于本商品；将入参中标记为 MAIN 的设为主图。
+    """
+    if not image_refs:
+        return
+
+    image_ids = [ref.image_id for ref in image_refs]
+
+    # 校验 image_id 都属于本商品
+    rows = (await db.execute(
+        select(ProductImage.id).where(
+            ProductImage.id.in_(image_ids),
+            ProductImage.product_id == product_id,
+        )
+    )).scalars().all()
+    owned_ids = set(rows)
+    for img_id in image_ids:
+        if img_id not in owned_ids:
+            raise ImageNotOwnedError(img_id, product_id)
+
+    # 先把本商品所有图片 type 重置为 GALLERY
+    await db.execute(
+        update(ProductImage)
+        .where(ProductImage.product_id == product_id)
+        .values(image_type=ImageType.GALLERY)
+    )
+
+    # 按入参设置 type 和 sort_order
+    for ref in image_refs:
+        img_type = ref.image_type if ref.image_type in ImageType.ALL else ImageType.GALLERY
+        await db.execute(
+            update(ProductImage)
+            .where(ProductImage.id == ref.image_id, ProductImage.product_id == product_id)
+            .values(image_type=img_type, sort_order=ref.sort_order)
+        )
 
 
 # ── 公共序列化 helper（供 public / operator 路由复用）──────

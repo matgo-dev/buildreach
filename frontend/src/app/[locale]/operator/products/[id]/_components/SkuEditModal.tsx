@@ -59,15 +59,32 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
 
   if (!open) return null;
 
-  const set = <K extends keyof SkuFormData>(key: K, val: SkuFormData[K]) => setForm((prev) => ({ ...prev, [key]: val }));
+  const set = <K extends keyof SkuFormData>(key: K, val: SkuFormData[K]) => {
+    setForm((prev) => {
+      const next = { ...prev, [key]: val };
+      // MOQ 变化时同步首档 min_qty
+      if (key === "moq" && next.price_tiers.length > 0) {
+        next.price_tiers = next.price_tiers.map((t, i) =>
+          i === 0 ? { ...t, min_qty: Number(val) || 1 } : t
+        );
+      }
+      return next;
+    });
+  };
 
   const addTier = () => {
     const last = form.price_tiers[form.price_tiers.length - 1];
-    const minQty = last ? (last.max_qty || last.min_qty) + 1 : form.moq || 1;
+    const minQty = form.price_tiers.length === 0
+      ? (form.moq || 1)
+      : (last.max_qty || last.min_qty) + 1;
     set("price_tiers", [...form.price_tiers, { min_qty: minQty, max_qty: null, unit_price: 0, currency: form.currency }]);
   };
   const removeTier = (idx: number) => set("price_tiers", form.price_tiers.filter((_, i) => i !== idx));
-  const updateTier = (idx: number, patch: Partial<PriceTierInput>) => set("price_tiers", form.price_tiers.map((t, i) => i === idx ? { ...t, ...patch } : t));
+  const updateTier = (idx: number, patch: Partial<PriceTierInput>) => {
+    // 首档 min_qty 锁定为 MOQ
+    if (idx === 0 && "min_qty" in patch) delete patch.min_qty;
+    set("price_tiers", form.price_tiers.map((t, i) => i === idx ? { ...t, ...patch } : t));
+  };
 
   const setAttr = (key: string, value: string) => {
     const exists = form.attributes.find((a) => a.attr_key === key);
@@ -151,11 +168,11 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMin")}</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMin")} <span className="text-red-500">*</span></label>
                 <input type="number" value={form.price_min ?? ""} onChange={(e) => set("price_min", e.target.value ? Number(e.target.value) : null)} min={0} step={0.01} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMax")}</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMax")} <span className="text-red-500">*</span></label>
                 <input type="number" value={form.price_max ?? ""} onChange={(e) => set("price_max", e.target.value ? Number(e.target.value) : null)} min={0} step={0.01} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
             </div>
@@ -209,8 +226,8 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 {form.price_tiers.map((tier, i) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
                     <div>
-                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}</label>
-                      <input type="number" value={tier.min_qty} onChange={(e) => updateTier(i, { min_qty: Number(e.target.value) || 0 })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" min={1} />
+                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}{i === 0 && <span className="text-slate-300 ml-1">(= MOQ)</span>}</label>
+                      <input type="number" value={i === 0 ? (form.moq || 1) : tier.min_qty} readOnly={i === 0} onChange={(e) => updateTier(i, { min_qty: Number(e.target.value) || 0 })} className={`w-full h-7 px-2 rounded border border-slate-200 text-xs ${i === 0 ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} min={1} />
                     </div>
                     <div>
                       <label className="text-[10px] text-slate-400">{t("tierMaxQty")}</label>

@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import useSWR from "swr";
 import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
-  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
+  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
@@ -22,6 +22,8 @@ import {
   ProductUpdateInput,
   ProductAttrInput,
   AttrTemplate,
+  AggregateSkuInput,
+  ImageRefInput,
 } from "@/lib/api/operatorProducts";
 import EditBasicInfo from "./EditBasicInfo";
 import EditImages, { ImageChange } from "./EditImages";
@@ -100,7 +102,7 @@ export default function ProductDetailPage() {
   const [skuModalData, setSkuModalData] = useState<{ sku: SkuOperatorDetail | null; isNew: boolean }>({ sku: null, isNew: true });
   const [discardModal, setDiscardModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ type: "publish" | "unpublish" | "delete"; loading: boolean } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
   const [lightbox, setLightbox] = useState<{ images: { url: string }[]; index: number } | null>(null);
@@ -150,7 +152,7 @@ export default function ProductDetailPage() {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [imageChange.added]);
 
-  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); } }, [toast]);
+  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); } }, [toast]);
 
   // i18n 字段取值
   const localized = useCallback(
@@ -173,11 +175,13 @@ export default function ProductDetailPage() {
     };
     const parts = code.split(".");
     if (parts.length === 3) {
+      const l1Code = parts[0];
       const l2Code = `${parts[0]}.${parts[1]}`;
+      const l1Name = findNode(categoryTree, l1Code);
       const l2Name = findNode(categoryTree, l2Code);
       const l3Name = findNode(categoryTree, code);
-      if (l2Name && l3Name) return `${l2Name} > ${l3Name}`;
-      if (l3Name) return l3Name;
+      const names = [l1Name, l2Name, l3Name].filter(Boolean);
+      if (names.length) return names.join(" > ");
     }
     return findNode(categoryTree, code) || code;
   }, [product, categoryTree]);
@@ -211,13 +215,12 @@ export default function ProductDetailPage() {
     else setIsEditing(false);
   };
 
-  // 保存
+  // 保存（单事务聚合）
   const handleSave = async () => {
     if (!product) return;
     // 前端预校验：必填项
     const validationErrors: string[] = [];
     if (!spuForm.name?.trim()) validationErrors.push(t("validationNameRequired"));
-    // 检查新增 SKU 必填字段
     for (const sku of skuChanges.added) {
       if (!sku.unit) validationErrors.push(t("validationSkuUnitRequired"));
       if (!sku.moq || sku.moq <= 0) validationErrors.push(t("validationSkuMoqRequired"));
@@ -228,27 +231,130 @@ export default function ProductDetailPage() {
     }
     setSaving(true); setSaveError(null);
     try {
-      await operatorProductsApi.update(product.id, spuForm);
-      for (const [skuId, data] of skuChanges.updated) {
-        await operatorProductsApi.updateSku(product.id, skuId, { manufacturer_model: data.manufacturer_model, name: data.name, color: data.color, material: data.material, price_min: data.price_min, price_max: data.price_max, currency: data.currency, unit: data.unit as any, moq: data.moq, lead_time_min: data.lead_time_min, lead_time_max: data.lead_time_max, packing_quantity: data.packing_quantity, gross_weight_kg: data.gross_weight_kg, volume_cbm: data.volume_cbm, can_consolidate: data.can_consolidate, cargo_type: data.cargo_type, is_default: data.is_default, status: data.status, price_tiers: data.price_tiers, attributes: data.attributes });
-      }
-      for (const data of skuChanges.added) {
-        await operatorProductsApi.createSku(product.id, { sku_code: data.sku_code, manufacturer_model: data.manufacturer_model, name: data.name, color: data.color, material: data.material, price_min: data.price_min, price_max: data.price_max, currency: data.currency, unit: data.unit as any, moq: data.moq, lead_time_min: data.lead_time_min, lead_time_max: data.lead_time_max, packing_quantity: data.packing_quantity, gross_weight_kg: data.gross_weight_kg, volume_cbm: data.volume_cbm, can_consolidate: data.can_consolidate, cargo_type: data.cargo_type, is_default: data.is_default, status: data.status, price_tiers: data.price_tiers, attributes: data.attributes });
-      }
-      for (const skuId of skuChanges.removed) await operatorProductsApi.deleteSku(product.id, skuId);
-      // SKU 图片：删除已移除的 + 上传新增的
+      // 先处理图片上传/删除（图片文件操作在聚合事务外）
       for (const [skuId, data] of skuChanges.updated) {
         for (const imgId of data.removedImageIds) await operatorProductsApi.deleteImage(product.id, imgId);
         for (const file of data.imageFiles) await operatorProductsApi.uploadImage(product.id, file, skuId);
       }
       for (const file of imageChange.added) await operatorProductsApi.uploadImage(product.id, file);
       for (const imgId of imageChange.removed) await operatorProductsApi.deleteImage(product.id, imgId);
-      if (imageChange.newMainId) await operatorProductsApi.setMainImage(product.id, imageChange.newMainId);
-      if (imageChange.newOrder) await operatorProductsApi.sortImages(product.id, imageChange.newOrder);
+
+      // 组装「期望完整态」SKU 列表：保留的 + 新增的
+      const aggregateSkus: AggregateSkuInput[] = [];
+
+      // 已有 SKU（未删除的）
+      for (const sku of product.skus) {
+        if (skuChanges.removed.includes(sku.id)) continue;
+        const updated = skuChanges.updated.get(sku.id);
+        if (updated) {
+          aggregateSkus.push({
+            id: sku.id,
+            manufacturer_model: updated.manufacturer_model,
+            name: updated.name,
+            color: updated.color,
+            material: updated.material,
+            price_min: updated.price_min,
+            price_max: updated.price_max,
+            currency: updated.currency,
+            unit: updated.unit as AggregateSkuInput["unit"],
+            moq: updated.moq!,
+            lead_time_min: updated.lead_time_min,
+            lead_time_max: updated.lead_time_max,
+            packing_quantity: updated.packing_quantity,
+            gross_weight_kg: updated.gross_weight_kg,
+            volume_cbm: updated.volume_cbm,
+            can_consolidate: updated.can_consolidate,
+            cargo_type: updated.cargo_type,
+            is_default: updated.is_default,
+            price_tiers: updated.price_tiers,
+            attributes: updated.attributes,
+          });
+        } else {
+          // 未修改的 SKU，原样传入（带 id 表示保留）
+          aggregateSkus.push({
+            id: sku.id,
+            manufacturer_model: sku.manufacturer_model,
+            name: locale === "en" ? sku.name_en : sku.name_zh || sku.name,
+            color: locale === "en" ? sku.color_en : sku.color_zh || sku.color,
+            material: locale === "en" ? sku.material_en : sku.material_zh || sku.material,
+            price_min: sku.price_min ? Number(sku.price_min) : undefined,
+            price_max: sku.price_max ? Number(sku.price_max) : undefined,
+            currency: sku.currency,
+            unit: sku.unit as AggregateSkuInput["unit"],
+            moq: sku.moq,
+            lead_time_min: sku.lead_time_min,
+            lead_time_max: sku.lead_time_max,
+            packing_quantity: sku.packing_quantity,
+            gross_weight_kg: sku.gross_weight_kg ? Number(sku.gross_weight_kg) : undefined,
+            volume_cbm: sku.volume_cbm ? Number(sku.volume_cbm) : undefined,
+            can_consolidate: sku.can_consolidate,
+            cargo_type: sku.cargo_type,
+            is_default: sku.is_default,
+            price_tiers: sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })),
+            attributes: sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
+          });
+        }
+      }
+
+      // 新增的 SKU（无 id）
+      for (const added of skuChanges.added) {
+        aggregateSkus.push({
+          manufacturer_model: added.manufacturer_model,
+          name: added.name,
+          color: added.color,
+          material: added.material,
+          price_min: added.price_min,
+          price_max: added.price_max,
+          currency: added.currency,
+          unit: added.unit as AggregateSkuInput["unit"],
+          moq: added.moq!,
+          lead_time_min: added.lead_time_min,
+          lead_time_max: added.lead_time_max,
+          packing_quantity: added.packing_quantity,
+          gross_weight_kg: added.gross_weight_kg,
+          volume_cbm: added.volume_cbm,
+          can_consolidate: added.can_consolidate,
+          cargo_type: added.cargo_type,
+          is_default: added.is_default,
+          price_tiers: added.price_tiers,
+          attributes: added.attributes,
+        });
+      }
+
+      // 图片引用（从最新的服务端图片列表 + 本地变更推算）
+      // 重新 fetch 图片状态由 mutate 处理；这里只做 主图/排序 引用
+      let imageRefs: ImageRefInput[] | undefined;
+      if (imageChange.newMainId || imageChange.newOrder) {
+        // 构建当前有效图片引用
+        const currentImages = product.images.filter((img) => !imageChange.removed.includes(img.id));
+        const ordered = imageChange.newOrder
+          ? imageChange.newOrder.map((id) => currentImages.find((img) => img.id === id)).filter(Boolean) as ProductImage[]
+          : currentImages;
+        imageRefs = ordered.map((img, idx) => ({
+          image_id: img.id,
+          image_type: (imageChange.newMainId === img.id ? "MAIN" : img.image_type === "MAIN" && imageChange.newMainId ? "GALLERY" : img.image_type) as ImageRefInput["image_type"],
+          sort_order: idx,
+        }));
+      }
+
+      // 一次聚合保存
+      await operatorProductsApi.saveAggregate(product.id, {
+        name: spuForm.name,
+        description: spuForm.description,
+        origin: spuForm.origin,
+        hs_code: spuForm.hs_code,
+        brand: spuForm.brand,
+        certifications: spuForm.certifications,
+        selling_points: spuForm.selling_points,
+        is_featured: spuForm.is_featured,
+        attributes: spuForm.attributes,
+        skus: aggregateSkus,
+        images: imageRefs,
+      });
+
       await mutate();
       setIsEditing(false);
-      setToast(t("saveSuccess"));
-      // 清掉 URL 的 ?edit=true，防止 effect 再次触发编辑态
+      setToast({ message: t("saveSuccess"), type: "success" });
       if (searchParams.get("edit")) {
         router.replace(`/${locale}/operator/products/${product.id}`, { scroll: false });
       }
@@ -264,12 +370,12 @@ export default function ProductDetailPage() {
     try {
       if (confirmModal.type === "delete") {
         await operatorProductsApi.remove(product.id);
-        setToast(tList("toastDeleted"));
+        setToast({ message: tList("toastDeleted"), type: "success" });
         setTimeout(() => router.push(`/${locale}/operator/products`), 500);
       } else {
         const newStatus = confirmModal.type === "publish" ? "ACTIVE" : "INACTIVE";
         await operatorProductsApi.updateStatus(product.id, { status: newStatus });
-        setToast(confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"));
+        setToast({ message: confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"), type: "success" });
         await mutate();
       }
       setConfirmModal(null);
@@ -314,7 +420,7 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
+      <div className={`sticky top-0 z-10 border-b px-6 py-4 transition-colors ${isEditing ? "bg-blue-50 border-blue-200" : "bg-white border-slate-200"}`}>
         <div className="flex items-center justify-between max-w-[1400px] mx-auto">
           <div className="flex items-center gap-3">
             <button onClick={() => router.push(`/${locale}/operator/products`)} className="text-slate-500 hover:text-slate-700 flex items-center gap-1 text-sm">
@@ -618,10 +724,14 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Toast */}
+      {/* Toast — 顶部居中悬浮 */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-800 px-4 py-3 text-sm text-white shadow-lg flex items-center gap-2">
-          {toast}<button onClick={() => setToast(null)}><X className="h-3.5 w-3.5" /></button>
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 rounded-lg px-5 py-3 text-sm font-medium shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
+          toast.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"
+        }`}>
+          {toast.type === "success" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-red-500" />}
+          {toast.message}
+          <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
     </div>

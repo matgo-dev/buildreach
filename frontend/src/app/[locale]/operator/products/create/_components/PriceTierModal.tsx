@@ -23,11 +23,17 @@ function createEmptyTier(currency: string, moq?: number): PriceTierInput {
 }
 
 export function PriceTierModal({ tiers: initial, moq, currency, onConfirm, onCancel, t }: Props) {
-  const [tiers, setTiers] = useState<PriceTierInput[]>(
-    initial.length > 0 ? initial : [createEmptyTier(currency, moq)]
-  );
+  const [tiers, setTiers] = useState<PriceTierInput[]>(() => {
+    if (initial.length > 0) {
+      // 首档 min_qty 强制同步 MOQ
+      return initial.map((tier, i) => i === 0 ? { ...tier, min_qty: moq } : tier);
+    }
+    return [createEmptyTier(currency, moq)];
+  });
 
   const update = (idx: number, patch: Partial<PriceTierInput>) => {
+    // 首档 min_qty 锁定为 MOQ，不允许修改
+    if (idx === 0 && "min_qty" in patch) delete patch.min_qty;
     setTiers((prev) => prev.map((tier, i) => (i === idx ? { ...tier, ...patch } : tier)));
   };
 
@@ -50,12 +56,13 @@ export function PriceTierModal({ tiers: initial, moq, currency, onConfirm, onCan
           {tiers.map((tier, idx) => (
             <div key={idx} className="flex items-end gap-2 rounded-md bg-slate-50 p-3">
               <div className="flex-1">
-                <label className="text-xs text-slate-500">{t("tier_min_qty")}</label>
+                <label className="text-xs text-slate-500">{t("tier_min_qty")}{idx === 0 && <span className="text-slate-400 ml-1">(= MOQ)</span>}</label>
                 <input
                   type="number"
                   min="1"
-                  className="mt-1 h-8 w-full rounded border border-slate-200 px-2 text-xs"
+                  className={`mt-1 h-8 w-full rounded border border-slate-200 px-2 text-xs ${idx === 0 ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   value={tier.min_qty}
+                  readOnly={idx === 0}
                   onChange={(e) => update(idx, { min_qty: Number(e.target.value) || 1 })}
                 />
               </div>
