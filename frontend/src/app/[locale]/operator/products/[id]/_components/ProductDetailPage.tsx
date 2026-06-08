@@ -8,6 +8,7 @@ import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
   Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
 } from "lucide-react";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
@@ -620,82 +621,77 @@ export default function ProductDetailPage() {
       </div>
 
       {/* 确认弹窗 */}
-      {confirmModal && (
+      {confirmModal && actionError ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md bg-white rounded-xl p-6 shadow-2xl mx-4">
-            {actionError ? (
-              <>
-                {/* 校验失败态：展示错误 + 引导去编辑 */}
-                <h3 className="text-base font-semibold text-slate-900 mb-2">{t("publishFailedTitle")}</h3>
-                <p className="text-sm text-slate-600 mb-3">{t("publishFailedHint")}</p>
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-                  <ul className="space-y-1.5">
-                    {(actionError.errors || [actionError.message]).map((e, i) => {
-                      const isSkuErr = e.startsWith("SKU ") || e.toLowerCase().includes("sku");
-                      const isImgErr = e.toLowerCase().includes("image");
-                      const isAttrErr = e.toLowerCase().includes("attribute");
-                      const icon = isSkuErr ? "📦" : isImgErr ? "🖼️" : isAttrErr ? "📋" : "⚠️";
-                      return <li key={i} className="flex items-start gap-1.5"><span>{icon}</span><span>{e}</span></li>;
-                    })}
-                  </ul>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => { setConfirmModal(null); setActionError(null); }} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{tList("cancel")}</button>
-                  <button onClick={() => {
-                    // 根据错误类型决定滚动目标
-                    const errors = actionError?.errors || [];
-                    const hasSkuErr = errors.some((e) => e.toLowerCase().includes("sku") || e.toLowerCase().includes("price"));
-                    const hasImgErr = errors.some((e) => e.toLowerCase().includes("image"));
-                    setConfirmModal(null); setActionError(null); enterEditMode();
-                    // 进入编辑态后滚动到问题区域
-                    setTimeout(() => {
-                      const target = hasSkuErr ? "sku-section" : hasImgErr ? "image-section" : null;
-                      if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }, 100);
-                  }} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t("goEdit")}</button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* 正常确认态 */}
-                <h3 className="text-base font-semibold text-slate-900 mb-2">
-                  {confirmModal.type === "publish" && tList("confirmPublishTitle")}
-                  {confirmModal.type === "unpublish" && tList("confirmUnpublishTitle")}
-                  {confirmModal.type === "delete" && tList("confirmDeleteTitle")}
-                </h3>
-                <p className="text-sm text-slate-600 mb-4 whitespace-pre-line">
-                  {confirmModal.type === "publish" && tList("confirmPublishMsg", { name: product.name })}
-                  {confirmModal.type === "unpublish" && tList("confirmUnpublishMsg", { name: product.name })}
-                  {confirmModal.type === "delete" && tList("confirmDeleteMsg", { name: product.name })}
-                </p>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => { setConfirmModal(null); setActionError(null); }} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50" disabled={confirmModal.loading}>{tList("cancel")}</button>
-                  <button onClick={handleStatusAction} disabled={confirmModal.loading} className={`px-4 py-2 text-sm rounded-lg text-white flex items-center gap-1.5 ${confirmModal.type === "publish" ? "bg-emerald-600 hover:bg-emerald-700" : confirmModal.type === "unpublish" ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"} disabled:opacity-60`}>
-                    {confirmModal.loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    {confirmModal.type === "publish" && tList("confirmPublishBtn")}
-                    {confirmModal.type === "unpublish" && tList("confirmUnpublishBtn")}
-                    {confirmModal.type === "delete" && tList("confirmDeleteBtn")}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 放弃修改确认 */}
-      {discardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-2xl mx-4">
-            <h3 className="text-base font-semibold text-slate-900 mb-2">{t("confirmDiscardTitle")}</h3>
-            <p className="text-sm text-slate-600 mb-4">{t("confirmDiscardMsg")}</p>
+            <h3 className="text-base font-semibold text-slate-900 mb-2">{t("publishFailedTitle")}</h3>
+            <p className="text-sm text-slate-600 mb-3">{t("publishFailedHint")}</p>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <ul className="space-y-1.5">
+                {(actionError.errors || [actionError.message]).map((e, i) => {
+                  const isSkuErr = e.startsWith("SKU ") || e.toLowerCase().includes("sku");
+                  const isImgErr = e.toLowerCase().includes("image");
+                  const isAttrErr = e.toLowerCase().includes("attribute");
+                  const icon = isSkuErr ? "📦" : isImgErr ? "🖼️" : isAttrErr ? "📋" : "⚠️";
+                  return <li key={i} className="flex items-start gap-1.5"><span>{icon}</span><span>{e}</span></li>;
+                })}
+              </ul>
+            </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDiscardModal(false)} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{tList("cancel")}</button>
-              <button onClick={() => { setDiscardModal(false); setIsEditing(false); }} className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">{t("confirmDiscard")}</button>
+              <button onClick={() => { setConfirmModal(null); setActionError(null); }} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{tList("cancel")}</button>
+              <button onClick={() => {
+                const errors = actionError?.errors || [];
+                const hasSkuErr = errors.some((e) => e.toLowerCase().includes("sku") || e.toLowerCase().includes("price"));
+                const hasImgErr = errors.some((e) => e.toLowerCase().includes("image"));
+                setConfirmModal(null); setActionError(null); enterEditMode();
+                setTimeout(() => {
+                  const target = hasSkuErr ? "sku-section" : hasImgErr ? "image-section" : null;
+                  if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
+              }} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t("goEdit")}</button>
             </div>
           </div>
         </div>
+      ) : (
+        <ConfirmModal
+          open={!!confirmModal}
+          title={
+            confirmModal?.type === "publish" ? tList("confirmPublishTitle")
+            : confirmModal?.type === "unpublish" ? tList("confirmUnpublishTitle")
+            : confirmModal?.type === "delete" ? tList("confirmDeleteTitle")
+            : ""
+          }
+          description={
+            confirmModal?.type === "publish" ? tList("confirmPublishMsg", { name: product.name })
+            : confirmModal?.type === "unpublish" ? tList("confirmUnpublishMsg", { name: product.name })
+            : confirmModal?.type === "delete" ? tList("confirmDeleteMsg", { name: product.name })
+            : ""
+          }
+          confirmLabel={
+            confirmModal?.type === "publish" ? tList("confirmPublishBtn")
+            : confirmModal?.type === "unpublish" ? tList("confirmUnpublishBtn")
+            : confirmModal?.type === "delete" ? tList("confirmDeleteBtn")
+            : ""
+          }
+          cancelLabel={tList("cancel")}
+          variant={confirmModal?.type === "delete" ? "danger" : confirmModal?.type === "unpublish" ? "warning" : "primary"}
+          loading={confirmModal?.loading}
+          onConfirm={handleStatusAction}
+          onCancel={() => { setConfirmModal(null); setActionError(null); }}
+        />
       )}
+
+      {/* 放弃修改确认 */}
+      <ConfirmModal
+        open={discardModal}
+        title={t("confirmDiscardTitle")}
+        description={t("confirmDiscardMsg")}
+        confirmLabel={t("confirmDiscard")}
+        cancelLabel={tList("cancel")}
+        variant="warning"
+        onConfirm={() => { setDiscardModal(false); setIsEditing(false); }}
+        onCancel={() => setDiscardModal(false)}
+      />
 
       {/* SKU Modal */}
       <SkuEditModal

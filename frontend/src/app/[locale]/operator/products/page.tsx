@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Package, Plus, Search } from "lucide-react";
 
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useToast } from "@/components/ui/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -78,49 +79,6 @@ function formatPrice(min: number | null, max: number | null): string | null {
   }
   const val = min ?? max;
   return Number(val).toLocaleString();
-}
-
-// ---------- 确认弹窗 ----------
-
-function ConfirmDialog({
-  open, title, message, confirmLabel, cancelLabel, confirmColor, loading, onConfirm, onCancel,
-}: {
-  open: boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  confirmColor?: string;
-  loading?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">{message}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${confirmColor ?? "bg-blue-600 hover:bg-blue-700"}`}
-          >
-            {loading && <Loader2 className="mr-1 inline h-4 w-4 animate-spin" />}
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ===================== 主页面 =====================
@@ -264,21 +222,18 @@ function ProductListInner() {
           title: t("confirmPublishTitle"),
           message: t("confirmPublishMsg", { name: item.name }),
           confirmLabel: t("confirmPublishBtn"),
-          confirmColor: "bg-emerald-600 hover:bg-emerald-700",
         };
       case "unpublish":
         return {
           title: t("confirmUnpublishTitle"),
           message: t("confirmUnpublishMsg", { name: item.name }),
           confirmLabel: t("confirmUnpublishBtn"),
-          confirmColor: "bg-amber-600 hover:bg-amber-700",
         };
       case "delete":
         return {
           title: t("confirmDeleteTitle"),
           message: t("confirmDeleteMsg", { name: item.name }),
           confirmLabel: t("confirmDeleteBtn"),
-          confirmColor: "bg-red-600 hover:bg-red-700",
         };
       default:
         return null;
@@ -617,19 +572,17 @@ function ProductListInner() {
       )}
 
       {/* 确认弹窗 */}
-      {confirmConfig && (
-        <ConfirmDialog
-          open
-          title={confirmConfig.title}
-          message={confirmConfig.message}
-          confirmLabel={confirmConfig.confirmLabel}
-          cancelLabel={t("cancel")}
-          confirmColor={confirmConfig.confirmColor}
-          loading={actionLoading}
-          onConfirm={handleAction}
-          onCancel={() => setConfirmState(null)}
-        />
-      )}
+      <ConfirmModal
+        open={!!confirmConfig}
+        title={confirmConfig?.title ?? ""}
+        description={confirmConfig?.message}
+        confirmLabel={confirmConfig?.confirmLabel}
+        cancelLabel={t("cancel")}
+        variant={confirmState?.type === "delete" ? "danger" : confirmState?.type === "unpublish" ? "warning" : "primary"}
+        loading={actionLoading}
+        onConfirm={handleAction}
+        onCancel={() => setConfirmState(null)}
+      />
 
     </div>
   );
