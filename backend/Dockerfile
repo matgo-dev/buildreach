@@ -59,8 +59,10 @@ WORKDIR /app
 # 拷贝应用代码(走 .dockerignore 过滤)
 COPY --chown=appuser:appuser . .
 
-# entrypoint 需要可执行
-RUN chmod +x docker-entrypoint.sh
+# entrypoint 需要可执行 + 创建上传目录（volume 挂载点）
+RUN chmod +x docker-entrypoint.sh \
+    && mkdir -p /app/uploads \
+    && chown appuser:appuser /app/uploads
 
 USER appuser
 

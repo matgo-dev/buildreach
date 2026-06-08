@@ -84,6 +84,11 @@ services:
 
       # 调试 API 开关(生产建议 false)
       ENABLE_DEBUG_API: ${ENABLE_DEBUG_API:-false}
+
+      # 图片访问基础 URL
+      IMAGE_BASE_URL: ${IMAGE_BASE_URL:-http://localhost:8000/static}
+    volumes:
+      - uploads:/app/uploads
     ports:
       - "8001:8000"
     logging: *default-logging
@@ -106,3 +111,6 @@ volumes:
   pgdata:
     # 显式 name:避免 compose project name 漂移导致卷被认作新卷
     name: overseas_platform_pgdata
+  uploads:
+    # 商品图片等用户上传文件，容器重建不丢
+    name: overseas_platform_uploads

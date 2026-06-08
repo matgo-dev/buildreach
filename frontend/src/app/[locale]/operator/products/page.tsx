@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Package, Plus, Search } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -146,6 +147,8 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 
 function ProductListInner() {
   const t = useTranslations("productList");
+  const router = useRouter();
+  const locale = useLocale();
   const { hasPermission } = usePermissions();
   const { tree: categoryTree } = useCategoryTree();
 
@@ -481,7 +484,8 @@ function ProductListInner() {
                 return (
                   <tr
                     key={item.id}
-                    className="hover:bg-slate-50 transition-colors"
+                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/${locale}/operator/products/${item.id}`)}
                   >
                     {canApprove && (
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -560,12 +564,10 @@ function ProductListInner() {
 
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        {/* TODO: 编辑页未实现,暂禁用 */}
-                        {canWrite && (
+                        {canWrite && (item.status === "DRAFT" || item.status === "INACTIVE") && (
                           <button
-                            disabled
-                            className="rounded px-2 py-1 text-xs text-slate-400 cursor-not-allowed"
-                            title="编辑页开发中"
+                            onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/operator/products/${item.id}?edit=true`); }}
+                            className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
                           >
                             {t("edit")}
                           </button>
@@ -594,9 +596,9 @@ function ProductListInner() {
                             {t("publish")}
                           </button>
                         )}
-                        {item.status === "DRAFT" && canWrite && (
+                        {(item.status === "DRAFT" || item.status === "INACTIVE") && canWrite && (
                           <button
-                            onClick={() => setConfirmState({ type: "delete", item })}
+                            onClick={(e) => { e.stopPropagation(); setConfirmState({ type: "delete", item }); }}
                             className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
                           >
                             {t("delete")}

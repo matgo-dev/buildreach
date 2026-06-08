@@ -18,14 +18,16 @@ export class ApiError extends Error {
   traceId?: string;
   data?: unknown;
   messageKey?: string;
+  messageParams?: Record<string, unknown>;
 
-  constructor(opts: { code: number; message: string; status: number; traceId?: string; data?: unknown; messageKey?: string }) {
+  constructor(opts: { code: number; message: string; status: number; traceId?: string; data?: unknown; messageKey?: string; messageParams?: Record<string, unknown> }) {
     super(opts.message);
     this.code = opts.code;
     this.status = opts.status;
     this.traceId = opts.traceId;
     this.data = opts.data;
     this.messageKey = opts.messageKey;
+    this.messageParams = opts.messageParams;
   }
 }
 
@@ -130,6 +132,7 @@ export async function apiRequest<T = unknown>(path: string, opts: RequestOptions
       traceId: json?.trace_id ?? traceId,
       data: json?.data,
       messageKey: json?.message_key,
+      messageParams: json?.message_params,
     });
   }
 
@@ -142,6 +145,7 @@ export async function apiRequest<T = unknown>(path: string, opts: RequestOptions
         traceId: json.trace_id ?? traceId,
         data: json.data,
         messageKey: json.message_key,
+        messageParams: json.message_params,
       });
     }
     return json.data as T;
