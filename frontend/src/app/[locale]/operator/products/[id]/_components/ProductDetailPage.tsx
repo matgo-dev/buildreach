@@ -630,32 +630,109 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
 }
 
 function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations> }) {
+  const localized = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-      {sku.price_tiers.length > 0 && (
-        <div>
-          <h5 className="font-medium text-slate-700 mb-2">{t("priceTiers")}</h5>
-          <table className="w-full"><thead><tr className="text-slate-400"><th className="text-left pb-1">{t("tierQty")}</th><th className="text-right pb-1">{t("tierPrice")}</th></tr></thead>
-            <tbody>{sku.price_tiers.map((tier, i) => (<tr key={i} className="border-t border-slate-100"><td className="py-1 text-slate-600">{tier.min_qty}{tier.max_qty ? ` - ${tier.max_qty}` : "+"} {sku.unit?.toLowerCase()}</td><td className="py-1 text-right text-slate-800 font-medium">{tier.currency} {Number(tier.unit_price).toLocaleString()}</td></tr>))}</tbody>
-          </table>
+    <div className="space-y-4 text-xs">
+      {/* 基础信息行 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white rounded px-3 py-2 border border-slate-100">
+          <span className="text-slate-400 text-[11px]">SKU Code</span>
+          <div className="text-slate-800 font-mono mt-0.5">{sku.sku_code}</div>
         </div>
-      )}
-      <div>
-        <h5 className="font-medium text-slate-700 mb-2">{t("logistics")}</h5>
-        <div className="space-y-1 text-slate-600">
-          {sku.lead_time_min != null && <div>{t("leadTime")}: {sku.lead_time_min}{sku.lead_time_max ? `-${sku.lead_time_max}` : ""} {t("days")}</div>}
-          {sku.packing_quantity != null && <div>{t("packingQty")}: {sku.packing_quantity}</div>}
-          {sku.gross_weight_kg != null && <div>{t("grossWeight")}: {Number(sku.gross_weight_kg)} kg</div>}
-          {sku.volume_cbm != null && <div>{t("volume")}: {Number(sku.volume_cbm)} cbm</div>}
-          <div>{t("canConsolidate")}: {sku.can_consolidate ? t("yes") : t("no")}</div>
-          {sku.cargo_type && <div>{t("cargoType")}: {sku.cargo_type}</div>}
+        {sku.manufacturer_model && (
+          <div className="bg-white rounded px-3 py-2 border border-slate-100">
+            <span className="text-slate-400 text-[11px]">{locale === "en" ? "Model" : "型号"}</span>
+            <div className="text-slate-800 mt-0.5">{sku.manufacturer_model}</div>
+          </div>
+        )}
+        {(sku.name || sku.name_zh || sku.name_en) && (
+          <div className="bg-white rounded px-3 py-2 border border-slate-100">
+            <span className="text-slate-400 text-[11px]">{locale === "en" ? "Name" : "名称"}</span>
+            <div className="text-slate-800 mt-0.5">{localized(sku.name_zh, sku.name_en, sku.name)}</div>
+          </div>
+        )}
+        <div className="bg-white rounded px-3 py-2 border border-slate-100">
+          <span className="text-slate-400 text-[11px]">{locale === "en" ? "Currency" : "币种"}</span>
+          <div className="text-slate-800 mt-0.5">{sku.currency}</div>
         </div>
       </div>
-      {sku.attributes.length > 0 && (
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* 阶梯价 */}
         <div>
-          <h5 className="font-medium text-slate-700 mb-2">{t("skuAttributes")}</h5>
-          <div className="space-y-1 text-slate-600">
-            {sku.attributes.map((attr) => (<div key={attr.attr_key}><span className="text-slate-400">{attr.display_name || attr.attr_key}:</span> {attr.attr_value}{attr.attr_unit ? ` ${attr.attr_unit}` : ""}</div>))}
+          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{t("priceTiers")}</h5>
+          {sku.price_tiers.length > 0 ? (
+            <table className="w-full">
+              <thead><tr className="text-slate-400"><th className="text-left pb-1.5 font-medium">{t("tierQty")}</th><th className="text-right pb-1.5 font-medium">{t("tierPrice")}</th></tr></thead>
+              <tbody>{sku.price_tiers.map((tier, i) => (
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="py-1.5 text-slate-600">{tier.min_qty}{tier.max_qty ? ` - ${tier.max_qty}` : "+"} {sku.unit?.toLowerCase()}</td>
+                  <td className="py-1.5 text-right text-slate-800 font-medium">{tier.currency} {Number(tier.unit_price).toLocaleString()}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          ) : (
+            <p className="text-slate-400 italic">{locale === "en" ? "No price tiers" : "暂无阶梯价"}</p>
+          )}
+        </div>
+
+        {/* 物流参数 */}
+        <div>
+          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{t("logistics")}</h5>
+          <div className="space-y-1.5 text-slate-600">
+            <div className="flex justify-between"><span className="text-slate-400">{t("leadTime")}</span><span>{sku.lead_time_min != null ? `${sku.lead_time_min}${sku.lead_time_max ? `-${sku.lead_time_max}` : ""} ${t("days")}` : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("packingQty")}</span><span>{sku.packing_quantity ?? "—"}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("grossWeight")}</span><span>{sku.gross_weight_kg != null ? `${Number(sku.gross_weight_kg)} kg` : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("volume")}</span><span>{sku.volume_cbm != null ? `${Number(sku.volume_cbm)} cbm` : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t("canConsolidate")}</span><span>{sku.can_consolidate ? "✅ " + t("yes") : "❌ " + t("no")}</span></div>
+            {sku.cargo_type && <div className="flex justify-between"><span className="text-slate-400">{t("cargoType")}</span><span>{sku.cargo_type}</span></div>}
+          </div>
+        </div>
+
+        {/* SKU 属性 */}
+        <div>
+          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{t("skuAttributes")}</h5>
+          {sku.attributes.length > 0 ? (
+            <div className="space-y-1.5 text-slate-600">
+              {sku.attributes.map((attr) => (
+                <div key={attr.attr_key} className="flex justify-between">
+                  <span className="text-slate-400">{attr.display_name || attr.attr_key}</span>
+                  <span>{attr.attr_value}{attr.attr_unit ? ` ${attr.attr_unit}` : ""}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 italic">{locale === "en" ? "No attributes" : "暂无属性"}</p>
+          )}
+        </div>
+      </div>
+
+      {/* SKU 图片 */}
+      {sku.images.length > 0 && (
+        <div>
+          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{locale === "en" ? "SKU Images" : "SKU 图片"} ({sku.images.length})</h5>
+          <div className="flex flex-wrap gap-2">
+            {sku.images.map((img) => (
+              <div key={img.id} className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-100">
+                <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 供应商关系（如果有） */}
+      {sku.supplier_relations.length > 0 && (
+        <div>
+          <h5 className="font-semibold text-slate-700 mb-2 pb-1 border-b border-slate-100">{locale === "en" ? "Suppliers" : "供应商"} ({sku.supplier_relations.length})</h5>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {sku.supplier_relations.map((sr) => (
+              <div key={sr.id} className="bg-white rounded px-3 py-2 border border-slate-100 text-slate-600">
+                <div className="font-medium text-slate-800">{sr.supplier_org_name} {sr.is_preferred && "⭐"}</div>
+                <div className="mt-0.5">{locale === "en" ? "Price" : "供价"}: {sr.supplier_currency} {Number(sr.supplier_price).toLocaleString()}{sr.cif_price_usd ? ` · CIF $${Number(sr.cif_price_usd)}` : ""}</div>
+                {sr.supplier_lead_time_days && <div>{t("leadTime")}: {sr.supplier_lead_time_days}{t("days")}</div>}
+              </div>
+            ))}
           </div>
         </div>
       )}
