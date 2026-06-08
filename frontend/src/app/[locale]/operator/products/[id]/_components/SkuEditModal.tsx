@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { X, Plus, Trash2 } from "lucide-react";
 import { SKU_UNITS, AttrTemplate, ProductAttrInput, PriceTierInput } from "@/lib/api/operatorProducts";
@@ -27,6 +27,9 @@ export interface SkuFormData {
   status: string;
   price_tiers: PriceTierInput[];
   attributes: ProductAttrInput[];
+  imageFiles: File[];
+  existingImages: { id: number; url: string }[];
+  removedImageIds: number[];
 }
 
 interface SkuEditModalProps {
@@ -41,7 +44,7 @@ interface SkuEditModalProps {
 const CURRENCIES = ["TZS", "USD", "CNY"];
 
 function emptySkuForm(): SkuFormData {
-  return { sku_code: null, manufacturer_model: null, name: null, color: null, material: null, price_min: null, price_max: null, currency: "TZS", unit: "PCS", moq: 100, lead_time_min: null, lead_time_max: null, packing_quantity: null, gross_weight_kg: null, volume_cbm: null, can_consolidate: true, cargo_type: null, is_default: false, status: "ACTIVE", price_tiers: [], attributes: [] };
+  return { sku_code: null, manufacturer_model: null, name: null, color: null, material: null, price_min: null, price_max: null, currency: "TZS", unit: "PCS", moq: 100, lead_time_min: null, lead_time_max: null, packing_quantity: null, gross_weight_kg: null, volume_cbm: null, can_consolidate: true, cargo_type: null, is_default: false, status: "ACTIVE", price_tiers: [], attributes: [], imageFiles: [], existingImages: [], removedImageIds: [] };
 }
 
 export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew, skuTemplates }: SkuEditModalProps) {
@@ -69,6 +72,20 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
     const exists = form.attributes.find((a) => a.attr_key === key);
     if (exists) set("attributes", form.attributes.map((a) => a.attr_key === key ? { ...a, attr_value: value } : a));
     else set("attributes", [...form.attributes, { attr_key: key, attr_value: value }]);
+  };
+
+  // SKU 图片
+  const skuFileRef = useRef<HTMLInputElement>(null);
+  const handleSkuImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const valid = files.filter((f) => f.size <= 5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(f.type));
+    if (valid.length > 0) set("imageFiles", [...form.imageFiles, ...valid]);
+    if (skuFileRef.current) skuFileRef.current.value = "";
+  };
+  const removeNewImage = (idx: number) => set("imageFiles", form.imageFiles.filter((_, i) => i !== idx));
+  const removeExistingImage = (imgId: number) => {
+    set("existingImages", form.existingImages.filter((img) => img.id !== imgId));
+    set("removedImageIds", [...form.removedImageIds, imgId]);
   };
 
   return (
@@ -237,6 +254,32 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               </div>
             </div>
           )}
+          {/* SKU 图片 */}
+          <div>
+            <h4 className="text-xs font-semibold text-slate-700 mb-3">{locale === "en" ? "SKU Images" : "SKU 图片"} <span className="text-slate-400 font-normal">({locale === "en" ? "max 5" : "最多 5 张"})</span></h4>
+            <div className="flex flex-wrap gap-2">
+              {form.existingImages.map((img) => (
+                <div key={img.id} className="relative w-[72px] h-[72px] rounded-md border border-slate-200 overflow-hidden group">
+                  <img src={img.url} alt="" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removeExistingImage(img.id)} className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white opacity-0 group-hover:opacity-100">×</button>
+                </div>
+              ))}
+              {form.imageFiles.map((file, i) => (
+                <div key={`new-${i}`} className="relative w-[72px] h-[72px] rounded-md border border-dashed border-blue-300 overflow-hidden group">
+                  <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                  <span className="absolute top-0 left-0 bg-blue-400 text-white text-[8px] px-1 rounded-br">NEW</span>
+                  <button type="button" onClick={() => removeNewImage(i)} className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white opacity-0 group-hover:opacity-100">×</button>
+                </div>
+              ))}
+              {(form.existingImages.length + form.imageFiles.length) < 5 && (
+                <button type="button" onClick={() => skuFileRef.current?.click()} className="flex w-[72px] h-[72px] flex-col items-center justify-center rounded-md border border-dashed border-slate-300 hover:border-blue-400">
+                  <span className="text-lg text-slate-400">+</span>
+                  <span className="text-[9px] text-slate-400">{locale === "en" ? "Upload" : "上传"}</span>
+                </button>
+              )}
+            </div>
+            <input ref={skuFileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleSkuImageSelect} />
+          </div>
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-200">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{locale === "en" ? "Cancel" : "取消"}</button>

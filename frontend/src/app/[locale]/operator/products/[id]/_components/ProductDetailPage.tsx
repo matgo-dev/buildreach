@@ -118,9 +118,14 @@ export default function ProductDetailPage() {
     }
   }, [product, locale]);
 
+  // 仅首次加载时根据 URL ?edit=true 进入编辑态（保存后不再重入）
+  const editInitRef = useRef(false);
   useEffect(() => {
-    if (startInEdit && product && hasPermission(Permissions.PRODUCT_WRITE) && !isEditing) enterEditMode();
-  }, [startInEdit, product, hasPermission, isEditing, enterEditMode]);
+    if (startInEdit && product && hasPermission(Permissions.PRODUCT_WRITE) && !editInitRef.current) {
+      editInitRef.current = true;
+      enterEditMode();
+    }
+  }, [startInEdit, product, hasPermission, enterEditMode]);
 
   useEffect(() => {
     const urls = imageChange.added.map((f) => URL.createObjectURL(f));
@@ -202,6 +207,11 @@ export default function ProductDetailPage() {
         await operatorProductsApi.createSku(product.id, { sku_code: data.sku_code, manufacturer_model: data.manufacturer_model, name: data.name, color: data.color, material: data.material, price_min: data.price_min, price_max: data.price_max, currency: data.currency, unit: data.unit as any, moq: data.moq, lead_time_min: data.lead_time_min, lead_time_max: data.lead_time_max, packing_quantity: data.packing_quantity, gross_weight_kg: data.gross_weight_kg, volume_cbm: data.volume_cbm, can_consolidate: data.can_consolidate, cargo_type: data.cargo_type, is_default: data.is_default, status: data.status, price_tiers: data.price_tiers, attributes: data.attributes });
       }
       for (const skuId of skuChanges.removed) await operatorProductsApi.deleteSku(product.id, skuId);
+      // SKU 图片：删除已移除的 + 上传新增的
+      for (const [skuId, data] of skuChanges.updated) {
+        for (const imgId of data.removedImageIds) await operatorProductsApi.deleteImage(product.id, imgId);
+        for (const file of data.imageFiles) await operatorProductsApi.uploadImage(product.id, file, skuId);
+      }
       for (const file of imageChange.added) await operatorProductsApi.uploadImage(product.id, file);
       for (const imgId of imageChange.removed) await operatorProductsApi.deleteImage(product.id, imgId);
       if (imageChange.newMainId) await operatorProductsApi.setMainImage(product.id, imageChange.newMainId);
@@ -209,6 +219,10 @@ export default function ProductDetailPage() {
       await mutate();
       setIsEditing(false);
       setToast(t("saveSuccess"));
+      // 清掉 URL 的 ?edit=true，防止 effect 再次触发编辑态
+      if (searchParams.get("edit")) {
+        router.replace(`/${locale}/operator/products/${product.id}`, { scroll: false });
+      }
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : String(err));
     } finally { setSaving(false); }
@@ -505,7 +519,7 @@ export default function ProductDetailPage() {
       {/* SKU Modal */}
       <SkuEditModal
         open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates}
-        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, currency: skuModalData.sku.currency, unit: skuModalData.sku.unit, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })) } : null}
+        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, currency: skuModalData.sku.currency, unit: skuModalData.sku.unit, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
       />
 
       {/* Toast */}
