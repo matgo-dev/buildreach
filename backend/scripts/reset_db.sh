@@ -17,6 +17,9 @@ echo "→ dropdb $DB_NAME"
 echo "→ createdb $DB_NAME"
 "$PSQL_BIN/createdb" -p "$PG_PORT" -U "$PG_USER" "$DB_NAME"
 
+echo "→ 清理 uploads 目录（避免数据库重置后残留孤儿文件）"
+rm -rf uploads/products/*
+
 echo "→ alembic upgrade head"
 alembic upgrade head
 
