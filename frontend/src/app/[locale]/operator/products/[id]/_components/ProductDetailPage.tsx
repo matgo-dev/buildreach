@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import useSWR from "swr";
 import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
-  Trash2, ChevronDown, ChevronRight, X, Loader2, AlertCircle,
+  Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
@@ -88,6 +88,7 @@ export default function ProductDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
+  const [lightbox, setLightbox] = useState<{ images: { url: string }[]; index: number } | null>(null);
 
   const toggleSkuExpand = (skuId: number) => {
     setExpandedSkus((prev) => { const next = new Set(prev); if (next.has(skuId)) next.delete(skuId); else next.add(skuId); return next; });
@@ -427,8 +428,12 @@ export default function ProductDetailPage() {
             <section id="image-section" className="bg-white rounded-lg shadow-sm p-5">
               <h3 className="text-sm font-semibold text-slate-800 mb-4">{t("productImages")} <span className="text-slate-400 font-normal">({product.images.length}/8)</span></h3>
               <div className="flex flex-wrap gap-3">
-                {product.images.map((img) => (
-                  <div key={img.id} className={`relative w-24 h-24 rounded-lg overflow-hidden border-2 ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}>
+                {product.images.map((img, idx) => (
+                  <div
+                    key={img.id}
+                    className={`relative w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
+                    onClick={() => setLightbox({ images: product.images.map((i) => ({ url: i.full_url })), index: idx })}
+                  >
                     <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
                   </div>
@@ -577,6 +582,26 @@ export default function ProductDetailPage() {
         open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates}
         initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, currency: skuModalData.sku.currency, unit: skuModalData.sku.unit, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
       />
+
+      {/* Lightbox 图片预览 */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center" onClick={() => setLightbox(null)}>
+          <button onClick={(e) => { e.stopPropagation(); setLightbox(null); }} className="absolute top-4 right-4 text-white/80 hover:text-white z-10"><X className="h-8 w-8" /></button>
+          {lightbox.images.length > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index - 1 + lightbox.images.length) % lightbox.images.length }); }} className="absolute left-4 text-white/80 hover:text-white z-10"><ChevronLeft className="h-10 w-10" /></button>
+              <button onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index + 1) % lightbox.images.length }); }} className="absolute right-4 text-white/80 hover:text-white z-10"><ChevronRight className="h-10 w-10" /></button>
+            </>
+          )}
+          <img
+            src={lightbox.images[lightbox.index].url}
+            alt=""
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="absolute bottom-4 text-white/60 text-sm">{lightbox.index + 1} / {lightbox.images.length}</div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
