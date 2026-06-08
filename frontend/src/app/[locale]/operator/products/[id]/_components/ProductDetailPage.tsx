@@ -454,8 +454,8 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-full lg:w-72 flex flex-col gap-4">
+        {/* Right Sidebar — sticky 跟随滚动 */}
+        <div className="w-full lg:w-72 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("productStatus")}</h4>
             <div className="flex items-center gap-2 mb-3">
