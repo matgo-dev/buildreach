@@ -14,17 +14,21 @@ interface Props {
   onSetDefault: () => void;
   onOpenTiers: () => void;
   error: string | null;
+  fieldErrors?: Record<string, string>;
   t: (key: string) => string;
   tUnit: (key: string) => string;
 }
 
 const INPUT_CLS =
   "h-8 w-full rounded border border-slate-200 px-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20";
+const INPUT_ERROR_CLS =
+  "h-8 w-full rounded border border-red-500 px-2 text-xs focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500/20";
 const SELECT_CLS =
   "h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none";
 const LABEL_CLS = "text-xs text-slate-500";
 
-export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, error, t, tUnit }: Props) {
+export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, error, fieldErrors = {}, t, tUnit }: Props) {
+  const priceError = fieldErrors[`sku_price_${sku._clientId}`];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = useCallback(
@@ -59,7 +63,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
   );
 
   const isDefault = sku.is_default;
-  const hasError = !!error;
+  const hasError = !!error || !!priceError;
   const borderCls = hasError
     ? "border-2 border-red-500"
     : isDefault
@@ -142,13 +146,13 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
           </div>
 
           {/* 最低价 */}
-          <div>
+          <div data-field-error={!!priceError || undefined}>
             <label className={LABEL_CLS}>{t("field_price_min")} ({sku.currency}) <span className="text-red-500">*</span></label>
             <input
               type="number"
               min="0"
               step="0.01"
-              className={INPUT_CLS}
+              className={priceError ? INPUT_ERROR_CLS : INPUT_CLS}
               value={sku.price_min}
               onChange={(e) => set("price_min", e.target.value)}
             />
@@ -161,10 +165,11 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
               type="number"
               min="0"
               step="0.01"
-              className={INPUT_CLS}
+              className={priceError ? INPUT_ERROR_CLS : INPUT_CLS}
               value={sku.price_max}
               onChange={(e) => set("price_max", e.target.value)}
             />
+            {priceError && <p className="mt-1 text-xs text-red-500">{priceError}</p>}
           </div>
 
           {/* 币种 */}

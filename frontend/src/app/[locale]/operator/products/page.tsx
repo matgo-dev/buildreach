@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Package, Plus, Search } from "lucide-react";
+import { AlertCircle, Loader2, Package, Plus, Search } from "lucide-react";
 
+import Pagination from "@/components/ui/Pagination";
+
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useToast } from "@/components/ui/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -80,46 +83,38 @@ function formatPrice(min: number | null, max: number | null): string | null {
   return Number(val).toLocaleString();
 }
 
-// ---------- 确认弹窗 ----------
+// ---------- 可排序表头 ----------
 
-function ConfirmDialog({
-  open, title, message, confirmLabel, cancelLabel, confirmColor, loading, onConfirm, onCancel,
+function SortableHeader({
+  label,
+  field,
+  sortBy,
+  sortOrder,
+  onSort,
+  align = "left",
 }: {
-  open: boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  confirmColor?: string;
-  loading?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
+  label: string;
+  field: string;
+  sortBy: string | null;
+  sortOrder: "asc" | "desc";
+  onSort: (field: string) => void;
+  align?: "left" | "right" | "center";
 }) {
-  if (!open) return null;
+  const active = sortBy === field;
+  const alignCls = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
+  const justifyCls = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">{message}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${confirmColor ?? "bg-blue-600 hover:bg-blue-700"}`}
-          >
-            {loading && <Loader2 className="mr-1 inline h-4 w-4 animate-spin" />}
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+    <th
+      className={`px-4 py-3 ${alignCls} font-semibold whitespace-nowrap cursor-pointer select-none hover:bg-slate-100 transition-colors`}
+      onClick={() => onSort(field)}
+    >
+      <span className={`inline-flex items-center gap-1 ${justifyCls}`}>
+        {label}
+        <span className={`text-xs ${active ? "text-blue-600" : "text-slate-300"}`}>
+          {active ? (sortOrder === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}
+        </span>
+      </span>
+    </th>
   );
 }
 
@@ -147,6 +142,10 @@ function ProductListInner() {
   const [keyword, setKeyword] = useState("");
   const [categoryCode, setCategoryCode] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
+  // 排序（后端暂不支持，客户端排序）
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // 批量选择
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -198,6 +197,40 @@ function ProductListInner() {
     void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryCode, statusFilter]);
+
+  // ---------- 客户端排序 ----------
+  const handleSort = useCallback((field: string) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
+    }
+  }, [sortBy]);
+
+  const sortedItems = useMemo(() => {
+    if (!sortBy) return items;
+    const sorted = [...items].sort((a, b) => {
+      let va: number | null = null;
+      let vb: number | null = null;
+      if (sortBy === "updated_at") {
+        va = a.updated_at ? new Date(a.updated_at).getTime() : null;
+        vb = b.updated_at ? new Date(b.updated_at).getTime() : null;
+      } else if (sortBy === "price_min") {
+        va = a.price_min;
+        vb = b.price_min;
+      } else if (sortBy === "sku_count") {
+        va = a.sku_count;
+        vb = b.sku_count;
+      }
+      // null 值排最后
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return sortOrder === "asc" ? va - vb : vb - va;
+    });
+    return sorted;
+  }, [items, sortBy, sortOrder]);
 
   // ---------- 行内操作 ----------
   const handleAction = useCallback(
@@ -264,21 +297,18 @@ function ProductListInner() {
           title: t("confirmPublishTitle"),
           message: t("confirmPublishMsg", { name: item.name }),
           confirmLabel: t("confirmPublishBtn"),
-          confirmColor: "bg-emerald-600 hover:bg-emerald-700",
         };
       case "unpublish":
         return {
           title: t("confirmUnpublishTitle"),
           message: t("confirmUnpublishMsg", { name: item.name }),
           confirmLabel: t("confirmUnpublishBtn"),
-          confirmColor: "bg-amber-600 hover:bg-amber-700",
         };
       case "delete":
         return {
           title: t("confirmDeleteTitle"),
           message: t("confirmDeleteMsg", { name: item.name }),
           confirmLabel: t("confirmDeleteBtn"),
-          confirmColor: "bg-red-600 hover:bg-red-700",
         };
       default:
         return null;
@@ -410,10 +440,10 @@ function ProductListInner() {
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colProductInfo")}</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colSpuCode")}</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colCategory")}</th>
-              <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">{t("colPrice")}</th>
-              <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">{t("colSkuCount")}</th>
+              <SortableHeader label={t("colPrice")} field="price_min" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right" />
+              <SortableHeader label={t("colSkuCount")} field="sku_count" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="center" />
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colStatus")}</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colUpdatedAt")}</th>
+              <SortableHeader label={t("colUpdatedAt")} field="updated_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">{t("colActions")}</th>
             </tr>
           </thead>
@@ -456,7 +486,7 @@ function ProductListInner() {
             )}
 
             {!loading &&
-              items.map((item) => {
+              sortedItems.map((item) => {
                 const statusStyle = STATUS_STYLES[item.status] ?? STATUS_STYLES.DRAFT;
                 const priceText = formatPrice(item.price_min, item.price_max);
                 const catName = resolveCategoryName(item.category_code, catMap);
@@ -595,41 +625,26 @@ function ProductListInner() {
 
       {/* 分页 */}
       {pages > 0 && (
-        <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>{t("pagination", { total, page, pages })}</span>
-          <div className="flex gap-2">
-            <button
-              disabled={page <= 1 || loading}
-              onClick={() => void load(page - 1)}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="h-4 w-4" /> {t("prevPage")}
-            </button>
-            <button
-              disabled={page >= pages || loading}
-              onClick={() => void load(page + 1)}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {t("nextPage")} <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          current={page}
+          total={pages}
+          totalItems={total}
+          onChange={(p) => void load(p)}
+        />
       )}
 
       {/* 确认弹窗 */}
-      {confirmConfig && (
-        <ConfirmDialog
-          open
-          title={confirmConfig.title}
-          message={confirmConfig.message}
-          confirmLabel={confirmConfig.confirmLabel}
-          cancelLabel={t("cancel")}
-          confirmColor={confirmConfig.confirmColor}
-          loading={actionLoading}
-          onConfirm={handleAction}
-          onCancel={() => setConfirmState(null)}
-        />
-      )}
+      <ConfirmModal
+        open={!!confirmConfig}
+        title={confirmConfig?.title ?? ""}
+        description={confirmConfig?.message}
+        confirmLabel={confirmConfig?.confirmLabel}
+        cancelLabel={t("cancel")}
+        variant={confirmState?.type === "delete" ? "danger" : confirmState?.type === "unpublish" ? "warning" : "primary"}
+        loading={actionLoading}
+        onConfirm={handleAction}
+        onCancel={() => setConfirmState(null)}
+      />
 
     </div>
   );
