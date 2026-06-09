@@ -142,7 +142,34 @@ function ProductListInner() {
     item: ProductOperatorItem;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const tError = useTranslations("error");
+
+  // 将后端 ApiError 的 messageKey 翻译为当前语言，回退到原始 message
+  const translateError = useCallback((err: unknown): string => {
+    if (err instanceof ApiError && err.messageKey) {
+      const key = err.messageKey.replace(/^error\./, "");
+      try {
+        return tError(key, (err.messageParams ?? {}) as Record<string, string>);
+      } catch {
+        return err.message;
+      }
+    }
+    return err instanceof Error ? err.message : String(err);
+  }, [tError]);
+
+  // 翻译上架校验的结构化错误列表 [{key, params}]
+  const translatePublishErrors = useCallback((err: ApiError): string => {
+    const errors = err.messageParams?.errors;
+    if (Array.isArray(errors) && errors.length > 0 && typeof errors[0] === "object") {
+      return (errors as Array<{ key: string; params?: Record<string, string> }>)
+        .map((e) => {
+          try { return t(e.key, e.params ?? {}); } catch { return e.key; }
+        })
+        .join("\n");
+    }
+    return translateError(err);
+  }, [t, translateError]);
 
   const canWrite = hasPermission(Permissions.PRODUCT_WRITE);
   const canApprove = hasPermission(Permissions.PRODUCT_APPROVE);
@@ -163,7 +190,7 @@ function ProductListInner() {
         setPage(data.page);
         setPages(data.pages);
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : t("loadError"));
+        setError(translateError(e));
       } finally {
         setLoading(false);
       }
@@ -237,7 +264,12 @@ function ProductListInner() {
         setConfirmState(null);
         void load(type === "delete" && items.length === 1 && page > 1 ? page - 1 : page);
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : t("actionError"));
+        // 上架校验：展示具体原因
+        if (e instanceof ApiError && Array.isArray(e.messageParams?.errors)) {
+          toastError(translatePublishErrors(e));
+        } else {
+          toastError(translateError(e));
+        }
         setConfirmState(null);
       } finally {
         setActionLoading(false);
@@ -250,7 +282,6 @@ function ProductListInner() {
   const handleBatchPublish = useCallback(async () => {
     if (selectedIds.size === 0) return;
     setBatchLoading(true);
-    setError("");
     let successCount = 0;
     const errors: string[] = [];
     for (const id of selectedIds) {
@@ -259,7 +290,9 @@ function ProductListInner() {
         successCount++;
       } catch (e) {
         const name = items.find((i) => i.id === id)?.name ?? String(id);
-        errors.push(`${name}: ${e instanceof ApiError ? e.message : "failed"}`);
+        const msg = (e instanceof ApiError && Array.isArray(e.messageParams?.errors))
+          ? translatePublishErrors(e) : translateError(e);
+        errors.push(`${name}: ${msg}`);
       }
     }
     setBatchLoading(false);
@@ -269,9 +302,9 @@ function ProductListInner() {
       void load(page);
     }
     if (errors.length > 0) {
-      setError(errors.join("; "));
+      toastError(errors.join("\n"));
     }
-  }, [selectedIds, items, page, load, t]);
+  }, [selectedIds, items, page, load, t, translateError, toastError]);
 
   const confirmConfig = useMemo(() => {
     if (!confirmState) return null;

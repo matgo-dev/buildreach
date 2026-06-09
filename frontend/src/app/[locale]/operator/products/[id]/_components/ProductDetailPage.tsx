@@ -452,9 +452,16 @@ export default function ProductDetailPage() {
       }
       setConfirmModal(null);
     } catch (err: unknown) {
-      // 解析上架校验错误列表
+      // 解析上架校验的结构化错误列表 [{key, params}]，翻译后展示
       if (err instanceof ApiError && err.messageParams && Array.isArray(err.messageParams.errors)) {
-        setActionError({ message: translateError(err), errors: err.messageParams.errors as string[] });
+        const rawErrors = err.messageParams.errors as Array<{ key: string; params?: Record<string, string> } | string>;
+        const translated = rawErrors.map((e) => {
+          if (typeof e === "object" && e.key) {
+            try { return tList(e.key, e.params ?? {}); } catch { return e.key; }
+          }
+          return String(e);
+        });
+        setActionError({ message: translateError(err), errors: translated });
       } else {
         setActionError({ message: translateError(err) });
       }

@@ -49,7 +49,7 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
     if name == "SkuCodeExistsError":
         return cls()
     if name == "PublishValidationFailedError":
-        return cls(["error1"])
+        return cls([{"key": "publish_no_image"}])
     if name == "OnlyDraftDeletableError":
         return cls()
     if name == "SupplierAlreadyBoundError":
@@ -266,7 +266,7 @@ def test_product_error_codes():
     assert InvalidProductStatusError("X").biz_code == 40201
     assert SpuCodeExistsError().biz_code == 40202
     assert SkuCodeExistsError().biz_code == 40203
-    assert PublishValidationFailedError(["e"]).biz_code == 40204
+    assert PublishValidationFailedError([{"key": "publish_no_image"}]).biz_code == 40204
     assert OnlyDraftDeletableError().biz_code == 40205
     assert SupplierAlreadyBoundError().biz_code == 40206
     assert MaxImagesExceededError(8).biz_code == 40207
