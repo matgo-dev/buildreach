@@ -10,6 +10,7 @@ import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type Pri
 import { SKU_UNITS, type SkuUnitCode } from "@/lib/api/operatorProducts";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/Toast";
 import { SectionAnchorNav } from "./SectionAnchorNav";
 import { SkuCard } from "./SkuCard";
 import { SpuImageUploader } from "./SpuImageUploader";
@@ -182,10 +183,11 @@ export function ProductCreatePage() {
 
   // 提交状态
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  // 部分成功时记录已创建的商品 ID，用于引导跳转
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
   // 出错的 SKU clientId，用于高亮卡片
   const [errorSkuId, setErrorSkuId] = useState<string | null>(null);
+  const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
   // 字段级错误，key 为字段标识，value 为 i18n 后的错误文案
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -282,12 +284,14 @@ export function ProductCreatePage() {
 
   // ---------- 错误信息提取（走 i18n） ----------
   const extractErrorMsg = useCallback((err: unknown): string => {
+    // 网络错误（fetch 失败、断网等）→ 友好提示
+    if (err instanceof TypeError && err.message.toLowerCase().includes("fetch")) {
+      return t("error_network");
+    }
     if (err instanceof ApiError && err.messageKey) {
-      // messageKey 格式: "error.product.xxx" → 拆成 namespace path
       try {
-        // 先尝试用 messageKey 的完整路径（去掉 "error." 前缀后在 tError 里查）
         const keyPath = err.messageKey.startsWith("error.")
-          ? err.messageKey.slice(6) // "error.product.xxx" → "product.xxx"
+          ? err.messageKey.slice(6)
           : err.messageKey;
         return tError(keyPath);
       } catch {
@@ -296,132 +300,119 @@ export function ProductCreatePage() {
     }
     if (err instanceof Error) return err.message;
     return String(err);
-  }, [tError]);
+  }, [t, tError]);
 
   // ---------- 提交（单事务聚合） ----------
   const handleSubmit = useCallback(async (publish: boolean) => {
-    setSubmitError(null);
     setErrorSkuId(null);
-    setCreatedProductId(null);
 
-    // 前端预校验 — 收集所有字段错误
-    const errors: Record<string, string> = {};
+    // 如果 SPU 已创建（上次部分成功），跳过校验和创建，只做图片+上架
+    const existingId = createdProductId;
 
-    if (!category.level3Code) {
-      errors.category = t("validate_category_required");
-    }
-    if (!spu.name.trim()) {
-      errors.name = t("validate_name_required");
-    }
-    if (skus.length === 0) {
-      errors.skus = t("validate_sku_required");
-    }
-    if (publish && spuImageFiles.length === 0) {
-      errors.images = t("validate_image_required");
-    }
-
-    // SKU 级别字段校验（单位/MOQ 已有默认值，这里校验价格）
-    for (const sku of skus) {
-      if (!sku.price_min && !sku.price_max) {
-        errors[`sku_price_${sku._clientId}`] = t("validate_sku_price_required");
+    if (!existingId) {
+      // 前端预校验 — 收集所有字段错误
+      const errors: Record<string, string> = {};
+      if (!category.level3Code) errors.category = t("validate_category_required");
+      if (!spu.name.trim()) errors.name = t("validate_name_required");
+      if (skus.length === 0) errors.skus = t("validate_sku_required");
+      if (publish && spuImageFiles.length === 0) errors.images = t("validate_image_required");
+      for (const sku of skus) {
+        if (!sku.price_min && !sku.price_max) {
+          errors[`sku_price_${sku._clientId}`] = t("validate_sku_price_required");
+        }
       }
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        requestAnimationFrame(() => {
+          document.querySelector("[data-field-error=\"true\"]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        return;
+      }
+      setFieldErrors({});
     }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      // 滚动到第一个出错字段
-      requestAnimationFrame(() => {
-        document.querySelector("[data-field-error=\"true\"]")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      return;
-    }
-    setFieldErrors({});
 
     setSubmitting(true);
-    let createdId: number | null = null;
+    let productId: number | null = existingId;
     try {
-      // 1) 先上传图片拿 image_id（上传与保存解耦，图片先传后引用）
-      // 创建时需要一个临时 SPU 来挂图片，但聚合端点在事务内处理，
-      // 所以图片必须在聚合保存前先上传。创建流程中图片可在聚合保存后单独上传。
-      // 暂不在创建聚合 payload 中引用图片 ID（创建时图片还没有 product_id）。
-
-      // 2) 组装聚合 payload — 一次调用完成 SPU + 全部 SKU
-      const spuAttrs: ProductAttrInput[] = Object.entries(spu.spuAttributes)
-        .filter(([, v]) => v.trim())
-        .map(([k, v]) => ({ attr_key: k, attr_value: v }));
-
-      const aggregateSkus: AggregateSkuInput[] = skus.map((sku) => {
-        const skuAttrs: ProductAttrInput[] = Object.entries(sku.attributes)
+      // 1) 创建 SPU + SKU（仅首次，部分成功 retry 时跳过）
+      if (!productId) {
+        const spuAttrs: ProductAttrInput[] = Object.entries(spu.spuAttributes)
           .filter(([, v]) => v.trim())
           .map(([k, v]) => ({ attr_key: k, attr_value: v }));
 
-        return {
-          manufacturer_model: sku.manufacturer_model || undefined,
-          name: sku.name || undefined,
-          color: sku.color || undefined,
-          material: sku.material || undefined,
-          price_min: sku.price_min ? Number(sku.price_min) : undefined,
-          price_max: sku.price_max ? Number(sku.price_max) : undefined,
-          currency: sku.currency,
-          unit: sku.unit,
-          moq: Number(sku.moq) || 1,
-          lead_time_min: sku.lead_time_min ? Number(sku.lead_time_min) : undefined,
-          lead_time_max: sku.lead_time_max ? Number(sku.lead_time_max) : undefined,
-          packing_quantity: sku.packing_quantity ? Number(sku.packing_quantity) : undefined,
-          gross_weight_kg: sku.gross_weight_kg ? Number(sku.gross_weight_kg) : undefined,
-          volume_cbm: sku.volume_cbm ? Number(sku.volume_cbm) : undefined,
-          can_consolidate: sku.can_consolidate,
-          cargo_type: sku.cargo_type || undefined,
-          is_default: sku.is_default,
-          price_tiers: sku.price_tiers.length > 0 ? sku.price_tiers : undefined,
-          attributes: skuAttrs.length > 0 ? skuAttrs : undefined,
-        };
-      });
+        const aggregateSkus: AggregateSkuInput[] = skus.map((sku) => {
+          const skuAttrs: ProductAttrInput[] = Object.entries(sku.attributes)
+            .filter(([, v]) => v.trim())
+            .map(([k, v]) => ({ attr_key: k, attr_value: v }));
+          return {
+            manufacturer_model: sku.manufacturer_model || undefined,
+            name: sku.name || undefined,
+            color: sku.color || undefined,
+            material: sku.material || undefined,
+            price_min: sku.price_min ? Number(sku.price_min) : undefined,
+            price_max: sku.price_max ? Number(sku.price_max) : undefined,
+            currency: sku.currency,
+            unit: sku.unit,
+            moq: Number(sku.moq) || 1,
+            lead_time_min: sku.lead_time_min ? Number(sku.lead_time_min) : undefined,
+            lead_time_max: sku.lead_time_max ? Number(sku.lead_time_max) : undefined,
+            packing_quantity: sku.packing_quantity ? Number(sku.packing_quantity) : undefined,
+            gross_weight_kg: sku.gross_weight_kg ? Number(sku.gross_weight_kg) : undefined,
+            volume_cbm: sku.volume_cbm ? Number(sku.volume_cbm) : undefined,
+            can_consolidate: sku.can_consolidate,
+            cargo_type: sku.cargo_type || undefined,
+            is_default: sku.is_default,
+            price_tiers: sku.price_tiers.length > 0 ? sku.price_tiers : undefined,
+            attributes: skuAttrs.length > 0 ? skuAttrs : undefined,
+          };
+        });
 
-      const result = await operatorProductsApi.createAggregate({
-        category_code: category.level3Code!,
-        spu_code: spu.spu_code || undefined,
-        name: spu.name,
-        description: spu.description || undefined,
-        origin: spu.origin || "中国",
-        hs_code: spu.hs_code || undefined,
-        brand: spu.brand || undefined,
-        certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
-        selling_points: spu.selling_points || undefined,
-        source_lang: locale,
-        is_featured: spu.is_featured,
-        attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
-        skus: aggregateSkus,
-      });
+        const result = await operatorProductsApi.createAggregate({
+          category_code: category.level3Code!,
+          spu_code: spu.spu_code || undefined,
+          name: spu.name,
+          description: spu.description || undefined,
+          origin: spu.origin || "中国",
+          hs_code: spu.hs_code || undefined,
+          brand: spu.brand || undefined,
+          certifications: spu.certifications.length > 0 ? spu.certifications : undefined,
+          selling_points: spu.selling_points || undefined,
+          source_lang: locale,
+          is_featured: spu.is_featured,
+          attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
+          skus: aggregateSkus,
+        });
+        productId = result.id;
+        setCreatedProductId(productId);
+      }
 
-      const productId = result.id;
-      createdId = productId;
-
-      // 3) 上传 SPU 图片（聚合保存后，product_id 已确定）
+      // 2) 上传 SPU 图片
       for (const file of spuImageFiles) {
         await operatorProductsApi.uploadImage(productId, file);
       }
 
-      // 4) 发布（如果是上架）
+      // 3) 发布（如果是上架）
       if (publish) {
         await operatorProductsApi.updateStatus(productId, { status: "ACTIVE" });
       }
 
       // 成功 → 清草稿缓存 + 跳转
       clearDraft();
-      alert(publish ? t("success_publish") : t("success_draft"));
+      toastSuccess(publish ? t("success_publish") : t("success_draft"));
       router.push(`/${locale}/operator/products/${productId}`);
     } catch (err: unknown) {
-      if (createdId != null) {
-        setCreatedProductId(createdId);
-        setSubmitError(`${extractErrorMsg(err)}；商品已保存为草稿，可进入详情继续编辑。`);
+      const reason = extractErrorMsg(err);
+      if (productId != null) {
+        // SPU 已创建但后续步骤失败 → 保留 productId 用于 retry
+        setCreatedProductId(productId);
+        toastWarning(t("error_draft_saved_partial", { reason }));
       } else {
-        setSubmitError(extractErrorMsg(err));
+        toastError(reason);
       }
     } finally {
       setSubmitting(false);
     }
-  }, [category, spu, skus, spuImageFiles, t, sectionRefs, extractErrorMsg, locale, router]);
+  }, [category, spu, skus, spuImageFiles, t, sectionRefs, extractErrorMsg, locale, router, toastSuccess, toastWarning, toastError, createdProductId]);
 
   // ---------- 渲染 ----------
   return (
@@ -671,7 +662,7 @@ export function ProductCreatePage() {
               onRemove={() => removeSku(sku._clientId)}
               onSetDefault={() => setDefaultSku(sku._clientId)}
               onOpenTiers={() => setTierModalSkuId(sku._clientId)}
-              error={errorSkuId === sku._clientId ? submitError : null}
+              error={null}
               fieldErrors={fieldErrors}
               t={t}
               tUnit={tUnit}
@@ -717,20 +708,15 @@ export function ProductCreatePage() {
               <span>{t("validate_fields_need_correction", { count: Object.keys(fieldErrors).length })}</span>
             </div>
           )}
-          {/* API 级错误 */}
-          {submitError && Object.keys(fieldErrors).length === 0 && (
-            <div className="mr-auto self-center text-sm text-red-600">
-              <span>{submitError}</span>
-              {createdProductId != null && (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/${locale}/operator/products/${createdProductId}?edit=true`)}
-                  className="ml-3 rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                >
-                  进入详情
-                </button>
-              )}
-            </div>
+          {/* 部分成功（SPU 已创建）→ 跳转按钮 */}
+          {createdProductId != null && Object.keys(fieldErrors).length === 0 && (
+            <button
+              type="button"
+              onClick={() => router.push(`/${locale}/operator/products/${createdProductId}?edit=true`)}
+              className="mr-auto self-center rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+            >
+              {t("error_draft_go_detail")}
+            </button>
           )}
           <Button
             variant="outline"
