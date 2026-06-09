@@ -114,7 +114,13 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl mx-4 my-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h3 className="text-base font-semibold text-slate-900">{isNew ? t("addSku") : t("editSku")}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-xs text-slate-500">
+              {t("default")}
+              <Toggle checked={form.is_default} onChange={() => set("is_default", !form.is_default)} size="md" />
+            </label>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+          </div>
         </div>
         <div className="px-6 py-5 max-h-[70vh] overflow-y-auto space-y-5">
           {/* 基础信息 */}
@@ -139,10 +145,6 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               <label className="text-xs text-slate-500 mb-1 block">{t("fieldMaterial")}</label>
               <ComboInput value={form.material || ""} onChange={(v) => set("material", v || null)} options={materialOptions} className="w-full h-8 px-3 pr-7 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
-            <div className="flex items-center gap-3">
-              <label className="text-xs text-slate-500">{t("default")}</label>
-              <Toggle checked={form.is_default} onChange={() => set("is_default", !form.is_default)} size="md" />
-            </div>
           </div>
           {/* 商务参数 */}
           <div>
@@ -161,6 +163,33 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 <input type="number" value={form.price_max ?? ""} onChange={(e) => set("price_max", e.target.value ? Number(e.target.value) : null)} min={0} step={0.01} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
             </div>
+            {/* 阶梯价（紧跟价格字段） */}
+            <div className="flex items-center gap-3 mt-3">
+              <button type="button" onClick={addTier} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                <Plus className="h-3 w-3" /> {t("addTier")}
+              </button>
+            </div>
+            {form.price_tiers.length > 0 && (
+              <div className="space-y-2 mt-2">
+                {form.price_tiers.map((tier, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                    <div>
+                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}{i === 0 && <span className="text-slate-300 ml-1">({t("tierEqualsModq")})</span>}</label>
+                      <input type="number" value={i === 0 ? (form.moq || 1) : tier.min_qty} readOnly={i === 0} onChange={(e) => updateTier(i, { min_qty: Number(e.target.value) || 0 })} className={`w-full h-7 px-2 rounded border border-slate-200 text-xs ${i === 0 ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} min={1} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400">{t("tierMaxQty")}</label>
+                      <input type="number" value={tier.max_qty ?? ""} onChange={(e) => updateTier(i, { max_qty: e.target.value ? Number(e.target.value) : null })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" placeholder="∞" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400">{t("tierUnitPrice")}</label>
+                      <input type="number" value={tier.unit_price || ""} onChange={(e) => updateTier(i, { unit_price: Number(e.target.value) || 0 })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" min={0} step={0.01} />
+                    </div>
+                    <button type="button" onClick={() => removeTier(i)} className="h-7 w-7 flex items-center justify-center text-red-400 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {/* 物流参数 */}
           <div>
@@ -195,36 +224,6 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
                 <input type="text" value={form.cargo_type || ""} onChange={(e) => set("cargo_type", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
             </div>
-          </div>
-          {/* 阶梯价 */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-semibold text-slate-700">{t("priceTiers")}</h4>
-              <button type="button" onClick={addTier} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
-                <Plus className="h-3 w-3" /> {t("addTier")}
-              </button>
-            </div>
-            {form.price_tiers.length > 0 && (
-              <div className="space-y-2">
-                {form.price_tiers.map((tier, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
-                    <div>
-                      <label className="text-[10px] text-slate-400">{t("tierMinQty")}{i === 0 && <span className="text-slate-300 ml-1">({t("tierEqualsModq")})</span>}</label>
-                      <input type="number" value={i === 0 ? (form.moq || 1) : tier.min_qty} readOnly={i === 0} onChange={(e) => updateTier(i, { min_qty: Number(e.target.value) || 0 })} className={`w-full h-7 px-2 rounded border border-slate-200 text-xs ${i === 0 ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} min={1} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400">{t("tierMaxQty")}</label>
-                      <input type="number" value={tier.max_qty ?? ""} onChange={(e) => updateTier(i, { max_qty: e.target.value ? Number(e.target.value) : null })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" placeholder="∞" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400">{t("tierUnitPrice")}</label>
-                      <input type="number" value={tier.unit_price || ""} onChange={(e) => updateTier(i, { unit_price: Number(e.target.value) || 0 })} className="w-full h-7 px-2 rounded border border-slate-200 text-xs" min={0} step={0.01} />
-                    </div>
-                    <button type="button" onClick={() => removeTier(i)} className="h-7 w-7 flex items-center justify-center text-red-400 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           {/* SKU 属性 */}
           {skuTemplates.length > 0 && (

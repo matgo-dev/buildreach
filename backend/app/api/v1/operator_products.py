@@ -374,11 +374,16 @@ async def create_product_aggregate(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    product = await product_svc.create_product_aggregate(
+    result = await product_svc.create_product_aggregate(
         db, data,
         actor_id=current.id, actor_email=current.email, request=request,
     )
-    return success({"id": product.id, "spu_code": product.spu_code})
+    product = result["product"]
+    return success({
+        "id": product.id,
+        "spu_code": product.spu_code,
+        "skus": result["sku_mappings"],
+    })
 
 
 @router.put("/{product_id}/aggregate", summary="聚合保存商品（SPU+SKU diff 单事务）")

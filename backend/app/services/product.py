@@ -1218,11 +1218,17 @@ async def create_product_aggregate(
             expected_scope="SPU",
         )
 
-    # 批量建 SKU
+    # 批量建 SKU，收集 client_id → sku 映射
+    sku_mappings: list[dict] = []
     for sku_data in (data.skus or []):
-        await _create_sku_in_aggregate(
+        sku = await _create_sku_in_aggregate(
             db, product, sku_data, tpl_map=tpl_map, source_lang=source_lang,
         )
+        sku_mappings.append({
+            "client_id": getattr(sku_data, "client_id", None),
+            "id": sku.id,
+            "sku_code": sku.sku_code,
+        })
 
     # 图片引用
     if data.images:
@@ -1243,7 +1249,7 @@ async def create_product_aggregate(
 
     await db.commit()
     await db.refresh(product)
-    return product
+    return {"product": product, "sku_mappings": sku_mappings}
 
 
 async def save_product_aggregate(

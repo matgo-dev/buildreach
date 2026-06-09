@@ -164,7 +164,7 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
 
 function GalleryTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
-  const images = [...product.images].sort((a, b) => a.sort_order - b.sort_order);
+  const images = product.images.filter((img) => img.sku_id == null).sort((a, b) => a.sort_order - b.sort_order);
 
   if (images.length === 0) {
     return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noImages")}</p>;
@@ -426,7 +426,7 @@ function ProductDetailContent() {
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* 左:图片轮播 */}
           <ProductGallery
-            images={product.images}
+            images={product.images.filter((img) => img.sku_id == null)}
             skuImages={skuImages}
             isFeatured={product.is_featured}
           />
