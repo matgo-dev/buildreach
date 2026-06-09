@@ -54,12 +54,18 @@ def _img_to_dict(img) -> dict:
     return d
 
 
+def _alive_images(images):
+    """过滤软删图片"""
+    return [i for i in images if not getattr(i, "deleted_at", None)]
+
+
 def _get_main_image_url(p) -> str | None:
-    if not p.images:
+    imgs = _alive_images(p.images) if p.images else []
+    if not imgs:
         return None
-    main = next((i for i in p.images if i.image_type == ImageType.MAIN), None)
+    main = next((i for i in imgs if i.image_type == ImageType.MAIN), None)
     if not main:
-        main = sorted(p.images, key=lambda i: i.sort_order)[0]
+        main = sorted(imgs, key=lambda i: i.sort_order)[0]
     return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
 
 
@@ -99,7 +105,7 @@ def _to_public(p) -> dict:
 
 
 def _sku_to_public(sku) -> dict:
-    sku_images = [_img_to_dict(img) for img in (sku.images or [])]
+    sku_images = [_img_to_dict(img) for img in _alive_images(sku.images or [])]
     tiers = [PriceTierSchema.model_validate(t).model_dump() for t in (sku.price_tiers or [])]
     return SkuPublic(
         id=sku.id,
@@ -188,7 +194,7 @@ async def get_product(
         price_min=prices["price_min"],
         price_max=prices["price_max"],
         skus=skus_data,
-        images=[_img_to_dict(img) for img in p.images],
+        images=[_img_to_dict(img) for img in _alive_images(p.images)],
         attributes=_enrich_attrs(spu_attrs, tpl_map),
     ).model_dump()
     return success(data)

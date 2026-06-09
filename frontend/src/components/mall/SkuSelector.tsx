@@ -88,7 +88,9 @@ function getSkuDimensionValue(sku: SkuPublic, dimKey: string): string | null {
   return attr?.attr_value || null;
 }
 
-/** 根据当前选中的维度组合定位唯一 SKU */
+/** 根据当前选中的维度组合定位唯一 SKU。
+ *  部分选择时，如果已选维度只匹配到 1 个 SKU，也直接返回（不要求全选）。
+ */
 export function locateSku(
   skus: SkuPublic[],
   dimensions: SkuDimension[],
@@ -99,15 +101,22 @@ export function locateSku(
     return skus.find((s) => s.is_default) || skus[0];
   }
 
-  // 所有维度都已选才能定位
-  const allSelected = dimensions.every((d) => selection[d.key]);
-  if (!allSelected) return null;
+  // 按已选维度过滤候选 SKU
+  const selectedDims = dimensions.filter((d) => selection[d.key]);
+  if (selectedDims.length === 0) return null;
 
-  return (
-    skus.find((sku) =>
-      dimensions.every((d) => getSkuDimensionValue(sku, d.key) === selection[d.key])
-    ) || null
+  const candidates = skus.filter((sku) =>
+    selectedDims.every((d) => getSkuDimensionValue(sku, d.key) === selection[d.key])
   );
+
+  // 精确匹配 1 个 → 直接返回（即使未全选，只要组合唯一就定位）
+  if (candidates.length === 1) return candidates[0];
+
+  // 全选且匹配 → 返回
+  const allSelected = dimensions.every((d) => selection[d.key]);
+  if (allSelected && candidates.length > 0) return candidates[0];
+
+  return null;
 }
 
 /** 从 is_default SKU 反推初始选中状态 */

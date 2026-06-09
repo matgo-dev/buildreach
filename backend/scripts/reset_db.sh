@@ -17,8 +17,10 @@ echo "→ dropdb $DB_NAME"
 echo "→ createdb $DB_NAME"
 "$PSQL_BIN/createdb" -p "$PG_PORT" -U "$PG_USER" "$DB_NAME"
 
-echo "→ 清理 uploads 目录（避免数据库重置后残留孤儿文件）"
-rm -rf uploads/products/*
+# 不再自动删除 uploads — 图片文件与 DB 无事务关系，
+# 重置库后残留文件无害，但误删文件不可恢复。
+# 如确需清理孤儿文件，手动执行: rm -rf uploads/products/*
+echo "→ 跳过 uploads 清理（图片文件保留，避免误删）"
 
 echo "→ alembic upgrade head"
 alembic upgrade head

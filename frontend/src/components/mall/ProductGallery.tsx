@@ -16,10 +16,17 @@ interface ProductGalleryProps {
 export function ProductGallery({ images, skuImages, isFeatured }: ProductGalleryProps) {
   const t = useTranslations("mall");
 
-  // SKU 有专属图时用 SKU 图,否则用 SPU 全部图
+  // SKU 有专属图时：SKU 图排前 + SPU 图排后（去重），保证缩略图不丢
   const displayImages = useMemo(() => {
-    const list = skuImages && skuImages.length > 0 ? skuImages : images;
-    return [...list].sort((a, b) => a.sort_order - b.sort_order);
+    if (skuImages && skuImages.length > 0) {
+      const skuSorted = [...skuImages].sort((a, b) => a.sort_order - b.sort_order);
+      const skuIds = new Set(skuSorted.map((img) => img.id));
+      const spuRest = images
+        .filter((img) => !skuIds.has(img.id))
+        .sort((a, b) => a.sort_order - b.sort_order);
+      return [...skuSorted, ...spuRest];
+    }
+    return [...images].sort((a, b) => a.sort_order - b.sort_order);
   }, [images, skuImages]);
 
   const [activeIndex, setActiveIndex] = useState(0);
