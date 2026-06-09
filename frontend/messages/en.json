@@ -392,6 +392,8 @@
     "confirmDiscard": "Discard",
     "saveSuccess": "Saved successfully",
     "saveError": "Save failed",
+    "imageUploadFailed": "Image upload failed. Please retry.",
+    "imagesSavedDataFailed": "Images saved, but other data was not saved. Please retry.",
     "addSku": "Add SKU",
     "editSku": "Edit SKU",
     "deleteSku": "Delete SKU",

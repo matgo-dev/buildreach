@@ -392,6 +392,8 @@
     "confirmDiscard": "放弃",
     "saveSuccess": "保存成功",
     "saveError": "保存失败",
+    "imageUploadFailed": "图片上传失败，请重试",
+    "imagesSavedDataFailed": "图片已保存，其余信息未保存，请重试",
     "addSku": "添加 SKU",
     "editSku": "编辑 SKU",
     "deleteSku": "删除 SKU",
