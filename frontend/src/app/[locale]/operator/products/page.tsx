@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { AlertCircle, Loader2, Package, Plus, Search } from "lucide-react";
 
 import Pagination from "@/components/ui/Pagination";
-
+import { CategoryCascaderDropdown } from "@/components/category/CategoryCascaderDropdown";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useToast } from "@/components/ui/Toast";
@@ -47,21 +47,6 @@ function resolveCategoryName(code: string, catMap: Map<string, CategoryTreeNode>
   return node.name;
 }
 
-function collectLeafNodes(nodes: CategoryTreeNode[]): { code: string; name: string }[] {
-  const leaves: { code: string; name: string }[] = [];
-  function walk(ns: CategoryTreeNode[], ancestors: string[] = []) {
-    for (const n of ns) {
-      if (n.children?.length) {
-        walk(n.children, [...ancestors, n.name]);
-      } else {
-        const path = [...ancestors, n.name].join(" > ");
-        leaves.push({ code: n.code, name: path });
-      }
-    }
-  }
-  walk(nodes);
-  return leaves;
-}
 
 // ---------- 格式化 ----------
 
@@ -129,7 +114,6 @@ function ProductListInner() {
   const { tree: categoryTree } = useCategoryTree();
 
   const catMap = useMemo(() => buildCategoryMap(categoryTree), [categoryTree]);
-  const leafCategories = useMemo(() => collectLeafNodes(categoryTree), [categoryTree]);
 
   // 列表数据
   const [items, setItems] = useState<ProductOperatorItem[]>([]);
@@ -339,7 +323,7 @@ function ProductListInner() {
 
       {/* 筛选区 */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative w-[280px] shrink-0">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -351,16 +335,12 @@ function ProductListInner() {
           />
         </div>
 
-        <select
+        <CategoryCascaderDropdown
+          tree={categoryTree}
           value={categoryCode}
-          onChange={(e) => setCategoryCode(e.target.value)}
-          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-        >
-          <option value="">{t("allCategories")}</option>
-          {leafCategories.map((c) => (
-            <option key={c.code} value={c.code}>{c.name}</option>
-          ))}
-        </select>
+          onChange={setCategoryCode}
+          placeholder={t("allCategories")}
+        />
 
         <select
           value={statusFilter}
