@@ -139,8 +139,6 @@ class SkuCreate(BaseModel):
     source_lang: str = "zh"
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
-    currency: str = "TZS"
-    unit: SkuUnitCode
     moq: int = Field(gt=0)
     lead_time_min: int | None = Field(default=None, ge=0)
     lead_time_max: int | None = Field(default=None, ge=0)
@@ -161,8 +159,6 @@ class SkuUpdate(BaseModel):
     material: str | None = Field(default=None, max_length=100)
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
-    currency: str | None = None
-    unit: SkuUnitCode | None = None
     moq: int | None = Field(default=None, gt=0)
     lead_time_min: int | None = Field(default=None, ge=0)
     lead_time_max: int | None = Field(default=None, ge=0)
@@ -187,8 +183,6 @@ class SkuPublic(BaseModel):
     manufacturer_model: str | None = None
     price_min: Decimal | None = None
     price_max: Decimal | None = None
-    currency: str
-    unit: str
     moq: int
     lead_time_min: int | None = None
     lead_time_max: int | None = None
@@ -256,6 +250,8 @@ class ProductPublicDetail(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool
+    unit: str = "PCS"
+    currency: str = "TZS"
     price_min: Decimal | None = None
     price_max: Decimal | None = None
     skus: List[SkuPublic] = []
@@ -313,6 +309,8 @@ class ProductOperatorDetail(BaseModel):
     selling_points_en: str | None = None
     source_lang: str = "zh"
     is_featured: bool
+    unit: str = "PCS"
+    currency: str = "TZS"
     status: str
     created_by_name: str = ""
     skus: List[SkuOperator] = []
@@ -336,6 +334,8 @@ class ProductCreate(BaseModel):
     selling_points: str | None = None
     source_lang: str = "zh"
     is_featured: bool = False
+    unit: SkuUnitCode = "PCS"
+    currency: str = "TZS"
     attributes: List[ProductAttrCreate] | None = None
 
 
@@ -350,6 +350,8 @@ class ProductUpdate(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool | None = None
+    unit: SkuUnitCode | None = None
+    currency: str | None = None
     attributes: List[ProductAttrCreate] | None = None
 
 
@@ -381,8 +383,6 @@ class AggregateSkuCreate(BaseModel):
     source_lang: str = "zh"
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
-    currency: str = "TZS"
-    unit: SkuUnitCode
     moq: int = Field(gt=0)
     lead_time_min: int | None = Field(default=None, ge=0)
     lead_time_max: int | None = Field(default=None, ge=0)
@@ -416,6 +416,8 @@ class ProductAggregateCreate(BaseModel):
     selling_points: str | None = None
     source_lang: str = "zh"
     is_featured: bool = False
+    unit: SkuUnitCode = "PCS"
+    currency: str = "TZS"
     attributes: List[ProductAttrCreate] | None = None
     skus: List[AggregateSkuCreate] = []
     images: List[ImageRefInput] | None = None
@@ -433,6 +435,8 @@ class ProductAggregateSave(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool | None = None
+    unit: SkuUnitCode | None = None
+    currency: str | None = None
     attributes: List[ProductAttrCreate] | None = None
     skus: List[AggregateSkuSave] | None = None
     images: List[ImageRefInput] | None = None

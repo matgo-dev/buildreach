@@ -273,7 +273,7 @@ function ProductDetailContent() {
           type: "range" as const,
           min: product.price_min,
           max: product.price_max,
-          currency: activeSkus[0]?.currency ?? "USD",
+          currency: product.currency ?? "USD",
         };
       }
       return null;
@@ -301,13 +301,13 @@ function ProductDetailContent() {
           type: "range" as const,
           min: sku.price_min,
           max: sku.price_max,
-          currency: sku.currency,
+          currency: product.currency ?? "USD",
         };
       }
       return {
         type: "exact" as const,
         price: sku.price_min,
-        currency: sku.currency,
+        currency: product.currency ?? "USD",
       };
     }
 
@@ -343,7 +343,7 @@ function ProductDetailContent() {
 
   // 单位标签
   const unitLabel = selectedSku
-    ? t(`unit_${selectedSku.unit}` as Parameters<typeof t>[0])
+    ? t(`unit_${product?.unit ?? "PCS"}` as Parameters<typeof t>[0])
     : "";
 
   // ---- 加载/错误态 ----
@@ -541,7 +541,7 @@ function ProductDetailContent() {
             {selectedSku && selectedSku.price_tiers.length > 0 && (
               <PriceTiers
                 tiers={selectedSku.price_tiers}
-                unit={selectedSku.unit}
+                unit={product.unit}
                 quantity={quantity}
               />
             )}
@@ -553,7 +553,7 @@ function ProductDetailContent() {
                   value={quantity}
                   onChange={setQuantity}
                   moq={selectedSku.moq}
-                  unit={selectedSku.unit}
+                  unit={product.unit}
                 />
               </div>
             )}

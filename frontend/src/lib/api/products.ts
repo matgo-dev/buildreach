@@ -86,8 +86,6 @@ export interface SkuPublic {
   manufacturer_model: string | null;
   price_min: number | null;
   price_max: number | null;
-  currency: string;
-  unit: string;
   moq: number;
   lead_time_min: number | null;
   lead_time_max: number | null;
@@ -111,6 +109,8 @@ export interface ProductPublicDetail {
   certifications: string[] | null;
   selling_points: string | null;
   is_featured: boolean;
+  unit: string;
+  currency: string;
   price_min: number | null;
   price_max: number | null;
   skus: SkuPublic[];

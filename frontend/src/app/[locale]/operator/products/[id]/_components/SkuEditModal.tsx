@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X, Plus, Trash2 } from "lucide-react";
 import Toggle from "@/components/ui/Toggle";
-import { SKU_UNITS, AttrTemplate, ProductAttrInput, PriceTierInput } from "@/lib/api/operatorProducts";
+import { AttrTemplate, ProductAttrInput, PriceTierInput } from "@/lib/api/operatorProducts";
 
 export interface SkuFormData {
   sku_code?: string | null;
@@ -14,8 +14,6 @@ export interface SkuFormData {
   material?: string | null;
   price_min?: number | null;
   price_max?: number | null;
-  currency: string;
-  unit: string;
   moq: number;
   lead_time_min?: number | null;
   lead_time_max?: number | null;
@@ -40,15 +38,15 @@ interface SkuEditModalProps {
   initial?: SkuFormData | null;
   isNew?: boolean;
   skuTemplates: AttrTemplate[];
+  currency: string;
 }
 
-const CURRENCIES = ["TZS", "USD", "CNY"];
 
 function emptySkuForm(): SkuFormData {
-  return { sku_code: null, manufacturer_model: null, name: null, color: null, material: null, price_min: null, price_max: null, currency: "TZS", unit: "PCS", moq: 100, lead_time_min: null, lead_time_max: null, packing_quantity: null, gross_weight_kg: null, volume_cbm: null, can_consolidate: true, cargo_type: null, is_default: false, status: "ACTIVE", price_tiers: [], attributes: [], imageFiles: [], existingImages: [], removedImageIds: [] };
+  return { sku_code: null, manufacturer_model: null, name: null, color: null, material: null, price_min: null, price_max: null, moq: 100, lead_time_min: null, lead_time_max: null, packing_quantity: null, gross_weight_kg: null, volume_cbm: null, can_consolidate: true, cargo_type: null, is_default: false, status: "ACTIVE", price_tiers: [], attributes: [], imageFiles: [], existingImages: [], removedImageIds: [] };
 }
 
-export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew, skuTemplates }: SkuEditModalProps) {
+export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew, skuTemplates, currency }: SkuEditModalProps) {
   const t = useTranslations("productDetail");
   const [form, setForm] = useState<SkuFormData>(initial || emptySkuForm());
 
@@ -78,7 +76,7 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
     const minQty = form.price_tiers.length === 0
       ? (form.moq || 1)
       : (last.max_qty || last.min_qty) + 1;
-    set("price_tiers", [...form.price_tiers, { min_qty: minQty, max_qty: null, unit_price: 0, currency: form.currency }]);
+    set("price_tiers", [...form.price_tiers, { min_qty: minQty, max_qty: null, unit_price: 0, currency: currency }]);
   };
   const removeTier = (idx: number) => set("price_tiers", form.price_tiers.filter((_, i) => i !== idx));
   const updateTier = (idx: number, patch: Partial<PriceTierInput>) => {
@@ -146,20 +144,8 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
             <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("sectionCommercial")}</h4>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("fieldUnit")} <span className="text-red-500">*</span></label>
-                <select value={form.unit} onChange={(e) => set("unit", e.target.value)} className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs focus:border-blue-500 outline-none">
-                  {SKU_UNITS.map((u) => (<option key={u} value={u}>{u}</option>))}
-                </select>
-              </div>
-              <div>
                 <label className="text-xs text-slate-500 mb-1 block">{t("fieldMoq")} <span className="text-red-500">*</span></label>
                 <input type="number" value={form.moq || ""} onChange={(e) => set("moq", Number(e.target.value) || 0)} min={1} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("fieldCurrency")}</label>
-                <select value={form.currency} onChange={(e) => set("currency", e.target.value)} className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs focus:border-blue-500 outline-none">
-                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">{t("fieldPriceMin")} <span className="text-red-500">*</span></label>

@@ -49,6 +49,9 @@ RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors
     && apt-get install -y --no-install-recommends \
         curl \
         libpq5 \
+        libjpeg62-turbo \
+        zlib1g \
+        libwebp7 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 appuser
 

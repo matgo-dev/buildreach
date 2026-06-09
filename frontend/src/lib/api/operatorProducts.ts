@@ -84,8 +84,6 @@ export interface SkuCreateInput {
   source_lang?: string;
   price_min?: number | null;
   price_max?: number | null;
-  currency?: string;
-  unit: SkuUnitCode;
   moq: number;
   lead_time_min?: number | null;
   lead_time_max?: number | null;
@@ -179,8 +177,6 @@ export interface SkuOperatorDetail {
   source_lang: string;
   price_min: number | null;
   price_max: number | null;
-  currency: string;
-  unit: string;
   moq: number;
   lead_time_min: number | null;
   lead_time_max: number | null;
@@ -225,6 +221,8 @@ export interface ProductOperatorDetail {
   selling_points_en: string | null;
   source_lang: string;
   is_featured: boolean;
+  unit: string;
+  currency: string;
   status: string;
   created_by_name: string;
   skus: SkuOperatorDetail[];
@@ -257,8 +255,6 @@ export interface SkuUpdateInput {
   material?: string | null;
   price_min?: number | null;
   price_max?: number | null;
-  currency?: string | null;
-  unit?: SkuUnitCode | null;
   moq?: number | null;
   lead_time_min?: number | null;
   lead_time_max?: number | null;
@@ -329,8 +325,6 @@ export interface AggregateSkuInput {
   source_lang?: string;
   price_min?: number | null;
   price_max?: number | null;
-  currency?: string;
-  unit: SkuUnitCode;
   moq: number;
   lead_time_min?: number | null;
   lead_time_max?: number | null;
@@ -356,6 +350,8 @@ export interface ProductAggregateCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
+  unit?: SkuUnitCode;
+  currency?: string;
   attributes?: ProductAttrInput[] | null;
   skus: AggregateSkuInput[];
   images?: ImageRefInput[] | null;
@@ -370,6 +366,8 @@ export interface ProductAggregateSaveInput {
   certifications?: string[] | null;
   selling_points?: string | null;
   is_featured?: boolean | null;
+  unit?: SkuUnitCode | null;
+  currency?: string | null;
   attributes?: ProductAttrInput[] | null;
   skus?: AggregateSkuInput[] | null;
   images?: ImageRefInput[] | null;

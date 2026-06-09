@@ -256,7 +256,6 @@ export default function ProductDetailPage() {
     const validationErrors: string[] = [];
     if (!spuForm.name?.trim()) validationErrors.push(t("validationNameRequired"));
     for (const sku of skuChanges.added) {
-      if (!sku.unit) validationErrors.push(t("validationSkuUnitRequired"));
       if (!sku.moq || sku.moq <= 0) validationErrors.push(t("validationSkuMoqRequired"));
     }
     if (validationErrors.length > 0) {
@@ -334,8 +333,6 @@ export default function ProductDetailPage() {
             material: updated.material,
             price_min: updated.price_min,
             price_max: updated.price_max,
-            currency: updated.currency,
-            unit: updated.unit as AggregateSkuInput["unit"],
             moq: updated.moq!,
             lead_time_min: updated.lead_time_min,
             lead_time_max: updated.lead_time_max,
@@ -358,8 +355,6 @@ export default function ProductDetailPage() {
             material: locale === "en" ? sku.material_en : sku.material_zh || sku.material,
             price_min: sku.price_min ? Number(sku.price_min) : undefined,
             price_max: sku.price_max ? Number(sku.price_max) : undefined,
-            currency: sku.currency,
-            unit: sku.unit as AggregateSkuInput["unit"],
             moq: sku.moq,
             lead_time_min: sku.lead_time_min,
             lead_time_max: sku.lead_time_max,
@@ -384,8 +379,6 @@ export default function ProductDetailPage() {
           material: added.material,
           price_min: added.price_min,
           price_max: added.price_max,
-          currency: added.currency,
-          unit: added.unit as AggregateSkuInput["unit"],
           moq: added.moq!,
           lead_time_min: added.lead_time_min,
           lead_time_max: added.lead_time_max,
@@ -599,13 +592,13 @@ export default function ProductDetailPage() {
                 </thead>
                 <tbody>
                   {product.skus.filter((s) => !skuChanges.removed.includes(s.id)).map((sku) => (
-                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} onImageClick={(images, index) => setLightbox({ images, index })} />
+                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} onImageClick={(images, index) => setLightbox({ images, index })} unit={product.unit} currency={product.currency} />
                   ))}
                   {skuChanges.added.map((added, i) => (
                     <tr key={`new-${i}`} className="border-b border-slate-50 bg-blue-50/30">
                       <td className="px-3 py-2.5"><span className="font-mono text-slate-700">{added.sku_code || "(auto)"}</span><span className="ml-1.5 bg-blue-100 text-blue-600 text-[9px] px-1.5 py-0.5 rounded">NEW</span></td>
-                      <td className="px-3 py-2.5 text-slate-600">{[added.color, added.material, added.unit].filter(Boolean).join(" / ")}</td>
-                      <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{added.price_min || added.price_max ? `${added.currency} ${added.price_min ?? "?"} - ${added.price_max ?? "?"}` : "—"}</td>
+                      <td className="px-3 py-2.5 text-slate-600">{[added.color, added.material, product.unit].filter(Boolean).join(" / ")}</td>
+                      <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{added.price_min || added.price_max ? `${product.currency} ${added.price_min ?? "?"} - ${added.price_max ?? "?"}` : "—"}</td>
                       <td className="px-3 py-2.5 text-right text-slate-600">{added.moq}</td>
                       <td className="px-3 py-2.5 text-center"><span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700">Active</span></td>
                       <td className="px-3 py-2.5 text-center"><button onClick={() => setSkuChanges((prev) => ({ ...prev, added: prev.added.filter((_, j) => j !== i) }))} className="text-red-500 hover:text-red-700"><X className="h-3.5 w-3.5" /></button></td>
@@ -676,7 +669,7 @@ export default function ProductDetailPage() {
             <h4 className="text-xs font-semibold text-slate-700 mb-3">{t("overview")}</h4>
             <div className="text-xs space-y-2">
               <div className="flex justify-between"><span className="text-slate-400">{t("skuCount")}</span><span className="text-slate-700 font-medium">{overview?.skuTotal} {t("unit")} ({overview?.skuActive} {t("active")})</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">{t("priceRange")}</span><span className="text-slate-700 font-medium">{formatPrice(product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity) === Infinity ? null : product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity), product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity) === -Infinity ? null : product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity), product.skus[0]?.currency || "TZS")}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">{t("priceRange")}</span><span className="text-slate-700 font-medium">{formatPrice(product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity) === Infinity ? null : product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity), product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity) === -Infinity ? null : product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity), product.currency || "TZS")}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("minMoq")}</span><span className="text-slate-700 font-medium">{overview?.minMoq != null ? `${overview.minMoq} pcs` : "—"}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("featured")}</span><span className="text-slate-700 font-medium">{product.is_featured ? "⭐ " + t("yes") : t("no")}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("createdBy")}</span><span className="text-slate-700 font-medium">{product.created_by_name || "—"}</span></div>
@@ -792,8 +785,8 @@ export default function ProductDetailPage() {
 
       {/* SKU Modal */}
       <SkuEditModal
-        open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates}
-        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, currency: skuModalData.sku.currency, unit: skuModalData.sku.unit, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
+        open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates} currency={product.currency}
+        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
       />
 
       {/* Lightbox 图片预览 */}
@@ -825,13 +818,14 @@ function FieldDisplay({ label, value, mono }: { label: string; value: string | n
   return (<div><span className="text-slate-400 text-xs">{label}</span><div className={`mt-0.5 text-slate-800 text-sm ${mono ? "font-mono" : ""}`}>{value || "—"}</div></div>);
 }
 
-function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEdit, onDelete, onStatusToggle, statusLoading, onImageClick }: {
+function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEdit, onDelete, onStatusToggle, statusLoading, onImageClick, unit, currency }: {
   sku: SkuOperatorDetail; locale: string; localized: (zh: string | null, en: string | null, fallback?: string | null) => string;
   expanded: boolean; onToggle: () => void; t: ReturnType<typeof useTranslations>; isEditing?: boolean; onEdit?: () => void; onDelete?: () => void;
   onStatusToggle?: () => void; statusLoading?: boolean; onImageClick?: (images: { url: string }[], index: number) => void;
+  unit: string; currency: string;
 }) {
   const skuStatus = sku.status === "ACTIVE" ? { bg: "bg-emerald-50", text: "text-emerald-700", label: t("skuStatusActive") } : { bg: "bg-slate-100", text: "text-slate-600", label: t("skuStatusInactive") };
-  const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), sku.unit].filter(Boolean).join(" / ");
+  const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), unit].filter(Boolean).join(" / ");
   return (
     <>
       <tr className={`border-b border-slate-50 hover:bg-slate-50/50 ${!isEditing ? "cursor-pointer" : ""}`} onClick={!isEditing ? onToggle : undefined}>
@@ -847,8 +841,8 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
           )}
         </td>
         <td className="px-3 py-2.5 text-slate-600">{specs || "—"}</td>
-        <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{formatPrice(sku.price_min ? Number(sku.price_min) : null, sku.price_max ? Number(sku.price_max) : null, sku.currency)}</td>
-        <td className="px-3 py-2.5 text-right text-slate-600">{sku.moq} {sku.unit?.toLowerCase()}</td>
+        <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{formatPrice(sku.price_min ? Number(sku.price_min) : null, sku.price_max ? Number(sku.price_max) : null, currency)}</td>
+        <td className="px-3 py-2.5 text-right text-slate-600">{sku.moq} {unit?.toLowerCase()}</td>
         <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
           {onStatusToggle && !isEditing ? (
             <Toggle
@@ -872,13 +866,13 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
         </td>
       </tr>
       {expanded && !isEditing && (
-        <tr className="bg-slate-50/70"><td colSpan={6} className="px-6 py-4"><SkuExpandedDetails sku={sku} locale={locale} t={t} onImageClick={onImageClick} /></td></tr>
+        <tr className="bg-slate-50/70"><td colSpan={6} className="px-6 py-4"><SkuExpandedDetails sku={sku} locale={locale} t={t} onImageClick={onImageClick} unit={unit} currency={currency} /></td></tr>
       )}
     </>
   );
 }
 
-function SkuExpandedDetails({ sku, locale, t, onImageClick }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations>; onImageClick?: (images: { url: string }[], index: number) => void }) {
+function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations>; onImageClick?: (images: { url: string }[], index: number) => void; unit: string; currency: string }) {
   const loc = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
   const Val = ({ v }: { v: string | number | null | undefined }) => <span className="text-slate-800">{v != null && v !== "" ? String(v) : "—"}</span>;
 
@@ -891,7 +885,7 @@ function SkuExpandedDetails({ sku, locale, t, onImageClick }: { sku: SkuOperator
         <div><span className="text-slate-400">{t("name")}</span><div className="mt-0.5"><Val v={loc(sku.name_zh, sku.name_en, sku.name)} /></div></div>
         <div><span className="text-slate-400">{t("color")}</span><div className="mt-0.5"><Val v={loc(sku.color_zh, sku.color_en, sku.color)} /></div></div>
         <div><span className="text-slate-400">{t("material")}</span><div className="mt-0.5"><Val v={loc(sku.material_zh, sku.material_en, sku.material)} /></div></div>
-        <div><span className="text-slate-400">{t("currency")}</span><div className="mt-0.5"><Val v={sku.currency} /></div></div>
+        <div><span className="text-slate-400">{t("currency")}</span><div className="mt-0.5"><Val v={currency} /></div></div>
       </div>
 
       <div className="border-t border-slate-100" />
@@ -907,7 +901,7 @@ function SkuExpandedDetails({ sku, locale, t, onImageClick }: { sku: SkuOperator
               <thead><tr className="text-slate-400 border-b border-slate-100"><th className="text-left pb-1.5 font-medium">{t("tierQty")}</th><th className="text-right pb-1.5 font-medium">{t("tierPrice")}</th></tr></thead>
               <tbody>{sku.price_tiers.map((tier, i) => (
                 <tr key={i} className="border-b border-slate-50 last:border-0">
-                  <td className="py-1.5 text-slate-600">{tier.min_qty}{tier.max_qty ? ` - ${tier.max_qty}` : "+"} {sku.unit?.toLowerCase()}</td>
+                  <td className="py-1.5 text-slate-600">{tier.min_qty}{tier.max_qty ? ` - ${tier.max_qty}` : "+"} {unit?.toLowerCase()}</td>
                   <td className="py-1.5 text-right font-medium text-slate-800">{tier.currency} {Number(tier.unit_price).toLocaleString()}</td>
                 </tr>
               ))}</tbody>
