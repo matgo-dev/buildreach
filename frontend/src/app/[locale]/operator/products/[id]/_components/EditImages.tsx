@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Plus, X, Star } from "lucide-react";
 import { ProductImage } from "@/lib/api/operatorProducts";
+import { useToast } from "@/components/ui/Toast";
 
 export interface ImageChange {
   added: File[];
@@ -21,34 +22,65 @@ interface EditImagesProps {
 
 const MAX_IMAGES = 8;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MIN_DIMENSION = 200;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+function readImageDimension(file: File): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("cannot read image")); };
+    img.src = url;
+  });
+}
 
 export default function EditImages({ images, imageChange, onChange, previews }: EditImagesProps) {
   const t = useTranslations("productDetail");
-  const locale = useLocale();
+  const { warning: toastWarning } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [dragStartIdx, setDragStartIdx] = useState<number | null>(null);
+  const [validating, setValidating] = useState(false);
 
   const visibleImages = images.filter((img) => !imageChange.removed.includes(img.id));
   const totalCount = visibleImages.length + imageChange.added.length;
   const canAdd = totalCount < MAX_IMAGES;
   const currentMainId = imageChange.newMainId || images.find((img) => img.image_type === "MAIN")?.id || null;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    if (fileRef.current) fileRef.current.value = "";
+
+    setValidating(true);
     const valid: File[] = [];
     for (const file of files) {
-      if (!ACCEPTED_TYPES.includes(file.type)) continue;
-      if (file.size > MAX_FILE_SIZE) continue;
       if (totalCount + valid.length >= MAX_IMAGES) break;
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        toastWarning(t("imageRejectFormat"));
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toastWarning(t("imageRejectSize"));
+        continue;
+      }
+      try {
+        const { w, h } = await readImageDimension(file);
+        if (w < MIN_DIMENSION || h < MIN_DIMENSION) {
+          toastWarning(t("imageRejectDimension", { w, h }));
+          continue;
+        }
+      } catch {
+        toastWarning(t("imageRejectFormat"));
+        continue;
+      }
       valid.push(file);
     }
+    setValidating(false);
     if (valid.length > 0) {
       onChange({ ...imageChange, added: [...imageChange.added, ...valid] });
     }
-    if (fileRef.current) fileRef.current.value = "";
-  };
+  }, [totalCount, imageChange, onChange, t, toastWarning]);
 
   const removeExisting = (id: number) => {
     onChange({ ...imageChange, removed: [...imageChange.removed, id], newMainId: currentMainId === id ? null : imageChange.newMainId });
@@ -118,15 +150,15 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
           </div>
         ))}
         {canAdd && (
-          <button type="button" onClick={() => fileRef.current?.click()} className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors">
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={validating} className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50">
             <Plus className="h-5 w-5" />
-            <span className="text-[10px] mt-1">{t("uploadImage")}</span>
+            <span className="text-[10px] mt-1">{validating ? "..." : t("uploadImage")}</span>
           </button>
         )}
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
       <p className="mt-2 text-[11px] text-slate-400">
-        {locale === "en" ? "Drag to reorder. Max 8 images, 5MB each. JPG/PNG/WebP." : "拖拽排序。最多 8 张，单张 ≤5MB，支持 JPG/PNG/WebP。"}
+        {t("imageRequirements")}
       </p>
     </section>
   );
