@@ -283,7 +283,7 @@ async def delete_product(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await product_svc.delete_product(db, product_id)
+    await product_svc.delete_product(db, product_id, operator_id=current.id)
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.DELETE,
         user_id=current.id, user_email=current.email,
@@ -445,7 +445,7 @@ async def delete_sku(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await product_svc.delete_sku(db, product_id, sku_id)
+    await product_svc.delete_sku(db, product_id, sku_id, operator_id=current.id)
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.DELETE,
         user_id=current.id, user_email=current.email,
@@ -507,7 +507,7 @@ async def delete_image(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await product_svc.delete_product_image(db, product_id, image_id)
+    await product_svc.delete_product_image(db, product_id, image_id, operator_id=current.id)
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.DELETE,
         user_id=current.id, user_email=current.email,
@@ -614,7 +614,7 @@ async def remove_sku_supplier(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await product_svc.remove_sku_supplier(db, product_id, sku_id, ps_id)
+    await product_svc.remove_sku_supplier(db, product_id, sku_id, ps_id, operator_id=current.id)
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.DELETE,
         user_id=current.id, user_email=current.email,

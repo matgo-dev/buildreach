@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampUpdateMixin
 from app.db.i18n_mixin import I18nMixin
+from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
 class SkuStatus:
@@ -23,17 +24,23 @@ class SkuStatus:
     ALL = (ACTIVE, INACTIVE)
 
 
-class ProductSku(Base, TimestampUpdateMixin, I18nMixin):
+class ProductSku(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     __tablename__ = "product_skus"
     __table_args__ = (
         Index("ix_product_skus_product_id", "product_id"),
         Index("ix_product_skus_status", "status"),
-        # 部分唯一索引：每个 SPU 下最多 1 个默认 SKU
+        # 部分唯一索引：每个 SPU 下最多 1 个未删除默认 SKU
         Index(
             "ix_product_skus_default",
             "product_id",
             unique=True,
-            postgresql_where="is_default",
+            postgresql_where="is_default AND deleted_at IS NULL",
+        ),
+        Index(
+            "uq_product_skus_sku_code_active",
+            "sku_code",
+            unique=True,
+            postgresql_where="deleted_at IS NULL",
         ),
     )
 
@@ -43,7 +50,7 @@ class ProductSku(Base, TimestampUpdateMixin, I18nMixin):
         ForeignKey("products.id", name="fk_product_skus_product_id", ondelete="CASCADE"),
         nullable=False,
     )
-    sku_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    sku_code: Mapped[str] = mapped_column(String(50), nullable=False)
     manufacturer_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # 多语言分列

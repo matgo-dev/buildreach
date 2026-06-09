@@ -52,6 +52,7 @@ from app.db.models.supplier_organization import SupplierOrganization
 from app.db.models.translation_glossary import TranslationGlossary
 from app.db.models.user import User
 from app.db.models.user_role import UserRole
+from app.db.soft_delete_mixin import SoftDeleteMixin
 
 __all__ = [
     # auth / rbac / org
@@ -113,4 +114,6 @@ __all__ = [
     "MessageRole",
     # i18n
     "TranslationGlossary",
+    # soft delete mixin
+    "SoftDeleteMixin",
 ]
