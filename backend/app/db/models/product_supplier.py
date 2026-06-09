@@ -11,16 +11,19 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampUpdateMixin
+from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
-class ProductSupplier(Base, TimestampUpdateMixin):
+class ProductSupplier(Base, TimestampUpdateMixin, SoftDeleteMixin):
     __tablename__ = "product_suppliers"
     __table_args__ = (
         Index("ix_product_suppliers_sku_id", "sku_id"),
         Index("ix_product_suppliers_supplier_org_id", "supplier_org_id"),
-        UniqueConstraint(
+        Index(
+            "uq_product_suppliers_sku_supplier_active",
             "sku_id", "supplier_org_id",
-            name="uq_product_suppliers_sku_supplier",
+            unique=True,
+            postgresql_where="deleted_at IS NULL",
         ),
     )
 

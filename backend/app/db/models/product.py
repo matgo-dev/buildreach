@@ -16,6 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampUpdateMixin
 from app.db.i18n_mixin import I18nMixin
+from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
 class ProductStatus:
@@ -42,12 +43,18 @@ class ProductStatus:
         return target in cls.TRANSITIONS.get(current, ())
 
 
-class Product(Base, TimestampUpdateMixin, I18nMixin):
+class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     __tablename__ = "products"
     __table_args__ = (
         Index("ix_products_category_code", "category_code"),
         Index("ix_products_status", "status"),
         Index("ix_products_is_featured", "is_featured"),
+        Index(
+            "uq_products_spu_code_active",
+            "spu_code",
+            unique=True,
+            postgresql_where="deleted_at IS NULL",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -56,7 +63,7 @@ class Product(Base, TimestampUpdateMixin, I18nMixin):
         ForeignKey("categories.code", name="fk_products_category_code"),
         nullable=False,
     )
-    spu_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    spu_code: Mapped[str] = mapped_column(String(50), nullable=False)
 
     # 多语言分列
     name_zh: Mapped[str] = mapped_column(String(200), nullable=False)
