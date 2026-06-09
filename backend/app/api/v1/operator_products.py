@@ -80,12 +80,18 @@ def _img_to_dict(img) -> dict:
     return d
 
 
+def _alive_images(images):
+    """过滤软删图片"""
+    return [i for i in images if not getattr(i, "deleted_at", None)]
+
+
 def _get_main_image_url(p) -> str | None:
-    if not p.images:
+    imgs = _alive_images(p.images) if p.images else []
+    if not imgs:
         return None
-    main = next((i for i in p.images if i.image_type == ImageType.MAIN), None)
+    main = next((i for i in imgs if i.image_type == ImageType.MAIN), None)
     if not main:
-        main = sorted(p.images, key=lambda i: i.sort_order)[0]
+        main = sorted(imgs, key=lambda i: i.sort_order)[0]
     return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
 
 
