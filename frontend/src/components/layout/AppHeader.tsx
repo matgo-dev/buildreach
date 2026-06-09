@@ -1,6 +1,6 @@
 "use client";
-import { Link, usePathname } from "@/i18n/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Bug,
   ChevronDown,
@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { useLocale } from "next-intl";
 import { useAuthStore } from "@/stores/authStore";
 import { useDebugMode } from "@/stores/uiStore";
 import { useLogout } from "@/hooks/useAuth";
@@ -43,7 +44,20 @@ export function AppHeader({
   showCart?: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const locale = useLocale();
+  const [searchValue, setSearchValue] = useState("");
   const [debugMode, setDebugMode] = useDebugMode();
+
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const kw = searchValue.trim();
+      const qs = kw ? `?keyword=${encodeURIComponent(kw)}` : "";
+      router.push(`/${locale}/mall${qs}`);
+    },
+    [searchValue, router, locale],
+  );
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -62,20 +76,24 @@ export function AppHeader({
 
         {/* 中:搜索框占位 或 导航插槽 */}
         {showSearch ? (
-          <div className="flex flex-1 max-w-xl">
+          <form onSubmit={handleSearch} className="flex flex-1 max-w-xl">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                readOnly
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
                 placeholder="Search products / 搜索商品..."
-                className="h-10 w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-gray-500 placeholder-gray-400 transition-colors hover:border-slate-300 focus:outline-none"
-                onClick={() => {
-                  // TODO: 打开搜索弹窗或跳转搜索页
-                }}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-12 text-sm text-gray-700 placeholder-gray-400 transition-colors hover:border-slate-300 focus:border-[#003366] focus:outline-none focus:ring-1 focus:ring-[#003366]/20"
               />
+              <button
+                type="submit"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-[#003366] px-2.5 text-xs font-medium text-white transition-colors hover:bg-[#002244]"
+              >
+                <Search className="h-3.5 w-3.5" />
+              </button>
             </div>
-          </div>
+          </form>
         ) : (
           centerNav && <div className="flex flex-1 justify-center">{centerNav}</div>
         )}
