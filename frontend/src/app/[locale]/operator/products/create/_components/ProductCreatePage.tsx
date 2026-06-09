@@ -27,8 +27,6 @@ export interface SkuFormState {
   material: string;
   price_min: string;
   price_max: string;
-  currency: string;
-  unit: SkuUnitCode;
   moq: string;
   lead_time_min: string;
   lead_time_max: string;
@@ -53,8 +51,6 @@ function createEmptySku(isDefault: boolean): SkuFormState {
     material: "",
     price_min: "",
     price_max: "",
-    currency: "TZS",
-    unit: "PCS",
     moq: "1",
     lead_time_min: "",
     lead_time_max: "",
@@ -82,6 +78,8 @@ interface SpuFormState {
   certifications: string[];
   selling_points: string;
   is_featured: boolean;
+  unit: SkuUnitCode;
+  currency: string;
   spuAttributes: Record<string, string>;  // scope=SPU 属性
 }
 
@@ -95,6 +93,8 @@ const INITIAL_SPU: SpuFormState = {
   certifications: [],
   selling_points: "",
   is_featured: false,
+  unit: "PCS",
+  currency: "TZS",
   spuAttributes: {},
 };
 
@@ -351,8 +351,6 @@ export function ProductCreatePage() {
             material: sku.material || undefined,
             price_min: sku.price_min ? Number(sku.price_min) : undefined,
             price_max: sku.price_max ? Number(sku.price_max) : undefined,
-            currency: sku.currency,
-            unit: sku.unit,
             moq: Number(sku.moq) || 1,
             lead_time_min: sku.lead_time_min ? Number(sku.lead_time_min) : undefined,
             lead_time_max: sku.lead_time_max ? Number(sku.lead_time_max) : undefined,
@@ -379,6 +377,8 @@ export function ProductCreatePage() {
           selling_points: spu.selling_points || undefined,
           source_lang: locale,
           is_featured: spu.is_featured,
+          unit: spu.unit,
+          currency: spu.currency,
           attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
           skus: aggregateSkus,
         });
@@ -403,7 +403,8 @@ export function ProductCreatePage() {
     } catch (err: unknown) {
       const reason = extractErrorMsg(err);
       if (productId != null) {
-        // SPU 已创建但后续步骤失败 → 保留 productId 用于 retry
+        // SPU 已创建但后续步骤失败 → 清草稿（防止重复创建）+ 保留 productId 用于 retry
+        clearDraft();
         setCreatedProductId(productId);
         toastWarning(t("error_draft_saved_partial", { reason }));
       } else {
@@ -516,6 +517,40 @@ export function ProductCreatePage() {
                   value={spu.hs_code}
                   onChange={(e) => updateSpu("hs_code", e.target.value)}
                 />
+              </div>
+
+              {/* 计量单位 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  {t("field_unit")} <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.unit}
+                  onChange={(e) => updateSpu("unit", e.target.value as SkuUnitCode)}
+                >
+                  {SKU_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u} - {tUnit(u)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 币种 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  {t("field_currency")} <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.currency}
+                  onChange={(e) => updateSpu("currency", e.target.value)}
+                >
+                  <option value="TZS">TZS</option>
+                  <option value="USD">USD</option>
+                  <option value="CNY">CNY</option>
+                </select>
               </div>
 
               {/* 认证 */}
@@ -657,6 +692,7 @@ export function ProductCreatePage() {
               key={sku._clientId}
               sku={sku}
               index={idx}
+              currency={spu.currency}
               templates={skuTemplates}
               onUpdate={(patch) => updateSku(sku._clientId, patch)}
               onRemove={() => removeSku(sku._clientId)}
@@ -739,7 +775,7 @@ export function ProductCreatePage() {
         <PriceTierModal
           tiers={skus.find((s) => s._clientId === tierModalSkuId)?.price_tiers ?? []}
           moq={Number(skus.find((s) => s._clientId === tierModalSkuId)?.moq) || 1}
-          currency={skus.find((s) => s._clientId === tierModalSkuId)?.currency ?? "TZS"}
+          currency={spu.currency}
           onConfirm={(tiers) => {
             updateSku(tierModalSkuId, { price_tiers: tiers });
             setTierModalSkuId(null);

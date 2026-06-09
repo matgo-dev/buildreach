@@ -79,6 +79,11 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
 
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certifications: Mapped[dict | None] = mapped_column(JSON, default=list)
+
+    # 计量单位 & 币种（SPU 级，所有 SKU 共享）
+    unit: Mapped[str] = mapped_column(String(20), nullable=False, default="PCS")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="TZS")
+
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
     created_by: Mapped[int | None] = mapped_column(

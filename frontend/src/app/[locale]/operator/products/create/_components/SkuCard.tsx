@@ -2,12 +2,12 @@
 
 import { useCallback, useRef } from "react";
 import type { AttrTemplate } from "@/lib/api/operatorProducts";
-import { SKU_UNITS, type SkuUnitCode } from "@/lib/api/operatorProducts";
 import type { SkuFormState } from "./ProductCreatePage";
 
 interface Props {
   sku: SkuFormState;
   index: number;
+  currency: string;
   templates: AttrTemplate[];
   onUpdate: (patch: Partial<SkuFormState>) => void;
   onRemove: () => void;
@@ -27,7 +27,7 @@ const SELECT_CLS =
   "h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none";
 const LABEL_CLS = "text-xs text-slate-500";
 
-export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, error, fieldErrors = {}, t, tUnit }: Props) {
+export function SkuCard({ sku, index, currency, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, error, fieldErrors = {}, t, tUnit }: Props) {
   const priceError = fieldErrors[`sku_price_${sku._clientId}`];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,24 +113,6 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
           {t("sku_section_commercial")}
         </h4>
         <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          {/* 计量单位 */}
-          <div>
-            <label className={LABEL_CLS}>
-              {t("field_unit")} <span className="text-red-500">*</span>
-            </label>
-            <select
-              className={SELECT_CLS}
-              value={sku.unit}
-              onChange={(e) => set("unit", e.target.value as SkuUnitCode)}
-            >
-              {SKU_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u} - {tUnit(u)}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* MOQ */}
           <div>
             <label className={LABEL_CLS}>
@@ -147,7 +129,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
 
           {/* 最低价 */}
           <div data-field-error={!!priceError || undefined}>
-            <label className={LABEL_CLS}>{t("field_price_min")} ({sku.currency}) <span className="text-red-500">*</span></label>
+            <label className={LABEL_CLS}>{t("field_price_min")} ({currency}) <span className="text-red-500">*</span></label>
             <input
               type="number"
               min="0"
@@ -160,7 +142,7 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
 
           {/* 最高价 */}
           <div>
-            <label className={LABEL_CLS}>{t("field_price_max")} ({sku.currency}) <span className="text-red-500">*</span></label>
+            <label className={LABEL_CLS}>{t("field_price_max")} ({currency}) <span className="text-red-500">*</span></label>
             <input
               type="number"
               min="0"
@@ -170,20 +152,6 @@ export function SkuCard({ sku, index, templates, onUpdate, onRemove, onSetDefaul
               onChange={(e) => set("price_max", e.target.value)}
             />
             {priceError && <p className="mt-1 text-xs text-red-500">{priceError}</p>}
-          </div>
-
-          {/* 币种 */}
-          <div>
-            <label className={LABEL_CLS}>{t("field_currency")}</label>
-            <select
-              className={SELECT_CLS}
-              value={sku.currency}
-              onChange={(e) => set("currency", e.target.value)}
-            >
-              <option value="TZS">TZS</option>
-              <option value="USD">USD</option>
-              <option value="CNY">CNY</option>
-            </select>
           </div>
 
           {/* 交期 */}
