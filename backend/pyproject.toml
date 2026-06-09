@@ -23,6 +23,7 @@ dependencies = [
     "openai>=1.40.0",
     # Δ7 v0.3:柬埔寨域名白名单 YAML 配置加载
     "pyyaml>=6.0",
+    "Pillow>=10.0.0",
 ]
 
 [project.optional-dependencies]
@@ -31,7 +32,6 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "httpx>=0.26.0",
     "pytest-cov>=4.1.0",
-    "Pillow>=10.0.0",
 ]
 
 [build-system]
