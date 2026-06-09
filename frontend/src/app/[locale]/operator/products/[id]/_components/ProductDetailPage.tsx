@@ -478,6 +478,7 @@ export default function ProductDetailPage() {
                 <button onClick={handleSpuSave} disabled={spuSaving} className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
                   {spuSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}{t("save")}
                 </button>
+                {canApprove && (product.status === "DRAFT" || product.status === "INACTIVE") && <button onClick={() => setConfirmModal({ type: "publish", loading: false })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"><TrendingUp className="h-3.5 w-3.5" />{tList("publish")}</button>}
               </>
             ) : (
               <>
