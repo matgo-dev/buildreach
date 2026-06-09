@@ -7,6 +7,7 @@ import useSWR from "swr";
 import {
   ArrowLeft, Package, Edit3, TrendingUp, TrendingDown,
   Trash2, ChevronDown, ChevronRight, ChevronLeft, X, Loader2, AlertCircle,
+  Plus, Star,
 } from "lucide-react";
 import Toggle from "@/components/ui/Toggle";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -24,12 +25,9 @@ import {
   ProductUpdateInput,
   ProductAttrInput,
   AttrTemplate,
-  AggregateSkuInput,
-  ImageRefInput,
 } from "@/lib/api/operatorProducts";
 import { useToast } from "@/components/ui/Toast";
 import EditBasicInfo from "./EditBasicInfo";
-import EditImages, { ImageChange } from "./EditImages";
 import SkuEditModal, { SkuFormData } from "./SkuEditModal";
 
 // 状态颜色映射（label 通过 t() 读取，不在此硬编码）
@@ -92,20 +90,21 @@ export default function ProductDetailPage() {
     { revalidateOnFocus: false }
   );
 
-  // 编辑态
+  // 编辑态（增量保存：各实体即时落库，不再聚合提交）
   const [isEditing, setIsEditing] = useState(false);
   const [spuForm, setSpuForm] = useState<ProductUpdateInput>({});
-  const [skuChanges, setSkuChanges] = useState<{ updated: Map<number, SkuFormData>; added: SkuFormData[]; removed: number[] }>({ updated: new Map(), added: [], removed: [] });
-  const [imageChange, setImageChange] = useState<ImageChange>({ added: [], removed: [], newMainId: null, newOrder: null });
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const spuDirtyRef = useRef(false);
   const [skuTemplates, setSkuTemplates] = useState<AttrTemplate[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [spuSaving, setSpuSaving] = useState(false);
+  const [skuSaving, setSkuSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [skuModalOpen, setSkuModalOpen] = useState(false);
   const [skuModalData, setSkuModalData] = useState<{ sku: SkuOperatorDetail | null; isNew: boolean }>({ sku: null, isNew: true });
-  const [discardModal, setDiscardModal] = useState(false);
+  const [skuDeleteConfirm, setSkuDeleteConfirm] = useState<{ skuId: number; skuCode: string } | null>(null);
+  const [discardSpuModal, setDiscardSpuModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ type: "publish" | "unpublish" | "delete"; loading: boolean } | null>(null);
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [actionError, setActionError] = useState<{ message: string; errors?: string[] } | null>(null);
   const [expandedSkus, setExpandedSkus] = useState<Set<number>>(new Set());
   const [lightbox, setLightbox] = useState<{ images: { url: string }[]; index: number } | null>(null);
@@ -161,9 +160,7 @@ export default function ProductDetailPage() {
       is_featured: product.is_featured,
       attributes: product.attributes.filter((a) => a.sku_id == null).map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
     });
-    setSkuChanges({ updated: new Map(), added: [], removed: [] });
-    setImageChange({ added: [], removed: [], newMainId: null, newOrder: null });
-    setImagePreviews([]);
+    spuDirtyRef.current = false;
     setSaveError(null);
     setIsEditing(true);
     if (product.category_code) {
@@ -181,12 +178,6 @@ export default function ProductDetailPage() {
       enterEditMode();
     }
   }, [startInEdit, product, hasPermission, enterEditMode]);
-
-  useEffect(() => {
-    const urls = imageChange.added.map((f) => URL.createObjectURL(f));
-    setImagePreviews(urls);
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
-  }, [imageChange.added]);
 
   // i18n 字段取值
   const localized = useCallback(
@@ -242,197 +233,84 @@ export default function ProductDetailPage() {
     return { skuTotal: product.skus.length, skuActive: activeSkus.length, minMoq: allMoqs.length > 0 ? Math.min(...allMoqs) : null };
   }, [product]);
 
-  // 取消编辑
+  // 退出编辑态
+  const exitEditMode = useCallback(() => {
+    setIsEditing(false);
+    spuDirtyRef.current = false;
+    if (searchParams.get("edit")) {
+      router.replace(`/${locale}/operator/products/${productId}`, { scroll: false });
+    }
+  }, [searchParams, router, locale, productId]);
+
   const cancelEdit = () => {
-    const hasChanges = skuChanges.updated.size > 0 || skuChanges.added.length > 0 || skuChanges.removed.length > 0 || imageChange.added.length > 0 || imageChange.removed.length > 0;
-    if (hasChanges) setDiscardModal(true);
-    else setIsEditing(false);
+    if (spuDirtyRef.current) setDiscardSpuModal(true);
+    else exitEditMode();
   };
 
-  // 保存：Phase 1 图片 I/O（前置 Gate）→ Phase 2 聚合数据（DB 事务）
-  const handleSave = async () => {
+  // SPU 表单变更跟踪
+  const updateSpuForm = useCallback((value: ProductUpdateInput) => {
+    setSpuForm(value);
+    spuDirtyRef.current = true;
+  }, []);
+
+  // ── SPU 基础信息保存 ──
+  const handleSpuSave = async () => {
     if (!product) return;
-    // 前端预校验：必填项
-    const validationErrors: string[] = [];
-    if (!spuForm.name?.trim()) validationErrors.push(t("validationNameRequired"));
-    for (const sku of skuChanges.added) {
-      if (!sku.moq || sku.moq <= 0) validationErrors.push(t("validationSkuMoqRequired"));
-    }
-    if (validationErrors.length > 0) {
-      setSaveError(validationErrors.join("；"));
+    if (!spuForm.name?.trim()) {
+      setSaveError(t("validationNameRequired"));
       return;
     }
-    setSaving(true); setSaveError(null);
-
-    // ── Phase 1: 图片 I/O（边成功边从待提交状态移除，实现重试幂等）──
-    const hasImageOps = imageChange.added.length > 0 || imageChange.removed.length > 0 ||
-      Array.from(skuChanges.updated.values()).some((d) => d.imageFiles.length > 0 || d.removedImageIds.length > 0);
-
-    if (hasImageOps) {
-      try {
-        // 快照迭代：闭包捕获的数组不会被 setState 更新，用 spread 取快照遍历
-        for (const [skuId, data] of Array.from(skuChanges.updated.entries())) {
-          for (const imgId of [...data.removedImageIds]) {
-            await operatorProductsApi.deleteImage(product.id, imgId);
-            setSkuChanges((prev) => {
-              const upd = new Map(prev.updated);
-              const d = upd.get(skuId);
-              if (d) upd.set(skuId, { ...d, removedImageIds: d.removedImageIds.filter((id) => id !== imgId) });
-              return { ...prev, updated: upd };
-            });
-          }
-          for (const file of [...data.imageFiles]) {
-            await operatorProductsApi.uploadImage(product.id, file, skuId);
-            setSkuChanges((prev) => {
-              const upd = new Map(prev.updated);
-              const d = upd.get(skuId);
-              if (d) upd.set(skuId, { ...d, imageFiles: d.imageFiles.filter((f) => f !== file) });
-              return { ...prev, updated: upd };
-            });
-          }
-        }
-        // SPU 级图片上传
-        for (const file of [...imageChange.added]) {
-          await operatorProductsApi.uploadImage(product.id, file);
-          setImageChange((prev) => ({ ...prev, added: prev.added.filter((f) => f !== file) }));
-        }
-        // SPU 级图片删除
-        for (const imgId of [...imageChange.removed]) {
-          await operatorProductsApi.deleteImage(product.id, imgId);
-          setImageChange((prev) => ({ ...prev, removed: prev.removed.filter((id) => id !== imgId) }));
-        }
-      } catch (err: unknown) {
-        // Phase 1 失败：拉回服务端最新图片状态，透传后端具体错误
-        await mutate();
-        const reason = translateError(err);
-        setSaveError(t("imageUploadFailed", { reason }));
-        setSaving(false);
-        return;
-      }
-    }
-
-    // ── Phase 2: 聚合保存（DB 事务）──
+    setSpuSaving(true);
+    setSaveError(null);
     try {
-      // mutate 拉取最新图片真值（Phase 1 可能变更了服务端图片）
-      const freshProduct = hasImageOps ? await mutate() : product;
-      const baseProduct = freshProduct ?? product;
-
-      // 组装「期望完整态」SKU 列表：保留的 + 新增的
-      const aggregateSkus: AggregateSkuInput[] = [];
-
-      // 已有 SKU（未删除的）
-      for (const sku of baseProduct.skus) {
-        if (skuChanges.removed.includes(sku.id)) continue;
-        const updated = skuChanges.updated.get(sku.id);
-        if (updated) {
-          aggregateSkus.push({
-            id: sku.id,
-            manufacturer_model: updated.manufacturer_model,
-            name: updated.name,
-            color: updated.color,
-            material: updated.material,
-            price_min: updated.price_min,
-            price_max: updated.price_max,
-            moq: updated.moq!,
-            lead_time_min: updated.lead_time_min,
-            lead_time_max: updated.lead_time_max,
-            packing_quantity: updated.packing_quantity,
-            gross_weight_kg: updated.gross_weight_kg,
-            volume_cbm: updated.volume_cbm,
-            can_consolidate: updated.can_consolidate,
-            cargo_type: updated.cargo_type,
-            is_default: updated.is_default,
-            price_tiers: updated.price_tiers,
-            attributes: updated.attributes,
-          });
-        } else {
-          // 未修改的 SKU，原样传入（带 id 表示保留）
-          aggregateSkus.push({
-            id: sku.id,
-            manufacturer_model: sku.manufacturer_model,
-            name: locale === "en" ? sku.name_en : sku.name_zh || sku.name,
-            color: locale === "en" ? sku.color_en : sku.color_zh || sku.color,
-            material: locale === "en" ? sku.material_en : sku.material_zh || sku.material,
-            price_min: sku.price_min ? Number(sku.price_min) : undefined,
-            price_max: sku.price_max ? Number(sku.price_max) : undefined,
-            moq: sku.moq,
-            lead_time_min: sku.lead_time_min,
-            lead_time_max: sku.lead_time_max,
-            packing_quantity: sku.packing_quantity,
-            gross_weight_kg: sku.gross_weight_kg ? Number(sku.gross_weight_kg) : undefined,
-            volume_cbm: sku.volume_cbm ? Number(sku.volume_cbm) : undefined,
-            can_consolidate: sku.can_consolidate,
-            cargo_type: sku.cargo_type,
-            is_default: sku.is_default,
-            price_tiers: sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })),
-            attributes: sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
-          });
-        }
-      }
-
-      // 新增的 SKU（无 id）
-      for (const added of skuChanges.added) {
-        aggregateSkus.push({
-          manufacturer_model: added.manufacturer_model,
-          name: added.name,
-          color: added.color,
-          material: added.material,
-          price_min: added.price_min,
-          price_max: added.price_max,
-          moq: added.moq!,
-          lead_time_min: added.lead_time_min,
-          lead_time_max: added.lead_time_max,
-          packing_quantity: added.packing_quantity,
-          gross_weight_kg: added.gross_weight_kg,
-          volume_cbm: added.volume_cbm,
-          can_consolidate: added.can_consolidate,
-          cargo_type: added.cargo_type,
-          is_default: added.is_default,
-          price_tiers: added.price_tiers,
-          attributes: added.attributes,
-        });
-      }
-
-      // 图片引用（基于服务端最新图片真值 + 主图/排序意图重算）
-      let imageRefs: ImageRefInput[] | undefined;
-      if (imageChange.newMainId || imageChange.newOrder) {
-        const currentImages = baseProduct.images;
-        const ordered = imageChange.newOrder
-          ? imageChange.newOrder.map((id) => currentImages.find((img) => img.id === id)).filter(Boolean) as ProductImage[]
-          : currentImages;
-        imageRefs = ordered.map((img, idx) => ({
-          image_id: img.id,
-          image_type: (imageChange.newMainId === img.id ? "MAIN" : img.image_type === "MAIN" && imageChange.newMainId ? "GALLERY" : img.image_type) as ImageRefInput["image_type"],
-          sort_order: idx,
-        }));
-      }
-
-      // 一次聚合保存
-      await operatorProductsApi.saveAggregate(baseProduct.id, {
-        name: spuForm.name,
-        description: spuForm.description,
-        origin: spuForm.origin,
-        hs_code: spuForm.hs_code,
-        brand: spuForm.brand,
-        certifications: spuForm.certifications,
-        selling_points: spuForm.selling_points,
-        is_featured: spuForm.is_featured,
-        attributes: spuForm.attributes,
-        skus: aggregateSkus,
-        images: imageRefs,
-      });
-
+      await operatorProductsApi.update(product.id, spuForm);
       await mutate();
-      setIsEditing(false);
-      toastSuccess(t("saveSuccess"));
-      if (searchParams.get("edit")) {
-        router.replace(`/${locale}/operator/products/${baseProduct.id}`, { scroll: false });
-      }
+      spuDirtyRef.current = false;
+      toastSuccess(t("spuSaved"));
     } catch (err: unknown) {
-      // Phase 2 失败：图片已生效，数据未保存
-      const msg = hasImageOps ? t("imagesSavedDataFailed") : translateError(err);
-      setSaveError(msg);
-    } finally { setSaving(false); }
+      setSaveError(translateError(err));
+    } finally {
+      setSpuSaving(false);
+    }
+  };
+
+  // ── 图片即时操作 ──
+  const handleImageUpload = async (files: FileList) => {
+    if (!product) return;
+    setImageUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        await operatorProductsApi.uploadImage(product.id, file);
+      }
+      await mutate();
+      toastSuccess(t("imageUploaded"));
+    } catch (err: unknown) {
+      toastError(translateError(err));
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleImageDelete = async (imageId: number) => {
+    if (!product) return;
+    try {
+      await operatorProductsApi.deleteImage(product.id, imageId);
+      await mutate();
+      toastSuccess(t("imageDeleted"));
+    } catch (err: unknown) {
+      toastError(translateError(err));
+    }
+  };
+
+  const handleSetMainImage = async (imageId: number) => {
+    if (!product) return;
+    try {
+      await operatorProductsApi.setMainImage(product.id, imageId);
+      await mutate();
+      toastSuccess(t("mainImageSet"));
+    } catch (err: unknown) {
+      toastError(translateError(err));
+    }
   };
 
   // 状态操作
@@ -469,15 +347,94 @@ export default function ProductDetailPage() {
     }
   };
 
-  // SKU Modal
+  // ── SKU 增量操作（确认即落库）──
   const openSkuModal = (sku: SkuOperatorDetail | null, isNew: boolean) => { setSkuModalData({ sku, isNew }); setSkuModalOpen(true); };
-  const handleSkuModalConfirm = (data: SkuFormData) => {
-    if (skuModalData.isNew) setSkuChanges((prev) => ({ ...prev, added: [...prev.added, data] }));
-    else if (skuModalData.sku) setSkuChanges((prev) => { const updated = new Map(prev.updated); updated.set(skuModalData.sku!.id, data); return { ...prev, updated }; });
-    setSkuModalOpen(false);
+
+  const handleSkuModalConfirm = async (data: SkuFormData) => {
+    if (!product) return;
+    setSkuSaving(true);
+    setSaveError(null);
+    try {
+      if (skuModalData.isNew) {
+        const result = await operatorProductsApi.createSku(product.id, {
+          manufacturer_model: data.manufacturer_model,
+          name: data.name,
+          color: data.color,
+          material: data.material,
+          source_lang: locale,
+          price_min: data.price_min,
+          price_max: data.price_max,
+          moq: data.moq,
+          lead_time_min: data.lead_time_min,
+          lead_time_max: data.lead_time_max,
+          packing_quantity: data.packing_quantity,
+          gross_weight_kg: data.gross_weight_kg,
+          volume_cbm: data.volume_cbm,
+          can_consolidate: data.can_consolidate,
+          cargo_type: data.cargo_type,
+          is_default: data.is_default,
+          price_tiers: data.price_tiers.length > 0 ? data.price_tiers : undefined,
+          attributes: data.attributes.length > 0 ? data.attributes : undefined,
+        });
+        // 新建 SKU 的图片上传
+        for (const file of data.imageFiles) {
+          await operatorProductsApi.uploadImage(product.id, file, result.id);
+        }
+      } else if (skuModalData.sku) {
+        const skuId = skuModalData.sku.id;
+        await operatorProductsApi.updateSku(product.id, skuId, {
+          manufacturer_model: data.manufacturer_model,
+          name: data.name,
+          color: data.color,
+          material: data.material,
+          price_min: data.price_min,
+          price_max: data.price_max,
+          moq: data.moq,
+          lead_time_min: data.lead_time_min,
+          lead_time_max: data.lead_time_max,
+          packing_quantity: data.packing_quantity,
+          gross_weight_kg: data.gross_weight_kg,
+          volume_cbm: data.volume_cbm,
+          can_consolidate: data.can_consolidate,
+          cargo_type: data.cargo_type,
+          is_default: data.is_default,
+          price_tiers: data.price_tiers.length > 0 ? data.price_tiers : undefined,
+          attributes: data.attributes.length > 0 ? data.attributes : undefined,
+        });
+        // 编辑 SKU 的图片变更
+        for (const imgId of data.removedImageIds) {
+          await operatorProductsApi.deleteImage(product.id, imgId);
+        }
+        for (const file of data.imageFiles) {
+          await operatorProductsApi.uploadImage(product.id, file, skuId);
+        }
+      }
+      await mutate();
+      setSkuModalOpen(false);
+      toastSuccess(t("skuSaved"));
+    } catch (err: unknown) {
+      toastError(translateError(err));
+    } finally {
+      setSkuSaving(false);
+    }
   };
-  const handleSkuDelete = (skuId: number) => {
-    setSkuChanges((prev) => ({ ...prev, removed: [...prev.removed, skuId], updated: (() => { const m = new Map(prev.updated); m.delete(skuId); return m; })() }));
+
+  const requestSkuDelete = (skuId: number, skuCode: string) => {
+    setSkuDeleteConfirm({ skuId, skuCode });
+  };
+
+  const executeSkuDelete = async () => {
+    if (!product || !skuDeleteConfirm) return;
+    const { skuId } = skuDeleteConfirm;
+    setSkuDeleteConfirm(null);
+    setSaveError(null);
+    try {
+      await operatorProductsApi.deleteSku(product.id, skuId);
+      await mutate();
+      toastSuccess(t("skuDeleted"));
+    } catch (err: unknown) {
+      setSaveError(translateError(err));
+    }
   };
 
   // Loading / Error / 404
@@ -517,9 +474,9 @@ export default function ProductDetailPage() {
           <div className="flex items-center gap-2">
             {isEditing ? (
               <>
-                <button onClick={cancelEdit} disabled={saving} className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{t("cancelEdit")}</button>
-                <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
-                  {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}{t("save")}
+                <button onClick={cancelEdit} disabled={spuSaving} className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{t("cancelEdit")}</button>
+                <button onClick={handleSpuSave} disabled={spuSaving} className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
+                  {spuSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}{t("save")}
                 </button>
               </>
             ) : (
@@ -547,7 +504,7 @@ export default function ProductDetailPage() {
 
           {/* 基本信息 */}
           {isEditing ? (
-            <EditBasicInfo product={product} value={spuForm} onChange={setSpuForm} />
+            <EditBasicInfo product={product} value={spuForm} onChange={updateSpuForm} />
           ) : (
             <section className="bg-white rounded-lg shadow-sm p-5">
               <h3 className="text-sm font-semibold text-slate-800 mb-4">{t("basicInfo")}</h3>
@@ -581,9 +538,13 @@ export default function ProductDetailPage() {
           <section id="sku-section" className="bg-white rounded-lg shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-800">
-                {t("skuVariants")} <span className="text-slate-400 font-normal">({product.skus.filter((s) => !skuChanges.removed.includes(s.id)).length + skuChanges.added.length})</span>
+                {t("skuVariants")} <span className="text-slate-400 font-normal">({product.skus.length})</span>
               </h3>
-              {isEditing && <button type="button" onClick={() => openSkuModal(null, true)} className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ {t("addSku")}</button>}
+              {isEditing && (
+                <button type="button" onClick={() => openSkuModal(null, true)} disabled={skuSaving} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-60">
+                  {skuSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} {t("addSku")}
+                </button>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-[700px] w-full text-xs">
@@ -598,50 +559,59 @@ export default function ProductDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {product.skus.filter((s) => !skuChanges.removed.includes(s.id)).map((sku) => (
-                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} onImageClick={(images, index) => setLightbox({ images, index })} unit={product.unit} currency={product.currency} />
-                  ))}
-                  {skuChanges.added.map((added, i) => (
-                    <tr key={`new-${i}`} className="border-b border-slate-200 bg-blue-50/30">
-                      <td className="px-3 py-2.5"><span className="font-mono text-slate-700">{added.sku_code || "(auto)"}</span><span className="ml-1.5 bg-blue-100 text-blue-600 text-[9px] px-1.5 py-0.5 rounded">NEW</span></td>
-                      <td className="px-3 py-2.5 text-slate-600">{[added.color, added.material, product.unit].filter(Boolean).join(" / ")}</td>
-                      <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{added.price_min || added.price_max ? `${product.currency} ${added.price_min ?? "?"} - ${added.price_max ?? "?"}` : "—"}</td>
-                      <td className="px-3 py-2.5 text-right text-slate-600">{added.moq}</td>
-                      <td className="px-3 py-2.5 text-center"><span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700">Active</span></td>
-                      <td className="px-3 py-2.5 text-center"><button onClick={() => setSkuChanges((prev) => ({ ...prev, added: prev.added.filter((_, j) => j !== i) }))} className="text-red-500 hover:text-red-700"><X className="h-3.5 w-3.5" /></button></td>
-                    </tr>
+                  {product.skus.map((sku) => (
+                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => requestSkuDelete(sku.id, sku.sku_code)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} onImageClick={(images, index) => setLightbox({ images, index })} unit={product.unit} currency={product.currency} />
                   ))}
                 </tbody>
               </table>
-              {product.skus.filter((s) => !skuChanges.removed.includes(s.id)).length === 0 && skuChanges.added.length === 0 && (
-                <div className="text-center py-8 text-slate-400 text-sm">{t("noSkus")}</div>
+              {product.skus.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-slate-400 text-sm">{t("noSkus")}</p>
+                </div>
               )}
             </div>
           </section>
 
-          {/* 商品图片 */}
-          {isEditing ? (
-            <div id="image-section">
-              <EditImages images={product.images} imageChange={imageChange} onChange={setImageChange} previews={imagePreviews} />
+          {/* 商品图片（仅 SPU 级，sku_id 为空） */}
+          {(() => { const spuImages = product.images.filter((img) => img.sku_id == null); return (
+          <section id="image-section" className="bg-white rounded-lg shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-slate-800">{t("productImages")} <span className="text-slate-400 font-normal">({spuImages.length}/8)</span></h3>
+              {isEditing && spuImages.length < 8 && (
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                  {imageUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  {t("uploadImage")}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => { if (e.target.files) handleImageUpload(e.target.files); e.target.value = ""; }} disabled={imageUploading} />
+                </label>
+              )}
             </div>
-          ) : (
-            <section id="image-section" className="bg-white rounded-lg shadow-sm p-5">
-              <h3 className="text-sm font-semibold text-slate-800 mb-4">{t("productImages")} <span className="text-slate-400 font-normal">({product.images.length}/8)</span></h3>
-              <div className="flex flex-wrap gap-3">
-                {product.images.map((img, idx) => (
-                  <div
-                    key={img.id}
-                    className={`relative w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
-                    onClick={() => setLightbox({ images: product.images.map((i) => ({ url: i.full_url })), index: idx })}
-                  >
-                    <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
-                  </div>
-                ))}
-                {product.images.length === 0 && <div className="text-slate-400 text-sm">{t("noImages")}</div>}
-              </div>
-            </section>
-          )}
+            <div className="flex flex-wrap gap-3">
+              {spuImages.map((img, idx) => (
+                <div
+                  key={img.id}
+                  className={`relative group w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
+                  onClick={() => !isEditing && setLightbox({ images: spuImages.map((i) => ({ url: i.full_url })), index: idx })}
+                >
+                  <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
+                  {isEditing && (
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                      {img.image_type !== "MAIN" && (
+                        <button onClick={(e) => { e.stopPropagation(); handleSetMainImage(img.id); }} className="p-1 bg-white/90 rounded-full hover:bg-white" title={t("setAsMain")}>
+                          <Star className="h-3.5 w-3.5 text-amber-500" />
+                        </button>
+                      )}
+                      <button onClick={(e) => { e.stopPropagation(); handleImageDelete(img.id); }} className="p-1 bg-white/90 rounded-full hover:bg-white" title={t("deleteImage")}>
+                        <X className="h-3.5 w-3.5 text-red-500" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {spuImages.length === 0 && <div className="text-slate-400 text-sm">{t("noImages")}</div>}
+            </div>
+          </section>
+          ); })()}
 
           {/* SPU 属性 */}
           {product.attributes.filter((a) => a.sku_id == null).length > 0 && (
@@ -760,16 +730,28 @@ export default function ProductDetailPage() {
         />
       )}
 
-      {/* 放弃修改确认 */}
+      {/* SPU 未保存变更确认 */}
       <ConfirmModal
-        open={discardModal}
+        open={discardSpuModal}
         title={t("confirmDiscardTitle")}
-        description={t("confirmDiscardMsg")}
-        confirmLabel={t("confirmDiscard")}
+        description={t("unsavedSpuChanges")}
+        confirmLabel={t("discardAndExit")}
         cancelLabel={tList("cancel")}
         variant="warning"
-        onConfirm={() => { setDiscardModal(false); setIsEditing(false); }}
-        onCancel={() => setDiscardModal(false)}
+        onConfirm={() => { setDiscardSpuModal(false); exitEditMode(); }}
+        onCancel={() => setDiscardSpuModal(false)}
+      />
+
+      {/* SKU 删除确认 */}
+      <ConfirmModal
+        open={!!skuDeleteConfirm}
+        title={t("confirmDeleteSkuTitle")}
+        description={t("confirmDeleteSkuMsg", { code: skuDeleteConfirm?.skuCode ?? "" })}
+        confirmLabel={t("deleteSku")}
+        cancelLabel={tList("cancel")}
+        variant="danger"
+        onConfirm={executeSkuDelete}
+        onCancel={() => setSkuDeleteConfirm(null)}
       />
 
       {/* SKU 状态切换确认 */}

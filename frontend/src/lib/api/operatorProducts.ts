@@ -116,12 +116,15 @@ export interface ProductCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
+  unit?: SkuUnitCode;
+  currency?: string;
   attributes?: ProductAttrInput[] | null;
 }
 
 export interface ProductCreatedResponse {
   id: number;
   spu_code: string;
+  skus?: { client_id: string | null; id: number; sku_code: string }[];
 }
 
 export interface ProductStatusInput {
@@ -318,6 +321,7 @@ export interface ImageRefInput {
 
 export interface AggregateSkuInput {
   id?: number | null;
+  client_id?: string | null;
   manufacturer_model?: string | null;
   name?: string | null;
   color?: string | null;
