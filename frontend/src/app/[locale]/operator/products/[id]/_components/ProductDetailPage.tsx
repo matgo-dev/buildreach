@@ -602,7 +602,7 @@ export default function ProductDetailPage() {
                     <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} onImageClick={(images, index) => setLightbox({ images, index })} unit={product.unit} currency={product.currency} />
                   ))}
                   {skuChanges.added.map((added, i) => (
-                    <tr key={`new-${i}`} className="border-b border-slate-50 bg-blue-50/30">
+                    <tr key={`new-${i}`} className="border-b border-slate-200 bg-blue-50/30">
                       <td className="px-3 py-2.5"><span className="font-mono text-slate-700">{added.sku_code || "(auto)"}</span><span className="ml-1.5 bg-blue-100 text-blue-600 text-[9px] px-1.5 py-0.5 rounded">NEW</span></td>
                       <td className="px-3 py-2.5 text-slate-600">{[added.color, added.material, product.unit].filter(Boolean).join(" / ")}</td>
                       <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{added.price_min || added.price_max ? `${product.currency} ${added.price_min ?? "?"} - ${added.price_max ?? "?"}` : "—"}</td>
@@ -835,7 +835,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
   const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), unit].filter(Boolean).join(" / ");
   return (
     <>
-      <tr className={`border-b border-slate-50 hover:bg-slate-50/50 ${!isEditing ? "cursor-pointer" : ""}`} onClick={!isEditing ? onToggle : undefined}>
+      <tr className={`border-b ${expanded ? "border-slate-100" : "border-slate-200"} hover:bg-slate-50/50 ${!isEditing ? "cursor-pointer" : ""}`} onClick={!isEditing ? onToggle : undefined}>
         <td className="px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <span className="font-mono text-slate-700">{sku.sku_code}</span>
@@ -873,7 +873,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
         </td>
       </tr>
       {expanded && !isEditing && (
-        <tr className="bg-slate-50/70"><td colSpan={6} className="px-6 py-4"><SkuExpandedDetails sku={sku} locale={locale} t={t} onImageClick={onImageClick} unit={unit} currency={currency} /></td></tr>
+        <tr className="bg-slate-50/80 border-b-2 border-slate-200"><td colSpan={6} className="px-6 py-4"><SkuExpandedDetails sku={sku} locale={locale} t={t} onImageClick={onImageClick} unit={unit} currency={currency} /></td></tr>
       )}
     </>
   );

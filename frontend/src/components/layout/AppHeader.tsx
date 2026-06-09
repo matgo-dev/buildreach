@@ -60,7 +60,7 @@ export function AppHeader({
   );
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="shrink-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="flex h-16 items-center justify-between gap-4 px-6">
         {/* 左:品牌(已登录跳角色首页,未登录跳 /) */}
         <Link href={user ? defaultDashboardOf(user.roles) : "/"} className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>

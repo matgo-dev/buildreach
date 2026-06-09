@@ -46,7 +46,7 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col self-stretch bg-[#0A1929]">
+    <aside className="flex w-60 shrink-0 flex-col overflow-y-auto bg-[#0A1929]">
       <UserCard />
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 text-sm">
         {currentWs && (
