@@ -8,7 +8,7 @@
 
 ```bash
 # 命令行:本地一条命令
-gh workflow run "Deploy to ECS" --repo tutu6/overseas-platform-v0.1
+gh workflow run "Deploy to ECS" --repo buildlink-dev/buildlink-ea
 
 # 查看部署进度
 gh run watch
@@ -59,7 +59,7 @@ ssh user@<ECS-IP>
 cd /opt/overseas-platform
 
 # 克隆代码
-git clone git@github.com:tutu6/overseas-platform-v0.1.git .
+git clone git@github.com:buildlink-dev/buildlink-ea.git .
 # (或 https 方式;若用 git,需在 ECS 上配 deploy key)
 
 # 配 env
@@ -75,7 +75,37 @@ chmod 600 .env.production
 bash deploy/deploy.sh
 ```
 
-### 5. 迁移老演示数据(如有)
+### 5. 初始化品类数据(首次部署必做)
+
+品类树和属性模板需要手动 seed 一次，后续部署不需要重复执行。
+
+```bash
+ssh user@<ECS-IP>
+cd /opt/overseas-platform
+source .env.production
+
+# 把 data/ 目录拷进 backend 容器（CSV 在项目根目录，容器内看不到）
+docker cp data/. $(docker compose --env-file .env.production ps -q backend):/data/
+
+# 执行品类 seed
+docker compose --env-file .env.production exec -T backend python -c "
+import asyncio
+from app.seed_categories import seed_categories
+from app.db.session import AsyncSessionLocal
+
+async def run():
+    async with AsyncSessionLocal() as session:
+        await seed_categories(session)
+        await session.commit()
+
+asyncio.run(run())
+"
+# 预期输出: Seed: categories L1=13 L2=130 L3=853 (total 996, +996/~0), attr_templates=42 (+42/~0).
+```
+
+> **注意**：如果品类 CSV 有更新（增加/修改品类），重新执行上述命令即可，seed 是幂等的（先查后写，不会重复创建）。
+
+### 6. 迁移老演示数据(如有,可跳过)
 
 ```bash
 # 在老演示目录上(本机或老 ECS 路径)
@@ -103,7 +133,7 @@ gunzip -c legacy-demo.sql.gz | docker compose exec -T db psql -U "$POSTGRES_USER
 docker compose restart backend
 ```
 
-### 6. 改 super admin 密码
+### 7. 改 super admin 密码
 
 浏览器访问 `http://<ECS-IP>:3000`,用 `.env.production` 里的 super admin 登录,**立即改密**。
 
