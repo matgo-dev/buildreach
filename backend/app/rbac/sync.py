@@ -21,13 +21,12 @@ import logging
 import os
 import time
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.permission import Permission
 from app.db.models.role import Role, RoleCode, RoleScope
 from app.db.models.role_permission import RolePermission
-from app.db.base import _utcnow
 from app.rbac.constants import PERMISSION_META, ROLE_META
 from app.rbac.permissions_config import ROLE_PERMISSIONS
 
@@ -35,8 +34,6 @@ logger = logging.getLogger(__name__)
 
 DRY_RUN_ENV = "PERMISSION_SYNC_MODE"
 DRY_RUN_VALUE = "dry_run"
-# 系统操作无具体操作人，deleted_by 留 None
-_SYSTEM_OPERATOR_ID = None
 
 
 def _is_dry_run() -> bool:
@@ -78,7 +75,7 @@ async def sync_rbac(db: AsyncSession) -> dict:
 
 
 async def _sync_permissions(db: AsyncSession, *, dry_run: bool) -> dict:
-    result = await db.execute(select(Permission).where(Permission.deleted_at.is_(None)))
+    result = await db.execute(select(Permission))
     existing = {p.code: p for p in result.scalars().all()}
     configured_codes = set(PERMISSION_META.keys())
 
@@ -112,8 +109,7 @@ async def _sync_permissions(db: AsyncSession, *, dry_run: bool) -> dict:
         if dry_run:
             logger.info("[Permission Sync] would remove permission: %s", code)
         else:
-            existing[code].deleted_at = _utcnow()
-            existing[code].deleted_by = _SYSTEM_OPERATOR_ID
+            await db.delete(existing[code])
         removed += 1
 
     if not dry_run:
@@ -153,7 +149,7 @@ async def _sync_role_permissions(db: AsyncSession, *, dry_run: bool) -> dict:
     perm_result = await db.execute(select(Permission))
     perms_by_code = {p.code: p for p in perm_result.scalars().all()}
 
-    rp_result = await db.execute(select(RolePermission).where(RolePermission.deleted_at.is_(None)))
+    rp_result = await db.execute(select(RolePermission))
     existing_rps = list(rp_result.scalars().all())
     existing_pairs: dict[tuple[int, int], RolePermission] = {
         (rp.role_id, rp.permission_id): rp for rp in existing_rps
@@ -192,8 +188,7 @@ async def _sync_role_permissions(db: AsyncSession, *, dry_run: bool) -> dict:
         if dry_run:
             logger.info("[Permission Sync] would remove role_permission: role_id=%s perm_id=%s", *pair)
         else:
-            existing_pairs[pair].deleted_at = _utcnow()
-            existing_pairs[pair].deleted_by = _SYSTEM_OPERATOR_ID
+            await db.delete(existing_pairs[pair])
         removed += 1
 
     unchanged = len(desired_pairs & existing_pairs.keys())
