@@ -266,6 +266,7 @@ export default function ProductDetailPage() {
       await operatorProductsApi.update(product.id, spuForm);
       await mutate();
       spuDirtyRef.current = false;
+      exitEditMode();
       toastSuccess(t("spuSaved"));
     } catch (err: unknown) {
       setSaveError(translateError(err));
