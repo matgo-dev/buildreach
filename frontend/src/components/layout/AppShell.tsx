@@ -19,11 +19,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <RouteGuard>
-      <div className="flex min-h-screen flex-col bg-slate-50">
+      <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
         <AppHeader showSearch={isBuyer} showCart={isBuyer} />
-        <div className="flex flex-1">
+        <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
-          <main className="flex-1 overflow-x-auto">
+          <main className="flex-1 overflow-y-auto overflow-x-auto">
             <div className="p-6">{children}</div>
           </main>
         </div>
