@@ -327,31 +327,26 @@ async def update_product_status(
         raise IllegalTransitionError(product.status, new_status)
 
     # 上架校验(skip_validation=True 时跳过，用于批量测试)
+    # errors 结构化：[{key, params}]，前端按 key 翻译
     if new_status == ProductStatus.ACTIVE and not skip_validation:
-        errors = []
+        errors: list[dict[str, object]] = []
         active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE]
         if not active_skus:
-            errors.append("At least 1 active SKU required")
+            errors.append({"key": "publish_no_active_sku"})
         else:
             for sku in active_skus:
                 if sku.price_min is None or sku.price_max is None:
-                    errors.append(
-                        f"SKU {sku.sku_code}: price_min and price_max must be set"
-                    )
+                    errors.append({"key": "publish_sku_price_missing", "params": {"sku_code": sku.sku_code}})
                 elif sku.price_min > sku.price_max:
-                    errors.append(
-                        f"SKU {sku.sku_code}: price_min must be less than or equal to price_max"
-                    )
+                    errors.append({"key": "publish_sku_price_invalid", "params": {"sku_code": sku.sku_code}})
                 if (
                     sku.lead_time_min is not None
                     and sku.lead_time_max is not None
                     and sku.lead_time_min > sku.lead_time_max
                 ):
-                    errors.append(
-                        f"SKU {sku.sku_code}: lead_time_min must be less than or equal to lead_time_max"
-                    )
+                    errors.append({"key": "publish_sku_leadtime_invalid", "params": {"sku_code": sku.sku_code}})
         if not product.images:
-            errors.append("At least 1 image required")
+            errors.append({"key": "publish_no_image"})
 
         # 必填属性校验
         tpl_map = await _load_template_map(db, product.category_code)
@@ -362,7 +357,7 @@ async def update_product_status(
         spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
         missing_spu = [k for k in required_spu if k not in spu_attr_keys]
         if missing_spu:
-            errors.append(f"Missing required SPU attributes: {', '.join(missing_spu)}")
+            errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
 
         # SKU 级必填：每个 active SKU 都需有值
         if required_sku and active_skus:
@@ -380,9 +375,7 @@ async def update_product_status(
                 sku_keys = sku_attr_map.get(sku.id, set())
                 missing = [k for k in required_sku if k not in sku_keys]
                 if missing:
-                    errors.append(
-                        f"SKU {sku.sku_code}: missing required attributes: {', '.join(missing)}"
-                    )
+                    errors.append({"key": "publish_sku_missing_attrs", "params": {"sku_code": sku.sku_code, "attrs": ", ".join(missing)}})
 
         # TODO: 设计未覆盖,采用最简实现 — 当前允许无供货关系上架。
         # 后续需决策：是否强制每个 active SKU 至少绑定一个供应商才能上架。

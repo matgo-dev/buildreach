@@ -642,7 +642,9 @@ async def test_publish_no_sku_fails(client: AsyncClient):
     )
     assert r.status_code == 400
     assert r.json()["code"] == 40204
-    assert "SKU" in r.json()["message"]
+    # errors 结构化：[{key, params}]
+    errors = r.json().get("message_params", {}).get("errors", [])
+    assert any(e.get("key") == "publish_no_active_sku" for e in errors)
 
 
 @pytest.mark.asyncio
