@@ -249,8 +249,8 @@
     "noPrice": "暂无报价",
     "featured": "精选",
     "variants": "{count} 个规格",
-    "leadTimeDays": "交期 {min}-{max} 天",
-    "leadTimeDaysSingle": "交期 {days} 天",
+    "leadTimeDays": "{min}-{max} 天",
+    "leadTimeDaysSingle": "{days} 天",
     "unit_PCS": "件",
     "unit_SET": "套",
     "unit_PAIR": "双",
@@ -307,7 +307,10 @@
       "sellingPoints": "产品卖点",
       "description": "产品描述",
       "noDescription": "暂无描述",
-      "noImages": "暂无图片"
+      "noImages": "暂无图片",
+      "skuCode": "SKU 编码",
+      "moq": "最小起订量",
+      "leadTime": "交期"
     }
   },
   "unit": {

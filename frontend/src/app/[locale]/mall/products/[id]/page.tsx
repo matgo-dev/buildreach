@@ -231,6 +231,27 @@ function ProductDetailContent() {
     [activeSkus, dimensions, selection]
   );
 
+  // 部分选择匹配到 SKU 时，自动补全剩余维度的选中状态
+  useEffect(() => {
+    if (!selectedSku || dimensions.length === 0) return;
+    const fullSel = { ...selection };
+    let changed = false;
+    for (const dim of dimensions) {
+      if (!fullSel[dim.key]) {
+        const val = selectedSku.color && dim.key === "color"
+          ? selectedSku.color
+          : selectedSku.material && dim.key === "material"
+            ? selectedSku.material
+            : selectedSku.attributes.find((a) => a.attr_key === dim.key)?.attr_value ?? null;
+        if (val) {
+          fullSel[dim.key] = val;
+          changed = true;
+        }
+      }
+    }
+    if (changed) setSelection(fullSel);
+  }, [selectedSku?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 数量
   const [quantity, setQuantity] = useState<number>(0);
 
@@ -489,19 +510,19 @@ function ProductDetailContent() {
             {selectedSku && (
               <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
                 <div>
-                  <div className="text-[10px] text-gray-400">SKU Code</div>
+                  <div className="text-[10px] text-gray-400">{t("detail.skuCode")}</div>
                   <div className="font-semibold text-gray-800">
                     {selectedSku.sku_code}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-gray-400">MOQ</div>
+                  <div className="text-[10px] text-gray-400">{t("detail.moq")}</div>
                   <div className="font-semibold text-gray-800">
                     {selectedSku.moq} {unitLabel}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-gray-400">Lead Time</div>
+                  <div className="text-[10px] text-gray-400">{t("detail.leadTime")}</div>
                   <div className="font-semibold text-gray-800">
                     {selectedSku.lead_time_min && selectedSku.lead_time_max
                       ? selectedSku.lead_time_min === selectedSku.lead_time_max
