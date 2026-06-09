@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { useTranslations as useT } from "next-intl";
 import type { AttrTemplate } from "@/lib/api/operatorProducts";
+import { ComboInput } from "@/components/ui/ComboInput";
+import { COLOR_KEYS, MATERIAL_KEYS } from "@/lib/constants/sku-options";
 import type { SkuFormState } from "./ProductCreatePage";
 
 interface Props {
@@ -28,6 +31,9 @@ const SELECT_CLS =
 const LABEL_CLS = "text-xs text-slate-500";
 
 export function SkuCard({ sku, index, currency, templates, onUpdate, onRemove, onSetDefault, onOpenTiers, error, fieldErrors = {}, t, tUnit }: Props) {
+  const tOpt = useT("skuOptions");
+  const colorOptions = COLOR_KEYS.map((k) => tOpt(`color.${k}`));
+  const materialOptions = MATERIAL_KEYS.map((k) => tOpt(`material.${k}`));
   const priceError = fieldErrors[`sku_price_${sku._clientId}`];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +114,29 @@ export function SkuCard({ sku, index, currency, templates, onUpdate, onRemove, o
       </div>
 
       <div className="p-4">
+        {/* 基础信息 */}
+        <h4 className="mb-2.5 border-b border-slate-100 pb-1.5 text-[13px] font-medium text-slate-600">
+          {t("sku_section_basic")}
+        </h4>
+        <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div>
+            <label className={LABEL_CLS}>{t("field_manufacturer_model")}</label>
+            <input type="text" className={INPUT_CLS} value={sku.manufacturer_model} onChange={(e) => set("manufacturer_model", e.target.value)} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>{t("field_sku_name")}</label>
+            <input type="text" className={INPUT_CLS} value={sku.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>{t("field_color")}</label>
+            <ComboInput value={sku.color} onChange={(v) => set("color", v)} options={colorOptions} className={INPUT_CLS + " pr-7"} />
+          </div>
+          <div>
+            <label className={LABEL_CLS}>{t("field_material")}</label>
+            <ComboInput value={sku.material} onChange={(v) => set("material", v)} options={materialOptions} className={INPUT_CLS + " pr-7"} />
+          </div>
+        </div>
+
         {/* 商务参数 */}
         <h4 className="mb-2.5 border-b border-slate-100 pb-1.5 text-[13px] font-medium text-slate-600">
           {t("sku_section_commercial")}
