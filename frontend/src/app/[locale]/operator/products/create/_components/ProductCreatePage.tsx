@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { v4 as uuidv4 } from "uuid";
 
 import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory } from "@/components/category/CategoryCascader";
 import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type PriceTierInput, type AggregateSkuInput } from "@/lib/api/operatorProducts";
@@ -43,7 +44,7 @@ export interface SkuFormState {
 
 function createEmptySku(isDefault: boolean): SkuFormState {
   return {
-    _clientId: crypto.randomUUID(),
+    _clientId: uuidv4(),
     sku_code: "",
     manufacturer_model: "",
     name: "",
