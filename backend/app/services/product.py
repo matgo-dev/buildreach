@@ -188,6 +188,8 @@ async def create_product(
         name_zh="",  # 占位,由 i18n_write 覆写
         hs_code=data.hs_code,
         certifications=data.certifications or [],
+        unit=data.unit,
+        currency=data.currency,
         is_featured=data.is_featured,
         status=ProductStatus.DRAFT,
         created_by=operator_id,
@@ -575,8 +577,6 @@ async def create_sku(
         source_lang=source_lang,
         price_min=data.price_min,
         price_max=data.price_max,
-        currency=data.currency,
-        unit=data.unit,
         moq=data.moq,
         lead_time_min=data.lead_time_min,
         lead_time_max=data.lead_time_max,
@@ -1199,6 +1199,8 @@ async def create_product_aggregate(
         name_zh="",
         hs_code=data.hs_code,
         certifications=data.certifications or [],
+        unit=data.unit,
+        currency=data.currency,
         is_featured=data.is_featured,
         status=ProductStatus.DRAFT,
         created_by=actor_id,
@@ -1278,7 +1280,7 @@ async def save_product_aggregate(
             old_value = getattr(product, f"{field}_{source_lang}", None)
             await apply_i18n_edit(product, field, source_lang, value, old_value, domain="product")
 
-    for field in ("hs_code", "certifications", "is_featured"):
+    for field in ("hs_code", "certifications", "is_featured", "unit", "currency"):
         value = getattr(data, field, None)
         if value is not None:
             setattr(product, field, value)
@@ -1393,8 +1395,6 @@ async def _create_sku_in_aggregate(
         source_lang=sku_source_lang,
         price_min=sku_data.price_min,
         price_max=sku_data.price_max,
-        currency=sku_data.currency,
-        unit=sku_data.unit,
         moq=sku_data.moq,
         lead_time_min=sku_data.lead_time_min,
         lead_time_max=sku_data.lead_time_max,
@@ -1460,7 +1460,7 @@ async def _update_sku_in_aggregate(
 
     # 普通字段
     plain_fields = (
-        "manufacturer_model", "price_min", "price_max", "currency", "unit",
+        "manufacturer_model", "price_min", "price_max",
         "moq", "lead_time_min", "lead_time_max", "packing_quantity",
         "gross_weight_kg", "volume_cbm", "can_consolidate", "cargo_type",
         "is_default",
@@ -1551,27 +1551,25 @@ async def _apply_image_refs(
 
 
 def spu_price_range(p) -> dict:
-    """SPU 级价格汇总：取所有 ACTIVE SKU 的 price_min/max 极值。"""
+    """SPU 级价格汇总：取所有 ACTIVE SKU 的 price_min/max 极值。currency 从 SPU 读。"""
     active = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
-    if not active:
-        return {"price_min": None, "price_max": None, "currency": None}
     mins = [s.price_min for s in active if s.price_min is not None]
     maxs = [s.price_max for s in active if s.price_max is not None]
     return {
         "price_min": min(mins) if mins else None,
         "price_max": max(maxs) if maxs else None,
-        "currency": active[0].currency,
+        "currency": p.currency,
     }
 
 
 def default_sku_fields(p) -> dict:
-    """从默认 SKU 取 moq/unit/lead_time，供列表卡片用。"""
+    """从默认 SKU 取 moq/lead_time，unit 从 SPU 读。"""
     ds = _default_sku_pick(p)
     if not ds:
-        return {"moq": None, "unit": None, "lead_time_min": None, "lead_time_max": None}
+        return {"moq": None, "unit": p.unit, "lead_time_min": None, "lead_time_max": None}
     return {
         "moq": ds.moq,
-        "unit": ds.unit,
+        "unit": p.unit,
         "lead_time_min": ds.lead_time_min,
         "lead_time_max": ds.lead_time_max,
     }

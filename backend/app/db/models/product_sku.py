@@ -61,11 +61,9 @@ class ProductSku(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     material_zh: Mapped[str | None] = mapped_column(String(100), nullable=True)
     material_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    # 定价（TZS 展示价，可空——运营后补录）
+    # 定价（展示价，可空——运营后补录；币种和单位在 SPU 级）
     price_min: Mapped[float | None] = mapped_column(DECIMAL(12, 2), nullable=True)
     price_max: Mapped[float | None] = mapped_column(DECIMAL(12, 2), nullable=True)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="TZS")
-    unit: Mapped[str] = mapped_column(String(20), nullable=False)
     moq: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # 交期
