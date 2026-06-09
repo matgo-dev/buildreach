@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X, Plus, Trash2 } from "lucide-react";
 import Toggle from "@/components/ui/Toggle";
+import { ComboInput } from "@/components/ui/ComboInput";
+import { COLOR_KEYS, MATERIAL_KEYS } from "@/lib/constants/sku-options";
 import { AttrTemplate, ProductAttrInput, PriceTierInput } from "@/lib/api/operatorProducts";
 
 export interface SkuFormData {
@@ -48,6 +50,9 @@ function emptySkuForm(): SkuFormData {
 
 export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew, skuTemplates, currency }: SkuEditModalProps) {
   const t = useTranslations("productDetail");
+  const tOpt = useTranslations("skuOptions");
+  const colorOptions = COLOR_KEYS.map((k) => tOpt(`color.${k}`));
+  const materialOptions = MATERIAL_KEYS.map((k) => tOpt(`material.${k}`));
   const [form, setForm] = useState<SkuFormData>(initial || emptySkuForm());
 
   useEffect(() => {
@@ -128,11 +133,11 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">{t("fieldColor")}</label>
-              <input type="text" value={form.color || ""} onChange={(e) => set("color", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+              <ComboInput value={form.color || ""} onChange={(v) => set("color", v || null)} options={colorOptions} className="w-full h-8 px-3 pr-7 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">{t("fieldMaterial")}</label>
-              <input type="text" value={form.material || ""} onChange={(e) => set("material", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+              <ComboInput value={form.material || ""} onChange={(v) => set("material", v || null)} options={materialOptions} className="w-full h-8 px-3 pr-7 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs text-slate-500">{t("default")}</label>
