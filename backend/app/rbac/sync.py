@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 
 DRY_RUN_ENV = "PERMISSION_SYNC_MODE"
 DRY_RUN_VALUE = "dry_run"
-_SYSTEM_OPERATOR_ID = 0
+# 系统操作无具体操作人，deleted_by 留 None
+_SYSTEM_OPERATOR_ID = None
 
 
 def _is_dry_run() -> bool:

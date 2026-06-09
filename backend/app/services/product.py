@@ -78,12 +78,12 @@ def _not_deleted(model):
     return model.deleted_at.is_(None)
 
 
-def _soft_delete_values(operator_id: int) -> dict:
+def _soft_delete_values(operator_id: int | None) -> dict:
     """软删赋值字典,供 update().values() 使用。"""
     return {"deleted_at": _utcnow(), "deleted_by": operator_id}
 
 
-async def _soft_delete_obj(obj, operator_id: int) -> None:
+async def _soft_delete_obj(obj, operator_id: int | None) -> None:
     """单对象软删。"""
     obj.deleted_at = _utcnow()
     obj.deleted_by = operator_id
@@ -225,7 +225,7 @@ async def create_product(
 
 async def update_product(
     db: AsyncSession, product_id: int, data: ProductUpdate,
-    *, operator_id: int = 0,
+    *, operator_id: int | None = None,
 ) -> Product:
     product = await _get_product_or_404(db, product_id)
 
@@ -624,7 +624,7 @@ async def create_sku(
 
 async def update_sku(
     db: AsyncSession, product_id: int, sku_id: int, data: SkuUpdate,
-    *, operator_id: int = 0,
+    *, operator_id: int | None = None,
 ) -> ProductSku:
     product = await _get_product_or_404(db, product_id)
     if product.status not in ProductStatus.EDITABLE:
@@ -844,7 +844,7 @@ async def _replace_price_tiers(
     db: AsyncSession,
     sku: ProductSku,
     tiers: list[PriceTierCreate],
-    *, operator_id: int = 0,
+    *, operator_id: int | None = None,
 ) -> None:
     _validate_price_tiers(tiers, sku.moq)
 
@@ -1460,7 +1460,7 @@ async def _update_sku_in_aggregate(
     sku_data,
     *,
     tpl_map: dict[str, "AttrTemplate"],
-    operator_id: int = 0,
+    operator_id: int | None = None,
 ) -> ProductSku:
     """聚合事务内更新单个 SKU（含属性、阶梯价），不 commit。"""
     source_lang = sku.source_lang
