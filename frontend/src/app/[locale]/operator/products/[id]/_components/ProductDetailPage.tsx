@@ -249,7 +249,7 @@ export default function ProductDetailPage() {
     else setIsEditing(false);
   };
 
-  // 保存（单事务聚合）
+  // 保存：Phase 1 图片 I/O（前置 Gate）→ Phase 2 聚合数据（DB 事务）
   const handleSave = async () => {
     if (!product) return;
     // 前端预校验：必填项
@@ -264,20 +264,64 @@ export default function ProductDetailPage() {
       return;
     }
     setSaving(true); setSaveError(null);
-    try {
-      // 先处理图片上传/删除（图片文件操作在聚合事务外）
-      for (const [skuId, data] of skuChanges.updated) {
-        for (const imgId of data.removedImageIds) await operatorProductsApi.deleteImage(product.id, imgId);
-        for (const file of data.imageFiles) await operatorProductsApi.uploadImage(product.id, file, skuId);
+
+    // ── Phase 1: 图片 I/O（边成功边从待提交状态移除，实现重试幂等）──
+    const hasImageOps = imageChange.added.length > 0 || imageChange.removed.length > 0 ||
+      Array.from(skuChanges.updated.values()).some((d) => d.imageFiles.length > 0 || d.removedImageIds.length > 0);
+
+    if (hasImageOps) {
+      try {
+        // 快照迭代：闭包捕获的数组不会被 setState 更新，用 spread 取快照遍历
+        for (const [skuId, data] of Array.from(skuChanges.updated.entries())) {
+          for (const imgId of [...data.removedImageIds]) {
+            await operatorProductsApi.deleteImage(product.id, imgId);
+            setSkuChanges((prev) => {
+              const upd = new Map(prev.updated);
+              const d = upd.get(skuId);
+              if (d) upd.set(skuId, { ...d, removedImageIds: d.removedImageIds.filter((id) => id !== imgId) });
+              return { ...prev, updated: upd };
+            });
+          }
+          for (const file of [...data.imageFiles]) {
+            await operatorProductsApi.uploadImage(product.id, file, skuId);
+            setSkuChanges((prev) => {
+              const upd = new Map(prev.updated);
+              const d = upd.get(skuId);
+              if (d) upd.set(skuId, { ...d, imageFiles: d.imageFiles.filter((f) => f !== file) });
+              return { ...prev, updated: upd };
+            });
+          }
+        }
+        // SPU 级图片上传
+        for (const file of [...imageChange.added]) {
+          await operatorProductsApi.uploadImage(product.id, file);
+          setImageChange((prev) => ({ ...prev, added: prev.added.filter((f) => f !== file) }));
+        }
+        // SPU 级图片删除
+        for (const imgId of [...imageChange.removed]) {
+          await operatorProductsApi.deleteImage(product.id, imgId);
+          setImageChange((prev) => ({ ...prev, removed: prev.removed.filter((id) => id !== imgId) }));
+        }
+      } catch {
+        // Phase 1 失败：拉回服务端最新图片状态，提示用户重试
+        await mutate();
+        setSaveError(t("imageUploadFailed"));
+        setSaving(false);
+        return;
       }
-      for (const file of imageChange.added) await operatorProductsApi.uploadImage(product.id, file);
-      for (const imgId of imageChange.removed) await operatorProductsApi.deleteImage(product.id, imgId);
+    }
+
+    // ── Phase 2: 聚合保存（DB 事务）──
+    try {
+      // mutate 拉取最新图片真值（Phase 1 可能变更了服务端图片）
+      const freshProduct = hasImageOps ? await mutate() : product;
+      const baseProduct = freshProduct ?? product;
 
       // 组装「期望完整态」SKU 列表：保留的 + 新增的
       const aggregateSkus: AggregateSkuInput[] = [];
 
       // 已有 SKU（未删除的）
-      for (const sku of product.skus) {
+      for (const sku of baseProduct.skus) {
         if (skuChanges.removed.includes(sku.id)) continue;
         const updated = skuChanges.updated.get(sku.id);
         if (updated) {
@@ -355,12 +399,10 @@ export default function ProductDetailPage() {
         });
       }
 
-      // 图片引用（从最新的服务端图片列表 + 本地变更推算）
-      // 重新 fetch 图片状态由 mutate 处理；这里只做 主图/排序 引用
+      // 图片引用（基于服务端最新图片真值 + 主图/排序意图重算）
       let imageRefs: ImageRefInput[] | undefined;
       if (imageChange.newMainId || imageChange.newOrder) {
-        // 构建当前有效图片引用
-        const currentImages = product.images.filter((img) => !imageChange.removed.includes(img.id));
+        const currentImages = baseProduct.images;
         const ordered = imageChange.newOrder
           ? imageChange.newOrder.map((id) => currentImages.find((img) => img.id === id)).filter(Boolean) as ProductImage[]
           : currentImages;
@@ -372,7 +414,7 @@ export default function ProductDetailPage() {
       }
 
       // 一次聚合保存
-      await operatorProductsApi.saveAggregate(product.id, {
+      await operatorProductsApi.saveAggregate(baseProduct.id, {
         name: spuForm.name,
         description: spuForm.description,
         origin: spuForm.origin,
@@ -390,10 +432,12 @@ export default function ProductDetailPage() {
       setIsEditing(false);
       toastSuccess(t("saveSuccess"));
       if (searchParams.get("edit")) {
-        router.replace(`/${locale}/operator/products/${product.id}`, { scroll: false });
+        router.replace(`/${locale}/operator/products/${baseProduct.id}`, { scroll: false });
       }
     } catch (err: unknown) {
-      setSaveError(translateError(err));
+      // Phase 2 失败：图片已生效，数据未保存
+      const msg = hasImageOps ? t("imagesSavedDataFailed") : translateError(err);
+      setSaveError(msg);
     } finally { setSaving(false); }
   };
 
