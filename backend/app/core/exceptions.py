@@ -209,10 +209,12 @@ class SkuCodeExistsError(BusinessError):
 
 
 class PublishValidationFailedError(BusinessError):
-    def __init__(self, errors: list[str]):
+    def __init__(self, errors: list[dict[str, object]]):
+        # message 用 key 拼接，方便日志；前端靠 errors 结构化翻译
+        summary = "; ".join(e.get("key", "") for e in errors)  # type: ignore[union-attr]
         super().__init__(
             status.HTTP_400_BAD_REQUEST, 40204,
-            "; ".join(errors),
+            summary,
             message_key=MessageKey.PRODUCT_PUBLISH_VALIDATION_FAILED,
             message_params={"errors": errors},
         )
