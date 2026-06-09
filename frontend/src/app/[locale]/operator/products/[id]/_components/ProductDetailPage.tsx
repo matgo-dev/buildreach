@@ -302,10 +302,11 @@ export default function ProductDetailPage() {
           await operatorProductsApi.deleteImage(product.id, imgId);
           setImageChange((prev) => ({ ...prev, removed: prev.removed.filter((id) => id !== imgId) }));
         }
-      } catch {
-        // Phase 1 失败：拉回服务端最新图片状态，提示用户重试
+      } catch (err: unknown) {
+        // Phase 1 失败：拉回服务端最新图片状态，透传后端具体错误
         await mutate();
-        setSaveError(t("imageUploadFailed"));
+        const reason = translateError(err);
+        setSaveError(t("imageUploadFailed", { reason }));
         setSaving(false);
         return;
       }
@@ -598,7 +599,7 @@ export default function ProductDetailPage() {
                 </thead>
                 <tbody>
                   {product.skus.filter((s) => !skuChanges.removed.includes(s.id)).map((sku) => (
-                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} />
+                    <SkuRow key={sku.id} sku={sku} locale={locale} localized={localized} expanded={expandedSkus.has(sku.id)} onToggle={() => toggleSkuExpand(sku.id)} t={t} isEditing={isEditing} onEdit={() => openSkuModal(sku, false)} onDelete={() => handleSkuDelete(sku.id)} onStatusToggle={canWrite ? () => requestSkuStatusToggle(sku.id, sku.status, sku.sku_code) : undefined} statusLoading={skuStatusLoading === sku.id} onImageClick={(images, index) => setLightbox({ images, index })} />
                   ))}
                   {skuChanges.added.map((added, i) => (
                     <tr key={`new-${i}`} className="border-b border-slate-50 bg-blue-50/30">
@@ -824,16 +825,16 @@ function FieldDisplay({ label, value, mono }: { label: string; value: string | n
   return (<div><span className="text-slate-400 text-xs">{label}</span><div className={`mt-0.5 text-slate-800 text-sm ${mono ? "font-mono" : ""}`}>{value || "—"}</div></div>);
 }
 
-function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEdit, onDelete, onStatusToggle, statusLoading }: {
+function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEdit, onDelete, onStatusToggle, statusLoading, onImageClick }: {
   sku: SkuOperatorDetail; locale: string; localized: (zh: string | null, en: string | null, fallback?: string | null) => string;
   expanded: boolean; onToggle: () => void; t: ReturnType<typeof useTranslations>; isEditing?: boolean; onEdit?: () => void; onDelete?: () => void;
-  onStatusToggle?: () => void; statusLoading?: boolean;
+  onStatusToggle?: () => void; statusLoading?: boolean; onImageClick?: (images: { url: string }[], index: number) => void;
 }) {
   const skuStatus = sku.status === "ACTIVE" ? { bg: "bg-emerald-50", text: "text-emerald-700", label: t("skuStatusActive") } : { bg: "bg-slate-100", text: "text-slate-600", label: t("skuStatusInactive") };
   const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), sku.unit].filter(Boolean).join(" / ");
   return (
     <>
-      <tr className="border-b border-slate-50 hover:bg-slate-50/50">
+      <tr className={`border-b border-slate-50 hover:bg-slate-50/50 ${!isEditing ? "cursor-pointer" : ""}`} onClick={!isEditing ? onToggle : undefined}>
         <td className="px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <span className="font-mono text-slate-700">{sku.sku_code}</span>
@@ -848,7 +849,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
         <td className="px-3 py-2.5 text-slate-600">{specs || "—"}</td>
         <td className="px-3 py-2.5 text-right text-slate-800 font-medium">{formatPrice(sku.price_min ? Number(sku.price_min) : null, sku.price_max ? Number(sku.price_max) : null, sku.currency)}</td>
         <td className="px-3 py-2.5 text-right text-slate-600">{sku.moq} {sku.unit?.toLowerCase()}</td>
-        <td className="px-3 py-2.5 text-center">
+        <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
           {onStatusToggle && !isEditing ? (
             <Toggle
               checked={sku.status === "ACTIVE"}
@@ -861,23 +862,23 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
             <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${skuStatus.bg} ${skuStatus.text}`}>{skuStatus.label}</span>
           )}
         </td>
-        <td className="px-3 py-2.5 text-center">
+        <td className="px-3 py-2.5 text-center" onClick={isEditing ? (e) => e.stopPropagation() : undefined}>
           {isEditing ? (
             <div className="flex items-center justify-center gap-2">
               <button onClick={onEdit} className="text-blue-600 hover:text-blue-700 text-[11px] font-medium">{t("edit")}</button>
               <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-[11px] font-medium">{t("deleteSku")}</button>
             </div>
-          ) : <button onClick={onToggle} className="text-slate-400 hover:text-slate-600">{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button>}
+          ) : <span className="text-slate-400">{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</span>}
         </td>
       </tr>
       {expanded && !isEditing && (
-        <tr className="bg-slate-50/70"><td colSpan={6} className="px-6 py-4"><SkuExpandedDetails sku={sku} locale={locale} t={t} /></td></tr>
+        <tr className="bg-slate-50/70"><td colSpan={6} className="px-6 py-4"><SkuExpandedDetails sku={sku} locale={locale} t={t} onImageClick={onImageClick} /></td></tr>
       )}
     </>
   );
 }
 
-function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations> }) {
+function SkuExpandedDetails({ sku, locale, t, onImageClick }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations>; onImageClick?: (images: { url: string }[], index: number) => void }) {
   const loc = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
   const Val = ({ v }: { v: string | number | null | undefined }) => <span className="text-slate-800">{v != null && v !== "" ? String(v) : "—"}</span>;
 
@@ -950,8 +951,12 @@ function SkuExpandedDetails({ sku, locale, t }: { sku: SkuOperatorDetail; locale
             <div className="bg-white border border-slate-100 rounded-lg p-3">
               <h5 className="font-semibold text-slate-700 mb-2">{t("skuImages")} ({sku.images.length})</h5>
               <div className="flex flex-wrap gap-2">
-                {sku.images.map((img) => (
-                  <div key={img.id} className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                {sku.images.map((img, idx) => (
+                  <div
+                    key={img.id}
+                    className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-shadow"
+                    onClick={() => onImageClick?.(sku.images.map((i) => ({ url: i.full_url })), idx)}
+                  >
                     <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   </div>
                 ))}
