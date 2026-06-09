@@ -10,6 +10,7 @@ from sqlalchemy import ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
+from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
 class ImageType:
@@ -19,7 +20,7 @@ class ImageType:
     ALL = (MAIN, GALLERY, DETAIL)
 
 
-class ProductImage(Base, TimestampMixin):
+class ProductImage(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "product_images"
     __table_args__ = (
         Index("ix_product_images_product_id", "product_id"),

@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
-from sqlalchemy import delete as sa_delete, func, or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -47,6 +47,7 @@ from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.supplier_organization import SupplierOrganization
+from app.db.base import _utcnow
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
 from app.schemas.product import (
@@ -68,6 +69,24 @@ MAX_IMAGES_PER_PRODUCT = 8
 # i18n 字段声明
 _PRODUCT_I18N_FIELDS = ("name", "description", "brand", "origin", "selling_points")
 _SKU_I18N_FIELDS = ("name", "color", "material")
+
+
+# ── 软删除工具 ──────────────────────────────────────────
+
+def _not_deleted(model):
+    """返回 model.deleted_at IS NULL 条件,所有查询统一用。"""
+    return model.deleted_at.is_(None)
+
+
+def _soft_delete_values(operator_id: int) -> dict:
+    """软删赋值字典,供 update().values() 使用。"""
+    return {"deleted_at": _utcnow(), "deleted_by": operator_id}
+
+
+async def _soft_delete_obj(obj, operator_id: int) -> None:
+    """单对象软删。"""
+    obj.deleted_at = _utcnow()
+    obj.deleted_by = operator_id
 
 
 # ── SPU 编码生成 ─────────────────────────────────────────
@@ -111,7 +130,7 @@ async def _generate_spu_code(db: AsyncSession, category_code: str) -> str:
     code = f"{prefix}-{category_code.replace('.', '-')}-{seq:03d}"
 
     while (await db.execute(
-        select(Product.id).where(Product.spu_code == code)
+        select(Product.id).where(Product.spu_code == code, _not_deleted(Product))
     )).scalar_one_or_none():
         seq += 1
         code = f"{prefix}-{category_code.replace('.', '-')}-{seq:03d}"
@@ -131,7 +150,7 @@ async def _generate_sku_code(
     code = f"{spu_code}-S{seq:02d}"
 
     while (await db.execute(
-        select(ProductSku.id).where(ProductSku.sku_code == code)
+        select(ProductSku.id).where(ProductSku.sku_code == code, _not_deleted(ProductSku))
     )).scalar_one_or_none():
         seq += 1
         code = f"{spu_code}-S{seq:02d}"
@@ -157,7 +176,7 @@ async def create_product(
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
 
     if (await db.execute(
-        select(Product.id).where(Product.spu_code == spu_code)
+        select(Product.id).where(Product.spu_code == spu_code, _not_deleted(Product))
     )).scalar_one_or_none():
         raise SpuCodeExistsError()
 
@@ -206,6 +225,7 @@ async def create_product(
 
 async def update_product(
     db: AsyncSession, product_id: int, data: ProductUpdate,
+    *, operator_id: int = 0,
 ) -> Product:
     product = await _get_product_or_404(db, product_id)
 
@@ -236,10 +256,11 @@ async def update_product(
     # SPU 级属性整体替换
     if data.attributes is not None:
         await db.execute(
-            sa_delete(ProductAttr).where(
+            update(ProductAttr).where(
                 ProductAttr.product_id == product_id,
                 ProductAttr.sku_id.is_(None),
-            )
+                _not_deleted(ProductAttr),
+            ).values(**_soft_delete_values(operator_id))
         )
         if data.attributes:
             tpl_map = await _load_template_map(db, product.category_code)
@@ -349,6 +370,7 @@ async def update_product_status(
                 .where(
                     ProductAttr.product_id == product.id,
                     ProductAttr.sku_id.isnot(None),
+                    _not_deleted(ProductAttr),
                 )
             )
             sku_attr_map: dict[int, set[str]] = {}
@@ -375,11 +397,47 @@ async def update_product_status(
     return product
 
 
-async def delete_product(db: AsyncSession, product_id: int) -> None:
+async def delete_product(db: AsyncSession, product_id: int, *, operator_id: int) -> None:
     product = await _get_product_or_404(db, product_id)
     if product.status not in ProductStatus.DELETABLE:
         raise OnlyDraftDeletableError()
-    await db.delete(product)
+
+    sd = _soft_delete_values(operator_id)
+
+    # 级联软删子表：SKU 的阶梯价、供货关系
+    sku_ids_q = select(ProductSku.id).where(
+        ProductSku.product_id == product_id, _not_deleted(ProductSku),
+    )
+    await db.execute(
+        update(SkuPriceTier).where(
+            SkuPriceTier.sku_id.in_(sku_ids_q), _not_deleted(SkuPriceTier),
+        ).values(**sd)
+    )
+    await db.execute(
+        update(ProductSupplier).where(
+            ProductSupplier.sku_id.in_(sku_ids_q), _not_deleted(ProductSupplier),
+        ).values(**sd)
+    )
+    # SKU 级属性
+    await db.execute(
+        update(ProductAttr).where(
+            ProductAttr.product_id == product_id, _not_deleted(ProductAttr),
+        ).values(**sd)
+    )
+    # SKU 本体
+    await db.execute(
+        update(ProductSku).where(
+            ProductSku.product_id == product_id, _not_deleted(ProductSku),
+        ).values(**sd)
+    )
+    # 图片
+    await db.execute(
+        update(ProductImage).where(
+            ProductImage.product_id == product_id, _not_deleted(ProductImage),
+        ).values(**sd)
+    )
+    # SPU 本体
+    await _soft_delete_obj(product, operator_id)
     await db.commit()
 
 
@@ -397,10 +455,10 @@ async def list_products_operator(
     size: int = 20,
 ) -> tuple[list[Product], int]:
     q = select(Product).options(
-        selectinload(Product.images),
-        selectinload(Product.skus),
-    )
-    count_q = select(func.count(Product.id))
+        selectinload(Product.images.and_(_not_deleted(ProductImage))),
+        selectinload(Product.skus.and_(_not_deleted(ProductSku))),
+    ).where(_not_deleted(Product))
+    count_q = select(func.count(Product.id)).where(_not_deleted(Product))
 
     if category_code:
         codes = await _descendant_category_codes(db, category_code)
@@ -437,10 +495,10 @@ async def list_products_public(
     size: int = 20,
 ) -> tuple[list[Product], int]:
     q = select(Product).options(
-        selectinload(Product.images),
-        selectinload(Product.skus).selectinload(ProductSku.price_tiers),
-    ).where(Product.status == ProductStatus.ACTIVE)
-    count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE)
+        selectinload(Product.images.and_(_not_deleted(ProductImage))),
+        selectinload(Product.skus.and_(_not_deleted(ProductSku))).selectinload(ProductSku.price_tiers.and_(_not_deleted(SkuPriceTier))),
+    ).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+    count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
 
     if category_code:
         codes = await _descendant_category_codes(db, category_code)
@@ -467,7 +525,7 @@ async def list_products_public(
                 ProductSku.product_id,
                 func.min(ProductSku.price_min).label("min_price"),
             )
-            .where(ProductSku.status == SkuStatus.ACTIVE)
+            .where(ProductSku.status == SkuStatus.ACTIVE, _not_deleted(ProductSku))
             .group_by(ProductSku.product_id)
             .subquery()
         )
@@ -501,7 +559,7 @@ async def create_sku(
     sku_code = data.sku_code or await _generate_sku_code(db, product.spu_code, product_id)
 
     if (await db.execute(
-        select(ProductSku.id).where(ProductSku.sku_code == sku_code)
+        select(ProductSku.id).where(ProductSku.sku_code == sku_code, _not_deleted(ProductSku))
     )).scalar_one_or_none():
         raise SkuCodeExistsError()
 
@@ -566,6 +624,7 @@ async def create_sku(
 
 async def update_sku(
     db: AsyncSession, product_id: int, sku_id: int, data: SkuUpdate,
+    *, operator_id: int = 0,
 ) -> ProductSku:
     product = await _get_product_or_404(db, product_id)
     if product.status not in ProductStatus.EDITABLE:
@@ -604,7 +663,9 @@ async def update_sku(
     # SKU 级属性整体替换
     if data.attributes is not None:
         await db.execute(
-            sa_delete(ProductAttr).where(ProductAttr.sku_id == sku_id)
+            update(ProductAttr).where(
+                ProductAttr.sku_id == sku_id, _not_deleted(ProductAttr),
+            ).values(**_soft_delete_values(operator_id))
         )
         if data.attributes:
             product = await _get_product_or_404(db, product_id)
@@ -619,7 +680,7 @@ async def update_sku(
 
     # 阶梯价整体替换
     if data.price_tiers is not None:
-        await _replace_price_tiers(db, sku, data.price_tiers)
+        await _replace_price_tiers(db, sku, data.price_tiers, operator_id=operator_id)
 
     await db.commit()
     await db.refresh(sku, ["price_tiers"])
@@ -655,12 +716,40 @@ async def update_sku_status(
     return {"sku": sku, "product_auto_delisted": product_auto_delisted}
 
 
-async def delete_sku(db: AsyncSession, product_id: int, sku_id: int) -> None:
-    product = await _get_product_or_404(db, product_id)
+async def delete_sku(db: AsyncSession, product_id: int, sku_id: int, *, operator_id: int) -> None:
+    product = await _get_product_or_404(db, product_id, load_relations=True)
     if product.status not in ProductStatus.EDITABLE:
         raise ProductNotEditableError(product.status)
     sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
-    await db.delete(sku)
+
+    sd = _soft_delete_values(operator_id)
+
+    # 级联软删子表
+    await db.execute(
+        update(SkuPriceTier).where(
+            SkuPriceTier.sku_id == sku_id, _not_deleted(SkuPriceTier),
+        ).values(**sd)
+    )
+    await db.execute(
+        update(ProductSupplier).where(
+            ProductSupplier.sku_id == sku_id, _not_deleted(ProductSupplier),
+        ).values(**sd)
+    )
+    await db.execute(
+        update(ProductAttr).where(
+            ProductAttr.sku_id == sku_id, _not_deleted(ProductAttr),
+        ).values(**sd)
+    )
+    await _soft_delete_obj(sku, operator_id)
+
+    # 删除最后一个在售 SKU 时自动下架商品
+    remaining_active = [
+        s for s in product.skus
+        if s.id != sku_id and s.status == SkuStatus.ACTIVE and s.deleted_at is None
+    ]
+    if not remaining_active and product.status == ProductStatus.ACTIVE:
+        product.status = ProductStatus.INACTIVE
+
     await db.commit()
 
 
@@ -671,11 +760,11 @@ async def list_skus(
     q = (
         select(ProductSku)
         .options(
-            selectinload(ProductSku.price_tiers),
-            selectinload(ProductSku.images),
-            selectinload(ProductSku.supplier_relations),
+            selectinload(ProductSku.price_tiers.and_(_not_deleted(SkuPriceTier))),
+            selectinload(ProductSku.images.and_(_not_deleted(ProductImage))),
+            selectinload(ProductSku.supplier_relations.and_(_not_deleted(ProductSupplier))),
         )
-        .where(ProductSku.product_id == product_id)
+        .where(ProductSku.product_id == product_id, _not_deleted(ProductSku))
         .order_by(ProductSku.is_default.desc(), ProductSku.created_at)
     )
     rows = (await db.execute(q)).scalars().all()
@@ -755,11 +844,14 @@ async def _replace_price_tiers(
     db: AsyncSession,
     sku: ProductSku,
     tiers: list[PriceTierCreate],
+    *, operator_id: int = 0,
 ) -> None:
     _validate_price_tiers(tiers, sku.moq)
 
     await db.execute(
-        sa_delete(SkuPriceTier).where(SkuPriceTier.sku_id == sku.id)
+        update(SkuPriceTier).where(
+            SkuPriceTier.sku_id == sku.id, _not_deleted(SkuPriceTier),
+        ).values(**_soft_delete_values(operator_id))
     )
     for t in tiers:
         db.add(SkuPriceTier(
@@ -783,6 +875,7 @@ async def add_sku_supplier(
         select(ProductSupplier.id).where(
             ProductSupplier.sku_id == sku_id,
             ProductSupplier.supplier_org_id == data.supplier_org_id,
+            _not_deleted(ProductSupplier),
         )
     )).scalar_one_or_none():
         raise SupplierAlreadyBoundError()
@@ -829,10 +922,11 @@ async def update_sku_supplier(
 
 async def remove_sku_supplier(
     db: AsyncSession, product_id: int, sku_id: int, ps_id: int,
+    *, operator_id: int,
 ) -> None:
     await _get_sku_under_product_or_404(db, product_id, sku_id)
     ps = await _get_supplier_relation_under_sku_or_404(db, sku_id, ps_id)
-    await db.delete(ps)
+    await _soft_delete_obj(ps, operator_id)
     await db.commit()
 
 
@@ -847,7 +941,7 @@ async def list_sku_suppliers(
             ProductSupplier.supplier_org_id == SupplierOrganization.id,
             isouter=True,
         )
-        .where(ProductSupplier.sku_id == sku_id)
+        .where(ProductSupplier.sku_id == sku_id, _not_deleted(ProductSupplier))
         .order_by(ProductSupplier.is_preferred.desc(), ProductSupplier.created_at)
     )
     rows = (await db.execute(q)).all()
@@ -971,12 +1065,12 @@ async def set_main_image(db: AsyncSession, product_id: int, image_id: int) -> No
 
     await db.execute(
         update(ProductImage)
-        .where(ProductImage.product_id == product_id, ProductImage.image_type == ImageType.MAIN)
+        .where(ProductImage.product_id == product_id, ProductImage.image_type == ImageType.MAIN, _not_deleted(ProductImage))
         .values(image_type=ImageType.GALLERY)
     )
     result = await db.execute(
         update(ProductImage)
-        .where(ProductImage.id == image_id, ProductImage.product_id == product_id)
+        .where(ProductImage.id == image_id, ProductImage.product_id == product_id, _not_deleted(ProductImage))
         .values(image_type=ImageType.MAIN)
     )
     if result.rowcount == 0:
@@ -984,7 +1078,7 @@ async def set_main_image(db: AsyncSession, product_id: int, image_id: int) -> No
     await db.commit()
 
 
-async def delete_product_image(db: AsyncSession, product_id: int, image_id: int) -> None:
+async def delete_product_image(db: AsyncSession, product_id: int, image_id: int, *, operator_id: int) -> None:
     # 校验商品可编辑状态
     product = await _get_product_or_404(db, product_id)
     if product.status not in ProductStatus.EDITABLE:
@@ -995,17 +1089,15 @@ async def delete_product_image(db: AsyncSession, product_id: int, image_id: int)
         select(ProductImage).where(
             ProductImage.id == image_id,
             ProductImage.product_id == product_id,
+            _not_deleted(ProductImage),
         )
     )
     img = row.scalar_one_or_none()
     if not img:
         raise NotFoundError("Image not found")
 
-    filepath = UPLOAD_DIR.parent / img.image_key
-    if filepath.exists():
-        filepath.unlink()
-
-    await db.delete(img)
+    # TODO: 图片文件延迟清理任务待实现
+    await _soft_delete_obj(img, operator_id)
     await db.commit()
 
 
@@ -1105,7 +1197,7 @@ async def create_product_aggregate(
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
     if (await db.execute(
-        select(Product.id).where(Product.spu_code == spu_code)
+        select(Product.id).where(Product.spu_code == spu_code, _not_deleted(Product))
     )).scalar_one_or_none():
         raise SpuCodeExistsError()
 
@@ -1204,10 +1296,11 @@ async def save_product_aggregate(
     # SPU 级属性整体替换
     if data.attributes is not None:
         await db.execute(
-            sa_delete(ProductAttr).where(
+            update(ProductAttr).where(
                 ProductAttr.product_id == product_id,
                 ProductAttr.sku_id.is_(None),
-            )
+                _not_deleted(ProductAttr),
+            ).values(**_soft_delete_values(actor_id))
         )
         tpl_map = await _load_template_map(db, product.category_code)
         if data.attributes:
@@ -1232,7 +1325,8 @@ async def save_product_aggregate(
             if sku_data.id is not None and sku_data.id in existing_skus:
                 # 更新已有 SKU
                 await _update_sku_in_aggregate(
-                    db, product, existing_skus[sku_data.id], sku_data, tpl_map=tpl_map,
+                    db, product, existing_skus[sku_data.id], sku_data,
+                    tpl_map=tpl_map, operator_id=actor_id,
                 )
                 incoming_ids.add(sku_data.id)
                 change_summary["updated"] += 1
@@ -1246,10 +1340,26 @@ async def save_product_aggregate(
                 )
                 change_summary["added"] += 1
 
-        # 删除不在入参中的 SKU
+        # 删除不在入参中的 SKU（级联软删）
+        sd = _soft_delete_values(actor_id)
         for sku_id, sku in existing_skus.items():
             if sku_id not in incoming_ids:
-                await db.delete(sku)
+                await db.execute(
+                    update(SkuPriceTier).where(
+                        SkuPriceTier.sku_id == sku_id, _not_deleted(SkuPriceTier),
+                    ).values(**sd)
+                )
+                await db.execute(
+                    update(ProductSupplier).where(
+                        ProductSupplier.sku_id == sku_id, _not_deleted(ProductSupplier),
+                    ).values(**sd)
+                )
+                await db.execute(
+                    update(ProductAttr).where(
+                        ProductAttr.sku_id == sku_id, _not_deleted(ProductAttr),
+                    ).values(**sd)
+                )
+                await _soft_delete_obj(sku, actor_id)
                 change_summary["deleted"] += 1
 
     # ── 图片引用 ──
@@ -1350,6 +1460,7 @@ async def _update_sku_in_aggregate(
     sku_data,
     *,
     tpl_map: dict[str, "AttrTemplate"],
+    operator_id: int = 0,
 ) -> ProductSku:
     """聚合事务内更新单个 SKU（含属性、阶梯价），不 commit。"""
     source_lang = sku.source_lang
@@ -1389,7 +1500,9 @@ async def _update_sku_in_aggregate(
     # SKU 级属性整体替换
     if sku_data.attributes is not None:
         await db.execute(
-            sa_delete(ProductAttr).where(ProductAttr.sku_id == sku.id)
+            update(ProductAttr).where(
+                ProductAttr.sku_id == sku.id, _not_deleted(ProductAttr),
+            ).values(**_soft_delete_values(operator_id))
         )
         if sku_data.attributes:
             await _add_attrs(
@@ -1402,7 +1515,7 @@ async def _update_sku_in_aggregate(
 
     # 阶梯价整体替换
     if sku_data.price_tiers is not None:
-        await _replace_price_tiers(db, sku, sku_data.price_tiers)
+        await _replace_price_tiers(db, sku, sku_data.price_tiers, operator_id=operator_id)
 
     return sku
 
@@ -1426,6 +1539,7 @@ async def _apply_image_refs(
         select(ProductImage.id).where(
             ProductImage.id.in_(image_ids),
             ProductImage.product_id == product_id,
+            _not_deleted(ProductImage),
         )
     )).scalars().all()
     owned_ids = set(rows)
@@ -1436,7 +1550,7 @@ async def _apply_image_refs(
     # 先把本商品所有图片 type 重置为 GALLERY
     await db.execute(
         update(ProductImage)
-        .where(ProductImage.product_id == product_id)
+        .where(ProductImage.product_id == product_id, _not_deleted(ProductImage))
         .values(image_type=ImageType.GALLERY)
     )
 
@@ -1496,14 +1610,14 @@ def _default_sku_pick(p):
 async def _get_product_or_404(
     db: AsyncSession, product_id: int, *, load_relations: bool = False,
 ) -> Product:
-    q = select(Product).where(Product.id == product_id)
+    q = select(Product).where(Product.id == product_id, _not_deleted(Product))
     if load_relations:
         q = q.options(
-            selectinload(Product.images),
-            selectinload(Product.attrs),
-            selectinload(Product.skus).selectinload(ProductSku.price_tiers),
-            selectinload(Product.skus).selectinload(ProductSku.images),
-            selectinload(Product.skus).selectinload(ProductSku.supplier_relations),
+            selectinload(Product.images.and_(_not_deleted(ProductImage))),
+            selectinload(Product.attrs.and_(_not_deleted(ProductAttr))),
+            selectinload(Product.skus.and_(_not_deleted(ProductSku))).selectinload(ProductSku.price_tiers.and_(_not_deleted(SkuPriceTier))),
+            selectinload(Product.skus.and_(_not_deleted(ProductSku))).selectinload(ProductSku.images.and_(_not_deleted(ProductImage))),
+            selectinload(Product.skus.and_(_not_deleted(ProductSku))).selectinload(ProductSku.supplier_relations.and_(_not_deleted(ProductSupplier))),
         )
     row = await db.execute(q)
     product = row.scalar_one_or_none()
@@ -1515,12 +1629,12 @@ async def _get_product_or_404(
 async def _get_sku_or_404(
     db: AsyncSession, sku_id: int, *, load_relations: bool = False,
 ) -> ProductSku:
-    q = select(ProductSku).where(ProductSku.id == sku_id)
+    q = select(ProductSku).where(ProductSku.id == sku_id, _not_deleted(ProductSku))
     if load_relations:
         q = q.options(
-            selectinload(ProductSku.price_tiers),
-            selectinload(ProductSku.images),
-            selectinload(ProductSku.supplier_relations),
+            selectinload(ProductSku.price_tiers.and_(_not_deleted(SkuPriceTier))),
+            selectinload(ProductSku.images.and_(_not_deleted(ProductImage))),
+            selectinload(ProductSku.supplier_relations.and_(_not_deleted(ProductSupplier))),
         )
     row = await db.execute(q)
     sku = row.scalar_one_or_none()
@@ -1535,12 +1649,13 @@ async def _get_sku_under_product_or_404(
     q = select(ProductSku).where(
         ProductSku.id == sku_id,
         ProductSku.product_id == product_id,
+        _not_deleted(ProductSku),
     )
     if load_relations:
         q = q.options(
-            selectinload(ProductSku.price_tiers),
-            selectinload(ProductSku.images),
-            selectinload(ProductSku.supplier_relations),
+            selectinload(ProductSku.price_tiers.and_(_not_deleted(SkuPriceTier))),
+            selectinload(ProductSku.images.and_(_not_deleted(ProductImage))),
+            selectinload(ProductSku.supplier_relations.and_(_not_deleted(ProductSupplier))),
         )
     row = await db.execute(q)
     sku = row.scalar_one_or_none()
@@ -1556,6 +1671,7 @@ async def _get_supplier_relation_under_sku_or_404(
         select(ProductSupplier).where(
             ProductSupplier.id == ps_id,
             ProductSupplier.sku_id == sku_id,
+            _not_deleted(ProductSupplier),
         )
     )
     ps = row.scalar_one_or_none()
