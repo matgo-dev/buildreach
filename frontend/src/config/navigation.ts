@@ -74,42 +74,6 @@ export interface Workspace {
 
 export const PUBLIC_NAV: NavItem[] = [
   {
-    path: "/",
-    label: "首页",
-    labelEn: "Home",
-    icon: LayoutDashboard,
-    resource: null,
-    requiredPermissions: [],
-    description: "平台介绍与入口",
-  },
-  {
-    path: "/credit",
-    label: "信用评估",
-    labelEn: "Credit",
-    icon: ShieldCheck,
-    resource: null,
-    requiredPermissions: [],
-    description: "供应商信用评估与资质认证(占位,功能开发中)",
-  },
-  {
-    path: "/risk",
-    label: "风控驾驶舱",
-    labelEn: "Risk Control",
-    icon: Gauge,
-    resource: null,
-    requiredPermissions: [],
-    description: "马甲关系 / 价格异常 / 合规雷达(占位,功能开发中)",
-  },
-  {
-    path: "/suppliers",
-    label: "供应商目录",
-    labelEn: "Suppliers",
-    icon: Store,
-    resource: "supplier",
-    requiredPermissions: [],
-    description: "供应商目录与画像(占位,功能开发中)",
-  },
-  {
     path: "/mall",
     label: "严选商城",
     labelEn: "Mall",
@@ -117,24 +81,6 @@ export const PUBLIC_NAV: NavItem[] = [
     resource: "product",
     requiredPermissions: [],
     description: "B2B 工业品采购前台",
-  },
-  {
-    path: "/countries",
-    label: "国别准入",
-    labelEn: "Countries",
-    icon: Globe,
-    resource: "country",
-    requiredPermissions: [],
-    description: "目标出口国别的准入要求与认证",
-  },
-  {
-    path: "/ai",
-    label: "AI工具箱",
-    labelEn: "AI Tools",
-    icon: Sparkles,
-    resource: null,
-    requiredPermissions: [],
-    description: "标准问答 / 证书审查 / 报价比价 / 多语种翻译(占位,功能开发中)",
   },
 ];
 
@@ -150,10 +96,9 @@ export const WORKSPACES: Workspace[] = [
       {
         label: "BUYER 工作台",
         items: [
+          { path: "/mall",                  label: "严选商城",   labelEn: "Mall",           icon: ShoppingBag,     resource: "product",       requiredPermissions: [],                          description: "B2B 工业品采购前台" },
           { path: "/buyer/dashboard",      label: "工作台",     labelEn: "Dashboard",      icon: LayoutDashboard, resource: null,            requiredPermissions: [],                          description: "我的待办、概览、最近活动" },
           { path: "/buyer/category-analysis", label: "品类分析", labelEn: "Category Analysis", icon: BarChart3, resource: null, requiredPermissions: [], description: "品类供应链全景分析（demo）" },
-          { path: "/buyer/projects",       label: "项目管理",   labelEn: "Projects",       icon: ClipboardList,   resource: "project",       requiredPermissions: [Permissions.PROJECT_READ],       description: "项目创建、列表、详情" },
-          { path: "/buyer/purchase-lists", label: "采购清单",   labelEn: "Purchase Lists", icon: ListChecks,      resource: "purchase_list", requiredPermissions: [Permissions.PURCHASE_LIST_READ], description: "基于项目的采购清单管理" },
           { path: "/buyer/cart",           label: "购物车",     labelEn: "Cart",           icon: ShoppingCart,    resource: "cart",          requiredPermissions: [Permissions.CART_READ],          description: "已加入清单待询价的商品" },
           { path: "/buyer/rfqs",           label: "询价管理",   labelEn: "RFQ",            icon: Send,            resource: "rfq",           requiredPermissions: [Permissions.RFQ_READ],           description: "我发起的询价单与报价比较" },
           { path: "/buyer/orders",         label: "订单管理",   labelEn: "Orders",         icon: Receipt,         resource: "order",         requiredPermissions: [Permissions.ORDER_READ],         description: "订单列表 + 12 节点履约追踪" },
@@ -245,7 +190,16 @@ export const PRIMARY_WORKSPACE_OF_ROLE: Record<RoleCode, WorkspaceCode> = {
 
 export function defaultDashboardOf(roles: RoleCode[]): string {
   if (roles.includes("ADMIN")) return "/admin/users";
-  if (roles.includes("OPERATOR")) return "/operator/dashboard";
+  if (roles.includes("OPERATOR")) return "/operator/products";
+  if (roles.includes("SUPPLIER")) return "/supplier/dashboard";
+  if (roles.includes("BUYER")) return "/mall";
+  return "/";
+}
+
+/** 用户菜单"工作台"入口,跳到该角色的工作台首页。 */
+export function workspaceDashboardOf(roles: RoleCode[]): string {
+  if (roles.includes("ADMIN")) return "/admin/users";
+  if (roles.includes("OPERATOR")) return "/operator/products";
   if (roles.includes("SUPPLIER")) return "/supplier/dashboard";
   if (roles.includes("BUYER")) return "/buyer/dashboard";
   return "/";

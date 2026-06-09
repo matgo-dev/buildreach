@@ -2,7 +2,6 @@
 import { ReactNode } from "react";
 
 import { AppHeader } from "./AppHeader";
-import { PublicNav } from "./PublicNav";
 
 /** 公开区 Layout(顶部单行 nav,无 sidebar)。 */
 export function PublicLayout({
@@ -15,11 +14,11 @@ export function PublicLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      <AppHeader centerNav={<PublicNav />} />
+      <AppHeader showSearch showCart />
       {noContainer ? (
         <main>{children}</main>
       ) : (
-        <main className="mx-auto max-w-[1400px] px-6 py-8">{children}</main>
+        <main className="px-6 py-8">{children}</main>
       )}
     </div>
   );

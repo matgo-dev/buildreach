@@ -6,7 +6,9 @@ import {
   ChevronDown,
   LayoutDashboard,
   LogOut,
+  Search,
   Settings,
+  ShoppingCart,
   Sparkles,
 } from "lucide-react";
 
@@ -15,7 +17,7 @@ import { useDebugMode } from "@/stores/uiStore";
 import { useLogout } from "@/hooks/useAuth";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { BRAND } from "@/config/brand";
-import { defaultDashboardOf } from "@/config/navigation";
+import { defaultDashboardOf, workspaceDashboardOf } from "@/config/navigation";
 import type { RoleCode } from "@/lib/auth";
 
 const ROLE_PILL: Record<RoleCode, { label: string; cls: string }> = {
@@ -29,19 +31,25 @@ const ROLE_PILL: Record<RoleCode, { label: string; cls: string }> = {
 export function AppHeader({
   showDebugToggle = false,
   centerNav,
+  showSearch = false,
+  showCart = false,
 }: {
   showDebugToggle?: boolean;
   /** 中间区域插槽,公开区在此渲染主导航 */
   centerNav?: ReactNode;
+  /** 显示搜索框占位 */
+  showSearch?: boolean;
+  /** 显示购物车图标 */
+  showCart?: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
   const [debugMode, setDebugMode] = useDebugMode();
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-6">
-        {/* 左:品牌 */}
-        <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
+      <div className="flex h-16 items-center justify-between gap-4 px-6">
+        {/* 左:品牌(已登录跳角色首页,未登录跳 /) */}
+        <Link href={user ? defaultDashboardOf(user.roles) : "/"} className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
           <span className="relative flex h-8 w-8 items-center justify-center rounded bg-[#003366] transition-transform duration-300 group-hover:scale-105">
             <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#FF6B35]" />
@@ -52,11 +60,38 @@ export function AppHeader({
           </span>
         </Link>
 
-        {/* 中:主导航插槽(公开区填充) */}
-        {centerNav && <div className="flex flex-1 justify-center">{centerNav}</div>}
+        {/* 中:搜索框占位 或 导航插槽 */}
+        {showSearch ? (
+          <div className="flex flex-1 max-w-xl">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                readOnly
+                placeholder="Search products / 搜索商品..."
+                className="h-10 w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-gray-500 placeholder-gray-400 transition-colors hover:border-slate-300 focus:outline-none"
+                onClick={() => {
+                  // TODO: 打开搜索弹窗或跳转搜索页
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          centerNav && <div className="flex flex-1 justify-center">{centerNav}</div>
+        )}
 
-        {/* 右:调试 toggle + 用户 */}
+        {/* 右:购物车 + 调试 toggle + 语言 + 用户 */}
         <div className="flex items-center gap-3">
+          {showCart && user && (
+            <Link
+              href="/buyer/cart"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#003366]"
+              title="购物车"
+            >
+              <ShoppingCart className="h-5 w-5" />
+            </Link>
+          )}
+
           {showDebugToggle && (
             <button
               onClick={() => setDebugMode(!debugMode)}
@@ -128,7 +163,7 @@ function UserMenu() {
   const displayName = user.username || user.email;
   const initial = (displayName?.[0] ?? "U").toUpperCase();
   const primaryRole = user.roles[0];
-  const dashboardHref = defaultDashboardOf(user.roles);
+  const dashboardHref = workspaceDashboardOf(user.roles);
 
   return (
     <div ref={ref} className="relative">
@@ -201,7 +236,7 @@ function UserMenu() {
                 className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#003366]"
               >
                 <LayoutDashboard className="h-4 w-4 text-slate-400" />
-                控制台
+                工作台
               </Link>
             )}
             <span
