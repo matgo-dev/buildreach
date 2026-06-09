@@ -1538,13 +1538,12 @@ async def test_create_product_with_l3_passes(client: AsyncClient, db_session):
 # ── 聚合保存 SKU 归属校验 ────────────────────────────────
 
 def _sku_payload(**overrides) -> dict:
-    """构造聚合保存 SKU 子项的最小有效载荷。"""
+    """构造聚合保存 SKU 子项的最小有效载荷。
+    unit/currency 已从 SKU 提升到 SPU（PR #48），此处不再包含。"""
     base = {
-        "unit": "PCS",
         "moq": 100,
         "price_min": 1.00,
         "price_max": 3.00,
-        "currency": "TZS",
         "source_lang": "zh",
     }
     base.update(overrides)

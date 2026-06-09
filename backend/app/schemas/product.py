@@ -376,6 +376,7 @@ class AggregateSkuCreate(BaseModel):
     """聚合创建时的 SKU 子项（无 id，服务端生成 sku_code）。"""
     model_config = ConfigDict(extra="forbid")
 
+    client_id: str | None = Field(default=None, max_length=64, description="前端临时 UUID，用于建壳后映射 SKU 图片上传")
     manufacturer_model: str | None = Field(default=None, max_length=100)
     name: str | None = Field(default=None, max_length=200)
     color: str | None = Field(default=None, max_length=50)

@@ -60,7 +60,7 @@ export function AppHeader({
   );
 
   return (
-    <header className="shrink-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="shrink-0 z-50 border-b border-slate-200 bg-white">
       <div className="flex h-16 items-center justify-between gap-4 px-6">
         {/* 左:品牌(已登录跳角色首页,未登录跳 /) */}
         <Link href={user ? defaultDashboardOf(user.roles) : "/"} className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
@@ -213,7 +213,7 @@ function UserMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute right-0 top-full z-[999] mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
         >
           {/* 用户信息卡 */}
           <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-4 py-3">
