@@ -602,11 +602,9 @@ async def delete_search_history(
     db: AsyncSession = Depends(get_db),
 ):
     row = await db.get(CreditSearchHistory, history_id)
-    if row is None or row.user_id != current.id or row.deleted_at is not None:
+    if row is None or row.user_id != current.id:
         raise BusinessError(http_status=404, biz_code=40404, message="历史记录不存在")
-    from app.db.base import _utcnow
-    row.deleted_at = _utcnow()
-    row.deleted_by = current.id
+    await db.delete(row)
     await db.commit()
     return success({"deleted": history_id})
 

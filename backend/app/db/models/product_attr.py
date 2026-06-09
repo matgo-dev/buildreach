@@ -10,10 +10,9 @@ from sqlalchemy import ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
-class ProductAttr(Base, SoftDeleteMixin):
+class ProductAttr(Base):
     __tablename__ = "product_attrs"
     __table_args__ = (
         Index("ix_product_attrs_product_id", "product_id"),
@@ -23,14 +22,14 @@ class ProductAttr(Base, SoftDeleteMixin):
             "uq_product_attrs_product_key",
             "product_id", "attr_key",
             unique=True,
-            postgresql_where="sku_id IS NULL AND deleted_at IS NULL",
+            postgresql_where="sku_id IS NULL",
         ),
         # SKU 级维度内唯一(sku_id IS NOT NULL 且未删除)
         Index(
             "uq_product_attrs_sku_key",
             "sku_id", "attr_key",
             unique=True,
-            postgresql_where="sku_id IS NOT NULL AND deleted_at IS NULL",
+            postgresql_where="sku_id IS NOT NULL",
         ),
     )
 
