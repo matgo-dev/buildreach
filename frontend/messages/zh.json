@@ -185,6 +185,7 @@
     "createProduct": "新建商品",
     "searchPlaceholder": "搜索商品名称 / SPU编码",
     "allCategories": "全部品类",
+    "allSubCategories": "全部",
     "allStatus": "全部状态",
     "search": "搜索",
     "totalCount": "共 {count} 件商品",

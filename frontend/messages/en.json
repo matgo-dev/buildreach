@@ -185,6 +185,7 @@
     "createProduct": "New Product",
     "searchPlaceholder": "Search by name / SPU code",
     "allCategories": "All Categories",
+    "allSubCategories": "All",
     "allStatus": "All Status",
     "search": "Search",
     "totalCount": "{count} products",
