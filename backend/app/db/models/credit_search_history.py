@@ -10,10 +10,9 @@ from sqlalchemy import DateTime, ForeignKey, Index, Integer, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
-from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
-class CreditSearchHistory(Base, TimestampMixin, SoftDeleteMixin):
+class CreditSearchHistory(Base, TimestampMixin):
     __tablename__ = "credit_search_history"
     __table_args__ = (
         Index(

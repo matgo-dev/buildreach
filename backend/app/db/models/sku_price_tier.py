@@ -9,19 +9,13 @@ from sqlalchemy import DECIMAL, ForeignKey, Index, Integer, String, UniqueConstr
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
-from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
-class SkuPriceTier(Base, TimestampMixin, SoftDeleteMixin):
+class SkuPriceTier(Base, TimestampMixin):
     __tablename__ = "sku_price_tiers"
     __table_args__ = (
         Index("ix_sku_price_tiers_sku_id", "sku_id"),
-        Index(
-            "uq_sku_price_tiers_sku_qty_active",
-            "sku_id", "min_qty",
-            unique=True,
-            postgresql_where="deleted_at IS NULL",
-        ),
+        UniqueConstraint("sku_id", "min_qty", name="uq_sku_price_tiers_sku_qty"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
