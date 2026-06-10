@@ -1,13 +1,14 @@
 """询价单 DTO — 按角色分离(买方/运营)。
 
 买方 DTO 不含 created_by_user_id / operator_assignee_id / buyer_org_id 等内部字段。
-运营 DTO 全量。不含供应商/成本/报价(报价工单层叠)。
+运营 DTO 全量。报价按角色层叠(买方 ACTIVE、运营全版本)。
 """
 from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -111,6 +112,9 @@ class RfqBuyerPublic(BaseModel):
     # 行项目
     items: list[RfqItemPublic] = []
 
+    # 报价层叠(买方仅 ACTIVE,无报价为 null)
+    quote: Any | None = None
+
 
 # ── 响应体:运营视角 ────────────────────────────────────
 
@@ -147,6 +151,9 @@ class RfqOperatorView(BaseModel):
 
     # 行项目
     items: list[RfqItemPublic] = []
+
+    # 报价层叠(运营全版本列表)
+    quotes: list[Any] = []
 
 
 # ── 分页包装 ────────────────────────────────────────────

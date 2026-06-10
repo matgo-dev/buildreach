@@ -479,5 +479,49 @@ class RfqDuplicateSkuError(BusinessError):
         )
 
 
+# ── 报价域 405xx(接 RFQ 40509)──────────────────────────────
+
+
+class QuoteRfqStateInvalidError(BusinessError):
+    """40510 — 报价操作时 RFQ 状态非法(或 accept 时无 ACTIVE 报价)。"""
+    def __init__(self, current_status: str | None = None):
+        msg = f"Quote operation not allowed: RFQ in {current_status}" if current_status else "Quote operation not allowed for current RFQ state"
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40510,
+            msg,
+            message_key=MessageKey.QUOTE_RFQ_STATE_INVALID,
+        )
+
+
+class QuoteNotFoundError(BusinessError):
+    """40511 — 报价不存在。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_404_NOT_FOUND, 40511,
+            "Quote not found",
+            message_key=MessageKey.QUOTE_NOT_FOUND,
+        )
+
+
+class QuoteItemMismatchError(BusinessError):
+    """40512 — 报价行 rfq_item 不属本 RFQ / 重复。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40512,
+            "Quote item does not belong to this RFQ or is duplicated",
+            message_key=MessageKey.QUOTE_ITEM_MISMATCH,
+        )
+
+
+class QuoteLinesIncompleteError(BusinessError):
+    """40513 — 报价未覆盖全部 rfq_items。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40513,
+            "Quote does not cover all RFQ items",
+            message_key=MessageKey.QUOTE_LINES_INCOMPLETE,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}
