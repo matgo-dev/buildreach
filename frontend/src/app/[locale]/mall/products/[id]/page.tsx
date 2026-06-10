@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -23,6 +23,11 @@ import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type SkuPublic } from "@/lib/api/products";
 import { formatCurrency } from "@/lib/formatters";
+import { addCartItem } from "@/lib/api/cart";
+import { useCartStore } from "@/stores/cartStore";
+import { useAuthStore } from "@/stores/authStore";
+import { useToast } from "@/components/ui/Toast";
+import { ApiError } from "@/lib/api";
 
 import { ProductGallery } from "@/components/mall/ProductGallery";
 import {
@@ -326,6 +331,48 @@ function ProductDetailContent() {
     return null;
   }, [selectedSku, quantity, priceDisplay]);
 
+  // 加购
+  const user = useAuthStore((s) => s.user);
+  const isBuyer = user?.roles.includes("BUYER") ?? false;
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const triggerRefresh = useCartStore((s) => s.triggerRefresh);
+  const toast = useToast();
+  const tError = useTranslations("error");
+  const tCart = useTranslations("cart");
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  const canAddToCart = !!selectedSku && quantity > 0;
+
+  const handleAddToCart = useCallback(async () => {
+    // 未登录 → 跳登录
+    if (!user) {
+      router.push(`/${locale}/login`);
+      return;
+    }
+    if (!selectedSku || quantity <= 0) return;
+
+    setAddingToCart(true);
+    try {
+      const cart = await addCartItem(selectedSku.id, quantity);
+      syncFromCart(cart);
+      triggerRefresh();
+      toast.success(tCart("addSuccess"));
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try {
+          toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>));
+        } catch {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setAddingToCart(false);
+    }
+  }, [user, selectedSku, quantity, router, locale, syncFromCart, triggerRefresh, toast, tCart, tError]);
+
   // Tab 状态
   const [activeTab, setActiveTab] = useState<TabKey>("specifications");
 
@@ -572,17 +619,29 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 操作按钮(占位灰显) */}
+            {/* 操作按钮 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-300 px-6 py-3 text-sm font-semibold text-white cursor-not-allowed"
-                title={t("comingSoon")}
-              >
-                <ShoppingCart className="h-4 w-4" />
-                {t("detail.addToBasket")}
-              </button>
+              {/* 加入询价篮：未登录显示（点击跳登录），已登录非 BUYER 隐藏 */}
+              {(!user || isBuyer) && (
+                <button
+                  type="button"
+                  disabled={addingToCart || (!!user && !canAddToCart)}
+                  onClick={handleAddToCart}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-6 py-3 text-sm font-semibold transition-colors ${
+                    addingToCart || (!!user && !canAddToCart)
+                      ? "bg-gray-300 text-white cursor-not-allowed"
+                      : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
+                  }`}
+                  title={user && !selectedSku ? tCart("selectSkuFirst") : undefined}
+                >
+                  {addingToCart ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="h-4 w-4" />
+                  )}
+                  {t("detail.addToBasket")}
+                </button>
+              )}
               <button
                 type="button"
                 disabled
