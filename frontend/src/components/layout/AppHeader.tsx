@@ -14,6 +14,7 @@ import {
 
 import { useLocale } from "next-intl";
 import { useAuthStore } from "@/stores/authStore";
+import { useCartStore } from "@/stores/cartStore";
 import { useDebugMode } from "@/stores/uiStore";
 import { useLogout } from "@/hooks/useAuth";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
@@ -40,10 +41,11 @@ export function AppHeader({
   centerNav?: ReactNode;
   /** 显示搜索框占位 */
   showSearch?: boolean;
-  /** 显示购物车图标 */
+  /** 显示询价篮图标 */
   showCart?: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
+  const cartCount = useCartStore((s) => s.count);
   const router = useRouter();
   const locale = useLocale();
   const [searchValue, setSearchValue] = useState("");
@@ -98,15 +100,20 @@ export function AppHeader({
           centerNav && <div className="flex flex-1 justify-center">{centerNav}</div>
         )}
 
-        {/* 右:购物车 + 调试 toggle + 语言 + 用户 */}
+        {/* 右:询价篮 + 调试 toggle + 语言 + 用户 */}
         <div className="flex items-center gap-3">
-          {showCart && user && (
+          {showCart && (
             <Link
-              href="/buyer/cart"
+              href={user ? "/buyer/cart" : "/login"}
               className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#003366]"
-              title="购物车"
+              title="询价篮"
             >
               <ShoppingCart className="h-5 w-5" />
+              {user && cartCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#FF6B35] px-1 text-[10px] font-bold text-white">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
             </Link>
           )}
 
