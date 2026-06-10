@@ -16,6 +16,7 @@ class AuditResourceType(str, Enum):
     SUPPLIER_MEMBER = "supplier_member"
     PRODUCT = "product"
     PRODUCT_SKU = "product_sku"
+    CART = "cart"
 
 
 class AuditAction(str, Enum):
@@ -40,3 +41,8 @@ class AuditAction(str, Enum):
     ROLE_ASSIGN = "ROLE_ASSIGN"
     ROLE_REVOKE = "ROLE_REVOKE"
     STATUS_CHANGE = "STATUS_CHANGE"
+    # cart — 购物车操作
+    ADD_ITEM = "ADD_ITEM"
+    UPDATE_ITEM = "UPDATE_ITEM"
+    REMOVE_ITEM = "REMOVE_ITEM"
+    CLEAR = "CLEAR"

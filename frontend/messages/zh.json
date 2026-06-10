@@ -82,6 +82,12 @@
       "illegal_transition": "不允许从 {current} 转换到 {target}",
       "image_not_owned": "图片 {image_id} 不属于商品 {product_id}",
       "not_editable": "当前状态 {current_status} 下不可编辑"
+    },
+    "cart": {
+      "sku_not_purchasable": "该商品规格不可购买",
+      "quantity_invalid": "数量无效",
+      "item_not_found": "购物车商品不存在",
+      "buyer_org_required": "当前用户无可用买方组织"
     }
   },
   "category": {
