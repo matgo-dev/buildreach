@@ -70,147 +70,6 @@ function getSkuTiers(
   return sku?.price_tiers ?? [];
 }
 
-// ---------- 单行组件 ----------
-
-function CartItemRow({
-  item,
-  checked,
-  onCheck,
-  onQuantityChange,
-  onDelete,
-  tiers,
-  productUnit,
-}: {
-  item: CartItemPublic;
-  checked: boolean;
-  onCheck: (checked: boolean) => void;
-  onQuantityChange: (qty: number) => void;
-  onDelete: () => void;
-  tiers: PriceTier[];
-  productUnit: string;
-}) {
-  const t = useTranslations("cart");
-  const tMall = useTranslations("mall");
-  const locale = useLocale();
-  const unavailable = !item.is_purchasable;
-
-  // 阶梯价展示
-  const unitLabel = tMall(`unit_${productUnit || "PCS"}` as Parameters<typeof tMall>[0]);
-  const sortedTiers = useMemo(
-    () => [...tiers].sort((a, b) => a.min_qty - b.min_qty),
-    [tiers],
-  );
-
-  // SKU 规格描述：有 sku_name 用 sku_name，否则用 code+属性拼接
-  const specParts = item.sku_name
-    ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
-    : [item.sku_code, item.color, item.material, item.manufacturer_model].filter(Boolean).join(" · ");
-
-  return (
-    <div
-      className={`flex items-start gap-4 rounded-lg border p-4 transition-colors ${
-        unavailable
-          ? "border-gray-200 bg-gray-50 opacity-60"
-          : checked
-            ? "border-[#0D4D4D]/20 bg-[#0D4D4D]/[0.02]"
-            : "border-gray-200 bg-white hover:border-gray-300"
-      }`}
-    >
-      {/* 勾选框 */}
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={unavailable}
-        onChange={(e) => onCheck(e.target.checked)}
-        className="mt-1 h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D] disabled:opacity-40"
-      />
-
-      {/* 主图 */}
-      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-        {item.main_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.main_image}
-            alt={item.product_name ?? ""}
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-300">
-            <PackageOpen className="h-8 w-8" />
-          </div>
-        )}
-      </div>
-
-      {/* 信息区 */}
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-semibold text-gray-800">
-          {item.product_name ?? "—"}
-        </h3>
-        <p className="mt-0.5 truncate text-xs text-gray-500">{specParts}</p>
-
-        {item.moq && (
-          <p className="mt-1 text-[11px] text-gray-400">
-            MOQ: {item.moq} {unitLabel}
-          </p>
-        )}
-
-        {/* 不可购原因 */}
-        {unavailable && item.unavailable_reason && (
-          <span className="mt-1 inline-block rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
-            {t(`unavailable_${item.unavailable_reason}` as Parameters<typeof t>[0])}
-          </span>
-        )}
-
-        {/* 参考价（阶梯价原样展示） */}
-        {!unavailable && sortedTiers.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
-            <span className="font-medium text-gray-400">{t("referencePrice")}:</span>
-            {sortedTiers.map((tier) => {
-              const range = tier.max_qty
-                ? `${tier.min_qty}-${tier.max_qty}`
-                : `${tier.min_qty}+`;
-              return (
-                <span key={tier.id}>
-                  {range}{" "}
-                  <span className="font-semibold text-[#0D4D4D]">
-                    {formatCurrency(tier.unit_price, tier.currency, locale, {
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 数量 */}
-      <div className="shrink-0">
-        {!unavailable ? (
-          <QuantityInput
-            value={item.quantity}
-            onChange={onQuantityChange}
-            moq={item.moq ?? 1}
-            unit={productUnit || "PCS"}
-          />
-        ) : (
-          <span className="text-sm text-gray-400">—</span>
-        )}
-      </div>
-
-      {/* 删除 */}
-      <button
-        type="button"
-        onClick={onDelete}
-        className="shrink-0 rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-        title="删除"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
 // ---------- 主页面 ----------
 
 function CartContent() {
@@ -432,53 +291,157 @@ function CartContent() {
         </h1>
       </div>
 
-      {/* 全选 + 批量操作 */}
-      <div className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={allChecked}
-            onChange={handleToggleAll}
-            disabled={purchasableItems.length === 0}
-            className="h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D]"
-          />
-          <span className="font-medium text-gray-700">{t("selectAll")}</span>
-        </label>
-        <span className="text-sm text-gray-500">
-          {t("selected", { count: checkedIds.size })}
-        </span>
-        {checkedIds.size > 0 && (
+      {/* 表格 */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-slate-50 text-left text-xs text-gray-500">
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={handleToggleAll}
+                  disabled={purchasableItems.length === 0}
+                  className="h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D]"
+                />
+              </th>
+              <th className="px-4 py-3 font-medium">{t("productInfo")}</th>
+              <th className="px-4 py-3 font-medium">{t("referencePrice")}</th>
+              <th className="px-4 py-3 font-medium">{t("quantity")}</th>
+              <th className="w-14 px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const tiers = getSkuTiers(productMap, item.product_id, item.sku_id);
+              const product = productMap.get(item.product_id);
+              const unit = product?.unit ?? "PCS";
+              const unavailable = !item.is_purchasable;
+              const checked = checkedIds.has(item.item_id);
+              const specParts = item.sku_name
+                ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
+                : [item.sku_code, item.color, item.material, item.manufacturer_model].filter(Boolean).join(" · ");
+              const sortedTiers = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
+
+              return (
+                <tr
+                  key={item.item_id}
+                  className={`border-t border-gray-100 transition-colors ${
+                    unavailable ? "opacity-50" : "even:bg-slate-50/50 hover:bg-blue-50/50"
+                  }`}
+                >
+                  {/* 勾选 */}
+                  <td className="px-4 py-3 align-top">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={unavailable}
+                      onChange={(e) => handleCheck(item.item_id, e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D] disabled:opacity-40"
+                    />
+                  </td>
+
+                  {/* 商品信息：图片 + 名称 + 规格 */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                        {item.main_image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.main_image} alt="" className="h-full w-full object-contain" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-gray-300">
+                            <PackageOpen className="h-6 w-6" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-800">
+                          {item.product_name ?? "—"}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">{specParts}</p>
+                        {item.moq != null && (
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            MOQ: {item.moq}
+                          </p>
+                        )}
+                        {unavailable && item.unavailable_reason && (
+                          <span className="mt-1 inline-block rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
+                            {t(`unavailable_${item.unavailable_reason}` as Parameters<typeof t>[0])}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* 参考价 */}
+                  <td className="px-4 py-3 align-top">
+                    {!unavailable && sortedTiers.length > 0 ? (
+                      <div className="space-y-0.5 text-xs text-gray-500">
+                        {sortedTiers.map((tier) => {
+                          const range = tier.max_qty
+                            ? `${tier.min_qty}-${tier.max_qty}`
+                            : `${tier.min_qty}+`;
+                          return (
+                            <div key={tier.id}>
+                              <span className="text-gray-400">{range}</span>{" "}
+                              <span className="font-semibold text-[#0D4D4D]">
+                                {formatCurrency(tier.unit_price, tier.currency, locale, {
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
+
+                  {/* 数量 */}
+                  <td className="px-4 py-3 align-top">
+                    {!unavailable ? (
+                      <QuantityInput
+                        value={item.quantity}
+                        onChange={(qty) => handleQuantityChange(item.item_id, qty)}
+                        moq={item.moq ?? 1}
+                        unit={unit}
+                      />
+                    ) : (
+                      <span className="text-sm text-gray-400">—</span>
+                    )}
+                  </td>
+
+                  {/* 删除 */}
+                  <td className="px-4 py-3 align-top text-center">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(item.item_id)}
+                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 已选提示 + 批量删除 */}
+      {checkedIds.size > 0 && (
+        <div className="flex items-center gap-4 text-sm text-gray-500">
+          <span>{t("selected", { count: checkedIds.size })}</span>
           <button
             type="button"
             onClick={() => setBatchDeleteOpen(true)}
-            className="ml-auto text-sm text-red-500 transition-colors hover:text-red-700"
+            className="text-red-500 transition-colors hover:text-red-700"
           >
             {t("deleteSelected")}
           </button>
-        )}
-      </div>
-
-      {/* 商品列表 */}
-      <div className="space-y-2">
-        {items.map((item) => {
-          const tiers = getSkuTiers(productMap, item.product_id, item.sku_id);
-          const product = productMap.get(item.product_id);
-          const unit = product?.unit ?? "PCS";
-
-          return (
-            <CartItemRow
-              key={item.item_id}
-              item={item}
-              checked={checkedIds.has(item.item_id)}
-              onCheck={(c) => handleCheck(item.item_id, c)}
-              onQuantityChange={(qty) => handleQuantityChange(item.item_id, qty)}
-              onDelete={() => setDeleteTarget(item.item_id)}
-              tiers={tiers}
-              productUnit={unit}
-            />
-          );
-        })}
-      </div>
+        </div>
+      )}
 
       {/* 底部操作栏 */}
       <div className="sticky bottom-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-6 py-4 shadow-sm">
