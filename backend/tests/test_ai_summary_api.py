@@ -12,7 +12,6 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 import app.api.v1.credit as credit_api
 from app.db.base import _utcnow
@@ -33,30 +32,38 @@ def _auth(t: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {t}"}
 
 
-async def _make_company(test_engine, *, with_snapshot: bool, ai_summary: str | None = None) -> int:
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        c = CreditCompany(name=f"KH AISum {datetime.now().timestamp()}", country_code="KH")
-        db.add(c)
-        await db.flush()
-        if with_snapshot:
-            db.add(ScoreSnapshot(
-                company_id=c.id, total_score=80, grade="B",
-                dimension_1_score=20, dimension_2_score=20,
-                dimension_3_score=20, dimension_4_score=20,
-                rule_version=1, trigger_type=TriggerType.REAL_TIME_ONBOARD,
-                is_current=True, calculated_at=_utcnow(),
-                ai_summary=ai_summary,
-                ai_summary_generated_at=_utcnow() if ai_summary else None,
-            ))
-        cid = c.id
-        await db.commit()
+async def _make_company(db_session, *, with_snapshot: bool, ai_summary: str | None = None) -> int:
+    c = CreditCompany(name=f"KH AISum {datetime.now().timestamp()}", country_code="KH")
+    db_session.add(c)
+    await db_session.flush()
+    if with_snapshot:
+        db_session.add(ScoreSnapshot(
+            company_id=c.id, total_score=80, grade="B",
+            dimension_1_score=20, dimension_2_score=20,
+            dimension_3_score=20, dimension_4_score=20,
+            rule_version=1, trigger_type=TriggerType.REAL_TIME_ONBOARD,
+            is_current=True, calculated_at=_utcnow(),
+            ai_summary=ai_summary,
+            ai_summary_generated_at=_utcnow() if ai_summary else None,
+        ))
+    cid = c.id
+    await db_session.commit()
     return cid
 
 
+async def _ai_summary_audits(db_session) -> list[AuditLog]:
+    """读出全部 credit_ai_summary 资源的 audit_log 行(按时间正序)。"""
+    rows = (await db_session.execute(
+        select(AuditLog)
+        .where(AuditLog.resource_type == "credit_ai_summary")
+        .order_by(AuditLog.id.asc())
+    )).scalars().all()
+    return list(rows)
+
+
 @pytest.mark.asyncio
-async def test_no_snapshot_returns_400(client, test_engine):
-    cid = await _make_company(test_engine, with_snapshot=False)
+async def test_no_snapshot_returns_400(client, db_session):
+    cid = await _make_company(db_session, with_snapshot=False)
     t = await _operator_token(client)
     r = await client.post(
         f"/api/v1/credit/companies/{cid}/ai-summary/generate", headers=_auth(t)
@@ -65,8 +72,8 @@ async def test_no_snapshot_returns_400(client, test_engine):
 
 
 @pytest.mark.asyncio
-async def test_already_generated_returns_cached(client, test_engine, monkeypatch):
-    cid = await _make_company(test_engine, with_snapshot=True, ai_summary="已有评语")
+async def test_already_generated_returns_cached(client, db_session, monkeypatch):
+    cid = await _make_company(db_session, with_snapshot=True, ai_summary="已有评语")
 
     # 已生成应直接返回缓存,不得调 LLM:patch 成抛错,若被调到则测试失败
     async def _must_not_call(self, session, snapshot_id):  # noqa: ANN001
@@ -85,8 +92,8 @@ async def test_already_generated_returns_cached(client, test_engine, monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_first_generation_calls_llm(client, test_engine, monkeypatch):
-    cid = await _make_company(test_engine, with_snapshot=True, ai_summary=None)
+async def test_first_generation_calls_llm(client, db_session, monkeypatch):
+    cid = await _make_company(db_session, with_snapshot=True, ai_summary=None)
 
     async def _fake_generate(self, session, snapshot_id):  # noqa: ANN001
         snap = await session.get(ScoreSnapshot, snapshot_id)
@@ -107,8 +114,8 @@ async def test_first_generation_calls_llm(client, test_engine, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_llm_failure_returns_503(client, test_engine, monkeypatch):
-    cid = await _make_company(test_engine, with_snapshot=True, ai_summary=None)
+async def test_llm_failure_returns_503(client, db_session, monkeypatch):
+    cid = await _make_company(db_session, with_snapshot=True, ai_summary=None)
 
     async def _fake_fail(self, session, snapshot_id):  # noqa: ANN001
         return None  # generate_for_snapshot 内部吞错后返回 None
@@ -122,22 +129,10 @@ async def test_llm_failure_returns_503(client, test_engine, monkeypatch):
     assert r.status_code == 503, r.text
 
 
-async def _ai_summary_audits(test_engine) -> list[AuditLog]:
-    """读出全部 credit_ai_summary 资源的 audit_log 行(按时间正序)。"""
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
-    async with SessionLocal() as db:
-        rows = (await db.execute(
-            select(AuditLog)
-            .where(AuditLog.resource_type == "credit_ai_summary")
-            .order_by(AuditLog.id.asc())
-        )).scalars().all()
-    return list(rows)
-
-
 @pytest.mark.asyncio
-async def test_audit_log_written_on_success(client, test_engine, monkeypatch):
+async def test_audit_log_written_on_success(client, db_session, monkeypatch):
     """成功生成场景写一条 SUCCESS 审计,带 user_id/snapshot_id/cached=False。"""
-    cid = await _make_company(test_engine, with_snapshot=True, ai_summary=None)
+    cid = await _make_company(db_session, with_snapshot=True, ai_summary=None)
 
     async def _fake_generate(self, session, snapshot_id):  # noqa: ANN001
         snap = await session.get(ScoreSnapshot, snapshot_id)
@@ -147,14 +142,14 @@ async def test_audit_log_written_on_success(client, test_engine, monkeypatch):
 
     monkeypatch.setattr(credit_api.AISummaryGenerator, "generate_for_snapshot", _fake_generate)
 
-    before = await _ai_summary_audits(test_engine)
+    before = await _ai_summary_audits(db_session)
     t = await _operator_token(client)
     r = await client.post(
         f"/api/v1/credit/companies/{cid}/ai-summary/generate", headers=_auth(t)
     )
     assert r.status_code == 200, r.text
 
-    after = await _ai_summary_audits(test_engine)
+    after = await _ai_summary_audits(db_session)
     assert len(after) == len(before) + 1
     row = after[-1]
     assert row.action == "GENERATE"
@@ -166,23 +161,23 @@ async def test_audit_log_written_on_success(client, test_engine, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_audit_log_written_on_cached(client, test_engine, monkeypatch):
+async def test_audit_log_written_on_cached(client, db_session, monkeypatch):
     """缓存命中也记 SUCCESS 审计,extra.cached=True(便于成本归因)。"""
-    cid = await _make_company(test_engine, with_snapshot=True, ai_summary="已存")
+    cid = await _make_company(db_session, with_snapshot=True, ai_summary="已存")
 
     async def _must_not_call(self, session, snapshot_id):  # noqa: ANN001
         raise AssertionError("缓存命中不应调 LLM")
 
     monkeypatch.setattr(credit_api.AISummaryGenerator, "generate_for_snapshot", _must_not_call)
 
-    before = await _ai_summary_audits(test_engine)
+    before = await _ai_summary_audits(db_session)
     t = await _operator_token(client)
     r = await client.post(
         f"/api/v1/credit/companies/{cid}/ai-summary/generate", headers=_auth(t)
     )
     assert r.status_code == 200, r.text
 
-    after = await _ai_summary_audits(test_engine)
+    after = await _ai_summary_audits(db_session)
     assert len(after) == len(before) + 1
     row = after[-1]
     assert row.status == "SUCCESS"
@@ -190,18 +185,18 @@ async def test_audit_log_written_on_cached(client, test_engine, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_audit_log_written_on_no_snapshot(client, test_engine):
+async def test_audit_log_written_on_no_snapshot(client, db_session):
     """无 snapshot(400)也记一条 FAILED 审计,error_message=snapshot_not_ready。"""
-    cid = await _make_company(test_engine, with_snapshot=False)
+    cid = await _make_company(db_session, with_snapshot=False)
 
-    before = await _ai_summary_audits(test_engine)
+    before = await _ai_summary_audits(db_session)
     t = await _operator_token(client)
     r = await client.post(
         f"/api/v1/credit/companies/{cid}/ai-summary/generate", headers=_auth(t)
     )
     assert r.status_code == 400, r.text
 
-    after = await _ai_summary_audits(test_engine)
+    after = await _ai_summary_audits(db_session)
     assert len(after) == len(before) + 1
     row = after[-1]
     assert row.status == "FAILED"
@@ -209,23 +204,23 @@ async def test_audit_log_written_on_no_snapshot(client, test_engine):
 
 
 @pytest.mark.asyncio
-async def test_audit_log_written_on_llm_failure(client, test_engine, monkeypatch):
+async def test_audit_log_written_on_llm_failure(client, db_session, monkeypatch):
     """LLM 返回 None(503)记一条 FAILED 审计,error_message=llm_unavailable。"""
-    cid = await _make_company(test_engine, with_snapshot=True, ai_summary=None)
+    cid = await _make_company(db_session, with_snapshot=True, ai_summary=None)
 
     async def _fake_fail(self, session, snapshot_id):  # noqa: ANN001
         return None
 
     monkeypatch.setattr(credit_api.AISummaryGenerator, "generate_for_snapshot", _fake_fail)
 
-    before = await _ai_summary_audits(test_engine)
+    before = await _ai_summary_audits(db_session)
     t = await _operator_token(client)
     r = await client.post(
         f"/api/v1/credit/companies/{cid}/ai-summary/generate", headers=_auth(t)
     )
     assert r.status_code == 503, r.text
 
-    after = await _ai_summary_audits(test_engine)
+    after = await _ai_summary_audits(db_session)
     assert len(after) == len(before) + 1
     row = after[-1]
     assert row.status == "FAILED"

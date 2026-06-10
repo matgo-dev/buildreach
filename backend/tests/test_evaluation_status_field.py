@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy.ext.asyncio import async_sessionmaker
-
 from app.api.v1.credit import _evaluation_status
 from app.db.models import CreditCompany, CreditDataHarvestRun, ScoreSnapshot, TriggerType
 
@@ -25,71 +23,69 @@ def _current_snapshot(company_id: int) -> ScoreSnapshot:
     )
 
 
-async def test_eval_status_states(test_engine):
+async def test_eval_status_states(db_session):
     """Δ8 五态:非 KH→ready;KH 无 run→pending;running→pending;
     succeeded 无快照→empty;succeeded 有快照→ready;failed→failed。"""
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        # 非 KH → 恒 ready
-        cn = CreditCompany(name="CN", country_code="CN")
-        db.add(cn)
-        await db.flush()
-        st, latest = await _evaluation_status(db, cn)
-        assert st == "ready" and latest is None
+    # 非 KH → 恒 ready
+    cn = CreditCompany(name="CN", country_code="CN")
+    db_session.add(cn)
+    await db_session.flush()
+    st, latest = await _evaluation_status(db_session, cn)
+    assert st == "ready" and latest is None
 
-        # KH 无 run → pending(注册刚完成,Task 还没启动)
-        kh_pending = CreditCompany(name="KH Pending", country_code="KH")
-        db.add(kh_pending)
-        await db.flush()
-        st, latest = await _evaluation_status(db, kh_pending)
-        assert st == "pending" and latest is None
+    # KH 无 run → pending(注册刚完成,Task 还没启动)
+    kh_pending = CreditCompany(name="KH Pending", country_code="KH")
+    db_session.add(kh_pending)
+    await db_session.flush()
+    st, latest = await _evaluation_status(db_session, kh_pending)
+    assert st == "pending" and latest is None
 
-        # running → pending
-        kh_running = CreditCompany(name="KH Running", country_code="KH")
-        db.add(kh_running)
-        await db.flush()
-        db.add(_run(kh_running.id, "running", datetime(2026, 5, 25)))
-        await db.flush()
-        st, _ = await _evaluation_status(db, kh_running)
-        assert st == "pending"
+    # running → pending
+    kh_running = CreditCompany(name="KH Running", country_code="KH")
+    db_session.add(kh_running)
+    await db_session.flush()
+    db_session.add(_run(kh_running.id, "running", datetime(2026, 5, 25)))
+    await db_session.flush()
+    st, _ = await _evaluation_status(db_session, kh_running)
+    assert st == "pending"
 
-        # Δ8:succeeded 但无 current snapshot → empty(公开源 0 命中)
-        kh_empty = CreditCompany(name="KH Empty", country_code="KH")
-        db.add(kh_empty)
-        await db.flush()
-        db.add(_run(kh_empty.id, "succeeded", datetime(2026, 5, 26)))
-        await db.flush()
-        st, latest = await _evaluation_status(db, kh_empty)
-        assert st == "empty"
-        assert latest["status"] == "succeeded"
+    # Δ8:succeeded 但无 current snapshot → empty(公开源 0 命中)
+    kh_empty = CreditCompany(name="KH Empty", country_code="KH")
+    db_session.add(kh_empty)
+    await db_session.flush()
+    db_session.add(_run(kh_empty.id, "succeeded", datetime(2026, 5, 26)))
+    await db_session.flush()
+    st, latest = await _evaluation_status(db_session, kh_empty)
+    assert st == "empty"
+    assert latest["status"] == "succeeded"
 
-        # succeeded + current snapshot → ready
-        kh_ready = CreditCompany(name="KH Ready", country_code="KH")
-        db.add(kh_ready)
-        await db.flush()
-        db.add(_run(kh_ready.id, "succeeded", datetime(2026, 5, 26)))
-        db.add(_current_snapshot(kh_ready.id))
-        await db.flush()
-        st, _ = await _evaluation_status(db, kh_ready)
-        assert st == "ready"
+    # succeeded + current snapshot → ready
+    kh_ready = CreditCompany(name="KH Ready", country_code="KH")
+    db_session.add(kh_ready)
+    await db_session.flush()
+    db_session.add(_run(kh_ready.id, "succeeded", datetime(2026, 5, 26)))
+    db_session.add(_current_snapshot(kh_ready.id))
+    await db_session.flush()
+    st, _ = await _evaluation_status(db_session, kh_ready)
+    assert st == "ready"
 
-        # cached_hit 无快照 → empty
-        kh_cached = CreditCompany(name="KH Cached", country_code="KH")
-        db.add(kh_cached)
-        await db.flush()
-        db.add(_run(kh_cached.id, "cached_hit", datetime(2026, 5, 26)))
-        await db.flush()
-        st, _ = await _evaluation_status(db, kh_cached)
-        assert st == "empty"
+    # cached_hit 无快照 → empty
+    kh_cached = CreditCompany(name="KH Cached", country_code="KH")
+    db_session.add(kh_cached)
+    await db_session.flush()
+    db_session.add(_run(kh_cached.id, "cached_hit", datetime(2026, 5, 26)))
+    await db_session.flush()
+    st, _ = await _evaluation_status(db_session, kh_cached)
+    assert st == "empty"
 
-        # failed → failed
-        kh_failed = CreditCompany(name="KH Failed", country_code="KH")
-        db.add(kh_failed)
-        await db.flush()
-        db.add(_run(kh_failed.id, "failed", datetime(2026, 5, 27)))
-        await db.flush()
-        st, _ = await _evaluation_status(db, kh_failed)
-        assert st == "failed"
+    # failed → failed
+    kh_failed = CreditCompany(name="KH Failed", country_code="KH")
+    db_session.add(kh_failed)
+    await db_session.flush()
+    db_session.add(_run(kh_failed.id, "failed", datetime(2026, 5, 27)))
+    await db_session.flush()
+    st, _ = await _evaluation_status(db_session, kh_failed)
+    assert st == "failed"
 
 
 async def _operator_token(client) -> str:
@@ -101,18 +97,16 @@ async def _operator_token(client) -> str:
     return r.json()["data"]["access_token"]
 
 
-async def test_detail_endpoint_returns_evaluation_status(client, test_engine):
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        kh = CreditCompany(name="KH Detail", country_code="KH", registration_no="KH-D-1")
-        db.add(kh)
-        await db.flush()
-        db.add(CreditDataHarvestRun(
-            company_id=kh.id, status="running", triggered_by="supplier_register",
-            started_at=datetime(2026, 5, 25),
-        ))
-        cid = kh.id
-        await db.commit()
+async def test_detail_endpoint_returns_evaluation_status(client, db_session):
+    kh = CreditCompany(name="KH Detail", country_code="KH", registration_no="KH-D-1")
+    db_session.add(kh)
+    await db_session.flush()
+    db_session.add(CreditDataHarvestRun(
+        company_id=kh.id, status="running", triggered_by="supplier_register",
+        started_at=datetime(2026, 5, 25),
+    ))
+    cid = kh.id
+    await db_session.commit()
 
     t = await _operator_token(client)
     r = await client.get(f"/api/v1/credit/companies/{cid}", headers={"Authorization": f"Bearer {t}"})
