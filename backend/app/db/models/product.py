@@ -78,7 +78,7 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     selling_points_en: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    certifications: Mapped[dict | None] = mapped_column(JSON, default=list)
+    certifications: Mapped[list | None] = mapped_column(JSON, default=list)
 
     # 计量单位 & 币种（SPU 级，所有 SKU 共享）
     unit: Mapped[str] = mapped_column(String(20), nullable=False, default="PCS")
