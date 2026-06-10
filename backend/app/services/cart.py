@@ -12,6 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from fastapi import Request
+
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.core.config import settings
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
@@ -53,31 +57,6 @@ async def resolve_active_buyer_org(
     return org
 
 
-# ── 可购口径(委托商品域)────────────────────────────────
-
-
-def _not_deleted(model):
-    return model.deleted_at.is_(None)
-
-
-async def get_purchasable_sku(
-    db: AsyncSession, sku_id: int,
-) -> ProductSku | None:
-    """一次 JOIN 判断 SKU 可购:SKU ACTIVE + 未软删 + 父 SPU ACTIVE + 未软删。"""
-    row = await db.execute(
-        select(ProductSku)
-        .join(Product, Product.id == ProductSku.product_id)
-        .where(
-            ProductSku.id == sku_id,
-            ProductSku.status == SkuStatus.ACTIVE,
-            _not_deleted(ProductSku),
-            Product.status == ProductStatus.ACTIVE,
-            _not_deleted(Product),
-        )
-    )
-    return row.scalar_one_or_none()
-
-
 # ── 购物车 CRUD ─────────────────────────────────────────
 
 
@@ -102,12 +81,13 @@ async def get_cart(db: AsyncSession, user: CurrentUser) -> CartPublic:
 
 async def add_item(
     db: AsyncSession, user: CurrentUser, sku_id: int, quantity: Decimal,
+    *, request: Request | None = None,
 ) -> CartPublic:
     """加购。并发安全:cart + cart_item 两处 SAVEPOINT 保护。"""
     org = await resolve_active_buyer_org(db, user)
 
-    # 可购校验
-    sku = await get_purchasable_sku(db, sku_id)
+    # 可购校验(委托商品域,单一事实源)
+    sku = await product_svc.get_purchasable_sku(db, sku_id)
     if not sku:
         raise CartSkuNotPurchasableError()
 
@@ -137,12 +117,25 @@ async def add_item(
         # 新行 insert-or-get (SAVEPOINT)
         await _insert_or_merge_item(db, cart.id, sku_id, quantity)
 
+    # 审计与业务写同事务
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.CART,
+        action=AuditAction.ADD_ITEM,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=sku_id,
+        request=request,
+        extra={"sku_id": sku_id, "quantity": str(quantity)},
+        commit=False,
+    )
     await db.commit()
     return await _reload_cart(db, cart.id)
 
 
 async def update_item_qty(
     db: AsyncSession, user: CurrentUser, item_id: int, quantity: Decimal,
+    *, request: Request | None = None,
 ) -> CartPublic:
     """改量。"""
     if quantity <= 0:
@@ -154,22 +147,49 @@ async def update_item_qty(
         .where(CartItem.id == item.id)
         .values(quantity=quantity)
     )
+    # 审计与业务写同事务
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.CART,
+        action=AuditAction.UPDATE_ITEM,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=item_id,
+        request=request,
+        extra={"item_id": item_id, "quantity": str(quantity)},
+        commit=False,
+    )
     await db.commit()
     return await _reload_cart(db, item.cart_id)
 
 
 async def remove_item(
     db: AsyncSession, user: CurrentUser, item_id: int,
+    *, request: Request | None = None,
 ) -> CartPublic:
     """删行(硬删)。"""
     item = await _get_own_item_or_404(db, user, item_id)
     cart_id = item.cart_id
     await db.delete(item)
+    # 审计与业务写同事务
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.CART,
+        action=AuditAction.REMOVE_ITEM,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=item_id,
+        request=request,
+        commit=False,
+    )
     await db.commit()
     return await _reload_cart(db, cart_id)
 
 
-async def clear_cart(db: AsyncSession, user: CurrentUser) -> CartPublic:
+async def clear_cart(
+    db: AsyncSession, user: CurrentUser,
+    *, request: Request | None = None,
+) -> CartPublic:
     """清空(硬删全部行)。"""
     org = await resolve_active_buyer_org(db, user)
 
@@ -190,6 +210,16 @@ async def clear_cart(db: AsyncSession, user: CurrentUser) -> CartPublic:
     for item in items_row.scalars().all():
         await db.delete(item)
 
+    # 审计与业务写同事务
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.CART,
+        action=AuditAction.CLEAR,
+        user_id=user.id,
+        user_email=user.email,
+        request=request,
+        commit=False,
+    )
     await db.commit()
     return await _reload_cart(db, cart.id)
 
@@ -212,13 +242,12 @@ async def _get_or_create_cart(
     if cart:
         return cart
 
-    # SAVEPOINT 内创建
+    # SAVEPOINT 内创建:成功显式 release,异常自动 rollback
+    nested = await db.begin_nested()
     try:
-        nested = await db.begin_nested()
         cart = Cart(buyer_org_id=buyer_org_id, buyer_user_id=buyer_user_id)
         db.add(cart)
         await db.flush()
-        return cart
     except IntegrityError:
         await nested.rollback()
         # 回查
@@ -232,14 +261,20 @@ async def _get_or_create_cart(
         if cart:
             return cart
         raise  # 非预期约束冲突,不误吞
+    except BaseException:
+        await nested.rollback()
+        raise
+    else:
+        await nested.commit()
+        return cart
 
 
 async def _insert_or_merge_item(
     db: AsyncSession, cart_id: int, sku_id: int, quantity: Decimal,
 ) -> None:
     """SAVEPOINT 保护:并发同 SKU 加购,冲突时原子 UPDATE 累加。"""
+    nested = await db.begin_nested()
     try:
-        nested = await db.begin_nested()
         item = CartItem(cart_id=cart_id, sku_id=sku_id, quantity=quantity)
         db.add(item)
         await db.flush()
@@ -262,6 +297,11 @@ async def _insert_or_merge_item(
             )
         else:
             raise  # 非预期约束冲突,不误吞
+    except BaseException:
+        await nested.rollback()
+        raise
+    else:
+        await nested.commit()
 
 
 # ── 归属校验 ────────────────────────────────────────────

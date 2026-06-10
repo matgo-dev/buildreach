@@ -1585,6 +1585,27 @@ def _default_sku_pick(p):
     return default
 
 
+# ── 可购口径(单一事实源)────────────────────────────────
+
+
+async def get_purchasable_sku(
+    db: AsyncSession, sku_id: int,
+) -> ProductSku | None:
+    """一次 JOIN 判断 SKU 可购:SKU ACTIVE + 未软删 + 父 SPU ACTIVE + 未软删。"""
+    row = await db.execute(
+        select(ProductSku)
+        .join(Product, Product.id == ProductSku.product_id)
+        .where(
+            ProductSku.id == sku_id,
+            ProductSku.status == SkuStatus.ACTIVE,
+            _not_deleted(ProductSku),
+            Product.status == ProductStatus.ACTIVE,
+            _not_deleted(Product),
+        )
+    )
+    return row.scalar_one_or_none()
+
+
 # ── 内部工具 ─────────────────────────────────────────────
 
 async def _get_product_or_404(
