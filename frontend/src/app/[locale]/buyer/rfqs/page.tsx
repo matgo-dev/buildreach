@@ -111,7 +111,7 @@ function RfqListContent() {
               {data.items.map((rfq) => (
                 <tr
                   key={rfq.id}
-                  className="border-t border-gray-100 transition-colors hover:bg-gray-50"
+                  className="border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
                 >
                   <td className="px-5 py-3">
                     <Link
