@@ -36,6 +36,7 @@ from app.db.models.rfq_quote import RfqQuote
 from app.db.models.rfq_quote_item import RfqQuoteItem
 from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
+from app.services._rfq_loader import load_rfq
 from app.schemas.quote import (
     QuoteCreatePayload,
     QuoteCostView,
@@ -98,18 +99,19 @@ async def _lock_rfq(
     is_buyer = "BUYER" in user.roles
     is_operator = "OPERATOR" in user.roles
 
-    q = (
-        select(Rfq)
-        .where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
-        .with_for_update()
-    )
-    # scope 过滤
+    # BUYER 写路径:buyer_org_id 进入 FOR UPDATE 查询,不锁非本组织 RFQ
     if is_buyer and not is_operator:
         buyer_org_id = await _resolve_buyer_org_id(db, user)
-        q = q.where(Rfq.buyer_org_id == buyer_org_id)
+    else:
+        buyer_org_id = None
 
-    row = await db.execute(q)
-    rfq = row.scalar_one_or_none()
+    rfq = await load_rfq(
+        db,
+        rfq_id,
+        for_update=True,
+        with_items=False,
+        buyer_org_id=buyer_org_id,
+    )
     if not rfq:
         raise RfqNotFoundError()
     return rfq
@@ -457,12 +459,17 @@ async def get_quotes(
     is_operator = "OPERATOR" in user.roles
 
     # scope 校验(不锁,GET 不需要)
-    q = select(Rfq).where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
+    buyer_org_id = None
     if is_buyer and not is_operator:
         buyer_org_id = await _resolve_buyer_org_id(db, user)
-        q = q.where(Rfq.buyer_org_id == buyer_org_id)
-    rfq_row = await db.execute(q)
-    if not rfq_row.scalar_one_or_none():
+
+    rfq = await load_rfq(
+        db,
+        rfq_id,
+        with_items=False,
+        buyer_org_id=buyer_org_id,
+    )
+    if not rfq:
         raise RfqNotFoundError()
 
     # 加载报价
