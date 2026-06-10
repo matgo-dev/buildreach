@@ -50,6 +50,7 @@ from app.schemas.rfq import (
 )
 from app.services import product as product_svc
 from app.services import quote as quote_svc
+from app.services._rfq_loader import load_rfq
 
 logger = logging.getLogger(__name__)
 
@@ -342,7 +343,7 @@ async def get_rfq(
     is_buyer = "BUYER" in user.roles
     is_operator = "OPERATOR" in user.roles
 
-    rfq = await _load_rfq(db, rfq_id)
+    rfq = await load_rfq(db, rfq_id, with_items=True)
     if not rfq:
         raise RfqNotFoundError()
 
@@ -371,7 +372,7 @@ async def cancel_rfq(
     is_buyer = "BUYER" in user.roles
     is_operator = "OPERATOR" in user.roles
 
-    rfq = await _load_rfq(db, rfq_id)
+    rfq = await load_rfq(db, rfq_id, with_items=True)
     if not rfq:
         raise RfqNotFoundError()
 
@@ -474,24 +475,11 @@ async def _resolve_direct_items(
 
 # ── 加载与序列化 ──────────────────────────────────────
 
-async def _load_rfq(
-    db: AsyncSession, rfq_id: int, *, for_update: bool = False,
-) -> Rfq | None:
-    """加载询价单,过滤软删。for_update=True 时加行锁。"""
-    q = select(Rfq).where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
-    if not for_update:
-        q = q.options(selectinload(Rfq.items))
-    if for_update:
-        q = q.with_for_update()
-    row = await db.execute(q)
-    return row.scalar_one_or_none()
-
-
 async def _load_and_serialize(
     db: AsyncSession, rfq_id: int, *, is_operator: bool,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """重新加载并序列化。"""
-    rfq = await _load_rfq(db, rfq_id)
+    rfq = await load_rfq(db, rfq_id, with_items=True)
     if not rfq:
         raise RfqNotFoundError()
     return _serialize_rfq(rfq, is_operator=is_operator)

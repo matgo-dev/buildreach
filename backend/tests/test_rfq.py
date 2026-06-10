@@ -533,3 +533,43 @@ async def test_buyer_scope_violation_detail(client, db_session):
     # 同组织买方可以看到
     r = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
     assert r.status_code == 200
+
+
+# ── 软删一致性(loader 收敛验证) ─────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_soft_deleted_rfq_invisible(client, db_session):
+    """软删 RFQ → 详情/报价列表均返回 404,loader 规则一致。"""
+    from datetime import datetime, timezone
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+
+    r = await client.post("/api/v1/rfqs", headers=bh, json={
+        "source_type": "DIRECT",
+        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+    })
+    assert r.status_code == 200
+    rfq_id = r.json()["data"]["id"]
+
+    # 手动软删
+    rfq = (await db_session.execute(
+        select(Rfq).where(Rfq.id == rfq_id)
+    )).scalar_one()
+    rfq.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    rfq.deleted_by = 1
+    await db_session.commit()
+
+    # BUYER 详情 → 404
+    r = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
+    assert r.status_code == 404
+
+    # OPERATOR 详情 → 404
+    r = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=op)
+    assert r.status_code == 404
+
+    # 报价列表 → 404
+    r = await client.get(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op)
+    assert r.status_code == 404
