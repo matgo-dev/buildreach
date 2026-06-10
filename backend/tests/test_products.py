@@ -374,16 +374,26 @@ async def test_create_sku_duplicate_code(client: AsyncClient):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("bad_unit", ["pcs", "件", "INVALID"])
-async def test_create_sku_invalid_unit_rejected(client: AsyncClient, bad_unit: str):
-    """非法 unit code（小写 / 中文 / 未注册值）被 422 拒绝。"""
+async def test_create_product_invalid_unit_rejected(client: AsyncClient, bad_unit: str):
+    """非法 unit code（小写 / 中文 / 未注册值）在 SPU 创建时被 422 拒绝。
+
+    v0.2 重构后 unit 从 SKU 移至 SPU 级,校验在 ProductCreate schema 的
+    SkuUnitCode Literal 类型上。
+    """
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, f"UNIT-BAD-{bad_unit}")
 
     r = await client.post(
-        f"/api/v1/operator/products/{pid}/skus",
+        "/api/v1/operator/products",
         headers=headers,
-        json={"sku_code": f"UNIT-BAD-SKU-{bad_unit}", "unit": bad_unit, "moq": 100, "source_lang": "zh"},
+        json={
+            "category_code": cat_code,
+            "spu_code": f"UNIT-BAD-{bad_unit}",
+            "name": "Unit Bad Test",
+            "unit": bad_unit,
+            "moq": 100,
+            "source_lang": "zh",
+        },
     )
     assert r.status_code == 422
     assert r.json()["code"] == 42200
