@@ -479,7 +479,27 @@ class RfqDuplicateSkuError(BusinessError):
         )
 
 
-# ── 报价域 405xx(接 RFQ 40509)──────────────────────────────
+class RfqSourceNotAllowedError(BusinessError):
+    """40514 — 运营仅限 DIRECT 来源,不允许其他来源类型。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40514,
+            "Source type not allowed for operator",
+            message_key=MessageKey.RFQ_SOURCE_NOT_ALLOWED,
+        )
+
+
+class RfqNoGenerationFailedError(BusinessError):
+    """40515 — rfq_no 生成重试耗尽。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40515,
+            "RFQ number generation failed after retries",
+            message_key=MessageKey.RFQ_NO_GENERATION_FAILED,
+        )
+
+
+# ── 报价域 405xx(接 RFQ 40514)──────────────────────────────
 
 
 class QuoteRfqStateInvalidError(BusinessError):

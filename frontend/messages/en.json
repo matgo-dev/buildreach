@@ -94,7 +94,9 @@
       "item_not_purchasable": "Some SKUs are not available for purchase",
       "not_found": "RFQ not found",
       "state_invalid": "Invalid RFQ state transition",
-      "duplicate_sku": "Duplicate SKU in request items"
+      "duplicate_sku": "Duplicate SKU in request items",
+      "source_not_allowed": "Operator can only create RFQ via direct entry",
+      "no_generation_failed": "RFQ number generation failed, please retry"
     },
     "quote": {
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",
