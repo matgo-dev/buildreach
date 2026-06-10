@@ -59,7 +59,9 @@ export function formatDate(
   locale: string,
   options?: Intl.DateTimeFormatOptions
 ): string {
-  const date = new Date(isoString);
+  // 后端存 UTC naive datetime（无时区后缀），追加 Z 让浏览器按 UTC 解析后自动转本地时区
+  const normalized = /[Z+\-]\d{0,2}:?\d{0,2}$/.test(isoString) ? isoString : isoString + "Z";
+  const date = new Date(normalized);
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "2-digit",
@@ -78,7 +80,8 @@ export function formatRelativeTime(
   isoString: string,
   locale: string
 ): string {
-  const date = new Date(isoString);
+  const normalized = /[Z+\-]\d{0,2}:?\d{0,2}$/.test(isoString) ? isoString : isoString + "Z";
+  const date = new Date(normalized);
   const now = Date.now();
   const diffMs = date.getTime() - now;
   const absDiffMs = Math.abs(diffMs);
