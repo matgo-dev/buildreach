@@ -191,9 +191,7 @@ async def test_business_permissions_isolated_per_role(client):
     b_perms = set((await client.get(
         "/api/v1/auth/me", headers={"Authorization": f"Bearer {b_token}"}
     )).json()["data"]["permissions"])
-    # BUYER 应有(采购流程 + 公开池只读)
-    assert Permissions.PROJECT_READ in b_perms
-    assert Permissions.PROJECT_WRITE in b_perms
+    # BUYER 应有(采购流程 + 公开池只读,单边模型:无 project/purchase_list)
     assert Permissions.RFQ_CREATE in b_perms
     assert Permissions.CART_WRITE in b_perms
     assert Permissions.SUPPLIER_READ in b_perms
@@ -218,12 +216,13 @@ async def test_business_permissions_isolated_per_role(client):
     # SUPPLIER 应有
     assert Permissions.SUPPLIER_WRITE in s_perms
     assert Permissions.PRODUCT_WRITE in s_perms
-    assert Permissions.RFQ_RESPOND in s_perms
-    assert Permissions.QUOTE_WRITE in s_perms
     assert Permissions.ORDER_CHECKIN in s_perms
     assert Permissions.MEMBERSHIP_WRITE in s_perms
-    # SUPPLIER 不应有
-    assert Permissions.PROJECT_READ not in s_perms
+    # SUPPLIER 不应有(单边模型:无 rfq/quote 权限)
+    assert Permissions.RFQ_READ not in s_perms
+    assert Permissions.RFQ_RESPOND not in s_perms
+    assert Permissions.QUOTE_READ not in s_perms
+    assert Permissions.QUOTE_WRITE not in s_perms
     assert Permissions.CART_READ not in s_perms
     assert Permissions.RFQ_CREATE not in s_perms
     assert Permissions.SUPPLIER_APPROVE not in s_perms
@@ -246,7 +245,7 @@ async def test_admin_has_system_only_no_business(client):
     # 业务权限点全部不应有
     for p in [
         Permissions.SUPPLIER_READ, Permissions.PRODUCT_READ, Permissions.COUNTRY_READ,
-        Permissions.PROJECT_READ, Permissions.PURCHASE_LIST_READ, Permissions.CART_READ,
+        Permissions.CART_READ,
         Permissions.RFQ_READ, Permissions.QUOTE_READ, Permissions.ORDER_READ,
         Permissions.MEMBERSHIP_READ, Permissions.RISK_READ,
         Permissions.SUPPLIER_APPROVE, Permissions.PRODUCT_APPROVE, Permissions.COUNTRY_WRITE,
@@ -262,12 +261,13 @@ async def test_operator_has_business_no_system(client, superadmin_headers):
     perms = set((await client.get(
         "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
     )).json()["data"]["permissions"])
-    # 业务应有
+    # 业务应有(单边模型:运营代客询价 + 回填报价)
     assert Permissions.SUPPLIER_APPROVE in perms
     assert Permissions.PRODUCT_APPROVE in perms
     assert Permissions.COUNTRY_WRITE in perms
     assert Permissions.RISK_READ in perms
-    assert Permissions.PROJECT_READ in perms
+    assert Permissions.RFQ_CREATE in perms
+    assert Permissions.QUOTE_WRITE in perms
     # 系统权限不应有
     for p in [Permissions.USER_MANAGE, Permissions.ROLE_MANAGE,
               Permissions.PERMISSION_MANAGE, Permissions.SYSTEM_CONFIG, Permissions.SYSTEM_AUDIT]:

@@ -380,7 +380,7 @@ async def test_me_returns_full_profile(client):
     data = r.json()["data"]
     assert data["email"] == BUYER_PAYLOAD["email"]
     assert "BUYER" in data["roles"]
-    assert "project:read" in data["permissions"]  # BUYER 有项目读权限(v3 §3)
+    assert "rfq:read" in data["permissions"]  # BUYER 有询价读权限(单边模型)
     assert data["organization"]["type"] == "BUYER_ORG"
     assert data["organization"]["name"] == "中建三局"
     # PRD v1.3 §5.4:/auth/me 必须返回 organization.status
