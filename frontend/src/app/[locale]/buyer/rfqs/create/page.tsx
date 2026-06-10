@@ -9,6 +9,7 @@ import {
   Send,
   AlertTriangle,
   Trash2,
+  ShoppingCart,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -381,8 +382,16 @@ function RfqCreateContent() {
               ))}
               {cartItems.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-gray-400">
-                    {t("itemsAllMissing")}
+                  <td colSpan={4} className="px-5 py-12 text-center">
+                    <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-gray-200" />
+                    <p className="text-sm text-gray-400">{t("itemsAllMissing")}</p>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/${locale}/buyer/cart`)}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+                    >
+                      {t("backToCart")}
+                    </button>
                   </td>
                 </tr>
               )}
