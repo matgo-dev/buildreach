@@ -64,3 +64,10 @@ class MessageKey:
     CART_QUANTITY_INVALID = "error.cart.quantity_invalid"
     CART_ITEM_NOT_FOUND = "error.cart.item_not_found"
     BUYER_ORG_REQUIRED = "error.cart.buyer_org_required"
+
+    # rfq — 询价单模块 405xx
+    RFQ_NO_VALID_ITEMS = "error.rfq.no_valid_items"
+    RFQ_ITEM_NOT_PURCHASABLE = "error.rfq.item_not_purchasable"
+    RFQ_NOT_FOUND = "error.rfq.not_found"
+    RFQ_STATE_INVALID = "error.rfq.state_invalid"
+    RFQ_DUPLICATE_SKU = "error.rfq.duplicate_sku"

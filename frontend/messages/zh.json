@@ -88,6 +88,13 @@
       "quantity_invalid": "数量无效",
       "item_not_found": "购物车商品不存在",
       "buyer_org_required": "当前用户无可用买方组织"
+    },
+    "rfq": {
+      "no_valid_items": "提交无有效行项目",
+      "item_not_purchasable": "部分商品规格不可购买",
+      "not_found": "询价单不存在",
+      "state_invalid": "询价单状态不允许此操作",
+      "duplicate_sku": "请求中包含重复的商品规格"
     }
   },
   "category": {

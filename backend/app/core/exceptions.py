@@ -427,5 +427,57 @@ class BuyerOrgRequiredError(BusinessError):
         )
 
 
+class RfqNoValidItemsError(BusinessError):
+    """40505 — 提交无有效行。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40505,
+            "No valid items for RFQ submission",
+            message_key=MessageKey.RFQ_NO_VALID_ITEMS,
+        )
+
+
+class RfqItemNotPurchasableError(BusinessError):
+    """40506 — SKU 不可购(data 列 offending sku)。"""
+    def __init__(self, offending_sku_ids: list[int]):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40506,
+            "Some SKUs are not purchasable",
+            data={"offending_sku_ids": offending_sku_ids},
+            message_key=MessageKey.RFQ_ITEM_NOT_PURCHASABLE,
+        )
+
+
+class RfqNotFoundError(BusinessError):
+    """40507 — 询价单不存在(含越权,不暴露存在性)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_404_NOT_FOUND, 40507,
+            "RFQ not found",
+            message_key=MessageKey.RFQ_NOT_FOUND,
+        )
+
+
+class RfqStateInvalidError(BusinessError):
+    """40508 — 非法状态转换。"""
+    def __init__(self, current_status: str | None = None):
+        msg = f"Invalid RFQ state transition from {current_status}" if current_status else "Invalid RFQ state transition"
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40508,
+            msg,
+            message_key=MessageKey.RFQ_STATE_INVALID,
+        )
+
+
+class RfqDuplicateSkuError(BusinessError):
+    """40509 — DIRECT 重复 SKU。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40509,
+            "Duplicate SKU in request items",
+            message_key=MessageKey.RFQ_DUPLICATE_SKU,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

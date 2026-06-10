@@ -88,6 +88,13 @@
       "quantity_invalid": "Invalid quantity",
       "item_not_found": "Cart item not found",
       "buyer_org_required": "No active buyer organization available"
+    },
+    "rfq": {
+      "no_valid_items": "No valid items for RFQ submission",
+      "item_not_purchasable": "Some SKUs are not available for purchase",
+      "not_found": "RFQ not found",
+      "state_invalid": "Invalid RFQ state transition",
+      "duplicate_sku": "Duplicate SKU in request items"
     }
   },
   "category": {
