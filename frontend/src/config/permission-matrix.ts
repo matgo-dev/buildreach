@@ -76,7 +76,7 @@ export const RESOURCES: Record<ResourceCode, { code: ResourceCode; name: string;
   product:       { code: "product",       name: "商品 SKU",   module: "业务-档案" },
   country:       { code: "country",       name: "国别准入",   module: "业务-档案" },
   credit:        { code: "credit",        name: "信用评估",   module: "业务-档案" },
-  cart:          { code: "cart",          name: "购物车",     module: "业务-交易" },
+  cart:          { code: "cart",          name: "询价篮",     module: "业务-交易" },
   rfq:           { code: "rfq",           name: "询价单",     module: "业务-交易" },
   quote:         { code: "quote",         name: "报价",       module: "业务-交易" },
   order:         { code: "order",         name: "订单",       module: "业务-交易" },

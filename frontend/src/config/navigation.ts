@@ -98,7 +98,7 @@ export const WORKSPACES: Workspace[] = [
           { path: "/mall",                  label: "严选商城",   labelEn: "Mall",           icon: ShoppingBag,     resource: "product",       requiredPermissions: [],                          description: "B2B 工业品采购前台" },
           { path: "/buyer/dashboard",      label: "工作台",     labelEn: "Dashboard",      icon: LayoutDashboard, resource: null,            requiredPermissions: [],                          description: "我的待办、概览、最近活动" },
           { path: "/buyer/category-analysis", label: "品类分析", labelEn: "Category Analysis", icon: BarChart3, resource: null, requiredPermissions: [], description: "品类供应链全景分析（demo）" },
-          { path: "/buyer/cart",           label: "购物车",     labelEn: "Cart",           icon: ShoppingCart,    resource: "cart",          requiredPermissions: [Permissions.CART_READ],          description: "已加入清单待询价的商品" },
+          { path: "/buyer/cart",           label: "询价篮",     labelEn: "Inquiry Basket",  icon: ShoppingCart,    resource: "cart",          requiredPermissions: [Permissions.CART_READ],          description: "已加入清单待询价的商品" },
           { path: "/buyer/rfqs",           label: "询价管理",   labelEn: "RFQ",            icon: Send,            resource: "rfq",           requiredPermissions: [Permissions.RFQ_READ],           description: "我发起的询价单与报价比较" },
           { path: "/buyer/orders",         label: "订单管理",   labelEn: "Orders",         icon: Receipt,         resource: "order",         requiredPermissions: [Permissions.ORDER_READ],         description: "订单列表 + 12 节点履约追踪" },
         ],
