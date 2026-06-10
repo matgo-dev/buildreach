@@ -50,6 +50,14 @@ from app.db.models.score_subitem import ScoreSubitem
 from app.db.models.supplier_member import SupplierMember
 from app.db.models.supplier_organization import SupplierOrganization
 from app.db.models.translation_glossary import TranslationGlossary
+from app.db.models.cart import Cart
+from app.db.models.cart_item import CartItem
+from app.db.models.rfq import Rfq, RfqSource, RfqStatus, QuoteStatus, TradeTerm
+from app.db.models.rfq_item import RfqItem
+from app.db.models.rfq_quote import RfqQuote
+from app.db.models.rfq_quote_item import RfqQuoteItem
+from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
+from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.user import User
 from app.db.models.user_role import UserRole
 __all__ = [
@@ -112,4 +120,17 @@ __all__ = [
     "MessageRole",
     # i18n
     "TranslationGlossary",
+    # cart / rfq
+    "Cart",
+    "CartItem",
+    "Rfq",
+    "RfqStatus",
+    "RfqSource",
+    "TradeTerm",
+    "RfqItem",
+    "RfqQuote",
+    "RfqQuoteItem",
+    "RfqQuoteItemTier",
+    "RfqQuoteItemCost",
+    "QuoteStatus",
 ]
