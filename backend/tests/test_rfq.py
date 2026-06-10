@@ -244,7 +244,7 @@ async def test_operator_cart_source_rejected(client, db_session):
         "buyer_org_id": buyer_org_id,
     })
     assert r.status_code == 422
-    assert r.json()["code"] == 40505
+    assert r.json()["code"] == 40514
 
 
 # ── 校验 ────────────────────────────────────────────────

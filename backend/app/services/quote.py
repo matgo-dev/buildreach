@@ -9,6 +9,8 @@ import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from app.core.datetime import to_naive_utc
+
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -189,10 +191,7 @@ async def create_quote(
     # 币种:header 缺省继承 RFQ 目标币种
     currency = payload.header.currency or rfq.target_currency or "USD"
 
-    # valid_until: 带 tz 转 UTC 后去 tzinfo
-    valid_until = payload.header.valid_until
-    if valid_until and valid_until.tzinfo is not None:
-        valid_until = valid_until.astimezone(timezone.utc).replace(tzinfo=None)
+    valid_until = to_naive_utc(payload.header.valid_until)
 
     # quote_no 生成 + SAVEPOINT 插入
     quote_no = await _generate_quote_no(db)

@@ -71,6 +71,8 @@ class MessageKey:
     RFQ_NOT_FOUND = "error.rfq.not_found"
     RFQ_STATE_INVALID = "error.rfq.state_invalid"
     RFQ_DUPLICATE_SKU = "error.rfq.duplicate_sku"
+    RFQ_SOURCE_NOT_ALLOWED = "error.rfq.source_not_allowed"
+    RFQ_NO_GENERATION_FAILED = "error.rfq.no_generation_failed"
 
     # quote — 报价模块 405xx
     QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"

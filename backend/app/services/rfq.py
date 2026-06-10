@@ -10,6 +10,8 @@ import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from app.core.datetime import to_naive_utc
+
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,8 +26,10 @@ from app.core.exceptions import (
     BuyerOrgRequiredError,
     RfqDuplicateSkuError,
     RfqItemNotPurchasableError,
+    RfqNoGenerationFailedError,
     RfqNoValidItemsError,
     RfqNotFoundError,
+    RfqSourceNotAllowedError,
     RfqStateInvalidError,
 )
 from app.core.i18n import get_localized
@@ -138,7 +142,7 @@ async def create_rfq(
     elif is_operator:
         # 运营仅 DIRECT
         if payload.source_type != SourceType.DIRECT:
-            raise RfqNoValidItemsError()
+            raise RfqSourceNotAllowedError()
         if not payload.buyer_org_id:
             raise BuyerOrgRequiredError()
         await _validate_buyer_org_by_id(db, payload.buyer_org_id)
@@ -210,7 +214,7 @@ async def create_rfq(
                 contact_email=payload.contact_email,
                 remark=payload.remark,
                 requested_delivery_place=payload.requested_delivery_place,
-                expected_delivery_date=payload.expected_delivery_date,
+                expected_delivery_date=to_naive_utc(payload.expected_delivery_date),
                 target_currency=payload.target_currency,
                 required_certifications=payload.required_certifications or [],
                 attachment_urls=payload.attachment_urls or [],
@@ -237,7 +241,7 @@ async def create_rfq(
             break
 
     if rfq is None:
-        raise RfqNoValidItemsError()  # 极端情况:重试耗尽
+        raise RfqNoGenerationFailedError()  # 极端情况:重试耗尽
 
     # ── 5. SAVEPOINT 成功后 add RfqItem ──
     for row in item_rows:
@@ -470,13 +474,16 @@ async def _resolve_direct_items(
 
 # ── 加载与序列化 ──────────────────────────────────────
 
-async def _load_rfq(db: AsyncSession, rfq_id: int) -> Rfq | None:
-    """加载询价单(含行项目),过滤软删。"""
-    row = await db.execute(
-        select(Rfq)
-        .where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
-        .options(selectinload(Rfq.items))
-    )
+async def _load_rfq(
+    db: AsyncSession, rfq_id: int, *, for_update: bool = False,
+) -> Rfq | None:
+    """加载询价单,过滤软删。for_update=True 时加行锁。"""
+    q = select(Rfq).where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
+    if not for_update:
+        q = q.options(selectinload(Rfq.items))
+    if for_update:
+        q = q.with_for_update()
+    row = await db.execute(q)
     return row.scalar_one_or_none()
 
 
