@@ -82,6 +82,12 @@
       "illegal_transition": "Cannot transition from {current} to {target}",
       "image_not_owned": "Image {image_id} does not belong to product {product_id}",
       "not_editable": "Product is not editable in {current_status} status"
+    },
+    "cart": {
+      "sku_not_purchasable": "This SKU is not available for purchase",
+      "quantity_invalid": "Invalid quantity",
+      "item_not_found": "Cart item not found",
+      "buyer_org_required": "No active buyer organization available"
     }
   },
   "category": {

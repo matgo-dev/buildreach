@@ -14,7 +14,8 @@
   02 | 商品             | 预留
   03 | 品类             | 预留
   04 | 信用             | 预留(credit 类型化时填)
-  05–08 | 预留           | —
+  05 | 交易(购物车/询价/报价) | 40501–40504
+  06–08 | 预留           | —
   09 | 注册冲突聚合     | 40901/40902/40903(前端冻结,沿用)
 
 兜底码:
@@ -380,6 +381,49 @@ class ImageNotOwnedError(BusinessError):
             f"Image {image_id} does not belong to product {product_id}",
             message_key=MessageKey.PRODUCT_IMAGE_NOT_OWNED,
             message_params={"image_id": image_id, "product_id": product_id},
+        )
+
+
+# ── 交易域 405xx ──────────────────────────────────────────
+
+
+class CartSkuNotPurchasableError(BusinessError):
+    """40501 — SKU 不可购(不存在/未上架/已删/父 SPU 不可购)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40501,
+            "SKU is not purchasable",
+            message_key=MessageKey.CART_SKU_NOT_PURCHASABLE,
+        )
+
+
+class CartQuantityInvalidError(BusinessError):
+    """40502 — 数量非法(≤0 或缺失)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40502,
+            "Invalid quantity",
+            message_key=MessageKey.CART_QUANTITY_INVALID,
+        )
+
+
+class CartItemNotFoundError(BusinessError):
+    """40503 — 购物车行不存在(含不属于当前用户,不暴露存在性)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_404_NOT_FOUND, 40503,
+            "Cart item not found",
+            message_key=MessageKey.CART_ITEM_NOT_FOUND,
+        )
+
+
+class BuyerOrgRequiredError(BusinessError):
+    """40504 — 当前用户无可用买方组织。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_403_FORBIDDEN, 40504,
+            "Active buyer organization required",
+            message_key=MessageKey.BUYER_ORG_REQUIRED,
         )
 
 

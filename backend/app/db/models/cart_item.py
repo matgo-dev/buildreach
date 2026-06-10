@@ -35,3 +35,4 @@ class CartItem(Base, TimestampUpdateMixin):
 
     # relationships
     cart: Mapped["Cart"] = relationship("Cart", back_populates="items")
+    sku: Mapped["ProductSku"] = relationship("ProductSku", lazy="select")

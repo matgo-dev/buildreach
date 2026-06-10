@@ -7,6 +7,7 @@ from app.api.v1 import (
     admin_audit,
     admin_users,
     auth,
+    cart,
     categories,
     credit,
     debug,
@@ -27,6 +28,7 @@ api_router.include_router(credit.router)
 api_router.include_router(products.router)
 api_router.include_router(operator_products.router)
 api_router.include_router(suppliers.router)
+api_router.include_router(cart.router)
 
 # /api/v1/_debug/* 仅当 ENABLE_DEBUG_API=true 时挂载(默认 true,生产应关)
 if settings.ENABLE_DEBUG_API:

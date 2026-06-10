@@ -58,3 +58,9 @@ class MessageKey:
     PRODUCT_CATEGORY_NOT_LEAF = "error.product.category_not_leaf"
     PRODUCT_INVALID_RANGE = "error.product.invalid_range"
     PRODUCT_IMAGE_NOT_OWNED = "error.product.image_not_owned"
+
+    # cart — 购物车模块 405xx
+    CART_SKU_NOT_PURCHASABLE = "error.cart.sku_not_purchasable"
+    CART_QUANTITY_INVALID = "error.cart.quantity_invalid"
+    CART_ITEM_NOT_FOUND = "error.cart.item_not_found"
+    BUYER_ORG_REQUIRED = "error.cart.buyer_org_required"
