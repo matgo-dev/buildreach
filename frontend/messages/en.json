@@ -576,7 +576,9 @@
     "itemCount": "{count} items",
     "referencePrice": "Ref. Price",
     "referencePriceUnavailable": "—",
-    "deletePartialFail": "{failed} items failed to remove, list refreshed"
+    "deletePartialFail": "{failed} items failed to remove, list refreshed",
+    "productInfo": "Product Info",
+    "quantity": "Quantity"
   },
   "rfq": {
     "title": "My Inquiries",

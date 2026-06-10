@@ -576,7 +576,9 @@
     "itemCount": "{count} 件商品",
     "referencePrice": "参考价",
     "referencePriceUnavailable": "—",
-    "deletePartialFail": "{failed} 件删除失败，已刷新列表"
+    "deletePartialFail": "{failed} 件删除失败，已刷新列表",
+    "productInfo": "商品信息",
+    "quantity": "数量"
   },
   "rfq": {
     "title": "询价管理",
