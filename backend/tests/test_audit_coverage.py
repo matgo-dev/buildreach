@@ -56,6 +56,11 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers"),
     ("PUT", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers/{ps_id}"),
     ("DELETE", "/api/v1/operator/products/{product_id}/skus/{sku_id}/suppliers/{ps_id}"),
+    # cart — 购物车管理写操作
+    ("POST", "/api/v1/cart/items"),
+    ("PATCH", "/api/v1/cart/items/{item_id}"),
+    ("DELETE", "/api/v1/cart/items/{item_id}"),
+    ("DELETE", "/api/v1/cart/items"),
 }
 
 
