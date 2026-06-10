@@ -5,7 +5,6 @@ monkeypatch manual_harvest 为 no-op,只验证 API 层(不真跑后台抓取)。
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.models import CreditCompany
 
@@ -37,15 +36,11 @@ def _auth(t: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {t}"}
 
 
-async def _make_company(test_engine, country_code: str, regno: str) -> int:
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        c = CreditCompany(name=f"{country_code} Co", country_code=country_code, registration_no=regno)
-        db.add(c)
-        await db.flush()
-        cid = c.id
-        await db.commit()
-        return cid
+async def _make_company(db_session, country_code: str, regno: str) -> int:
+    c = CreditCompany(name=f"{country_code} Co", country_code=country_code, registration_no=regno)
+    db_session.add(c)
+    await db_session.flush()
+    return c.id
 
 
 @pytest.fixture
@@ -59,8 +54,8 @@ def patched_harvest(monkeypatch):
     return called
 
 
-async def test_operator_triggers_kh_company(client, test_engine, patched_harvest):
-    cid = await _make_company(test_engine, "KH", "KH-API-1")
+async def test_operator_triggers_kh_company(client, db_session, patched_harvest):
+    cid = await _make_company(db_session, "KH", "KH-API-1")
     t = await _operator_token(client)
     r = await client.post(f"/api/v1/credit/companies/{cid}/harvest", headers=_auth(t))
     assert r.status_code == 200, r.text
@@ -69,8 +64,8 @@ async def test_operator_triggers_kh_company(client, test_engine, patched_harvest
     assert patched_harvest["force_refresh"] is False
 
 
-async def test_force_refresh_passed_through(client, test_engine, patched_harvest):
-    cid = await _make_company(test_engine, "KH", "KH-API-2")
+async def test_force_refresh_passed_through(client, db_session, patched_harvest):
+    cid = await _make_company(db_session, "KH", "KH-API-2")
     t = await _operator_token(client)
     r = await client.post(
         f"/api/v1/credit/companies/{cid}/harvest?force_refresh=true", headers=_auth(t)
@@ -79,8 +74,8 @@ async def test_force_refresh_passed_through(client, test_engine, patched_harvest
     assert patched_harvest["force_refresh"] is True
 
 
-async def test_non_kh_company_rejected(client, test_engine, patched_harvest):
-    cid = await _make_company(test_engine, "CN", "CN-API-1")
+async def test_non_kh_company_rejected(client, db_session, patched_harvest):
+    cid = await _make_company(db_session, "CN", "CN-API-1")
     t = await _operator_token(client)
     r = await client.post(f"/api/v1/credit/companies/{cid}/harvest", headers=_auth(t))
     assert r.status_code == 400

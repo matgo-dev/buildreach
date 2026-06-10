@@ -42,12 +42,31 @@ SYNC_DSN = prepare_sync_url(TEST_DSN)
 
 @pytest.fixture
 def sync_db():
+    """同步 session，用于测试 sync 导入脚本。
+
+    使用 SAVEPOINT 隔离：不破坏 session-scope 的 async _engine schema 和 seed 数据，
+    测后回滚恢复。先 TRUNCATE categories/attr_templates 清除 seed，在 SAVEPOINT 内操作。
+    """
+    from sqlalchemy import event, text
+
     engine = create_engine(SYNC_DSN, poolclass=None)
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    with Session(engine) as s:
-        yield s
-    Base.metadata.drop_all(engine)
+    conn = engine.connect()
+    txn = conn.begin()
+    # 在外层事务内清空品类，给 import 脚本一个干净的起点
+    conn.execute(text("TRUNCATE categories, attr_templates RESTART IDENTITY CASCADE"))
+    conn.begin_nested()  # SAVEPOINT
+    session = Session(bind=conn)
+
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(sess, transaction):
+        if transaction.nested and not transaction._parent.nested:
+            sess.begin_nested()
+
+    yield session
+
+    session.close()
+    txn.rollback()  # 回滚外层事务，恢复 seed 数据
+    conn.close()
     engine.dispose()
 
 
