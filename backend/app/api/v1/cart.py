@@ -1,15 +1,13 @@
 """购物车路由 — 买方侧。
 
 所有写端点返回最新 CartPublic;GET 无车返回虚拟空车。
-审计:写路径成功后 write_audit(commit=False) 同事务;GET 与校验错误不写审计。
+审计:由 service 在唯一 commit 前 write_audit(commit=False) 同事务;route 不自行 commit。
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.audit.constants import AuditAction, AuditResourceType
-from app.audit.logger import write_audit
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import success
 from app.db.session import get_db
@@ -41,19 +39,7 @@ async def add_item(
     current: CurrentUser = Depends(require_permission(Permissions.CART_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    cart = await cart_svc.add_item(db, current, data.sku_id, data.quantity)
-    await write_audit(
-        db,
-        resource_type=AuditResourceType.CART,
-        action=AuditAction.ADD_ITEM,
-        user_id=current.id,
-        user_email=current.email,
-        resource_id=data.sku_id,
-        request=request,
-        extra={"sku_id": data.sku_id, "quantity": str(data.quantity)},
-        commit=False,
-    )
-    await db.commit()
+    cart = await cart_svc.add_item(db, current, data.sku_id, data.quantity, request=request)
     return success(cart.model_dump())
 
 
@@ -65,19 +51,7 @@ async def update_item(
     current: CurrentUser = Depends(require_permission(Permissions.CART_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    cart = await cart_svc.update_item_qty(db, current, item_id, data.quantity)
-    await write_audit(
-        db,
-        resource_type=AuditResourceType.CART,
-        action=AuditAction.UPDATE_ITEM,
-        user_id=current.id,
-        user_email=current.email,
-        resource_id=item_id,
-        request=request,
-        extra={"item_id": item_id, "quantity": str(data.quantity)},
-        commit=False,
-    )
-    await db.commit()
+    cart = await cart_svc.update_item_qty(db, current, item_id, data.quantity, request=request)
     return success(cart.model_dump())
 
 
@@ -88,18 +62,7 @@ async def remove_item(
     current: CurrentUser = Depends(require_permission(Permissions.CART_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    cart = await cart_svc.remove_item(db, current, item_id)
-    await write_audit(
-        db,
-        resource_type=AuditResourceType.CART,
-        action=AuditAction.REMOVE_ITEM,
-        user_id=current.id,
-        user_email=current.email,
-        resource_id=item_id,
-        request=request,
-        commit=False,
-    )
-    await db.commit()
+    cart = await cart_svc.remove_item(db, current, item_id, request=request)
     return success(cart.model_dump())
 
 
@@ -109,15 +72,5 @@ async def clear_cart(
     current: CurrentUser = Depends(require_permission(Permissions.CART_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    cart = await cart_svc.clear_cart(db, current)
-    await write_audit(
-        db,
-        resource_type=AuditResourceType.CART,
-        action=AuditAction.CLEAR,
-        user_id=current.id,
-        user_email=current.email,
-        request=request,
-        commit=False,
-    )
-    await db.commit()
+    cart = await cart_svc.clear_cart(db, current, request=request)
     return success(cart.model_dump())
