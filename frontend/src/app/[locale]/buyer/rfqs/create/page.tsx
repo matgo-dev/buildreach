@@ -370,13 +370,8 @@ function RfqCreateContent() {
                   <td className="px-3 py-3 text-center">
                     <button
                       type="button"
-                      disabled={cartItems.length <= 1}
                       onClick={() => handleRemoveItem(item.item_id)}
-                      className={`rounded p-1 transition-colors ${
-                        cartItems.length <= 1
-                          ? "text-gray-200 cursor-not-allowed"
-                          : "text-gray-400 hover:bg-red-50 hover:text-red-500"
-                      }`}
+                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
                       title={cartItems.length <= 1 ? undefined : "移除"}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
