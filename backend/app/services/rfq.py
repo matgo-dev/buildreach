@@ -45,6 +45,7 @@ from app.schemas.rfq import (
     SourceType,
 )
 from app.services import product as product_svc
+from app.services import quote as quote_svc
 
 logger = logging.getLogger(__name__)
 
@@ -333,7 +334,7 @@ async def list_rfqs(
 async def get_rfq(
     db: AsyncSession, user: CurrentUser, rfq_id: int,
 ) -> RfqBuyerPublic | RfqOperatorView:
-    """详情,scope 校验。"""
+    """详情,scope 校验 + 报价层叠。"""
     is_buyer = "BUYER" in user.roles
     is_operator = "OPERATOR" in user.roles
 
@@ -347,7 +348,12 @@ async def get_rfq(
         if rfq.buyer_org_id != org.id:
             raise RfqNotFoundError()
 
-    return _serialize_rfq(rfq, is_operator=is_operator)
+    # 报价层叠
+    quote_data = await quote_svc.load_quote_for_rfq_detail(
+        db, rfq.id, is_operator=is_operator,
+    )
+
+    return _serialize_rfq(rfq, is_operator=is_operator, quote_data=quote_data)
 
 
 # ── 撤销 ──────────────────────────────────────────────
@@ -506,9 +512,9 @@ def _serialize_item(item: RfqItem, locale: str = "zh") -> RfqItemPublic:
 
 
 def _serialize_rfq(
-    rfq: Rfq, *, is_operator: bool,
+    rfq: Rfq, *, is_operator: bool, quote_data: object = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
-    """按角色序列化询价单。"""
+    """按角色序列化询价单。quote_data 由详情接口传入(层叠报价)。"""
     active_items = [
         it for it in rfq.items
         if getattr(it, "deleted_at", None) is None
@@ -516,7 +522,7 @@ def _serialize_rfq(
     items = [_serialize_item(it) for it in active_items]
 
     if is_operator:
-        return RfqOperatorView(
+        result = RfqOperatorView(
             id=rfq.id,
             rfq_no=rfq.rfq_no,
             status=rfq.status,
@@ -539,8 +545,11 @@ def _serialize_rfq(
             updated_at=rfq.updated_at,
             items=items,
         )
+        if quote_data is not None:
+            result.quotes = quote_data
+        return result
 
-    return RfqBuyerPublic(
+    result = RfqBuyerPublic(
         id=rfq.id,
         rfq_no=rfq.rfq_no,
         status=rfq.status,
@@ -558,3 +567,6 @@ def _serialize_rfq(
         updated_at=rfq.updated_at,
         items=items,
     )
+    if quote_data is not None:
+        result.quote = quote_data
+    return result

@@ -95,6 +95,12 @@
       "not_found": "询价单不存在",
       "state_invalid": "询价单状态不允许此操作",
       "duplicate_sku": "请求中包含重复的商品规格"
+    },
+    "quote": {
+      "rfq_state_invalid": "当前询价单状态不允许此报价操作",
+      "not_found": "报价不存在",
+      "item_mismatch": "报价行项不属于此询价单或存在重复",
+      "lines_incomplete": "报价未覆盖全部询价行项"
     }
   },
   "category": {

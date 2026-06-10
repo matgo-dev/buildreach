@@ -95,6 +95,12 @@
       "not_found": "RFQ not found",
       "state_invalid": "Invalid RFQ state transition",
       "duplicate_sku": "Duplicate SKU in request items"
+    },
+    "quote": {
+      "rfq_state_invalid": "Quote operation not allowed for current RFQ state",
+      "not_found": "Quote not found",
+      "item_mismatch": "Quote item does not belong to this RFQ or is duplicated",
+      "lines_incomplete": "Quote does not cover all RFQ items"
     }
   },
   "category": {
