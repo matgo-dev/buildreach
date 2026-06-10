@@ -13,7 +13,6 @@ import {
   Globe,
   Grid3x3,
   HelpCircle,
-  Inbox,
   Inspect,
   KeyRound,
   LayoutDashboard,
@@ -119,8 +118,7 @@ export const WORKSPACES: Workspace[] = [
           { path: "/supplier/onboarding", label: "企业入驻",   labelEn: "Onboarding",  icon: FileBadge,       resource: "supplier",   requiredPermissions: [Permissions.SUPPLIER_WRITE],     description: "完善企业资料与上传资质" },
           { path: "/supplier/membership", label: "会员中心",   labelEn: "Membership",  icon: KeyRound,        resource: "membership", requiredPermissions: [Permissions.MEMBERSHIP_READ],    description: "会员状态与缴费记录" },
           { path: "/supplier/products",   label: "商品管理",   labelEn: "Products",    icon: Package,         resource: "product",    requiredPermissions: [Permissions.PRODUCT_READ],       description: "SKU 列表 / 新增 / 国别准入资质" },
-          { path: "/supplier/rfqs",       label: "收到的询价", labelEn: "RFQ",         icon: Inbox,           resource: "rfq",        requiredPermissions: [Permissions.RFQ_RESPOND],        description: "收到的询价单与响应详情" },
-          { path: "/supplier/quotes",     label: "我的报价",   labelEn: "Quotes",      icon: Send,            resource: "quote",      requiredPermissions: [Permissions.QUOTE_READ],         description: "已提交的报价列表" },
+          // 单边模型:SUPPLIER 不参与询价报价,rfqs/quotes 导航已移除
           { path: "/supplier/orders",     label: "订单管理",   labelEn: "Orders",      icon: Receipt,         resource: "order",      requiredPermissions: [Permissions.ORDER_READ],         description: "订单列表与节点打卡" },
           { path: "/supplier/profile",    label: "企业档案",   labelEn: "Profile",     icon: UserCircle2,     resource: "supplier",   requiredPermissions: [Permissions.SUPPLIER_READ],      description: "企业资料 / 评分查看" },
           // 成员管理:本轮占位(PRD v1.3 §5.5)。**不挂权限点**,T-MEMBER 待办时再细化

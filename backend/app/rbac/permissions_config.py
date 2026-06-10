@@ -26,11 +26,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.SUPPLIER_READ,
         Permissions.PRODUCT_READ,
         Permissions.COUNTRY_READ,
-        # 采购流程
-        Permissions.PROJECT_READ,
-        Permissions.PROJECT_WRITE,
-        Permissions.PURCHASE_LIST_READ,
-        Permissions.PURCHASE_LIST_WRITE,
+        # 采购流程(单边模型:project/purchase_list 已移除)
         Permissions.CART_READ,
         Permissions.CART_WRITE,
         Permissions.RFQ_READ,
@@ -49,11 +45,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.PRODUCT_READ,
         Permissions.PRODUCT_WRITE,
         Permissions.COUNTRY_READ,
-        # 响应业务
-        Permissions.RFQ_READ,
-        Permissions.RFQ_RESPOND,
-        Permissions.QUOTE_READ,
-        Permissions.QUOTE_WRITE,
+        # 单边模型:SUPPLIER 不参与询价报价环节,rfq/quote 权限全部摘除
+        # rfq:respond 退役,rfq:read / quote:read / quote:write 不再授予
         Permissions.ORDER_READ,
         Permissions.ORDER_WRITE,
         Permissions.ORDER_CHECKIN,
@@ -74,10 +67,11 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.PRODUCT_REJECT,
         Permissions.COUNTRY_READ,
         Permissions.COUNTRY_WRITE,
-        Permissions.PROJECT_READ,
-        Permissions.PURCHASE_LIST_READ,
+        # 单边模型:运营代客录入询价 + 回填报价
         Permissions.RFQ_READ,
+        Permissions.RFQ_CREATE,
         Permissions.QUOTE_READ,
+        Permissions.QUOTE_WRITE,
         Permissions.ORDER_READ,
         Permissions.MEMBERSHIP_READ,
         Permissions.RISK_READ,

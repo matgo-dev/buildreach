@@ -5,10 +5,9 @@ v3 §4 设计:
 - scope 是简单查表 (角色, 资源域) → ALL/ORG/OWN/NONE
 - 不做策略引擎、不支持优先级、不支持表达式 DSL
 
-资源域权威清单(v3 §2 + 信用评估 §六):16 个
+资源域权威清单(v3 §2 + 信用评估 §六,单边校正后):14 个
   supplier / product / country / credit
-  project / purchase_list / cart
-  rfq / quote / order / membership / risk
+  cart / rfq / quote / order / membership / risk
   user / role / permission / system
 """
 from __future__ import annotations
@@ -30,8 +29,6 @@ RESOURCES: dict[str, dict[str, str]] = {
     "product":        {"name": "商品 SKU",   "module": "业务-档案"},
     "country":        {"name": "国别准入",   "module": "业务-档案"},
     "credit":         {"name": "信用评估",   "module": "业务-档案"},
-    "project":        {"name": "项目",       "module": "业务-交易"},
-    "purchase_list":  {"name": "采购清单",   "module": "业务-交易"},
     "cart":           {"name": "购物车",     "module": "业务-交易"},
     "rfq":            {"name": "询价单",     "module": "业务-交易"},
     "quote":          {"name": "报价",       "module": "业务-交易"},
@@ -47,12 +44,9 @@ RESOURCES: dict[str, dict[str, str]] = {
 
 # 角色 × 资源域 → scope 值(v3 §4 权威表)
 #
-# ---- 业务粒度决策(2026-05-18 拍板,等业务流程 3 上线时遵循)----
-# Q:BUYER 看到的项目/采购清单/订单 范围是?
-# A:方案 A —— 同组织内所有数据(scope=ORG)
-#    含义:中建三局任一 BUYER 登录,能看到中建三局所有 BUYER 创建的所有项目
-#    实现:service 层 WHERE buyer_organization_id = current_user.organization_id
-#    暂不实现:项目成员制(B 方案) / 项目内角色制(C 方案);后续按需加 project_members 表
+# ---- 单边模型校正(2026-06-10)----
+# project / purchase_list 资源域已移除(买方无工程项目维度)
+# BUYER 的 rfq/quote/order 范围:ORG(同组织内所有数据)
 # ----------------------------------------------------------------
 ROLE_RESOURCE_SCOPE: dict[str, dict[str, Scope]] = {
     "BUYER": {
@@ -60,8 +54,6 @@ ROLE_RESOURCE_SCOPE: dict[str, dict[str, Scope]] = {
         "product":       Scope.ALL,
         "country":       Scope.ALL,
         "credit":        Scope.ALL,
-        "project":       Scope.ORG,
-        "purchase_list": Scope.ORG,
         "cart":          Scope.OWN,
         "rfq":           Scope.ORG,
         "quote":         Scope.ORG,
@@ -78,13 +70,11 @@ ROLE_RESOURCE_SCOPE: dict[str, dict[str, Scope]] = {
         "product":       Scope.OWN,
         "country":       Scope.ALL,
         # 信用评估:Δ5 定位变更后 SUPPLIER 不持有 credit 权限点,scope 同步 NONE
-        # (SUPPLIER 暂不可看自家评分,API 层 require_permission 直接 403)
         "credit":        Scope.NONE,
-        "project":       Scope.NONE,
-        "purchase_list": Scope.NONE,
         "cart":          Scope.NONE,
-        "rfq":           Scope.OWN,
-        "quote":         Scope.OWN,
+        # 单边模型:SUPPLIER 不参与询价报价,scope 全 NONE
+        "rfq":           Scope.NONE,
+        "quote":         Scope.NONE,
         "order":         Scope.OWN,
         "membership":    Scope.OWN,
         "risk":          Scope.NONE,
@@ -98,8 +88,6 @@ ROLE_RESOURCE_SCOPE: dict[str, dict[str, Scope]] = {
         "product":       Scope.ALL,
         "country":       Scope.ALL,
         "credit":        Scope.ALL,
-        "project":       Scope.ALL,
-        "purchase_list": Scope.ALL,
         "cart":          Scope.NONE,
         "rfq":           Scope.ALL,
         "quote":         Scope.ALL,
@@ -115,11 +103,7 @@ ROLE_RESOURCE_SCOPE: dict[str, dict[str, Scope]] = {
         "supplier":      Scope.NONE,
         "product":       Scope.NONE,
         "country":       Scope.NONE,
-        # 信用评估:ADMIN 严格不触业务数据(Q25 + RBAC 规范 §4.3 / §8.6 职责分离)
-        # 权限点已在 permissions_config.py 中不授予,scope 这里同步 NONE 兜底
         "credit":        Scope.NONE,
-        "project":       Scope.NONE,
-        "purchase_list": Scope.NONE,
         "cart":          Scope.NONE,
         "rfq":           Scope.NONE,
         "quote":         Scope.NONE,
@@ -176,8 +160,6 @@ RESOURCE_PRIMARY_READ: dict[str, str] = {
     "product":       "product:read",
     "country":       "country:read",
     "credit":        "credit:read",
-    "project":       "project:read",
-    "purchase_list": "purchase_list:read",
     "cart":          "cart:read",
     "rfq":           "rfq:read",
     "quote":         "quote:read",
