@@ -9,7 +9,6 @@ import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
-import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import { ApiError } from "@/lib/api";
 import { getRfq, cancelRfq, type RfqBuyerPublic } from "@/lib/api/rfqs";
@@ -239,18 +238,45 @@ function RfqDetailContent() {
         </div>
       )}
 
-      {/* 取消确认框 */}
-      <ConfirmModal
-        open={cancelOpen}
-        title={t("cancelConfirm")}
-        description={t("cancelReason")}
-        variant="danger"
-        confirmLabel={tCommon("confirm")}
-        cancelLabel={tCommon("cancel")}
-        loading={cancelling}
-        onConfirm={handleCancel}
-        onCancel={() => { setCancelOpen(false); setCancelReason(""); }}
-      />
+      {/* 取消确认框（含原因输入） */}
+      {cancelOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800">{t("cancelConfirm")}</h3>
+            <div className="mt-4">
+              <label className="mb-1 block text-sm font-medium text-gray-600">
+                {t("cancelReason")}
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+                placeholder={t("cancelReason")}
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setCancelOpen(false); setCancelReason(""); }}
+                disabled={cancelling}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                {tCommon("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+              >
+                {cancelling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {tCommon("confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

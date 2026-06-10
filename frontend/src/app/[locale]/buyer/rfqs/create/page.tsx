@@ -8,6 +8,7 @@ import {
   Loader2,
   Send,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -165,6 +166,11 @@ function RfqCreateContent() {
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 删除询价行（不删询价篮，只是本次提交不含该项）
+  const handleRemoveItem = useCallback((itemId: number) => {
+    setCartItems((prev) => prev.filter((i) => i.item_id !== itemId));
+  }, []);
+
   // 草稿持久化
   const draftKey = `${DRAFT_KEY_PREFIX}${user?.id ?? "anon"}`;
 
@@ -300,6 +306,7 @@ function RfqCreateContent() {
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
                 <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
+                <th className="w-12 px-3 py-2.5" />
               </tr>
             </thead>
             <tbody>
@@ -309,18 +316,29 @@ function RfqCreateContent() {
                     {item.product_name ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-gray-500">
-                    {[item.sku_code, item.color, item.material]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {item.sku_name
+                      ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
+                      : [item.sku_code, item.color, item.material].filter(Boolean).join(" · ")}
                   </td>
                   <td className="px-5 py-3 text-right font-semibold text-gray-800">
                     {item.quantity} {item.unit ?? ""}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      type="button"
+                      disabled={cartItems.length <= 1}
+                      onClick={() => handleRemoveItem(item.item_id)}
+                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                      title={cartItems.length <= 1 ? undefined : "移除"}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}
               {cartItems.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-5 py-8 text-center text-gray-400">
+                  <td colSpan={4} className="px-5 py-8 text-center text-gray-400">
                     {t("itemsAllMissing")}
                   </td>
                 </tr>
@@ -445,7 +463,7 @@ function RfqCreateContent() {
           onClick={() => router.back()}
           className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
         >
-          {tCart("backToCart") ?? t("backToCart")}
+          {t("backToCart")}
         </button>
         <button
           type="button"
