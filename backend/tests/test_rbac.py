@@ -194,6 +194,7 @@ async def test_business_permissions_isolated_per_role(client):
     # BUYER 应有(采购流程 + 公开池只读,单边模型:无 project/purchase_list)
     assert Permissions.RFQ_CREATE in b_perms
     assert Permissions.RFQ_CANCEL in b_perms
+    assert Permissions.RFQ_DECIDE in b_perms
     assert Permissions.CART_WRITE in b_perms
     assert Permissions.SUPPLIER_READ in b_perms
     assert Permissions.PRODUCT_READ in b_perms
@@ -222,6 +223,7 @@ async def test_business_permissions_isolated_per_role(client):
     # SUPPLIER 不应有(单边模型:无 rfq/quote 权限)
     assert Permissions.RFQ_READ not in s_perms
     assert Permissions.RFQ_CANCEL not in s_perms
+    assert Permissions.RFQ_DECIDE not in s_perms
     assert Permissions.RFQ_RESPOND not in s_perms
     assert Permissions.QUOTE_READ not in s_perms
     assert Permissions.QUOTE_WRITE not in s_perms
@@ -270,6 +272,7 @@ async def test_operator_has_business_no_system(client, superadmin_headers):
     assert Permissions.RISK_READ in perms
     assert Permissions.RFQ_CREATE in perms
     assert Permissions.RFQ_CANCEL in perms
+    assert Permissions.RFQ_DECIDE in perms
     assert Permissions.QUOTE_WRITE in perms
     # 系统权限不应有
     for p in [Permissions.USER_MANAGE, Permissions.ROLE_MANAGE,
