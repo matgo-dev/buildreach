@@ -142,6 +142,11 @@ buildlink-ea/
 - 前端路由守卫(`middleware.ts`)
 - 前端按钮显隐(`<PermissionGuard>` / `usePermissions().hasPermission()`)
 
+**权限点新增原则(强制)**:
+- 新功能需要的权限点如果不存在,**必须新增**(`rbac/constants.py` + `permissions_config.py` + 角色授予)
+- ❌ 禁止用已有的不相关权限点兜底(如用 `product:read` 去守购物车接口)
+- 权限点必须语义精确匹配功能域,不能图省事复用
+
 **绝对禁止**:
 - ❌ 在业务代码里 `if role == 'BUYER'` 写死判断
 - ❌ 在 JWT payload 里塞 permissions
