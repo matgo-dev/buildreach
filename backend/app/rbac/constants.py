@@ -44,6 +44,7 @@ class Permissions:
     # ----- 业务-交易:rfq -----
     RFQ_READ = "rfq:read"
     RFQ_CREATE = "rfq:create"
+    RFQ_CANCEL = "rfq:cancel"
     # 单边模型下退役:询价由运营回填报价,供应商不参与响应。保留常量,无角色授予。
     RFQ_RESPOND = "rfq:respond"
 
@@ -117,6 +118,7 @@ PERMISSION_META: dict[str, dict[str, str]] = {
 
     Permissions.RFQ_READ: {"name": "查看询价单", "module": ModuleLabel.BIZ_TRADE},
     Permissions.RFQ_CREATE: {"name": "发起询价单", "module": ModuleLabel.BIZ_TRADE},
+    Permissions.RFQ_CANCEL: {"name": "撤销询价单", "module": ModuleLabel.BIZ_TRADE},
     # 单边模型下退役,无角色授予
     Permissions.RFQ_RESPOND: {"name": "响应询价单", "module": ModuleLabel.BIZ_TRADE},
 
