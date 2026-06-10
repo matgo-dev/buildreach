@@ -15,7 +15,7 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
-import { getCart, type CartItemPublic } from "@/lib/api/cart";
+import { getCart, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -121,6 +121,7 @@ function RfqCreateContent() {
   const searchParams = useSearchParams();
   const t = useTranslations("rfq");
   const tCart = useTranslations("cart");
+  const tMall = useTranslations("mall");
   const tError = useTranslations("error");
   const toast = useToast();
   const user = useAuthStore((s) => s.user);
@@ -170,6 +171,35 @@ function RfqCreateContent() {
   const handleRemoveItem = useCallback((itemId: number) => {
     setCartItems((prev) => prev.filter((i) => i.item_id !== itemId));
   }, []);
+
+  // 修改数量（同步更新询价篮）
+  const qtyDebounceRef = useMemo(() => new Map<number, NodeJS.Timeout>(), []);
+
+  const handleQuantityChange = useCallback(
+    (itemId: number, qty: number) => {
+      if (qty <= 0) return;
+      // 乐观更新本地
+      setCartItems((prev) =>
+        prev.map((i) => (i.item_id === itemId ? { ...i, quantity: qty } : i)),
+      );
+      // debounce PATCH 询价篮
+      const existing = qtyDebounceRef.get(itemId);
+      if (existing) clearTimeout(existing);
+      qtyDebounceRef.set(
+        itemId,
+        setTimeout(async () => {
+          qtyDebounceRef.delete(itemId);
+          try {
+            const updated = await updateCartItem(itemId, qty);
+            syncFromCart(updated);
+          } catch {
+            // 失败不回滚，用户可继续调整
+          }
+        }, 500),
+      );
+    },
+    [qtyDebounceRef, syncFromCart],
+  );
 
   // 草稿持久化
   const draftKey = `${DRAFT_KEY_PREFIX}${user?.id ?? "anon"}`;
@@ -311,7 +341,7 @@ function RfqCreateContent() {
             </thead>
             <tbody>
               {cartItems.map((item) => (
-                <tr key={item.item_id} className="border-t border-gray-100">
+                <tr key={item.item_id} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name ?? "—"}
                   </td>
@@ -320,15 +350,33 @@ function RfqCreateContent() {
                       ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
                       : [item.sku_code, item.color, item.material].filter(Boolean).join(" · ")}
                   </td>
-                  <td className="px-5 py-3 text-right font-semibold text-gray-800">
-                    {item.quantity} {item.unit ?? ""}
+                  <td className="px-5 py-3 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v) && v > 0) handleQuantityChange(item.item_id, v);
+                        }}
+                        min={1}
+                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+                      />
+                      <span className="text-xs text-gray-500">
+                        {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-3 py-3 text-center">
                     <button
                       type="button"
                       disabled={cartItems.length <= 1}
                       onClick={() => handleRemoveItem(item.item_id)}
-                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                      className={`rounded p-1 transition-colors ${
+                        cartItems.length <= 1
+                          ? "text-gray-200 cursor-not-allowed"
+                          : "text-gray-400 hover:bg-red-50 hover:text-red-500"
+                      }`}
                       title={cartItems.length <= 1 ? undefined : "移除"}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

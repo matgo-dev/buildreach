@@ -134,7 +134,7 @@ function RfqDetailContent() {
             </thead>
             <tbody>
               {rfq.items.map((item) => (
-                <tr key={item.id} className="border-t border-gray-100">
+                <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name_snapshot ?? "—"}
                   </td>
