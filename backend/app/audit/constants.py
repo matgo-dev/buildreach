@@ -18,6 +18,7 @@ class AuditResourceType(str, Enum):
     PRODUCT_SKU = "product_sku"
     CART = "cart"
     RFQ = "rfq"
+    QUOTE = "quote"
 
 
 class AuditAction(str, Enum):
@@ -51,3 +52,10 @@ class AuditAction(str, Enum):
     SUBMIT = "SUBMIT"
     PROXY_CREATE = "PROXY_CREATE"
     CANCEL = "CANCEL"
+    # rfq — 决策操作(RFQ 资源)
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    # quote — 报价操作(QUOTE 资源)
+    BACKFILL = "BACKFILL"
+    REQUOTE = "REQUOTE"
+    EXPIRE = "EXPIRE"

@@ -33,6 +33,12 @@ class RfqQuote(Base, TimestampUpdateMixin, SoftDeleteMixin):
             unique=True,
             postgresql_where="deleted_at IS NULL",
         ),
+        Index(
+            "uq_rfq_quotes_rfq_version_active",
+            "rfq_id", "version",
+            unique=True,
+            postgresql_where="deleted_at IS NULL",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

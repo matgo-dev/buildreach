@@ -71,3 +71,9 @@ class MessageKey:
     RFQ_NOT_FOUND = "error.rfq.not_found"
     RFQ_STATE_INVALID = "error.rfq.state_invalid"
     RFQ_DUPLICATE_SKU = "error.rfq.duplicate_sku"
+
+    # quote — 报价模块 405xx
+    QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"
+    QUOTE_NOT_FOUND = "error.quote.not_found"
+    QUOTE_ITEM_MISMATCH = "error.quote.item_mismatch"
+    QUOTE_LINES_INCOMPLETE = "error.quote.lines_incomplete"
