@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    DateTime, ForeignKey, Index, Integer, Numeric, String, Text,
+    DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -132,8 +132,8 @@ class Rfq(Base, TimestampUpdateMixin, SoftDeleteMixin):
         DateTime, nullable=True,
     )
     target_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
-    required_certifications: Mapped[str | None] = mapped_column(Text, nullable=True)
-    attachment_urls: Mapped[str | None] = mapped_column(Text, nullable=True)
+    required_certifications: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
+    attachment_urls: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
 
     # relationships
     items: Mapped[list["RfqItem"]] = relationship(
