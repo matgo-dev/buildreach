@@ -9,12 +9,19 @@ from app.rbac.scope_config import Scope, get_scope
 
 # ----- 查表函数单测 -----
 
-def test_get_scope_buyer_project_is_org():
-    assert get_scope(["BUYER"], "project") == Scope.ORG
+def test_get_scope_buyer_rfq_is_org():
+    """单边模型:BUYER 的 rfq scope=ORG。"""
+    assert get_scope(["BUYER"], "rfq") == Scope.ORG
 
 
 def test_get_scope_supplier_order_is_own():
     assert get_scope(["SUPPLIER"], "order") == Scope.OWN
+
+
+def test_get_scope_supplier_rfq_is_none():
+    """单边模型:SUPPLIER 不参与询价,rfq/quote scope=NONE。"""
+    assert get_scope(["SUPPLIER"], "rfq") == Scope.NONE
+    assert get_scope(["SUPPLIER"], "quote") == Scope.NONE
 
 
 def test_get_scope_operator_supplier_is_all():
@@ -23,7 +30,7 @@ def test_get_scope_operator_supplier_is_all():
 
 def test_get_scope_admin_business_is_none():
     """ADMIN 对业务资源全部 NONE(Q25 + RBAC 规范 §4.3 / §8.6)。"""
-    for r in ["supplier", "product", "project", "rfq", "order", "risk", "credit"]:
+    for r in ["supplier", "product", "rfq", "order", "risk", "credit"]:
         assert get_scope(["ADMIN"], r) == Scope.NONE
 
 
@@ -48,7 +55,7 @@ def test_get_scope_unknown_resource_returns_none():
 
 def test_get_scope_multi_role_picks_most_permissive():
     """多角色取最宽松(ALL > ORG > OWN > NONE)。"""
-    assert get_scope(["BUYER", "OPERATOR"], "project") == Scope.ALL
+    assert get_scope(["BUYER", "OPERATOR"], "rfq") == Scope.ALL
     assert get_scope(["BUYER", "SUPPLIER"], "rfq") == Scope.ORG
 
 
@@ -91,23 +98,24 @@ async def _supplier_token(client):
 
 @pytest.mark.asyncio
 async def test_debug_scope_requires_auth(client):
-    r = await client.get("/api/v1/_debug/scope?resource=project")
+    r = await client.get("/api/v1/_debug/scope?resource=rfq")
     assert r.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_debug_scope_buyer_project_org(client):
+async def test_debug_scope_buyer_rfq_org(client):
+    """单边模型:BUYER rfq scope=ORG。"""
     token = await _buyer_token(client)
     r = await client.get(
-        "/api/v1/_debug/scope?resource=project",
+        "/api/v1/_debug/scope?resource=rfq",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
     d = r.json()["data"]
     assert d["roles"] == ["BUYER"]
-    assert d["resource"] == "project"
+    assert d["resource"] == "rfq"
     assert d["permission_check"]["passed"] is True
-    assert d["permission_check"]["required"] == "project:read"
+    assert d["permission_check"]["required"] == "rfq:read"
     assert d["scope_resolved"] == "ORG"
     assert "buyer_organization_id" in d["would_apply_filter"]
 
@@ -125,11 +133,11 @@ async def test_debug_scope_supplier_order_own(client):
 
 
 @pytest.mark.asyncio
-async def test_debug_scope_admin_project_none(client):
+async def test_debug_scope_admin_rfq_none(client):
     """ADMIN 对业务资源 scope=NONE,permission_check.passed=False。"""
     token = await _login(client, SUPER_EMAIL, SUPER_PASS)
     r = await client.get(
-        "/api/v1/_debug/scope?resource=project",
+        "/api/v1/_debug/scope?resource=rfq",
         headers={"Authorization": f"Bearer {token}"},
     )
     d = r.json()["data"]
@@ -155,19 +163,21 @@ async def test_debug_matrix_returns_full_mapping(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     d = r.json()["data"]
-    # 16 资源 × 4 角色
+    # 14 资源 × 4 角色(单边模型:project/purchase_list 已移除)
     assert set(d["resources"].keys()) == {
         "supplier", "product", "country", "credit",
-        "project", "purchase_list", "cart",
-        "rfq", "quote", "order", "membership", "risk",
+        "cart", "rfq", "quote", "order", "membership", "risk",
         "user", "role", "permission", "system",
     }
     assert set(d["role_resource_scope"].keys()) == {"BUYER", "SUPPLIER", "OPERATOR", "ADMIN"}
     # 抽查
-    assert d["role_resource_scope"]["BUYER"]["project"] == "ORG"
+    assert d["role_resource_scope"]["BUYER"]["rfq"] == "ORG"
     assert d["role_resource_scope"]["ADMIN"]["user"] == "ALL"
-    assert d["role_resource_scope"]["ADMIN"]["project"] == "NONE"
-    # 信用评估 scope:SUPPLIER=OWN、ADMIN=NONE、BUYER/OPERATOR=ALL(本工单)
+    assert d["role_resource_scope"]["ADMIN"]["rfq"] == "NONE"
+    # 单边模型:SUPPLIER rfq/quote scope=NONE
+    assert d["role_resource_scope"]["SUPPLIER"]["rfq"] == "NONE"
+    assert d["role_resource_scope"]["SUPPLIER"]["quote"] == "NONE"
+    # 信用评估 scope
     assert d["role_resource_scope"]["SUPPLIER"]["credit"] == "NONE"
     assert d["role_resource_scope"]["ADMIN"]["credit"] == "NONE"
     assert d["role_resource_scope"]["BUYER"]["credit"] == "ALL"

@@ -37,14 +37,6 @@ class Permissions:
     CREDIT_WRITE = "credit:write"
     CREDIT_RECOMPUTE = "credit:recompute"
 
-    # ----- 业务-交易:project -----
-    PROJECT_READ = "project:read"
-    PROJECT_WRITE = "project:write"
-
-    # ----- 业务-交易:purchase_list -----
-    PURCHASE_LIST_READ = "purchase_list:read"
-    PURCHASE_LIST_WRITE = "purchase_list:write"
-
     # ----- 业务-交易:cart -----
     CART_READ = "cart:read"
     CART_WRITE = "cart:write"
@@ -52,6 +44,7 @@ class Permissions:
     # ----- 业务-交易:rfq -----
     RFQ_READ = "rfq:read"
     RFQ_CREATE = "rfq:create"
+    # 单边模型下退役:询价由运营回填报价,供应商不参与响应。保留常量,无角色授予。
     RFQ_RESPOND = "rfq:respond"
 
     # ----- 业务-交易:quote -----
@@ -119,17 +112,12 @@ PERMISSION_META: dict[str, dict[str, str]] = {
     Permissions.CREDIT_WRITE: {"name": "维护信用评估档案", "module": ModuleLabel.BIZ_ARCHIVE},
     Permissions.CREDIT_RECOMPUTE: {"name": "触发评分重算", "module": ModuleLabel.BIZ_ARCHIVE},
 
-    Permissions.PROJECT_READ: {"name": "查看项目", "module": ModuleLabel.BIZ_TRADE},
-    Permissions.PROJECT_WRITE: {"name": "管理项目", "module": ModuleLabel.BIZ_TRADE},
-
-    Permissions.PURCHASE_LIST_READ: {"name": "查看采购清单", "module": ModuleLabel.BIZ_TRADE},
-    Permissions.PURCHASE_LIST_WRITE: {"name": "管理采购清单", "module": ModuleLabel.BIZ_TRADE},
-
     Permissions.CART_READ: {"name": "查看购物车", "module": ModuleLabel.BIZ_TRADE},
     Permissions.CART_WRITE: {"name": "管理购物车", "module": ModuleLabel.BIZ_TRADE},
 
     Permissions.RFQ_READ: {"name": "查看询价单", "module": ModuleLabel.BIZ_TRADE},
     Permissions.RFQ_CREATE: {"name": "发起询价单", "module": ModuleLabel.BIZ_TRADE},
+    # 单边模型下退役,无角色授予
     Permissions.RFQ_RESPOND: {"name": "响应询价单", "module": ModuleLabel.BIZ_TRADE},
 
     Permissions.QUOTE_READ: {"name": "查看报价", "module": ModuleLabel.BIZ_TRADE},
