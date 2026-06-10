@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.models import CreditCompany, ScoreSnapshot
 from app.db.models.supplier_organization import SupplierOrganization, SupplierOrgStatus
@@ -126,11 +125,9 @@ async def test_supplier_search_403(client):
 
 
 @pytest.mark.asyncio
-async def test_supplier_detail_403(client, test_engine):
+async def test_supplier_detail_403(client, db_session):
     t = await _register_supplier(client, "sup.credit2@x.com", "13900139602", "S Credit 2")
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        cid = (await db.execute(select(CreditCompany.id).limit(1))).scalar_one()
+    cid = (await db_session.execute(select(CreditCompany.id).limit(1))).scalar_one()
     r = await client.get(f"/api/v1/credit/companies/{cid}", headers=_auth(t))
     assert r.status_code == 403
 
@@ -163,64 +160,60 @@ async def test_register_supplier_endpoint_succeeds(client):
 
 
 @pytest.mark.asyncio
-async def test_create_credit_for_supplier_builds_mirror_and_score(client, test_engine):
+async def test_create_credit_for_supplier_builds_mirror_and_score(client, db_session):
     """直接验证注册钩子核心:建 credit_company 镜像 + mock 数据 + 评分快照。
 
-    用 test_engine 的同循环 session 调用(避开 BackgroundTasks 的 AsyncSessionLocal
-    跨事件循环限制)。client fixture 已 seed 评分模型骨架。
+    用 db_session 的同连接 session 调用（避开 BackgroundTasks 的 AsyncSessionLocal
+    跨事件循环限制）。session-scope seed 已建评分模型骨架。
     """
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
+    org = SupplierOrganization(
+        name="Hook Test Co.", country_code="CN", registration_no="SC-HOOK-1",
+        status=SupplierOrgStatus.APPROVED,
+    )
+    db_session.add(org)
+    await db_session.flush()
+
+    company = await create_credit_for_supplier(
+        db_session, org, target_tier="A", source="test", run_ai=False
+    )
+    await db_session.commit()
+
+    assert company is not None
+    assert company.linked_supplier_org_id == org.id
+
+    snap = (await db_session.execute(
+        select(ScoreSnapshot).where(
+            ScoreSnapshot.company_id == company.id,
+            ScoreSnapshot.is_current.is_(True),
+        )
+    )).scalar_one_or_none()
+    assert snap is not None
+    assert snap.grade in ("A", "B", "C", "D")
+    assert snap.total_score is not None
+
+    # 幂等:再次调用返回 None（不重复建）
+    again = await create_credit_for_supplier(db_session, org, target_tier="A", run_ai=False)
+    assert again is None
+
+
+@pytest.mark.asyncio
+async def test_create_credit_tiers_distribution(client, db_session):
+    """A/B/C/D 四档各跑出对应等级(验证 mock 生成器 + 规则对齐)。"""
+    for i, tier in enumerate(["A", "B", "C", "D"]):
         org = SupplierOrganization(
-            name="Hook Test Co.", country_code="CN", registration_no="SC-HOOK-1",
-            status=SupplierOrgStatus.APPROVED,
+            name=f"Tier {tier} Co.", country_code="CN",
+            registration_no=f"SC-TIER-{i}", status=SupplierOrgStatus.APPROVED,
         )
-        db.add(org)
-        await db.flush()
-
+        db_session.add(org)
+        await db_session.flush()
         company = await create_credit_for_supplier(
-            db, org, target_tier="A", source="test", run_ai=False
+            db_session, org, target_tier=tier, source="test", run_ai=False
         )
-        await db.commit()
-
-        assert company is not None
-        assert company.linked_supplier_org_id == org.id
-
-        snap = (await db.execute(
+        await db_session.commit()
+        snap = (await db_session.execute(
             select(ScoreSnapshot).where(
                 ScoreSnapshot.company_id == company.id,
                 ScoreSnapshot.is_current.is_(True),
             )
-        )).scalar_one_or_none()
-        assert snap is not None
-        assert snap.grade in ("A", "B", "C", "D")
-        assert snap.total_score is not None
-
-        # 幂等:再次调用返回 None(不重复建)
-        again = await create_credit_for_supplier(db, org, target_tier="A", run_ai=False)
-        assert again is None
-
-
-@pytest.mark.asyncio
-async def test_create_credit_tiers_distribution(client, test_engine):
-    """A/B/C/D 四档各跑出对应等级(验证 mock 生成器 + 规则对齐)。"""
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        for i, tier in enumerate(["A", "B", "C", "D"]):
-            org = SupplierOrganization(
-                name=f"Tier {tier} Co.", country_code="CN",
-                registration_no=f"SC-TIER-{i}", status=SupplierOrgStatus.APPROVED,
-            )
-            db.add(org)
-            await db.flush()
-            company = await create_credit_for_supplier(
-                db, org, target_tier=tier, source="test", run_ai=False
-            )
-            await db.commit()
-            snap = (await db.execute(
-                select(ScoreSnapshot).where(
-                    ScoreSnapshot.company_id == company.id,
-                    ScoreSnapshot.is_current.is_(True),
-                )
-            )).scalar_one()
-            assert snap.grade == tier, f"tier {tier} 实际评级 {snap.grade}"
+        )).scalar_one()
+        assert snap.grade == tier, f"tier {tier} 实际评级 {snap.grade}"

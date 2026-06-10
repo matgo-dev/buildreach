@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.models import CreditCompany, ScoreSnapshot
 from app.services.credit.harvester.harvest_task import run_harvest_for_company
@@ -37,39 +36,35 @@ async def _snapshot_count(db, cid: int) -> int:
     )).scalar_one()
 
 
-async def test_cache_hit_skips_harvest_and_scoring(client, test_engine):
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        cid = await _new_kh_company(db)
-        run1 = await run_harvest_for_company(db, cid, "manual", harvester=_ok_harvester())
-        await db.commit()
-        assert run1.status == "partial_succeeded"
-        snaps_before = await _snapshot_count(db, cid)
+async def test_cache_hit_skips_harvest_and_scoring(client, db_session):
+    cid = await _new_kh_company(db_session)
+    run1 = await run_harvest_for_company(db_session, cid, "manual", harvester=_ok_harvester())
+    await db_session.commit()
+    assert run1.status == "partial_succeeded"
+    snaps_before = await _snapshot_count(db_session, cid)
 
-        # 第二次:不带 force_refresh + RaisingHarvester(命中则不会被调用)
-        run2 = await run_harvest_for_company(db, cid, "manual", harvester=RaisingHarvester())
-        await db.commit()
+    # 第二次:不带 force_refresh + RaisingHarvester(命中则不会被调用)
+    run2 = await run_harvest_for_company(db_session, cid, "manual", harvester=RaisingHarvester())
+    await db_session.commit()
 
-        assert run2.status == "cached_hit"
-        assert run2.cache_source_run_id == run1.id
-        assert run2.tavily_calls == 0 and run2.llm_calls == 0
-        # 缓存命中不评分 → 快照数不变
-        assert await _snapshot_count(db, cid) == snaps_before
+    assert run2.status == "cached_hit"
+    assert run2.cache_source_run_id == run1.id
+    assert run2.tavily_calls == 0 and run2.llm_calls == 0
+    # 缓存命中不评分 → 快照数不变
+    assert await _snapshot_count(db_session, cid) == snaps_before
 
 
-async def test_force_refresh_bypasses_cache(client, test_engine):
-    SessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, autoflush=False)
-    async with SessionLocal() as db:
-        cid = await _new_kh_company(db, regno="KHC2")
-        await run_harvest_for_company(db, cid, "manual", harvester=_ok_harvester())
-        await db.commit()
-        snaps_before = await _snapshot_count(db, cid)
+async def test_force_refresh_bypasses_cache(client, db_session):
+    cid = await _new_kh_company(db_session, regno="KHC2")
+    await run_harvest_for_company(db_session, cid, "manual", harvester=_ok_harvester())
+    await db_session.commit()
+    snaps_before = await _snapshot_count(db_session, cid)
 
-        run2 = await run_harvest_for_company(
-            db, cid, "manual", force_refresh=True, harvester=_ok_harvester()
-        )
-        await db.commit()
+    run2 = await run_harvest_for_company(
+        db_session, cid, "manual", force_refresh=True, harvester=_ok_harvester()
+    )
+    await db_session.commit()
 
-        assert run2.status != "cached_hit"
-        # 绕过缓存 → 重新评分,新增一条快照
-        assert await _snapshot_count(db, cid) == snaps_before + 1
+    assert run2.status != "cached_hit"
+    # 绕过缓存 → 重新评分,新增一条快照
+    assert await _snapshot_count(db_session, cid) == snaps_before + 1
