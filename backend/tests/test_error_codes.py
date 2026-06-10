@@ -82,6 +82,10 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls("DRAFT", "ACTIVE")
     if name == "ImageNotOwnedError":
         return cls(1, 1)
+    if name == "RfqItemNotPurchasableError":
+        return cls([1])
+    if name == "RfqStateInvalidError":
+        return cls("SUBMITTED")
     return cls()
 
 

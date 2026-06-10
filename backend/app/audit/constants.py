@@ -17,6 +17,7 @@ class AuditResourceType(str, Enum):
     PRODUCT = "product"
     PRODUCT_SKU = "product_sku"
     CART = "cart"
+    RFQ = "rfq"
 
 
 class AuditAction(str, Enum):
@@ -46,3 +47,7 @@ class AuditAction(str, Enum):
     UPDATE_ITEM = "UPDATE_ITEM"
     REMOVE_ITEM = "REMOVE_ITEM"
     CLEAR = "CLEAR"
+    # rfq — 询价单操作
+    SUBMIT = "SUBMIT"
+    PROXY_CREATE = "PROXY_CREATE"
+    CANCEL = "CANCEL"
