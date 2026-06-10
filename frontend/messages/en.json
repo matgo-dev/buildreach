@@ -97,7 +97,9 @@
       "state_invalid": "Invalid RFQ state transition",
       "duplicate_sku": "Duplicate SKU in request items",
       "source_not_allowed": "Operator can only create RFQ via direct entry",
-      "no_generation_failed": "RFQ number generation failed, please retry"
+      "no_generation_failed": "RFQ number generation failed, please retry",
+      "already_claimed": "This RFQ has already been claimed by another operator",
+      "item_not_found": "RFQ item not found"
     },
     "quote": {
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",

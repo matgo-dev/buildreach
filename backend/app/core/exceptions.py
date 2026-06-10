@@ -543,5 +543,25 @@ class QuoteLinesIncompleteError(BusinessError):
         )
 
 
+class RfqAlreadyClaimedError(BusinessError):
+    """40516 — 询价单已被其他运营受理。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40516,
+            "RFQ has already been claimed by another operator",
+            message_key=MessageKey.RFQ_ALREADY_CLAIMED,
+        )
+
+
+class RfqItemNotFoundError(BusinessError):
+    """40517 — 询价行项不存在或不属于本询价单。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_404_NOT_FOUND, 40517,
+            "RFQ item not found",
+            message_key=MessageKey.RFQ_ITEM_NOT_FOUND,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

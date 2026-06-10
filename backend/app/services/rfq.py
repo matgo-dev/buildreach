@@ -24,7 +24,9 @@ from app.audit.logger import write_audit
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
     BuyerOrgRequiredError,
+    RfqAlreadyClaimedError,
     RfqDuplicateSkuError,
+    RfqItemNotFoundError,
     RfqItemNotPurchasableError,
     RfqNoGenerationFailedError,
     RfqNoValidItemsError,
@@ -50,7 +52,7 @@ from app.schemas.rfq import (
 )
 from app.services import product as product_svc
 from app.services import quote as quote_svc
-from app.services._rfq_loader import load_rfq
+from app.services._rfq_loader import load_rfq, lock_rfq
 
 logger = logging.getLogger(__name__)
 
@@ -368,23 +370,21 @@ async def cancel_rfq(
     cancel_reason: str | None = None,
     *, request: Request | None = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
-    """撤销守卫 + 幂等。"""
+    """撤销守卫 + 幂等 + 行锁串行化。"""
     is_buyer = "BUYER" in user.roles
     is_operator = "OPERATOR" in user.roles
 
-    rfq = await load_rfq(db, rfq_id, with_items=True)
-    if not rfq:
-        raise RfqNotFoundError()
-
-    # scope 校验
-    if is_buyer and not is_operator:
-        org = await _resolve_active_buyer_org(db, user)
-        if rfq.buyer_org_id != org.id:
-            raise RfqNotFoundError()
+    # 行锁加载（含 scope 过滤,买方越权 → 404）
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
 
     # 幂等:已 CANCELLED → 返回当前,不改 reason/不写审计
     if rfq.status == RfqStatus.CANCELLED:
         return _serialize_rfq(rfq, is_operator=is_operator)
+
+    # 买方硬禁:PROCESSING/QUOTED 后不可撤销
+    if is_buyer and not is_operator:
+        if rfq.status not in RfqStatus.BUYER_CANCELLABLE:
+            raise RfqStateInvalidError(rfq.status)
 
     # 状态守卫
     if not RfqStatus.can_transition(rfq.status, RfqStatus.CANCELLED):
@@ -565,3 +565,122 @@ def _serialize_rfq(
     if quote_data is not None:
         result.quote = quote_data
     return result
+
+
+# ── 受理 ────────────────────────────────────────────────
+
+
+async def claim_rfq(
+    db: AsyncSession, user: CurrentUser, rfq_id: int,
+    *, request: Request | None = None,
+) -> RfqOperatorView:
+    """运营受理询价单：SUBMITTED → PROCESSING，写 operator_assignee_id。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+
+    # 幂等:已 PROCESSING 且受理人是自己
+    if rfq.status == RfqStatus.PROCESSING and rfq.operator_assignee_id == user.id:
+        return _serialize_rfq(rfq, is_operator=True)
+
+    # 冲突:已被其他运营受理
+    if rfq.status == RfqStatus.PROCESSING and rfq.operator_assignee_id != user.id:
+        raise RfqAlreadyClaimedError()
+
+    # 状态守卫
+    if not RfqStatus.can_transition(rfq.status, RfqStatus.PROCESSING):
+        raise RfqStateInvalidError(rfq.status)
+
+    rfq.status = RfqStatus.PROCESSING
+    rfq.operator_assignee_id = user.id
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.CLAIM,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no},
+        commit=False,
+    )
+    await db.commit()
+
+    return await _load_and_serialize(db, rfq.id, is_operator=True)
+
+
+# ── 撤回改单 ────────────────────────────────────────────
+
+
+async def withdraw_rfq(
+    db: AsyncSession, user: CurrentUser, rfq_id: int,
+    *, request: Request | None = None,
+) -> RfqBuyerPublic:
+    """买方撤回询价单：SUBMITTED → DRAFT，回到可编辑态。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+
+    # 幂等:已 DRAFT
+    if rfq.status == RfqStatus.DRAFT:
+        return _serialize_rfq(rfq, is_operator=False)
+
+    # 状态守卫:仅 SUBMITTED 可撤回到 DRAFT
+    if not RfqStatus.can_transition(rfq.status, RfqStatus.DRAFT):
+        raise RfqStateInvalidError(rfq.status)
+
+    rfq.status = RfqStatus.DRAFT
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.WITHDRAW,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no},
+        commit=False,
+    )
+    await db.commit()
+
+    return await _load_and_serialize(db, rfq.id, is_operator=False)
+
+
+# ── 草稿态编辑行项数量 ──────────────────────────────────
+
+
+async def update_rfq_item_qty(
+    db: AsyncSession, user: CurrentUser,
+    rfq_id: int, item_id: int, quantity: Decimal,
+    *, request: Request | None = None,
+) -> RfqBuyerPublic:
+    """草稿态修改行项数量。仅 DRAFT 可操作。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+
+    # 状态守卫:仅 DRAFT 可编辑
+    if rfq.status != RfqStatus.DRAFT:
+        raise RfqStateInvalidError(rfq.status)
+
+    # 查找行项
+    target_item = None
+    for it in rfq.items:
+        if it.id == item_id and getattr(it, "deleted_at", None) is None:
+            target_item = it
+            break
+    if not target_item:
+        raise RfqItemNotFoundError()
+
+    target_item.quantity = quantity
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.UPDATE,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no, "item_id": item_id, "quantity": str(quantity)},
+        commit=False,
+    )
+    await db.commit()
+
+    return await _load_and_serialize(db, rfq.id, is_operator=False)

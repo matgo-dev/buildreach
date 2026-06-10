@@ -97,7 +97,9 @@
       "state_invalid": "询价单状态不允许此操作",
       "duplicate_sku": "请求中包含重复的商品规格",
       "source_not_allowed": "运营仅允许直接录入方式创建询价",
-      "no_generation_failed": "询价单号生成失败,请重试"
+      "no_generation_failed": "询价单号生成失败,请重试",
+      "already_claimed": "该询价单已被其他运营受理",
+      "item_not_found": "询价行项不存在"
     },
     "quote": {
       "rfq_state_invalid": "当前询价单状态不允许此报价操作",

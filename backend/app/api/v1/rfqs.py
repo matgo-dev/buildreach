@@ -12,7 +12,7 @@ from app.core.exceptions import success
 from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_any_role, require_permission
-from app.schemas.rfq import RfqCancelRequest, RfqCreate
+from app.schemas.rfq import RfqCancelRequest, RfqCreate, RfqItemUpdate
 from app.services import rfq as rfq_svc
 
 router = APIRouter(
@@ -74,5 +74,42 @@ async def cancel_rfq(
     cancel_reason = data.cancel_reason if data else None
     result = await rfq_svc.cancel_rfq(
         db, current, rfq_id, cancel_reason, request=request,
+    )
+    return success(result.model_dump())
+
+
+@router.patch("/{rfq_id}/claim", summary="受理询价单")
+async def claim_rfq(
+    rfq_id: int,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_CLAIM)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.claim_rfq(db, current, rfq_id, request=request)
+    return success(result.model_dump())
+
+
+@router.patch("/{rfq_id}/withdraw", summary="撤回改单")
+async def withdraw_rfq(
+    rfq_id: int,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_UPDATE)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.withdraw_rfq(db, current, rfq_id, request=request)
+    return success(result.model_dump())
+
+
+@router.patch("/{rfq_id}/items/{item_id}", summary="草稿态编辑行项数量")
+async def update_rfq_item(
+    rfq_id: int,
+    item_id: int,
+    data: RfqItemUpdate,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_UPDATE)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.update_rfq_item_qty(
+        db, current, rfq_id, item_id, data.quantity, request=request,
     )
     return success(result.model_dump())

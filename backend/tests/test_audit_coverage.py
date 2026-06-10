@@ -64,6 +64,9 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     # rfq — 询价单写操作
     ("POST", "/api/v1/rfqs"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/cancel"),
+    ("PATCH", "/api/v1/rfqs/{rfq_id}/claim"),
+    ("PATCH", "/api/v1/rfqs/{rfq_id}/withdraw"),
+    ("PATCH", "/api/v1/rfqs/{rfq_id}/items/{item_id}"),
     # quote — 报价写操作
     ("POST", "/api/v1/rfqs/{rfq_id}/quotes"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/expire"),
