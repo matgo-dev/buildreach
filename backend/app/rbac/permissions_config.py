@@ -31,6 +31,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.CART_WRITE,
         Permissions.RFQ_READ,
         Permissions.RFQ_CREATE,
+        Permissions.RFQ_CANCEL,
         Permissions.QUOTE_READ,
         Permissions.ORDER_READ,
         Permissions.ORDER_WRITE,
@@ -67,9 +68,10 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.PRODUCT_REJECT,
         Permissions.COUNTRY_READ,
         Permissions.COUNTRY_WRITE,
-        # 单边模型:运营代客录入询价 + 回填报价
+        # 单边模型:运营代客录入询价 + 回填报价 + 撤销
         Permissions.RFQ_READ,
         Permissions.RFQ_CREATE,
+        Permissions.RFQ_CANCEL,
         Permissions.QUOTE_READ,
         Permissions.QUOTE_WRITE,
         Permissions.ORDER_READ,
