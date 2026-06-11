@@ -89,8 +89,13 @@ export interface RfqListResponse {
 // ---------- API 函数 ----------
 
 /** 创建询价单 */
-export async function createRfq(data: RfqCreate): Promise<RfqBuyerPublic> {
-  return api.post<RfqBuyerPublic>("/api/v1/rfqs", data);
+export async function createRfq(
+  data: RfqCreate,
+  idempotencyKey?: string,
+): Promise<RfqBuyerPublic> {
+  return api.post<RfqBuyerPublic>("/api/v1/rfqs", data, {
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+  });
 }
 
 /** 询价单列表 */

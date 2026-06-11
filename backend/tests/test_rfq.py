@@ -6,14 +6,17 @@ rfq_no 生成、dup sku、scope 越权(404)、撤销守卫+幂等、
 """
 from __future__ import annotations
 
+import asyncio
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.audit_log import AuditLog
 from app.db.models.cart_item import CartItem
 from app.db.models.category import Category
 from app.db.models.product_sku import ProductSku
@@ -573,3 +576,165 @@ async def test_soft_deleted_rfq_invisible(client, db_session):
     # 报价列表 → 404
     r = await client.get(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op)
     assert r.status_code == 404
+
+
+# ── 幂等键(Idempotency-Key) ─────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_idempotency_same_key_sequential(client: AsyncClient, db_session: AsyncSession):
+    """同一 Idempotency-Key 顺序重复提交 → 返回同一 rfq_id；DB 仅一张单。"""
+    op = await _op_headers(client)
+    bh = await _buyer_headers(client)
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+    idem_key = str(uuid4())
+
+    payload = {
+        "source_type": "DIRECT",
+        "items": [{"sku_id": sku_id, "quantity": 10}],
+    }
+    headers = {**bh, "Idempotency-Key": idem_key}
+
+    r1 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
+    assert r1.status_code == 200, r1.text
+    rfq_id_1 = r1.json()["data"]["id"]
+
+    r2 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
+    assert r2.status_code == 200, r2.text
+    rfq_id_2 = r2.json()["data"]["id"]
+
+    assert rfq_id_1 == rfq_id_2
+
+    # DB 中仅一张单
+    count = (await db_session.execute(
+        select(func.count()).select_from(Rfq).where(Rfq.idempotency_key == idem_key)
+    )).scalar()
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_idempotency_different_keys(client: AsyncClient, db_session: AsyncSession):
+    """不同 key 提交 → 两张单。"""
+    op = await _op_headers(client)
+    bh = await _buyer_headers(client)
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+
+    payload = {
+        "source_type": "DIRECT",
+        "items": [{"sku_id": sku_id, "quantity": 10}],
+    }
+
+    r1 = await client.post(
+        "/api/v1/rfqs", headers={**bh, "Idempotency-Key": str(uuid4())}, json=payload,
+    )
+    r2 = await client.post(
+        "/api/v1/rfqs", headers={**bh, "Idempotency-Key": str(uuid4())}, json=payload,
+    )
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json()["data"]["id"] != r2.json()["data"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_idempotency_no_header(client: AsyncClient, db_session: AsyncSession):
+    """无 Idempotency-Key 头 → 每次建新单(维持现状)。"""
+    op = await _op_headers(client)
+    bh = await _buyer_headers(client)
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+
+    payload = {
+        "source_type": "DIRECT",
+        "items": [{"sku_id": sku_id, "quantity": 10}],
+    }
+
+    r1 = await client.post("/api/v1/rfqs", headers=bh, json=payload)
+    r2 = await client.post("/api/v1/rfqs", headers=bh, json=payload)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json()["data"]["id"] != r2.json()["data"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_idempotency_validation_failure_then_retry(client: AsyncClient, db_session: AsyncSession):
+    """校验失败(不可购)后同 key 重试 → 首次报错,key 未占;修正后同 key 成功。"""
+    op = await _op_headers(client)
+    bh = await _buyer_headers(client)
+    idem_key = str(uuid4())
+
+    # 不存在的 sku → 校验失败
+    payload_bad = {
+        "source_type": "DIRECT",
+        "items": [{"sku_id": 999999, "quantity": 10}],
+    }
+    r1 = await client.post(
+        "/api/v1/rfqs", headers={**bh, "Idempotency-Key": idem_key}, json=payload_bad,
+    )
+    assert r1.status_code != 200  # 校验失败
+
+    # key 未被占用,同 key 用正确载荷重试
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+    payload_good = {
+        "source_type": "DIRECT",
+        "items": [{"sku_id": sku_id, "quantity": 10}],
+    }
+    r2 = await client.post(
+        "/api/v1/rfqs", headers={**bh, "Idempotency-Key": idem_key}, json=payload_good,
+    )
+    assert r2.status_code == 200, r2.text
+
+
+@pytest.mark.asyncio
+async def test_idempotency_no_duplicate_audit(client: AsyncClient, db_session: AsyncSession):
+    """幂等命中不重复写审计。"""
+    op = await _op_headers(client)
+    bh = await _buyer_headers(client)
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+    idem_key = str(uuid4())
+
+    payload = {
+        "source_type": "DIRECT",
+        "items": [{"sku_id": sku_id, "quantity": 10}],
+    }
+    headers = {**bh, "Idempotency-Key": idem_key}
+
+    r1 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
+    assert r1.status_code == 200
+    rfq_id = r1.json()["data"]["id"]
+
+    # 重复提交
+    r2 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
+    assert r2.status_code == 200
+
+    # 审计仅一条 SUBMIT
+    audit_count = (await db_session.execute(
+        select(func.count()).select_from(AuditLog).where(
+            AuditLog.resource_type == "rfq",
+            AuditLog.resource_id == str(rfq_id),
+            AuditLog.action == "SUBMIT",
+        )
+    )).scalar()
+    assert audit_count == 1
+
+
+@pytest.mark.asyncio
+async def test_idempotency_no_duplicate_cart_delete(client: AsyncClient, db_session: AsyncSession):
+    """幂等命中不重复删购物车(CART 路径)。"""
+    op = await _op_headers(client)
+    bh = await _buyer_headers(client)
+    sku_id = await _create_purchasable_sku(client, op, db_session)
+    cart_item_id = await _add_to_cart(client, bh, sku_id)
+    idem_key = str(uuid4())
+
+    payload = {
+        "source_type": "CART",
+        "cart_item_ids": [cart_item_id],
+    }
+    headers = {**bh, "Idempotency-Key": idem_key}
+
+    r1 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
+    assert r1.status_code == 200
+
+    # 重复提交 — 购物车已删,但不应报错(幂等命中短路)
+    r2 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
+    assert r2.status_code == 200
+    assert r1.json()["data"]["id"] == r2.json()["data"]["id"]

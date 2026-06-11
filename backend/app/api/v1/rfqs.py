@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
@@ -28,8 +28,11 @@ async def create_rfq(
     data: RfqCreate,
     current: CurrentUser = Depends(require_permission(Permissions.RFQ_CREATE)),
     db: AsyncSession = Depends(get_db),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
-    result = await rfq_svc.create_rfq(db, current, data, request=request)
+    result = await rfq_svc.create_rfq(
+        db, current, data, idempotency_key=idempotency_key, request=request,
+    )
     return success(result.model_dump())
 
 

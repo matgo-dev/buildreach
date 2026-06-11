@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -171,6 +171,7 @@ function RfqCreateContent() {
   // 删除询价行（不删询价篮，只是本次提交不含该项）
   const handleRemoveItem = useCallback((itemId: number) => {
     setCartItems((prev) => prev.filter((i) => i.item_id !== itemId));
+    idemRef.current = null; // 载荷变化,下次提交生成新 token
   }, []);
 
   // 修改数量（同步更新询价篮）
@@ -179,6 +180,7 @@ function RfqCreateContent() {
   const handleQuantityChange = useCallback(
     (itemId: number, qty: number) => {
       if (qty <= 0) return;
+      idemRef.current = null; // 载荷变化,下次提交生成新 token
       // 乐观更新本地
       setCartItems((prev) =>
         prev.map((i) => (i.item_id === itemId ? { ...i, quantity: qty } : i)),
@@ -230,32 +232,43 @@ function RfqCreateContent() {
 
   const updateDraft = useCallback(<K extends keyof DraftData>(key: K, value: DraftData[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
+    idemRef.current = null; // 载荷变化,下次提交生成新 token
   }, []);
+
+  // 幂等 token：同一次提交意图复用同一 key，载荷变化或成功后重置
+  const idemRef = useRef<string | null>(null);
 
   // 提交
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = useCallback(async () => {
-    if (cartItems.length === 0) return;
+    if (submitting || cartItems.length === 0) return;
+    if (!idemRef.current) {
+      idemRef.current = crypto.randomUUID();
+    }
     setSubmitting(true);
     try {
-      await createRfq({
-        source_type: "CART",
-        cart_item_ids: cartItems.map((i) => i.item_id),
-        contact_name: draft.contact_name || undefined,
-        contact_phone: draft.contact_phone || undefined,
-        contact_email: draft.contact_email || undefined,
-        requested_delivery_place: draft.requested_delivery_place || undefined,
-        expected_delivery_date: draft.expected_delivery_date
-          ? `${draft.expected_delivery_date}T00:00:00Z`
-          : undefined,
-        target_currency: draft.target_currency || undefined,
-        required_certifications:
-          draft.certifications.length > 0 ? draft.certifications : undefined,
-        remark: draft.remark || undefined,
-      });
+      await createRfq(
+        {
+          source_type: "CART",
+          cart_item_ids: cartItems.map((i) => i.item_id),
+          contact_name: draft.contact_name || undefined,
+          contact_phone: draft.contact_phone || undefined,
+          contact_email: draft.contact_email || undefined,
+          requested_delivery_place: draft.requested_delivery_place || undefined,
+          expected_delivery_date: draft.expected_delivery_date
+            ? `${draft.expected_delivery_date}T00:00:00Z`
+            : undefined,
+          target_currency: draft.target_currency || undefined,
+          required_certifications:
+            draft.certifications.length > 0 ? draft.certifications : undefined,
+          remark: draft.remark || undefined,
+        },
+        idemRef.current,
+      );
 
-      // 成功：清草稿 + 刷新询价篮 + 跳转
+      // 成功：清 token + 清草稿 + 刷新询价篮 + 跳转
+      idemRef.current = null;
       try { sessionStorage.removeItem(draftKey); } catch {}
       const updatedCart = await getCart();
       syncFromCart(updatedCart);
@@ -263,6 +276,7 @@ function RfqCreateContent() {
       toast.success(t("submitSuccess"));
       router.push(`/${locale}/buyer/rfqs`);
     } catch (err) {
+      // 失败保留 idemRef 允许同 token 重试
       if (err instanceof ApiError && err.messageKey) {
         const key = err.messageKey.replace(/^error\./, "");
         try {
@@ -276,7 +290,7 @@ function RfqCreateContent() {
     } finally {
       setSubmitting(false);
     }
-  }, [cartItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
+  }, [submitting, cartItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
 
   // 今天日期（限制 date picker 不能选过去）
   const todayStr = useMemo(() => {
