@@ -242,38 +242,14 @@ function RfqDetailContent() {
         </div>
       </div>
 
-      {/* 商品清单 */}
-      <div className="rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-5 py-3">
-          <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
-                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rfq.items.map((item) => (
-                <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
-                  <td className="px-5 py-3 font-medium text-gray-800">
-                    {item.product_name_snapshot ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-gray-500">
-                    {item.sku_spec_snapshot ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-right font-semibold text-gray-800">
-                    {item.quantity} {item.uom_snapshot ?? ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* 商品 & 报价 — 整合卡片 */}
+      <ItemsAndQuoteCard
+        rfq={rfq}
+        quote={showQuoteSection ? quote : null}
+        rfqItemMap={rfqItemMap}
+        isExpiredHint={isExpiredHint}
+        locale={locale}
+      />
 
       {/* 交货信息 */}
       {(rfq.requested_delivery_place || rfq.expected_delivery_date || rfq.target_currency) && (
@@ -362,16 +338,7 @@ function RfqDetailContent() {
         </div>
       )}
 
-      {/* 报价区块 */}
-      {showQuoteSection && (
-        <QuoteSection
-          quote={quote}
-          rfq={rfq}
-          rfqItemMap={rfqItemMap}
-          isExpiredHint={isExpiredHint}
-          locale={locale}
-        />
-      )}
+      {/* 报价区块已整合到 ItemsAndQuoteCard */}
 
       {/* 撤回确认框 */}
       {withdrawOpen && (
@@ -468,41 +435,34 @@ function RfqDetailContent() {
   );
 }
 
-// ---- 报价区块子组件 ----
+// ---- 商品 & 报价整合卡片 ----
 
-function QuoteSection({
-  quote,
+function ItemsAndQuoteCard({
   rfq,
+  quote,
   rfqItemMap,
   isExpiredHint,
   locale,
 }: {
-  quote: RfqQuoteBuyerPublic | null;
   rfq: RfqBuyerPublic;
+  quote: RfqQuoteBuyerPublic | null;
   rfqItemMap: Map<number, RfqItemPublic>;
   isExpiredHint: boolean;
   locale: string;
 }) {
+  const t = useTranslations("rfq");
   const tQ = useTranslations("quote");
 
-  if (!quote) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">{tQ("section")}</h2>
-        <p className="text-sm text-gray-400">{tQ("noQuote")}</p>
-      </div>
-    );
-  }
-
-  const currency = quote.currency ?? "USD";
+  const hasQuote = !!quote;
+  const currency = quote?.currency ?? "USD";
   const isAccepted = rfq.status === "ACCEPTED";
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
-      {/* 区块标题 */}
+      {/* 卡片标题 */}
       <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-700">{tQ("section")}</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
           {isAccepted && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
               <CheckCircle2 className="h-3 w-3" />
@@ -510,7 +470,7 @@ function QuoteSection({
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400">{quote.quote_no}</span>
+        {quote && <span className="text-xs text-gray-400">{quote.quote_no}</span>}
       </div>
 
       {/* 过期软提示 */}
@@ -521,89 +481,137 @@ function QuoteSection({
         </div>
       )}
 
-      {/* 表头条款 */}
-      <div className="grid grid-cols-2 gap-3 px-5 py-4 text-sm sm:grid-cols-4">
-        {quote.trade_term && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("tradeTerm")}</span>
-            <p className="font-medium text-gray-800">{quote.trade_term}</p>
-          </div>
-        )}
-        {quote.named_place && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("namedPlace")}</span>
-            <p className="font-medium text-gray-800">{quote.named_place}</p>
-          </div>
-        )}
-        {quote.currency && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("currency")}</span>
-            <p className="font-medium text-gray-800">{quote.currency}</p>
-          </div>
-        )}
-        {quote.valid_until && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("validUntil")}</span>
-            <p className="font-medium text-gray-800">
-              {formatDate(quote.valid_until, locale, { hour: undefined, minute: undefined })}
-            </p>
-          </div>
-        )}
-        {quote.lead_time_days != null && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("leadTimeDays")}</span>
-            <p className="font-medium text-gray-800">{quote.lead_time_days}</p>
-          </div>
-        )}
-        {quote.eta_days != null && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("etaDays")}</span>
-            <p className="font-medium text-gray-800">{quote.eta_days}</p>
-          </div>
-        )}
-        {quote.total_amount != null && (
-          <div>
-            <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
-            <p className="text-base font-bold text-[#0D4D4D]">
-              {formatCurrency(Number(quote.total_amount), currency, locale)}
-            </p>
-          </div>
-        )}
+      {/* 报价摘要条 — 有报价时展示条款概要 */}
+      {hasQuote && (
+        <div className="grid grid-cols-2 gap-3 border-b border-gray-100 px-5 py-4 text-sm sm:grid-cols-4">
+          {quote.trade_term && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("tradeTerm")}</span>
+              <p className="font-medium text-gray-800">{quote.trade_term}</p>
+            </div>
+          )}
+          {quote.named_place && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("namedPlace")}</span>
+              <p className="font-medium text-gray-800">{quote.named_place}</p>
+            </div>
+          )}
+          {quote.currency && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("currency")}</span>
+              <p className="font-medium text-gray-800">{quote.currency}</p>
+            </div>
+          )}
+          {quote.valid_until && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("validUntil")}</span>
+              <p className="font-medium text-gray-800">
+                {formatDate(quote.valid_until, locale, { hour: undefined, minute: undefined })}
+              </p>
+            </div>
+          )}
+          {quote.lead_time_days != null && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("leadTimeDays")}</span>
+              <p className="font-medium text-gray-800">{quote.lead_time_days}</p>
+            </div>
+          )}
+          {quote.eta_days != null && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("etaDays")}</span>
+              <p className="font-medium text-gray-800">{quote.eta_days}</p>
+            </div>
+          )}
+          {quote.total_amount != null && (
+            <div>
+              <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
+              <p className="text-base font-bold text-[#0D4D4D]">
+                {formatCurrency(Number(quote.total_amount), currency, locale)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 整合表格 */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            {hasQuote ? (
+              <>
+                {/* 第一层：列组标题 */}
+                <tr className="text-xs">
+                  <th
+                    colSpan={3}
+                    className="border-b border-gray-100 bg-gray-50 px-5 py-1.5 text-left font-semibold text-gray-500"
+                  >
+                    {tQ("groupRequest")}
+                  </th>
+                  <th
+                    colSpan={5}
+                    className="border-b border-gray-100 border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-5 py-1.5 text-left font-semibold text-[#0D4D4D]/60"
+                  >
+                    {tQ("groupResponse")}
+                  </th>
+                </tr>
+                {/* 第二层：各列标题 */}
+                <tr className="text-left text-xs text-gray-500">
+                  <th className="bg-gray-50 px-5 py-2 font-medium">{tQ("product")}</th>
+                  <th className="bg-gray-50 px-5 py-2 font-medium">{tQ("spec")}</th>
+                  <th className="bg-gray-50 px-5 py-2 font-medium text-right">{tQ("quantity")}</th>
+                  <th className="border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("unitPrice")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("moq")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("cbm")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("grossWeight")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("totalAmount")}</th>
+                </tr>
+              </>
+            ) : (
+              <tr className="bg-gray-50 text-left text-xs text-gray-500">
+                <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
+                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
+              </tr>
+            )}
+          </thead>
+          <tbody>
+            {hasQuote
+              ? quote.items.map((qi) => {
+                  const rfqItem = rfqItemMap.get(qi.rfq_item_id);
+                  return (
+                    <QuoteLineRow
+                      key={qi.id}
+                      qi={qi}
+                      rfqItem={rfqItem}
+                      currency={currency}
+                      locale={locale}
+                    />
+                  );
+                })
+              : rfq.items.map((item) => (
+                  <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
+                    <td className="px-5 py-3 font-medium text-gray-800">
+                      {item.product_name_snapshot ?? "—"}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500">
+                      {item.sku_spec_snapshot ?? "—"}
+                    </td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-800">
+                      {item.quantity} {item.uom_snapshot ?? ""}
+                    </td>
+                  </tr>
+                ))
+            }
+          </tbody>
+        </table>
       </div>
 
-      {/* 报价明细行 */}
-      <div className="border-t border-gray-100">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-5 py-2.5 font-medium">{tQ("product")}</th>
-                <th className="px-5 py-2.5 font-medium">{tQ("spec")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{tQ("quantity")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{tQ("unitPrice")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{tQ("moq")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{tQ("cbm")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{tQ("grossWeight")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{tQ("totalAmount")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quote.items.map((qi) => {
-                const rfqItem = rfqItemMap.get(qi.rfq_item_id);
-                return (
-                  <QuoteLineRow
-                    key={qi.id}
-                    qi={qi}
-                    rfqItem={rfqItem}
-                    currency={currency}
-                    locale={locale}
-                  />
-                );
-              })}
-            </tbody>
-          </table>
+      {/* 无报价时的提示（仅报价可见状态但尚无报价） */}
+      {!hasQuote && QUOTE_VISIBLE_STATUSES.has(rfq.status) && (
+        <div className="border-t border-gray-100 px-5 py-4">
+          <p className="text-sm text-gray-400">{tQ("noQuote")}</p>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -636,7 +644,7 @@ function QuoteLineRow({
         <td className="px-5 py-3 text-right text-gray-800">
           {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
         </td>
-        <td className="px-5 py-3 text-right font-semibold text-gray-800">
+        <td className="border-l border-l-gray-200 px-5 py-3 text-right font-semibold text-gray-800">
           {qi.unit_price != null
             ? formatCurrency(Number(qi.unit_price), currency, locale)
             : "—"}
