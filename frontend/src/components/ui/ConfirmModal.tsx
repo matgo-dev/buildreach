@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 
 interface ConfirmModalProps {
@@ -25,13 +26,16 @@ export default function ConfirmModal({
   open,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   variant = "primary",
   loading = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const tCommon = useTranslations("common");
+  const resolvedConfirm = confirmLabel ?? tCommon("confirm");
+  const resolvedCancel = cancelLabel ?? tCommon("cancel");
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape" && !loading) onCancel();
@@ -66,7 +70,7 @@ export default function ConfirmModal({
             disabled={loading}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            {cancelLabel}
+            {resolvedCancel}
           </button>
           <button
             onClick={onConfirm}
@@ -74,7 +78,7 @@ export default function ConfirmModal({
             className={`rounded-lg px-4 py-2 text-sm font-medium text-white flex items-center gap-1.5 disabled:opacity-60 ${VARIANT_STYLES[variant]}`}
           >
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {confirmLabel}
+            {resolvedConfirm}
           </button>
         </div>
       </div>
