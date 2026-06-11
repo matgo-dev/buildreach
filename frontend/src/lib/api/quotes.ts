@@ -79,6 +79,38 @@ export interface RfqQuoteOperatorView {
   items: QuoteItemOperatorView[];
 }
 
+// ---------- 买方响应类型 ----------
+
+export interface QuoteItemBuyerPublic {
+  id: number;
+  rfq_item_id: number;
+  unit_price: number | null;
+  moq: number | null;
+  cbm_per_unit: number | null;
+  gross_weight_per_unit: number | null;
+  line_amount: number | null;
+  tiers: QuoteTierPublic[];
+}
+
+export interface RfqQuoteBuyerPublic {
+  id: number;
+  quote_no: string;
+  trade_term: string | null;
+  named_place: string | null;
+  currency: string | null;
+  valid_until: string | null;
+  lead_time_days: number | null;
+  eta_days: number | null;
+  total_amount: number | null;
+  items: QuoteItemBuyerPublic[];
+}
+
+export interface RfqDecisionResult {
+  rfq_id: number;
+  status: string;
+  accepted_quote_id?: number;
+}
+
 // ---------- API 函数 ----------
 
 /** 回填/创建报价 */
@@ -92,9 +124,30 @@ export async function backfillQuote(
   );
 }
 
-/** 查询报价列表 */
+/** 查询报价列表（运营视角） */
 export async function listQuotes(
   rfqId: number,
 ): Promise<RfqQuoteOperatorView[]> {
   return api.get<RfqQuoteOperatorView[]>(`/api/v1/rfqs/${rfqId}/quotes`);
+}
+
+/** 查询报价列表（买方视角，仅 ACTIVE，0/1 条） */
+export async function listBuyerQuotes(
+  rfqId: number,
+): Promise<RfqQuoteBuyerPublic[]> {
+  return api.get<RfqQuoteBuyerPublic[]>(`/api/v1/rfqs/${rfqId}/quotes`);
+}
+
+/** 接受报价 */
+export async function acceptRfq(
+  rfqId: number,
+): Promise<RfqDecisionResult> {
+  return api.patch<RfqDecisionResult>(`/api/v1/rfqs/${rfqId}/accept`, {});
+}
+
+/** 拒绝报价 */
+export async function rejectRfq(
+  rfqId: number,
+): Promise<RfqDecisionResult> {
+  return api.patch<RfqDecisionResult>(`/api/v1/rfqs/${rfqId}/reject`, {});
 }

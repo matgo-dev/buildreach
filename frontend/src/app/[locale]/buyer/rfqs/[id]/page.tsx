@@ -1,34 +1,63 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useToast } from "@/components/ui/Toast";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { ApiError } from "@/lib/api";
-import { getRfq, cancelRfq, withdrawRfq, type RfqBuyerPublic } from "@/lib/api/rfqs";
-import { formatDate } from "@/lib/formatters";
+import { getRfq, cancelRfq, withdrawRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
+import {
+  listBuyerQuotes, acceptRfq, rejectRfq,
+  type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
+} from "@/lib/api/quotes";
+import { formatDate, formatCurrency } from "@/lib/formatters";
+
+// 需要拉报价的状态集合
+const QUOTE_VISIBLE_STATUSES = new Set(["QUOTED", "ACCEPTED", "REJECTED", "EXPIRED"]);
 
 function RfqDetailContent() {
   const params = useParams();
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("rfq");
+  const tQ = useTranslations("quote");
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
   const toast = useToast();
+  const { hasPermission } = usePermissions();
   const rfqId = Number(params.id);
 
+  // RFQ 详情
   const { data: rfq, isLoading, error, mutate } = useSWR<RfqBuyerPublic>(
     rfqId ? `rfq-detail-${rfqId}` : null,
     () => getRfq(rfqId),
     { revalidateOnFocus: false },
   );
+
+  // 报价数据 — SWR key 为 null 时不发请求（满足 hooks 无条件调用规则）
+  const quotesSwrKey = rfq && QUOTE_VISIBLE_STATUSES.has(rfq.status)
+    ? `rfq-quotes-buyer-${rfqId}`
+    : null;
+  const { data: quotes, mutate: mutateQuotes } = useSWR(
+    quotesSwrKey,
+    () => listBuyerQuotes(rfqId),
+    { revalidateOnFocus: false },
+  );
+  const quote = quotes?.[0] ?? null;
+
+  // 有效期过期软提示
+  const isExpiredHint = useMemo(() => {
+    if (rfq?.status !== "QUOTED" || !quote?.valid_until) return false;
+    return new Date(quote.valid_until) < new Date();
+  }, [rfq?.status, quote?.valid_until]);
 
   // 取消询价
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -39,6 +68,22 @@ function RfqDetailContent() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // 接受/拒绝
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+
+  // 统一错误展示
+  const showError = useCallback((err: unknown) => {
+    if (err instanceof ApiError && err.messageKey) {
+      const key = err.messageKey.replace(/^error\./, "");
+      try { toast.error(tError(key)); } catch { toast.error(err.message); }
+    } else {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [toast, tError]);
+
   const handleWithdraw = useCallback(async () => {
     setWithdrawing(true);
     try {
@@ -47,16 +92,11 @@ function RfqDetailContent() {
       setWithdrawOpen(false);
       toast.success(t("withdrawSuccess"));
     } catch (err) {
-      if (err instanceof ApiError && err.messageKey) {
-        const key = err.messageKey.replace(/^error\./, "");
-        try { toast.error(tError(key)); } catch { toast.error(err.message); }
-      } else {
-        toast.error(err instanceof Error ? err.message : String(err));
-      }
+      showError(err);
     } finally {
       setWithdrawing(false);
     }
-  }, [rfqId, mutate, toast, t, tError]);
+  }, [rfqId, mutate, toast, t, showError]);
 
   const handleCancel = useCallback(async () => {
     setCancelling(true);
@@ -67,16 +107,41 @@ function RfqDetailContent() {
       setCancelReason("");
       toast.success(t("cancelSuccess"));
     } catch (err) {
-      if (err instanceof ApiError && err.messageKey) {
-        const key = err.messageKey.replace(/^error\./, "");
-        try { toast.error(tError(key)); } catch { toast.error(err.message); }
-      } else {
-        toast.error(err instanceof Error ? err.message : String(err));
-      }
+      showError(err);
     } finally {
       setCancelling(false);
     }
-  }, [rfqId, cancelReason, mutate, toast, t, tError]);
+  }, [rfqId, cancelReason, mutate, toast, t, showError]);
+
+  const handleAccept = useCallback(async () => {
+    setAccepting(true);
+    try {
+      await acceptRfq(rfqId);
+      mutate();
+      mutateQuotes();
+      setAcceptOpen(false);
+      toast.success(tQ("acceptSuccess"));
+    } catch (err) {
+      showError(err);
+    } finally {
+      setAccepting(false);
+    }
+  }, [rfqId, mutate, mutateQuotes, toast, tQ, showError]);
+
+  const handleReject = useCallback(async () => {
+    setRejecting(true);
+    try {
+      await rejectRfq(rfqId);
+      mutate();
+      mutateQuotes();
+      setRejectOpen(false);
+      toast.success(tQ("rejectSuccess"));
+    } catch (err) {
+      showError(err);
+    } finally {
+      setRejecting(false);
+    }
+  }, [rfqId, mutate, mutateQuotes, toast, tQ, showError]);
 
   // ---- 渲染 ----
 
@@ -106,6 +171,12 @@ function RfqDetailContent() {
 
   const canCancel = rfq.status === "SUBMITTED";
   const canWithdraw = rfq.status === "SUBMITTED";
+  const canDecide = rfq.status === "QUOTED" && hasPermission(Permissions.RFQ_DECIDE);
+  const showQuoteSection = QUOTE_VISIBLE_STATUSES.has(rfq.status);
+
+  // rfqItem 查找表，用于报价行 join 取商品快照
+  const rfqItemMap = new Map<number, RfqItemPublic>();
+  rfq.items.forEach((item) => rfqItemMap.set(item.id, item));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -132,6 +203,24 @@ function RfqDetailContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canDecide && (
+            <>
+              <button
+                type="button"
+                onClick={() => setRejectOpen(true)}
+                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+              >
+                {tQ("reject")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAcceptOpen(true)}
+                className="rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0D4D4D]/90"
+              >
+                {tQ("accept")}
+              </button>
+            </>
+          )}
           {canWithdraw && (
             <button
               type="button"
@@ -273,6 +362,17 @@ function RfqDetailContent() {
         </div>
       )}
 
+      {/* 报价区块 */}
+      {showQuoteSection && (
+        <QuoteSection
+          quote={quote}
+          rfq={rfq}
+          rfqItemMap={rfqItemMap}
+          isExpiredHint={isExpiredHint}
+          locale={locale}
+        />
+      )}
+
       {/* 撤回确认框 */}
       {withdrawOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -340,7 +440,254 @@ function RfqDetailContent() {
           </div>
         </div>
       )}
+
+      {/* 接受确认框 */}
+      <ConfirmModal
+        open={acceptOpen}
+        title={tQ("confirmAcceptTitle")}
+        description={tQ("confirmAccept")}
+        variant="primary"
+        loading={accepting}
+        confirmLabel={tQ("accept")}
+        onConfirm={handleAccept}
+        onCancel={() => setAcceptOpen(false)}
+      />
+
+      {/* 拒绝确认框 */}
+      <ConfirmModal
+        open={rejectOpen}
+        title={tQ("confirmRejectTitle")}
+        description={tQ("confirmReject")}
+        variant="danger"
+        loading={rejecting}
+        confirmLabel={tQ("reject")}
+        onConfirm={handleReject}
+        onCancel={() => setRejectOpen(false)}
+      />
     </div>
+  );
+}
+
+// ---- 报价区块子组件 ----
+
+function QuoteSection({
+  quote,
+  rfq,
+  rfqItemMap,
+  isExpiredHint,
+  locale,
+}: {
+  quote: RfqQuoteBuyerPublic | null;
+  rfq: RfqBuyerPublic;
+  rfqItemMap: Map<number, RfqItemPublic>;
+  isExpiredHint: boolean;
+  locale: string;
+}) {
+  const tQ = useTranslations("quote");
+
+  if (!quote) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">{tQ("section")}</h2>
+        <p className="text-sm text-gray-400">{tQ("noQuote")}</p>
+      </div>
+    );
+  }
+
+  const currency = quote.currency ?? "USD";
+  const isAccepted = rfq.status === "ACCEPTED";
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white">
+      {/* 区块标题 */}
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-700">{tQ("section")}</h2>
+          {isAccepted && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+              <CheckCircle2 className="h-3 w-3" />
+              {tQ("acceptedTag")}
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-gray-400">{quote.quote_no}</span>
+      </div>
+
+      {/* 过期软提示 */}
+      {isExpiredHint && (
+        <div className="mx-5 mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          {tQ("expiredHint")}
+        </div>
+      )}
+
+      {/* 表头条款 */}
+      <div className="grid grid-cols-2 gap-3 px-5 py-4 text-sm sm:grid-cols-4">
+        {quote.trade_term && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("tradeTerm")}</span>
+            <p className="font-medium text-gray-800">{quote.trade_term}</p>
+          </div>
+        )}
+        {quote.named_place && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("namedPlace")}</span>
+            <p className="font-medium text-gray-800">{quote.named_place}</p>
+          </div>
+        )}
+        {quote.currency && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("currency")}</span>
+            <p className="font-medium text-gray-800">{quote.currency}</p>
+          </div>
+        )}
+        {quote.valid_until && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("validUntil")}</span>
+            <p className="font-medium text-gray-800">
+              {formatDate(quote.valid_until, locale, { hour: undefined, minute: undefined })}
+            </p>
+          </div>
+        )}
+        {quote.lead_time_days != null && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("leadTimeDays")}</span>
+            <p className="font-medium text-gray-800">{quote.lead_time_days}</p>
+          </div>
+        )}
+        {quote.eta_days != null && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("etaDays")}</span>
+            <p className="font-medium text-gray-800">{quote.eta_days}</p>
+          </div>
+        )}
+        {quote.total_amount != null && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
+            <p className="text-base font-bold text-[#0D4D4D]">
+              {formatCurrency(Number(quote.total_amount), currency, locale)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* 报价明细行 */}
+      <div className="border-t border-gray-100">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500">
+                <th className="px-5 py-2.5 font-medium">{tQ("product")}</th>
+                <th className="px-5 py-2.5 font-medium">{tQ("spec")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{tQ("quantity")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{tQ("unitPrice")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{tQ("moq")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{tQ("cbm")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{tQ("grossWeight")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{tQ("totalAmount")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quote.items.map((qi) => {
+                const rfqItem = rfqItemMap.get(qi.rfq_item_id);
+                return (
+                  <QuoteLineRow
+                    key={qi.id}
+                    qi={qi}
+                    rfqItem={rfqItem}
+                    currency={currency}
+                    locale={locale}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- 报价行子组件 ----
+
+function QuoteLineRow({
+  qi,
+  rfqItem,
+  currency,
+  locale,
+}: {
+  qi: QuoteItemBuyerPublic;
+  rfqItem: RfqItemPublic | undefined;
+  currency: string;
+  locale: string;
+}) {
+  const tQ = useTranslations("quote");
+  const [showTiers, setShowTiers] = useState(false);
+
+  return (
+    <>
+      <tr className="border-t border-gray-100 even:bg-slate-50/50">
+        <td className="px-5 py-3 font-medium text-gray-800">
+          {rfqItem?.product_name_snapshot ?? "—"}
+        </td>
+        <td className="px-5 py-3 text-gray-500">
+          {rfqItem?.sku_spec_snapshot ?? "—"}
+        </td>
+        <td className="px-5 py-3 text-right text-gray-800">
+          {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
+        </td>
+        <td className="px-5 py-3 text-right font-semibold text-gray-800">
+          {qi.unit_price != null
+            ? formatCurrency(Number(qi.unit_price), currency, locale)
+            : "—"}
+        </td>
+        <td className="px-5 py-3 text-right text-gray-600">
+          {qi.moq != null ? Number(qi.moq) : "—"}
+        </td>
+        <td className="px-5 py-3 text-right text-gray-600">
+          {qi.cbm_per_unit != null ? Number(qi.cbm_per_unit) : "—"}
+        </td>
+        <td className="px-5 py-3 text-right text-gray-600">
+          {qi.gross_weight_per_unit != null ? Number(qi.gross_weight_per_unit) : "—"}
+        </td>
+        <td className="px-5 py-3 text-right font-semibold text-gray-800">
+          {qi.line_amount != null
+            ? formatCurrency(Number(qi.line_amount), currency, locale)
+            : "—"}
+        </td>
+      </tr>
+      {/* 阶梯价展开 */}
+      {qi.tiers.length > 0 && (
+        <tr className="border-t border-gray-50">
+          <td colSpan={8} className="px-5 py-2">
+            <button
+              type="button"
+              onClick={() => setShowTiers(!showTiers)}
+              className="text-xs font-medium text-[#0D4D4D] hover:underline"
+            >
+              {tQ("tiers")} ({qi.tiers.length})
+            </button>
+            {showTiers && (
+              <div className="mt-1.5 space-y-0.5">
+                {[...qi.tiers]
+                  .sort((a, b) => a.min_qty - b.min_qty)
+                  .map((tier, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-4 rounded px-2 py-1 text-xs text-gray-600"
+                    >
+                      <span className="w-24">≥ {tier.min_qty}</span>
+                      <span className="font-semibold text-[#0D4D4D]">
+                        {formatCurrency(Number(tier.unit_price), currency, locale)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
