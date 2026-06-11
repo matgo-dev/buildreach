@@ -10,6 +10,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from app.constants.quote_terms import CurrencyCode, TradeTermCode
+
 
 # ── 请求体 ──────────────────────────────────────────────
 
@@ -44,9 +46,9 @@ class QuoteLineInput(BaseModel):
 
 class QuoteHeaderInput(BaseModel):
     """报价表头输入。"""
-    trade_term: str | None = None
+    trade_term: TradeTermCode | None = None
     named_place: str | None = None
-    currency: str | None = Field(default=None, max_length=3)
+    currency: CurrencyCode | None = None
     valid_until: datetime | None = None
     lead_time_days: int | None = Field(default=None, ge=0)
     eta_days: int | None = Field(default=None, ge=0)

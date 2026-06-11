@@ -610,3 +610,49 @@ async def test_admin_cannot_access_quotes(client, superadmin_headers, db_session
     """ADMIN → 403。"""
     r = await client.get("/api/v1/rfqs/1/quotes", headers=superadmin_headers)
     assert r.status_code == 403
+
+
+# ── trade_term / currency 枚举校验 ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_quote_valid_trade_term_and_currency(client, db_session):
+    """合法枚举码正常通过。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
+
+    payload = _build_quote_payload(item_ids)
+    payload["header"]["trade_term"] = "FOB"
+    payload["header"]["currency"] = "USD"
+    r = await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=payload)
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["trade_term"] == "FOB"
+    assert data["currency"] == "USD"
+
+
+@pytest.mark.asyncio
+async def test_quote_invalid_trade_term_rejected(client, db_session):
+    """非法 trade_term → 422。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
+
+    payload = _build_quote_payload(item_ids)
+    payload["header"]["trade_term"] = "EXW"
+    r = await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=payload)
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_quote_invalid_currency_rejected(client, db_session):
+    """非法 currency → 422。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
+
+    payload = _build_quote_payload(item_ids)
+    payload["header"]["currency"] = "EUR"
+    r = await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=payload)
+    assert r.status_code == 422

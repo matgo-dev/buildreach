@@ -19,7 +19,11 @@ import {
   type RfqBuyerPublic,
   type RfqItemPublic,
 } from "@/lib/api/rfqs";
-import { formatDate } from "@/lib/formatters";
+import {
+  listQuotes,
+  type RfqQuoteOperatorView,
+} from "@/lib/api/quotes";
+import { formatDate, formatCurrency } from "@/lib/formatters";
 
 // 行内数量编辑组件
 function EditableQuantity({
@@ -175,7 +179,19 @@ function OperatorRfqDetailContent() {
   }
 
   const canClaim = rfq.status === "SUBMITTED" && hasPermission("rfq:claim");
+  const canBackfillQuote = rfq.status === "PROCESSING" && hasPermission("quote:write");
   const canEditItems = rfq.status === "DRAFT";
+  const showQuoteReadback = rfq.status === "QUOTED";
+
+  // 加载报价数据（QUOTED 态才请求）
+  const { data: quotes } = useSWR<RfqQuoteOperatorView[]>(
+    showQuoteReadback ? `operator-rfq-quotes-${rfqId}` : null,
+    () => listQuotes(rfqId),
+    { revalidateOnFocus: false },
+  );
+  const activeQuote = quotes?.find((q) => q.quote_status === "ACTIVE") ?? null;
+
+  const tQuote = useTranslations("quote");
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -201,15 +217,26 @@ function OperatorRfqDetailContent() {
             </div>
           </div>
         </div>
-        {canClaim && (
-          <button
-            type="button"
-            onClick={() => setClaimOpen(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
-            {t("claim")}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canClaim && (
+            <button
+              type="button"
+              onClick={() => setClaimOpen(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              {t("claim")}
+            </button>
+          )}
+          {canBackfillQuote && (
+            <button
+              type="button"
+              onClick={() => router.push(`/${locale}/operator/rfqs/${rfqId}/quote`)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              {tQuote("backfillTitle")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 商品清单 */}
@@ -332,6 +359,120 @@ function OperatorRfqDetailContent() {
             </div>
           )}
         </div>
+      )}
+
+      {/* 报价读回（QUOTED 态） */}
+      {showQuoteReadback && activeQuote && (
+        <>
+          {/* 报价条款 */}
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 className="mb-3 text-sm font-semibold text-gray-700">{tQuote("viewTitle")}</h2>
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              {activeQuote.trade_term && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("tradeTerm")}</span>
+                  <p className="font-medium text-gray-800">{tQuote(`tradeTerm_${activeQuote.trade_term}`)}</p>
+                </div>
+              )}
+              {activeQuote.named_place && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("namedPlace")}</span>
+                  <p className="font-medium text-gray-800">{activeQuote.named_place}</p>
+                </div>
+              )}
+              {activeQuote.currency && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("currency")}</span>
+                  <p className="font-medium text-gray-800">{tQuote(`currency_${activeQuote.currency}`)}</p>
+                </div>
+              )}
+              {activeQuote.valid_until && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("validUntil")}</span>
+                  <p className="font-medium text-gray-800">{formatDate(activeQuote.valid_until, locale, { hour: undefined, minute: undefined })}</p>
+                </div>
+              )}
+              {activeQuote.lead_time_days != null && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("leadTimeDays")}</span>
+                  <p className="font-medium text-gray-800">{activeQuote.lead_time_days}</p>
+                </div>
+              )}
+              {activeQuote.eta_days != null && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("etaDays")}</span>
+                  <p className="font-medium text-gray-800">{activeQuote.eta_days}</p>
+                </div>
+              )}
+              {activeQuote.total_amount != null && (
+                <div>
+                  <span className="text-xs text-gray-400">{tQuote("totalAmount")}</span>
+                  <p className="text-lg font-bold text-gray-800">
+                    {formatCurrency(Number(activeQuote.total_amount), activeQuote.currency || "USD", locale)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 报价明细 */}
+          <div className="rounded-xl border border-gray-200 bg-white">
+            <div className="border-b border-gray-100 px-5 py-3">
+              <h2 className="text-sm font-semibold text-gray-700">{tQuote("section_lines")}</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-xs text-gray-500">
+                    <th className="px-4 py-2.5 font-medium">{tQuote("product")}</th>
+                    <th className="px-4 py-2.5 font-medium text-right">{tQuote("unitPrice")}</th>
+                    <th className="px-4 py-2.5 font-medium text-right">{tQuote("moq")}</th>
+                    <th className="px-4 py-2.5 font-medium text-right">{tQuote("cbm")}</th>
+                    <th className="px-4 py-2.5 font-medium text-right">{tQuote("grossWeight")}</th>
+                    <th className="px-4 py-2.5 font-medium text-right">{tQuote("tiers")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeQuote.items.map((qItem) => {
+                    // 找到对应 RFQ item 获取商品名
+                    const rfqItem = rfq.items.find((ri) => ri.id === qItem.rfq_item_id);
+                    return (
+                      <tr key={qItem.id} className="border-t border-gray-100 even:bg-slate-50/50">
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {rfqItem?.product_name_snapshot ?? "—"}
+                          {rfqItem?.sku_spec_snapshot && (
+                            <span className="ml-1 text-xs text-gray-400">{rfqItem.sku_spec_snapshot}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-800 font-medium">
+                          {qItem.unit_price != null ? Number(qItem.unit_price).toFixed(2) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {qItem.moq != null ? Number(qItem.moq) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {qItem.cbm_per_unit != null ? Number(qItem.cbm_per_unit) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {qItem.gross_weight_per_unit != null ? Number(qItem.gross_weight_per_unit) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {qItem.tiers.length > 0 ? (
+                            <div className="text-xs">
+                              {qItem.tiers.map((tier, i) => (
+                                <div key={i}>≥{Number(tier.min_qty)}: {Number(tier.unit_price).toFixed(2)}</div>
+                              ))}
+                            </div>
+                          ) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* 受理确认框 */}
