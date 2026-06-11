@@ -60,6 +60,11 @@ class RfqCancelRequest(BaseModel):
     cancel_reason: str | None = None
 
 
+class RfqItemUpdate(BaseModel):
+    """草稿态编辑行项数量。"""
+    quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
+
+
 class RfqListQuery(BaseModel):
     """列表查询参数。"""
     page: int = Field(default=1, ge=1)

@@ -54,7 +54,7 @@ export interface RfqItemPublic {
 export interface RfqBuyerPublic {
   id: number;
   rfq_no: string;
-  status: string; // DRAFT | SUBMITTED | QUOTED | ACCEPTED | REJECTED | EXPIRED | CANCELLED
+  status: string; // DRAFT | SUBMITTED | PROCESSING | QUOTED | ACCEPTED | REJECTED | EXPIRED | CANCELLED
   source: string; // BUYER_SELF | OPERATOR_PROXY
   contact_name: string | null;
   contact_phone: string | null;
@@ -68,7 +68,15 @@ export interface RfqBuyerPublic {
   created_at: string | null;
   updated_at: string | null;
   items: RfqItemPublic[];
-  // quote 字段：报价回填后端合并后再加，本期不定义
+}
+
+/** 运营全量视图，含内部字段 */
+export interface RfqOperatorView extends RfqBuyerPublic {
+  buyer_org_id: number;
+  buyer_user_id: number | null;
+  created_by_user_id: number;
+  operator_assignee_id: number | null;
+  cancel_reason: string | null;
 }
 
 export interface RfqListResponse {
@@ -109,4 +117,23 @@ export async function cancelRfq(
   cancelReason?: string
 ): Promise<RfqBuyerPublic> {
   return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/cancel`, cancelReason ? { cancel_reason: cancelReason } : {});
+}
+
+/** 运营受理询价单：SUBMITTED → PROCESSING */
+export async function claimRfq(rfqId: number): Promise<RfqOperatorView> {
+  return api.patch<RfqOperatorView>(`/api/v1/rfqs/${rfqId}/claim`, {});
+}
+
+/** 买方撤回改单：SUBMITTED → DRAFT */
+export async function withdrawRfq(rfqId: number): Promise<RfqBuyerPublic> {
+  return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/withdraw`, {});
+}
+
+/** 草稿态编辑行项数量 */
+export async function updateRfqItemQty(
+  rfqId: number,
+  itemId: number,
+  quantity: number,
+): Promise<RfqBuyerPublic> {
+  return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/items/${itemId}`, { quantity });
 }

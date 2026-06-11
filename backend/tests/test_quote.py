@@ -103,6 +103,20 @@ async def _create_submitted_rfq(
     return rfq_id, rfq_item_ids
 
 
+async def _create_processing_rfq(
+    client: AsyncClient, bh: dict, op: dict, db: AsyncSession,
+    *, num_items: int = 1,
+) -> tuple[int, list[int]]:
+    """创建 PROCESSING RFQ（运营已受理），返回 (rfq_id, [rfq_item_ids])。"""
+    rfq_id, rfq_item_ids = await _create_submitted_rfq(
+        client, bh, op, db, num_items=num_items,
+    )
+    r = await client.patch(f"/api/v1/rfqs/{rfq_id}/claim", headers=op)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["status"] == "PROCESSING"
+    return rfq_id, rfq_item_ids
+
+
 def _build_quote_payload(
     rfq_item_ids: list[int],
     unit_price: str = "25.0000",
@@ -145,7 +159,7 @@ async def test_first_quote_success(client, db_session):
     """首报:SUBMITTED → v1 ACTIVE + RFQ→QUOTED。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     payload = _build_quote_payload(item_ids, with_tiers=True, with_cost=True)
     r = await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=payload)
@@ -171,12 +185,12 @@ async def test_first_quote_success(client, db_session):
 
 @pytest.mark.asyncio
 async def test_first_quote_non_submitted_rejected(client, db_session):
-    """非 SUBMITTED RFQ → 40510。"""
+    """非 PROCESSING RFQ（已撤销）→ 40510。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
     rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
 
-    # 先撤销
+    # 买方撤销（SUBMITTED 态可撤销）
     await client.patch(f"/api/v1/rfqs/{rfq_id}/cancel", headers=bh)
 
     payload = _build_quote_payload(item_ids)
@@ -193,7 +207,7 @@ async def test_requote_version_increment(client, db_session):
     """重报:旧 ACTIVE→SUPERSEDED,新 v2 ACTIVE,RFQ 仍 QUOTED。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     # 首报
     p1 = _build_quote_payload(item_ids, "25.0000")
@@ -223,7 +237,7 @@ async def test_requote_multiple_items(client, db_session):
     """多行重报:验证金额计算正确。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session, num_items=2)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session, num_items=2)
 
     # 首报
     p1 = _build_quote_payload(item_ids, "20.0000")
@@ -245,7 +259,7 @@ async def test_quote_item_not_in_rfq(client, db_session):
     """报价行不属本 RFQ → 40512。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     payload = _build_quote_payload([999999])
     r = await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=payload)
@@ -258,7 +272,7 @@ async def test_quote_duplicate_item(client, db_session):
     """报价行重复 → 40512。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     payload = {
         "header": {"currency": "USD"},
@@ -277,7 +291,7 @@ async def test_quote_incomplete_lines(client, db_session):
     """报价未覆盖全部 rfq_items → 40513。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session, num_items=2)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session, num_items=2)
 
     # 只报第一行
     payload = _build_quote_payload([item_ids[0]])
@@ -294,7 +308,7 @@ async def test_accept_success(client, db_session):
     """QUOTED→ACCEPTED + accepted_quote_id 钉。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     # 首报
     p = _build_quote_payload(item_ids)
@@ -314,7 +328,7 @@ async def test_accept_idempotent(client, db_session):
     """已 ACCEPTED → 幂等返回,不重复写审计。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -332,9 +346,9 @@ async def test_accept_non_quoted_rejected(client, db_session):
     """非 QUOTED → 40508。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, _ = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, _ = await _create_processing_rfq(client, bh, op, db_session)
 
-    # SUBMITTED 状态下不能接受
+    # PROCESSING 状态下不能接受
     r = await client.patch(f"/api/v1/rfqs/{rfq_id}/accept", headers=bh)
     assert r.status_code == 409
     assert r.json()["code"] == 40508
@@ -345,7 +359,7 @@ async def test_operator_accept_proxy(client, db_session):
     """运营代客接受。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -363,7 +377,7 @@ async def test_reject_success(client, db_session):
     """QUOTED→REJECTED。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -378,7 +392,7 @@ async def test_reject_idempotent(client, db_session):
     """已 REJECTED → 幂等。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -397,7 +411,7 @@ async def test_expire_success(client, db_session):
     """QUOTED→EXPIRED。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -412,7 +426,7 @@ async def test_expire_idempotent(client, db_session):
     """已 EXPIRED → 幂等。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -428,7 +442,7 @@ async def test_expire_non_quoted_rejected(client, db_session):
     """非 QUOTED → 40508。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, _ = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, _ = await _create_processing_rfq(client, bh, op, db_session)
 
     r = await client.patch(f"/api/v1/rfqs/{rfq_id}/expire", headers=op)
     assert r.status_code == 409
@@ -443,7 +457,7 @@ async def test_buyer_get_quotes_only_active(client, db_session):
     """BUYER 仅看 ACTIVE。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     # 首报 + 重报
     p1 = _build_quote_payload(item_ids, "25.0000")
@@ -463,7 +477,7 @@ async def test_operator_get_quotes_all_versions(client, db_session):
     """OPERATOR 看全版本。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p1 = _build_quote_payload(item_ids, "25.0000")
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p1)
@@ -483,7 +497,7 @@ async def test_buyer_quote_no_cost_fields(client, db_session):
     """买方 DTO 不含 cost/supplier/quoted_by/版本。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     payload = _build_quote_payload(item_ids, with_cost=True)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=payload)
@@ -512,7 +526,7 @@ async def test_rfq_detail_buyer_has_quote(client, db_session):
     """买方 RFQ 详情层叠 ACTIVE 报价。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p = _build_quote_payload(item_ids)
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p)
@@ -529,7 +543,7 @@ async def test_rfq_detail_buyer_no_quote(client, db_session):
     """买方 RFQ 详情无报价 → quote=null。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, _ = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, _ = await _create_processing_rfq(client, bh, op, db_session)
 
     r = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
     assert r.status_code == 200
@@ -541,7 +555,7 @@ async def test_rfq_detail_operator_has_quotes_list(client, db_session):
     """运营 RFQ 详情层叠全版本列表。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     p1 = _build_quote_payload(item_ids, "25.0000")
     await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=op, json=p1)
@@ -562,7 +576,7 @@ async def test_buyer_cannot_create_quote(client, db_session):
     """BUYER 无 quote:write 权限 → 403。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    rfq_id, item_ids = await _create_submitted_rfq(client, bh, op, db_session)
+    rfq_id, item_ids = await _create_processing_rfq(client, bh, op, db_session)
 
     payload = _build_quote_payload(item_ids)
     r = await client.post(f"/api/v1/rfqs/{rfq_id}/quotes", headers=bh, json=payload)

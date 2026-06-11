@@ -39,6 +39,8 @@ export const Permissions = {
   RFQ_CREATE: "rfq:create",
   RFQ_CANCEL: "rfq:cancel",
   RFQ_DECIDE: "rfq:decide",
+  RFQ_CLAIM: "rfq:claim",
+  RFQ_UPDATE: "rfq:update",
   // 单边模型下退役,无角色授予
   RFQ_RESPOND: "rfq:respond",
 
@@ -131,7 +133,7 @@ export const ROLE_RESOURCE_PERMISSIONS: Record<
     country: [Permissions.COUNTRY_READ],
     credit: [Permissions.CREDIT_READ],
     cart: [Permissions.CART_READ, Permissions.CART_WRITE],
-    rfq: [Permissions.RFQ_READ, Permissions.RFQ_CREATE, Permissions.RFQ_CANCEL, Permissions.RFQ_DECIDE],
+    rfq: [Permissions.RFQ_READ, Permissions.RFQ_CREATE, Permissions.RFQ_CANCEL, Permissions.RFQ_DECIDE, Permissions.RFQ_UPDATE],
     quote: [Permissions.QUOTE_READ],
     order: [Permissions.ORDER_READ, Permissions.ORDER_WRITE],
   },
@@ -148,7 +150,7 @@ export const ROLE_RESOURCE_PERMISSIONS: Record<
     product: [Permissions.PRODUCT_READ, Permissions.PRODUCT_APPROVE, Permissions.PRODUCT_REJECT],
     country: [Permissions.COUNTRY_READ, Permissions.COUNTRY_WRITE],
     credit: [Permissions.CREDIT_READ, Permissions.CREDIT_WRITE, Permissions.CREDIT_RECOMPUTE],
-    rfq: [Permissions.RFQ_READ, Permissions.RFQ_CREATE, Permissions.RFQ_CANCEL, Permissions.RFQ_DECIDE],
+    rfq: [Permissions.RFQ_READ, Permissions.RFQ_CREATE, Permissions.RFQ_CANCEL, Permissions.RFQ_DECIDE, Permissions.RFQ_CLAIM],
     quote: [Permissions.QUOTE_READ, Permissions.QUOTE_WRITE],
     order: [Permissions.ORDER_READ],
     membership: [Permissions.MEMBERSHIP_READ],

@@ -28,15 +28,13 @@ from app.core.exceptions import (
     RfqNotFoundError,
     RfqStateInvalidError,
 )
-from app.db.models.buyer_member import BuyerMember
-from app.db.models.buyer_organization import BuyerOrgStatus, BuyerOrganization
 from app.db.models.rfq import Rfq, RfqStatus, QuoteStatus
 from app.db.models.rfq_item import RfqItem
 from app.db.models.rfq_quote import RfqQuote
 from app.db.models.rfq_quote_item import RfqQuoteItem
 from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
-from app.services._rfq_loader import load_rfq
+from app.services._rfq_loader import load_rfq, lock_rfq, _resolve_buyer_org_id
 from app.schemas.quote import (
     QuoteCreatePayload,
     QuoteCostView,
@@ -56,23 +54,6 @@ _QUOTE_NO_MAX_RETRIES = 5
 # ── 组织解析 ───────────────────────────────────────────
 
 
-async def _resolve_buyer_org_id(db: AsyncSession, user: CurrentUser) -> int:
-    """BUYER 用户 → buyer_org_id。"""
-    row = await db.execute(
-        select(BuyerOrganization.id)
-        .join(BuyerMember, BuyerMember.buyer_org_id == BuyerOrganization.id)
-        .where(
-            BuyerMember.user_id == user.id,
-            BuyerOrganization.status == BuyerOrgStatus.ACTIVE,
-        )
-        .limit(1)
-    )
-    org_id = row.scalar_one_or_none()
-    if not org_id:
-        raise RfqNotFoundError()  # 无组织 → 404 隐藏
-    return org_id
-
-
 # ── quote_no 生成 ────────────────────────────────────────
 
 
@@ -89,34 +70,6 @@ async def _generate_quote_no(db: AsyncSession) -> str:
     return f"{prefix}{seq:04d}"
 
 
-# ── 行锁加载 RFQ ────────────────────────────────────────
-
-
-async def _lock_rfq(
-    db: AsyncSession, rfq_id: int, *, user: CurrentUser,
-) -> Rfq:
-    """SELECT rfq FOR UPDATE + scope 过滤。返回锁定的 Rfq 或抛 RfqNotFoundError。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
-
-    # BUYER 写路径:buyer_org_id 进入 FOR UPDATE 查询,不锁非本组织 RFQ
-    if is_buyer and not is_operator:
-        buyer_org_id = await _resolve_buyer_org_id(db, user)
-    else:
-        buyer_org_id = None
-
-    rfq = await load_rfq(
-        db,
-        rfq_id,
-        for_update=True,
-        with_items=False,
-        buyer_org_id=buyer_org_id,
-    )
-    if not rfq:
-        raise RfqNotFoundError()
-    return rfq
-
-
 # ── 创建/重报 ───────────────────────────────────────────
 
 
@@ -126,10 +79,10 @@ async def create_quote(
     *, request: Request | None = None,
 ) -> RfqQuoteOperatorView:
     """回填(首报)或重报。运营专用。"""
-    rfq = await _lock_rfq(db, rfq_id, user=user)
+    rfq = await lock_rfq(db, rfq_id, user=user)
 
-    # 状态守卫:首报 SUBMITTED,重报 QUOTED
-    is_first = rfq.status == RfqStatus.SUBMITTED
+    # 状态守卫:首报 PROCESSING（运营需先受理）,重报 QUOTED
+    is_first = rfq.status == RfqStatus.PROCESSING
     is_requote = rfq.status == RfqStatus.QUOTED
     if not is_first and not is_requote:
         raise QuoteRfqStateInvalidError(rfq.status)
@@ -314,7 +267,7 @@ async def accept_rfq(
     *, request: Request | None = None,
 ) -> dict:
     """QUOTED→ACCEPTED,钉 accepted_quote_id。"""
-    rfq = await _lock_rfq(db, rfq_id, user=user)
+    rfq = await lock_rfq(db, rfq_id, user=user)
 
     # 幂等:已 ACCEPTED 且 accepted_quote_id 有值
     if rfq.status == RfqStatus.ACCEPTED and rfq.accepted_quote_id is not None:
@@ -369,7 +322,7 @@ async def reject_rfq(
     *, request: Request | None = None,
 ) -> dict:
     """QUOTED→REJECTED。"""
-    rfq = await _lock_rfq(db, rfq_id, user=user)
+    rfq = await lock_rfq(db, rfq_id, user=user)
 
     # 幂等
     if rfq.status == RfqStatus.REJECTED:
@@ -421,7 +374,7 @@ async def expire_rfq(
     *, request: Request | None = None,
 ) -> dict:
     """QUOTED→EXPIRED。"""
-    rfq = await _lock_rfq(db, rfq_id, user=user)
+    rfq = await lock_rfq(db, rfq_id, user=user)
 
     # 幂等
     if rfq.status == RfqStatus.EXPIRED:

@@ -22,20 +22,25 @@ from app.db.soft_delete_mixin import SoftDeleteMixin
 class RfqStatus:
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
+    PROCESSING = "PROCESSING"
     QUOTED = "QUOTED"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
     EXPIRED = "EXPIRED"
     CANCELLED = "CANCELLED"
-    ALL = (DRAFT, SUBMITTED, QUOTED, ACCEPTED, REJECTED, EXPIRED, CANCELLED)
+    ALL = (DRAFT, SUBMITTED, PROCESSING, QUOTED, ACCEPTED, REJECTED, EXPIRED, CANCELLED)
 
     # 状态机：合法转换路径
     # 重报为 QUOTED 态内修订（version+1），不作为跨态迁移
     TRANSITIONS: dict[str, tuple[str, ...]] = {
         DRAFT: (SUBMITTED, CANCELLED),
-        SUBMITTED: (QUOTED, CANCELLED),
+        SUBMITTED: (PROCESSING, DRAFT, CANCELLED),
+        PROCESSING: (QUOTED, CANCELLED),
         QUOTED: (ACCEPTED, REJECTED, EXPIRED, CANCELLED),
     }
+
+    # 买方可撤销的状态（PROCESSING/QUOTED 后买方硬禁撤销）
+    BUYER_CANCELLABLE = (DRAFT, SUBMITTED)
 
     @classmethod
     def can_transition(cls, current: str, target: str) -> bool:

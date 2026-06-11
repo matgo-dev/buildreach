@@ -52,6 +52,8 @@ class AuditAction(str, Enum):
     SUBMIT = "SUBMIT"
     PROXY_CREATE = "PROXY_CREATE"
     CANCEL = "CANCEL"
+    CLAIM = "CLAIM"
+    WITHDRAW = "WITHDRAW"
     # rfq — 决策操作(RFQ 资源)
     ACCEPT = "ACCEPT"
     REJECT = "REJECT"
