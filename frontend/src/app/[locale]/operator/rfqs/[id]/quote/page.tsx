@@ -28,14 +28,17 @@ import {
 
 interface TierModalProps {
   tiers: QuoteTierInput[];
+  moq: number;
   onConfirm: (tiers: QuoteTierInput[]) => void;
   onCancel: () => void;
   t: (key: string) => string;
 }
 
-function QuoteTierModal({ tiers: initial, onConfirm, onCancel, t }: TierModalProps) {
+function QuoteTierModal({ tiers: initial, moq, onConfirm, onCancel, t }: TierModalProps) {
   const [tiers, setTiers] = useState<QuoteTierInput[]>(() =>
-    initial.length > 0 ? [...initial] : [{ min_qty: 1, unit_price: 0 }],
+    initial.length > 0
+      ? initial.map((tier, i) => (i === 0 ? { ...tier, min_qty: moq || tier.min_qty } : tier))
+      : [{ min_qty: moq || 1, unit_price: 0 }],
   );
 
   const update = (idx: number, patch: Partial<QuoteTierInput>) => {
@@ -110,7 +113,7 @@ function QuoteTierModal({ tiers: initial, onConfirm, onCancel, t }: TierModalPro
             onClick={() => onConfirm(tiers.filter((t) => t.min_qty > 0))}
             className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
           >
-            {t("submit")}
+            {t("tierConfirm")}
           </button>
         </div>
       </div>
@@ -259,7 +262,7 @@ function QuoteBackfillContent() {
       const payload: QuoteCreatePayload = { header: headerPayload, lines: linePayloads };
       await backfillQuote(rfqId, payload);
       toast.success(t("submitSuccess"));
-      router.push(`/${locale}/operator/rfqs/${rfqId}`);
+      router.replace(`/${locale}/operator/rfqs`);
     } catch (err) {
       if (err instanceof ApiError && err.messageKey) {
         const key = err.messageKey.replace(/^error\./, "");
@@ -284,7 +287,7 @@ function QuoteBackfillContent() {
         <p className="text-sm text-gray-600">{t("notProcessing")}</p>
         <button
           type="button"
-          onClick={() => router.push(`/${locale}/operator/rfqs/${rfqId}`)}
+          onClick={() => router.replace(`/${locale}/operator/rfqs`)}
           className="mt-4 text-sm text-blue-600 hover:underline"
         >
           {t("backToDetail")}
@@ -389,8 +392,9 @@ function QuoteBackfillContent() {
               type="date"
               value={header.valid_until}
               onChange={(e) => setHeader((h) => ({ ...h, valid_until: e.target.value }))}
+              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               min={new Date().toISOString().split("T")[0]}
-              className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm text-gray-700 outline-none focus:border-blue-500"
+              className="h-9 w-full cursor-pointer rounded-md border border-gray-200 px-2 text-sm text-gray-700 outline-none focus:border-blue-500"
             />
           </div>
 
@@ -548,6 +552,7 @@ function QuoteBackfillContent() {
       {tierModalIdx !== null && (
         <QuoteTierModal
           tiers={lines[tierModalIdx].tiers}
+          moq={parseFloat(lines[tierModalIdx].moq) || 1}
           onConfirm={(newTiers) => {
             updateLine(tierModalIdx, { tiers: newTiers });
             setTierModalIdx(null);

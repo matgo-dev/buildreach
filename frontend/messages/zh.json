@@ -686,6 +686,7 @@
     "acceptSuccess": "已接受报价",
     "rejectSuccess": "已拒绝报价",
     "expiredHint": "报价已过有效期，可联系平台确认",
-    "acceptedTag": "成交报价"
+    "acceptedTag": "成交报价",
+    "tierConfirm": "保存阶梯价"
   }
 }

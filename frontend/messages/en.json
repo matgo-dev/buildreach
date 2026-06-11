@@ -686,6 +686,7 @@
     "acceptSuccess": "Quote accepted",
     "rejectSuccess": "Quote rejected",
     "expiredHint": "Quote has passed its validity date; contact the platform to confirm",
-    "acceptedTag": "Accepted quote"
+    "acceptedTag": "Accepted quote",
+    "tierConfirm": "Save Tiers"
   }
 }
