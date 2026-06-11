@@ -1,21 +1,31 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Eye } from "lucide-react";
-import Link from "next/link";
+import { Loader2, FileText, Package } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import Pagination from "@/components/ui/Pagination";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import { listRfqs, type RfqListResponse } from "@/lib/api/rfqs";
-import { formatDate } from "@/lib/formatters";
+import { formatRelativeTime } from "@/lib/formatters";
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS = ["", "SUBMITTED", "QUOTED", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"];
+
+/** 拼商品摘要：前 2 个商品名 + 超出数量 */
+function buildProductSummary(items: { product_name_snapshot: string | null }[]): string {
+  const names = items
+    .map((i) => i.product_name_snapshot)
+    .filter(Boolean) as string[];
+  if (names.length === 0) return "—";
+  const shown = names.slice(0, 2).join("、");
+  const extra = names.length > 2 ? ` +${names.length - 2}` : "";
+  return shown + extra;
+}
 
 function RfqListContent() {
   const router = useRouter();
@@ -85,7 +95,7 @@ function RfqListContent() {
         </select>
       </div>
 
-      {/* 表格 */}
+      {/* 列表 */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
@@ -94,53 +104,50 @@ function RfqListContent() {
         ) : !data || data.items.length === 0 ? (
           <div className="flex h-60 flex-col items-center justify-center text-gray-400">
             <FileText className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="text-sm">{t("filterAll")}</p>
+            <p className="text-sm">{t("emptyList")}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500">
                 <th className="px-5 py-3 font-medium">{t("rfqNo")}</th>
-                <th className="px-5 py-3 font-medium">{t("itemCount", { count: "" })}</th>
+                <th className="px-5 py-3 font-medium">{t("productSummary")}</th>
+                <th className="px-5 py-3 font-medium text-right">{t("totalQty")}</th>
                 <th className="px-5 py-3 font-medium">{t("status")}</th>
                 <th className="px-5 py-3 font-medium">{t("submitTime")}</th>
-                <th className="px-5 py-3 font-medium text-right">{t("actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {data.items.map((rfq) => (
-                <tr
-                  key={rfq.id}
-                  className="border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
-                >
-                  <td className="px-5 py-3">
-                    <Link
-                      href={`/${locale}/buyer/rfqs/${rfq.id}`}
-                      className="font-medium text-[#0D4D4D] hover:underline"
-                    >
+              {data.items.map((rfq) => {
+                const summary = buildProductSummary(rfq.items);
+
+                return (
+                  <tr
+                    key={rfq.id}
+                    onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
+                    className="cursor-pointer border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
+                  >
+                    <td className="px-5 py-3 font-medium text-[#0D4D4D]">
                       {rfq.rfq_no}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3 text-gray-600">
-                    {t("itemCount", { count: rfq.items.length })}
-                  </td>
-                  <td className="px-5 py-3">
-                    <RfqStatusBadge status={rfq.status} />
-                  </td>
-                  <td className="px-5 py-3 text-gray-500">
-                    {rfq.created_at ? formatDate(rfq.created_at, locale) : "—"}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/${locale}/buyer/rfqs/${rfq.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-[#0D4D4D] transition-colors hover:text-[#0a3d3d]"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      {t("viewDetail")}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="max-w-[280px] px-5 py-3">
+                      <div className="flex items-start gap-2">
+                        <Package className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+                        <span className="line-clamp-2 text-gray-700">{summary}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-600 whitespace-nowrap">
+                      {t("itemCount", { count: rfq.items.length })}
+                    </td>
+                    <td className="px-5 py-3">
+                      <RfqStatusBadge status={rfq.status} />
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                      {rfq.created_at ? formatRelativeTime(rfq.created_at, locale) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
