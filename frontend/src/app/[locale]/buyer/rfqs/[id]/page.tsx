@@ -179,7 +179,7 @@ function RfqDetailContent() {
   rfq.items.forEach((item) => rfqItemMap.set(item.id, item));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       {/* 头部 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -555,15 +555,15 @@ function ItemsAndQuoteCard({
                   </th>
                 </tr>
                 {/* 第二层：各列标题 */}
-                <tr className="text-left text-xs text-gray-500">
-                  <th className="bg-gray-50 px-5 py-2 font-medium">{tQ("product")}</th>
-                  <th className="bg-gray-50 px-5 py-2 font-medium">{tQ("spec")}</th>
-                  <th className="bg-gray-50 px-5 py-2 font-medium text-right">{tQ("quantity")}</th>
-                  <th className="border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("unitPrice")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("moq")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("cbm")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("grossWeight")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-5 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("totalAmount")}</th>
+                <tr className="text-left text-xs text-gray-500 whitespace-nowrap">
+                  <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("product")}</th>
+                  <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("spec")}</th>
+                  <th className="bg-gray-50 px-4 py-2 font-medium text-right">{tQ("quantity")}</th>
+                  <th className="border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("unitPrice")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("moq")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("cbm")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("grossWeight")}</th>
+                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("totalAmount")}</th>
                 </tr>
               </>
             ) : (
