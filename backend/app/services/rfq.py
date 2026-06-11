@@ -129,7 +129,7 @@ def _build_sku_spec(sku: ProductSku) -> tuple[str | None, str | None]:
 
 async def create_rfq(
     db: AsyncSession, user: CurrentUser, payload: RfqCreate,
-    *, request: Request | None = None,
+    *, idempotency_key: str | None = None, request: Request | None = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """单聚合事务创建询价单。"""
     is_buyer = "BUYER" in user.roles
@@ -155,6 +155,19 @@ async def create_rfq(
         source = RfqSource.OPERATOR_PROXY
     else:
         raise BuyerOrgRequiredError()
+
+    # ── 幂等预检:顺序重试命中既有单,短路返回 ──
+    if idempotency_key:
+        existing = await db.execute(
+            select(Rfq.id).where(
+                Rfq.created_by_user_id == created_by_user_id,
+                Rfq.idempotency_key == idempotency_key,
+                Rfq.deleted_at.is_(None),
+            )
+        )
+        existing_id = existing.scalar_one_or_none()
+        if existing_id is not None:
+            return await _load_and_serialize(db, existing_id, is_operator=is_operator)
 
     # ── 1. 取行来源 ──
     item_rows: list[dict] = []
@@ -212,6 +225,7 @@ async def create_rfq(
                 created_by_user_id=created_by_user_id,
                 source=source,
                 status=RfqStatus.SUBMITTED,
+                idempotency_key=idempotency_key,
                 contact_name=payload.contact_name,
                 contact_phone=payload.contact_phone,
                 contact_email=payload.contact_email,
@@ -226,6 +240,19 @@ async def create_rfq(
             await db.flush()
         except IntegrityError:
             await nested.rollback()
+            # 按冲突源分流：幂等键 > rfq_no > 未知
+            if idempotency_key:
+                idem_hit = await db.execute(
+                    select(Rfq.id).where(
+                        Rfq.created_by_user_id == created_by_user_id,
+                        Rfq.idempotency_key == idempotency_key,
+                        Rfq.deleted_at.is_(None),
+                    )
+                )
+                idem_id = idem_hit.scalar_one_or_none()
+                if idem_id is not None:
+                    # 幂等并发命中,短路返回既有单（不写审计/不删购物车）
+                    return await _load_and_serialize(db, idem_id, is_operator=is_operator)
             # 回查确认是 rfq_no 冲突
             existing = await db.execute(
                 select(Rfq.id).where(Rfq.rfq_no == rfq_no)
