@@ -79,7 +79,6 @@ async def _create_submitted_rfq(
     """创建一个 SUBMITTED 态询价单，返回 (rfq_id, item_id)。"""
     sku_id = await _create_purchasable_sku(client, op, db)
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "10.000"}],
     })
     assert r.status_code == 200, r.text

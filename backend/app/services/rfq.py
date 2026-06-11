@@ -1,6 +1,6 @@
 """询价单 Service — 买方需求侧,单边模型。
 
-创建(CART/DIRECT/代客)、列表、详情、撤销。
+创建(统一 items 入参/代客)、列表、详情、撤销。
 报价由《报价回填后端》工单层叠。
 提交点唯一在本 service;route 不自行 commit。
 """
@@ -31,14 +31,11 @@ from app.core.exceptions import (
     RfqNoGenerationFailedError,
     RfqNoValidItemsError,
     RfqNotFoundError,
-    RfqSourceNotAllowedError,
     RfqStateInvalidError,
 )
 from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrgStatus, BuyerOrganization
-from app.db.models.cart import Cart
-from app.db.models.cart_item import CartItem
 from app.db.models.product import Product
 from app.db.models.product_sku import ProductSku
 from app.db.models.rfq import Rfq, RfqSource, RfqStatus
@@ -48,7 +45,7 @@ from app.schemas.rfq import (
     RfqCreate,
     RfqItemPublic,
     RfqOperatorView,
-    SourceType,
+    RfqUpdate,
 )
 from app.services import product as product_svc
 from app.services import quote as quote_svc
@@ -143,9 +140,6 @@ async def create_rfq(
         created_by_user_id = user.id
         source = RfqSource.BUYER_SELF
     elif is_operator:
-        # 运营仅 DIRECT
-        if payload.source_type != SourceType.DIRECT:
-            raise RfqSourceNotAllowedError()
         if not payload.buyer_org_id:
             raise BuyerOrgRequiredError()
         await _validate_buyer_org_by_id(db, payload.buyer_org_id)
@@ -169,25 +163,13 @@ async def create_rfq(
         if existing_id is not None:
             return await _load_and_serialize(db, existing_id, is_operator=is_operator)
 
-    # ── 1. 取行来源 ──
-    item_rows: list[dict] = []
-    cart_item_ids_to_delete: list[int] = []
-
-    if payload.source_type == SourceType.CART:
-        item_rows, cart_item_ids_to_delete = await _resolve_cart_items(
-            db, user, buyer_org_id, payload.cart_item_ids,
-        )
-    else:  # DIRECT
-        if not payload.items:
-            raise RfqNoValidItemsError()
-        # 重复 SKU 检查
-        sku_ids = [it.sku_id for it in payload.items]
-        if len(sku_ids) != len(set(sku_ids)):
-            raise RfqDuplicateSkuError()
-        item_rows = await _resolve_direct_items(db, payload.items)
-
-    if not item_rows:
+    # ── 1. 行项解析：统一 items 入参 ──
+    if not payload.items:
         raise RfqNoValidItemsError()
+    sku_ids = [it.sku_id for it in payload.items]
+    if len(sku_ids) != len(set(sku_ids)):
+        raise RfqDuplicateSkuError()
+    item_rows = await _resolve_direct_items(db, payload.items)
 
     # ── 2. 可购重校验(权威闸)+ 快照数据 ──
     offending: list[int] = []
@@ -224,7 +206,7 @@ async def create_rfq(
                 buyer_user_id=buyer_user_id,
                 created_by_user_id=created_by_user_id,
                 source=source,
-                status=RfqStatus.SUBMITTED,
+                status=RfqStatus.DRAFT if payload.as_draft else RfqStatus.SUBMITTED,
                 idempotency_key=idempotency_key,
                 contact_name=payload.contact_name,
                 contact_phone=payload.contact_phone,
@@ -288,14 +270,13 @@ async def create_rfq(
             remark=row.get("remark"),
         ))
 
-    # ── 6. CART:同事务硬删已提交的 cart_items ──
-    if cart_item_ids_to_delete:
-        await db.execute(
-            delete(CartItem).where(CartItem.id.in_(cart_item_ids_to_delete))
-        )
-
-    # ── 7. 审计 + 单次 commit ──
-    audit_action = AuditAction.PROXY_CREATE if source == RfqSource.OPERATOR_PROXY else AuditAction.SUBMIT
+    # ── 6. 审计 + 单次 commit ──
+    if source == RfqSource.OPERATOR_PROXY:
+        audit_action = AuditAction.PROXY_CREATE
+    elif payload.as_draft:
+        audit_action = AuditAction.CREATE
+    else:
+        audit_action = AuditAction.SUBMIT
     await write_audit(
         db,
         resource_type=AuditResourceType.RFQ,
@@ -436,59 +417,12 @@ async def cancel_rfq(
     return await _load_and_serialize(db, rfq.id, is_operator=is_operator)
 
 
-# ── CART 行来源解析 ────────────────────────────────────
-
-async def _resolve_cart_items(
-    db: AsyncSession, user: CurrentUser, buyer_org_id: int,
-    cart_item_ids: list[int] | None,
-) -> tuple[list[dict], list[int]]:
-    """从购物车取行,校验归属。返回 (item_rows, cart_item_ids_to_delete)。"""
-    # 先找用户的车
-    row = await db.execute(
-        select(Cart).where(
-            Cart.buyer_org_id == buyer_org_id,
-            Cart.buyer_user_id == user.id,
-        )
-    )
-    cart = row.scalar_one_or_none()
-    if not cart:
-        raise RfqNoValidItemsError()
-
-    q = select(CartItem).where(CartItem.cart_id == cart.id)
-    if cart_item_ids:
-        q = q.where(CartItem.id.in_(cart_item_ids))
-
-    cart_items = (await db.execute(q)).scalars().all()
-    if not cart_items:
-        raise RfqNoValidItemsError()
-
-    # 校验选定的 cart_item_ids 确实属于本人车
-    if cart_item_ids:
-        found_ids = {ci.id for ci in cart_items}
-        missing = set(cart_item_ids) - found_ids
-        if missing:
-            raise RfqNoValidItemsError()
-
-    item_rows = []
-    delete_ids = []
-    for ci in cart_items:
-        item_rows.append({
-            "sku_id": ci.sku_id,
-            "quantity": ci.quantity,
-            "target_unit_price": None,
-            "remark": None,
-        })
-        delete_ids.append(ci.id)
-
-    return item_rows, delete_ids
-
-
-# ── DIRECT 行来源解析 ──────────────────────────────────
+# ── 行来源解析 ─────────────────────────────────────────
 
 async def _resolve_direct_items(
     db: AsyncSession, items: list,
 ) -> list[dict]:
-    """DIRECT 来源行解析(快照在可购校验后填充)。"""
+    """行项解析(快照在可购校验后填充)。"""
     return [
         {
             "sku_id": it.sku_id,
@@ -705,6 +639,94 @@ async def withdraw_rfq(
         resource_id=rfq.id,
         request=request,
         extra={"rfq_no": rfq.rfq_no},
+        commit=False,
+    )
+    await db.commit()
+
+    return await _load_and_serialize(db, rfq.id, is_operator=False)
+
+
+# ── 草稿态整单更新 ─────────────────────────────────────
+
+
+async def update_rfq(
+    db: AsyncSession, user: CurrentUser, rfq_id: int,
+    payload: RfqUpdate,
+    *, request: Request | None = None,
+) -> RfqBuyerPublic:
+    """草稿态整单更新：行项全量替换 + 元数据更新。仅 DRAFT 可操作。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+
+    # 状态守卫
+    if rfq.status != RfqStatus.DRAFT:
+        raise RfqStateInvalidError(rfq.status)
+
+    # 行项校验
+    if not payload.items:
+        raise RfqNoValidItemsError()
+    sku_ids = [it.sku_id for it in payload.items]
+    if len(sku_ids) != len(set(sku_ids)):
+        raise RfqDuplicateSkuError()
+
+    # 解析新行项 + 可购校验 + 快照
+    item_rows = await _resolve_direct_items(db, payload.items)
+    offending: list[int] = []
+    for row in item_rows:
+        sku = await product_svc.get_purchasable_sku(db, row["sku_id"])
+        if not sku:
+            offending.append(row["sku_id"])
+        else:
+            prod_row = await db.execute(
+                select(Product).where(Product.id == sku.product_id)
+            )
+            product = prod_row.scalar_one_or_none()
+            row["product_name_snapshot_zh"] = product.name_zh if product else None
+            row["product_name_snapshot_en"] = product.name_en if product else None
+            spec_zh, spec_en = _build_sku_spec(sku)
+            row["sku_spec_snapshot_zh"] = spec_zh
+            row["sku_spec_snapshot_en"] = spec_en
+            row["uom_snapshot"] = product.unit if product else None
+    if offending:
+        raise RfqItemNotPurchasableError(offending)
+
+    # 硬删旧行项(草稿态配置数据，全量替换)
+    await db.execute(delete(RfqItem).where(RfqItem.rfq_id == rfq.id))
+
+    # 插入新行项
+    for row in item_rows:
+        db.add(RfqItem(
+            rfq_id=rfq.id,
+            sku_id=row["sku_id"],
+            product_name_snapshot_zh=row.get("product_name_snapshot_zh"),
+            product_name_snapshot_en=row.get("product_name_snapshot_en"),
+            sku_spec_snapshot_zh=row.get("sku_spec_snapshot_zh"),
+            sku_spec_snapshot_en=row.get("sku_spec_snapshot_en"),
+            uom_snapshot=row.get("uom_snapshot"),
+            quantity=row["quantity"],
+            target_unit_price=row.get("target_unit_price"),
+            remark=row.get("remark"),
+        ))
+
+    # 更新元数据
+    rfq.contact_name = payload.contact_name
+    rfq.contact_phone = payload.contact_phone
+    rfq.contact_email = payload.contact_email
+    rfq.requested_delivery_place = payload.requested_delivery_place
+    rfq.expected_delivery_date = to_naive_utc(payload.expected_delivery_date)
+    rfq.target_currency = payload.target_currency
+    rfq.required_certifications = payload.required_certifications or []
+    rfq.attachment_urls = payload.attachment_urls or []
+    rfq.remark = payload.remark
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.UPDATE,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no, "item_count": len(item_rows)},
         commit=False,
     )
     await db.commit()

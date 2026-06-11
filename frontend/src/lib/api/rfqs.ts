@@ -7,9 +7,7 @@ import { api } from "../api";
 
 // ---------- 请求类型 ----------
 
-export type SourceType = "CART" | "DIRECT";
-
-export interface RfqDirectItem {
+export interface RfqItemInput {
   sku_id: number;
   quantity: number;
   target_unit_price?: number;
@@ -17,14 +15,27 @@ export interface RfqDirectItem {
 }
 
 export interface RfqCreate {
-  source_type: SourceType;
-  cart_item_ids?: number[];
-  items?: RfqDirectItem[]; // 本期只实现 CART 路径，BUYER DIRECT 留 TODO；后端已支持
+  items: RfqItemInput[];
+  as_draft?: boolean;
+  buyer_org_id?: number;
   contact_name?: string;
   contact_phone?: string;
   contact_email?: string;
   requested_delivery_place?: string;
-  expected_delivery_date?: string; // UTC ISO datetime: "YYYY-MM-DDT00:00:00Z"
+  expected_delivery_date?: string;
+  target_currency?: string;
+  required_certifications?: string[];
+  attachment_urls?: string[];
+  remark?: string;
+}
+
+export interface RfqUpdatePayload {
+  items: RfqItemInput[];
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  requested_delivery_place?: string;
+  expected_delivery_date?: string;
   target_currency?: string;
   required_certifications?: string[];
   attachment_urls?: string[];
@@ -137,6 +148,14 @@ export async function submitRfq(rfqId: number): Promise<RfqBuyerPublic> {
 /** 买方撤回改单：SUBMITTED → DRAFT */
 export async function withdrawRfq(rfqId: number): Promise<RfqBuyerPublic> {
   return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/withdraw`, {});
+}
+
+/** 草稿态整单更新 */
+export async function updateRfq(
+  rfqId: number,
+  data: RfqUpdatePayload,
+): Promise<RfqBuyerPublic> {
+  return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}`, data);
 }
 
 /** 草稿态编辑行项数量 */

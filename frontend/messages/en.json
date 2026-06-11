@@ -646,7 +646,18 @@
     "editQuantity": "Edit Quantity",
     "quantityUpdated": "Quantity updated",
     "operatorRfqTitle": "RFQ Management",
-    "filterStatus": "Filter Status"
+    "filterStatus": "Filter Status",
+    "saveDraft": "Save Draft",
+    "saveDraftSuccess": "Draft saved",
+    "editRfq": "Edit RFQ",
+    "edit": "Edit",
+    "updateSuccess": "RFQ updated",
+    "addProduct": "Add Product",
+    "searchProduct": "Search Products",
+    "searchPlaceholder": "Search by product name...",
+    "alreadyAdded": "Added",
+    "add": "Add",
+    "noSearchResult": "No matching products found"
   },
   "quote": {
     "backfillTitle": "Quote Backfill",

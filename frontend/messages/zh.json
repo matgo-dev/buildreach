@@ -646,7 +646,18 @@
     "editQuantity": "修改数量",
     "quantityUpdated": "数量已更新",
     "operatorRfqTitle": "询价管理",
-    "filterStatus": "筛选状态"
+    "filterStatus": "筛选状态",
+    "saveDraft": "保存草稿",
+    "saveDraftSuccess": "草稿已保存",
+    "editRfq": "编辑询价",
+    "edit": "编辑",
+    "updateSuccess": "询价已更新",
+    "addProduct": "添加商品",
+    "searchProduct": "搜索商品",
+    "searchPlaceholder": "输入商品名称搜索...",
+    "alreadyAdded": "已添加",
+    "add": "添加",
+    "noSearchResult": "未找到匹配商品"
   },
   "quote": {
     "backfillTitle": "报价回填",

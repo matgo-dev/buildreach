@@ -1,8 +1,8 @@
 """询价单 API 单测。
 
-覆盖:CART/DIRECT/代客三路径、目标 org 校验、可购重校验、
+覆盖:统一 items 入参、代客、目标 org 校验、可购重校验、
 rfq_no 生成、dup sku、scope 越权(404)、撤销守卫+幂等、
-买方 DTO 不漏内部 id、提交后 cart 清理。
+买方 DTO 不漏内部 id、清篮零副作用。
 """
 from __future__ import annotations
 
@@ -97,18 +97,17 @@ async def _add_to_cart(client: AsyncClient, headers: dict, sku_id: int, qty: str
     return r.json()["data"]["items"][-1]["item_id"]
 
 
-# ── DIRECT 路径 ─────────────────────────────────────────
+# ── 统一 items 创建 ─────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_buyer_direct_create(client, db_session):
-    """BUYER DIRECT 创建询价单 → SUBMITTED + BUYER_SELF。"""
+async def test_buyer_create(client, db_session):
+    """BUYER 创建询价单 → SUBMITTED + BUYER_SELF。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "10.000", "target_unit_price": "50.0000"}],
         "remark": "test direct",
     })
@@ -122,15 +121,14 @@ async def test_buyer_direct_create(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_buyer_direct_multiple_items(client, db_session):
-    """BUYER DIRECT 多行创建。"""
+async def test_buyer_create_multiple_items(client, db_session):
+    """BUYER 多行创建。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
     sku1 = await _create_purchasable_sku(client, op, db_session)
     sku2 = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [
             {"sku_id": sku1, "quantity": "5.000"},
             {"sku_id": sku2, "quantity": "3.000"},
@@ -140,54 +138,28 @@ async def test_buyer_direct_multiple_items(client, db_session):
     assert len(r.json()["data"]["items"]) == 2
 
 
-# ── CART 路径 ───────────────────────────────────────────
+# ── 清篮零副作用 ──────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_buyer_cart_create_whole_cart(client, db_session):
-    """BUYER CART(整车提交)→ 询价单 + cart_items 清理。"""
+async def test_buyer_create_no_cart_side_effect(client, db_session):
+    """创建询价单不再自动清篮 — 购物车行保留。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
     sku_id = await _create_purchasable_sku(client, op, db_session)
     ci_id = await _add_to_cart(client, bh, sku_id)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "CART",
-    })
-    assert r.status_code == 200, r.text
-    data = r.json()["data"]
-    assert data["status"] == "SUBMITTED"
-    assert len(data["items"]) == 1
-
-    # 购物车行应被删除
-    row = await db_session.execute(
-        select(CartItem).where(CartItem.id == ci_id)
-    )
-    assert row.scalar_one_or_none() is None
-
-
-@pytest.mark.asyncio
-async def test_buyer_cart_create_selected_items(client, db_session):
-    """BUYER CART(选行提交)→ 只提交选中的行。"""
-    bh = await _buyer_headers(client)
-    op = await _op_headers(client)
-    sku1 = await _create_purchasable_sku(client, op, db_session)
-    sku2 = await _create_purchasable_sku(client, op, db_session)
-    ci1 = await _add_to_cart(client, bh, sku1)
-    ci2 = await _add_to_cart(client, bh, sku2)
-
-    r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "CART",
-        "cart_item_ids": [ci1],
+        "items": [{"sku_id": sku_id, "quantity": "5.000"}],
     })
     assert r.status_code == 200, r.text
     assert len(r.json()["data"]["items"]) == 1
 
-    # ci1 被删,ci2 保留
-    row1 = await db_session.execute(select(CartItem).where(CartItem.id == ci1))
-    assert row1.scalar_one_or_none() is None
-    row2 = await db_session.execute(select(CartItem).where(CartItem.id == ci2))
-    assert row2.scalar_one_or_none() is not None
+    # 购物车行不受影响（清篮由前端负责）
+    row = await db_session.execute(
+        select(CartItem).where(CartItem.id == ci_id)
+    )
+    assert row.scalar_one_or_none() is not None
 
 
 # ── 代客 ────────────────────────────────────────────────
@@ -205,7 +177,6 @@ async def test_operator_proxy_create(client, db_session):
     buyer_org_id = me["organization"]["id"]
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
-        "source_type": "DIRECT",
         "buyer_org_id": buyer_org_id,
         "items": [{"sku_id": sku_id, "quantity": "20.000"}],
         "contact_name": "John",
@@ -225,7 +196,6 @@ async def test_operator_proxy_invalid_org(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
-        "source_type": "DIRECT",
         "buyer_org_id": 999999,
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
@@ -234,8 +204,8 @@ async def test_operator_proxy_invalid_org(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_operator_cart_source_rejected(client, db_session):
-    """OPERATOR 不能用 CART 来源。"""
+async def test_operator_missing_items_rejected(client, db_session):
+    """OPERATOR 缺少 items → 422 Pydantic 校验。"""
     op = await _op_headers(client)
 
     bh = await _buyer_headers(client)
@@ -243,11 +213,9 @@ async def test_operator_cart_source_rejected(client, db_session):
     buyer_org_id = me["organization"]["id"]
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
-        "source_type": "CART",
         "buyer_org_id": buyer_org_id,
     })
     assert r.status_code == 422
-    assert r.json()["code"] == 40514
 
 
 # ── 校验 ────────────────────────────────────────────────
@@ -261,7 +229,6 @@ async def test_direct_duplicate_sku_rejected(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [
             {"sku_id": sku_id, "quantity": "5.000"},
             {"sku_id": sku_id, "quantity": "3.000"},
@@ -277,7 +244,6 @@ async def test_direct_empty_items_rejected(client, db_session):
     bh = await _buyer_headers(client)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [],
     })
     assert r.status_code == 422
@@ -290,7 +256,6 @@ async def test_direct_not_purchasable_sku(client, db_session):
     bh = await _buyer_headers(client)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": 999999, "quantity": "1.000"}],
     })
     assert r.status_code == 422
@@ -309,7 +274,6 @@ async def test_buyer_list_scoped(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
 
@@ -328,7 +292,6 @@ async def test_buyer_list_mine_filter(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
 
@@ -356,7 +319,6 @@ async def test_buyer_get_detail(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
@@ -388,7 +350,6 @@ async def test_cancel_submitted(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
@@ -408,7 +369,6 @@ async def test_cancel_idempotent(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
@@ -449,7 +409,6 @@ async def test_buyer_dto_no_internal_fields(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
     data = r.json()["data"]
@@ -473,7 +432,6 @@ async def test_operator_dto_has_internal_fields(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
-        "source_type": "DIRECT",
         "buyer_org_id": buyer_org_id,
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
@@ -494,7 +452,6 @@ async def test_item_snapshot_populated(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
     item = r.json()["data"]["items"][0]
@@ -527,7 +484,6 @@ async def test_buyer_scope_violation_detail(client, db_session):
 
     # 运营代客创建(属于同组织,但后面用另一买方测)
     r = await client.post("/api/v1/rfqs", headers=op, json={
-        "source_type": "DIRECT",
         "buyer_org_id": buyer_org_id,
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
@@ -551,7 +507,6 @@ async def test_soft_deleted_rfq_invisible(client, db_session):
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": "1.000"}],
     })
     assert r.status_code == 200
@@ -590,7 +545,6 @@ async def test_idempotency_same_key_sequential(client: AsyncClient, db_session: 
     idem_key = str(uuid4())
 
     payload = {
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": 10}],
     }
     headers = {**bh, "Idempotency-Key": idem_key}
@@ -620,7 +574,6 @@ async def test_idempotency_different_keys(client: AsyncClient, db_session: Async
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     payload = {
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": 10}],
     }
 
@@ -643,7 +596,6 @@ async def test_idempotency_no_header(client: AsyncClient, db_session: AsyncSessi
     sku_id = await _create_purchasable_sku(client, op, db_session)
 
     payload = {
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": 10}],
     }
 
@@ -663,7 +615,6 @@ async def test_idempotency_validation_failure_then_retry(client: AsyncClient, db
 
     # 不存在的 sku → 校验失败
     payload_bad = {
-        "source_type": "DIRECT",
         "items": [{"sku_id": 999999, "quantity": 10}],
     }
     r1 = await client.post(
@@ -674,7 +625,6 @@ async def test_idempotency_validation_failure_then_retry(client: AsyncClient, db
     # key 未被占用,同 key 用正确载荷重试
     sku_id = await _create_purchasable_sku(client, op, db_session)
     payload_good = {
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": 10}],
     }
     r2 = await client.post(
@@ -692,7 +642,6 @@ async def test_idempotency_no_duplicate_audit(client: AsyncClient, db_session: A
     idem_key = str(uuid4())
 
     payload = {
-        "source_type": "DIRECT",
         "items": [{"sku_id": sku_id, "quantity": 10}],
     }
     headers = {**bh, "Idempotency-Key": idem_key}
@@ -717,8 +666,8 @@ async def test_idempotency_no_duplicate_audit(client: AsyncClient, db_session: A
 
 
 @pytest.mark.asyncio
-async def test_idempotency_no_duplicate_cart_delete(client: AsyncClient, db_session: AsyncSession):
-    """幂等命中不重复删购物车(CART 路径)。"""
+async def test_idempotency_cart_items_untouched(client: AsyncClient, db_session: AsyncSession):
+    """创建询价不影响购物车行（清篮由前端负责）。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
     sku_id = await _create_purchasable_sku(client, op, db_session)
@@ -726,15 +675,15 @@ async def test_idempotency_no_duplicate_cart_delete(client: AsyncClient, db_sess
     idem_key = str(uuid4())
 
     payload = {
-        "source_type": "CART",
-        "cart_item_ids": [cart_item_id],
+        "items": [{"sku_id": sku_id, "quantity": "5.000"}],
     }
     headers = {**bh, "Idempotency-Key": idem_key}
 
     r1 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
     assert r1.status_code == 200
 
-    # 重复提交 — 购物车已删,但不应报错(幂等命中短路)
-    r2 = await client.post("/api/v1/rfqs", headers=headers, json=payload)
-    assert r2.status_code == 200
-    assert r1.json()["data"]["id"] == r2.json()["data"]["id"]
+    # 购物车行仍在
+    row = await db_session.execute(
+        select(CartItem).where(CartItem.id == cart_item_id)
+    )
+    assert row.scalar_one_or_none() is not None

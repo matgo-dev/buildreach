@@ -10,19 +10,33 @@ import {
   AlertTriangle,
   Trash2,
   ShoppingCart,
+  Plus,
+  Search,
+  X,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
-import { getCart, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
+import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
+import { listProducts, getProduct, type ProductPublic, type SkuPublic } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 
 const DRAFT_KEY_PREFIX = "rfq_draft_";
 const CURRENCIES = ["USD", "KES", "CNY"];
+
+interface ManualItem {
+  sku_id: number;
+  product_name: string;
+  sku_spec: string;
+  unit: string;
+  quantity: number;
+}
 
 interface DraftData {
   contact_name: string;
@@ -33,6 +47,7 @@ interface DraftData {
   target_currency: string;
   certifications: string[];
   remark: string;
+  manualItems: ManualItem[];
 }
 
 function emptyDraft(): DraftData {
@@ -45,6 +60,7 @@ function emptyDraft(): DraftData {
     target_currency: "USD",
     certifications: [],
     remark: "",
+    manualItems: [],
   };
 }
 
@@ -114,6 +130,259 @@ function CertificationTagInput({
   );
 }
 
+// ---------- SKU 搜索弹窗 ----------
+
+function SkuSearchModal({
+  open,
+  onClose,
+  onAdd,
+  existingSkuIds,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onAdd: (item: ManualItem) => void;
+  existingSkuIds: Set<number>;
+}) {
+  const t = useTranslations("rfq");
+  const [keyword, setKeyword] = useState("");
+  const [products, setProducts] = useState<ProductPublic[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  // 展开的 SPU → 加载其 SKU 列表
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [skuMap, setSkuMap] = useState<Record<number, { skus: SkuPublic[]; unit: string; loading: boolean }>>({});
+
+  const handleSearch = useCallback(async () => {
+    if (!keyword.trim()) return;
+    setSearching(true);
+    setSearched(true);
+    setExpandedId(null);
+    try {
+      const res = await listProducts({ keyword: keyword.trim(), size: 20 });
+      setProducts(res.items);
+    } catch {
+      setProducts([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [keyword]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSearch();
+      }
+    },
+    [handleSearch],
+  );
+
+  const expandedIdRef = useRef(expandedId);
+  expandedIdRef.current = expandedId;
+  const skuMapRef = useRef(skuMap);
+  skuMapRef.current = skuMap;
+
+  const toggleExpand = useCallback(
+    async (productId: number) => {
+      if (expandedIdRef.current === productId) {
+        setExpandedId(null);
+        return;
+      }
+      setExpandedId(productId);
+      if (skuMapRef.current[productId]) return;
+
+      setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: true } }));
+      try {
+        const detail = await getProduct(productId);
+        setSkuMap((prev) => ({
+          ...prev,
+          [productId]: {
+            skus: detail.skus.filter((s) => s.status === "ACTIVE"),
+            unit: detail.unit,
+            loading: false,
+          },
+        }));
+      } catch {
+        setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: false } }));
+      }
+    },
+    [],
+  );
+
+  const handleAddSku = useCallback(
+    (product: ProductPublic, sku: SkuPublic, unit: string) => {
+      const spec = [sku.name, sku.color, sku.material].filter(Boolean).join(" / ");
+      onAdd({
+        sku_id: sku.id,
+        product_name: product.name,
+        sku_spec: spec || sku.sku_code,
+        unit: unit || product.unit || "PCS",
+        quantity: 1,
+      });
+    },
+    [onAdd],
+  );
+
+  // 重置状态
+  useEffect(() => {
+    if (!open) {
+      setKeyword("");
+      setProducts([]);
+      setSearched(false);
+      setExpandedId(null);
+      setSkuMap({});
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+        {/* 标题 */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <h3 className="text-base font-semibold text-gray-800">{t("searchProduct")}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* 搜索框 */}
+        <div className="border-b border-gray-100 px-5 py-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t("searchPlaceholder")}
+                autoFocus
+                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSearch}
+              disabled={searching || !keyword.trim()}
+              className="rounded-lg bg-[#0D4D4D] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d] disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("searchProduct")}
+            </button>
+          </div>
+        </div>
+
+        {/* 结果列表 */}
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {searching && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
+            </div>
+          )}
+
+          {!searching && searched && products.length === 0 && (
+            <div className="py-12 text-center text-sm text-gray-400">
+              {t("noSearchResult")}
+            </div>
+          )}
+
+          {!searching && products.length > 0 && (
+            <div className="space-y-1">
+              {products.map((p) => {
+                const isExpanded = expandedId === p.id;
+                const skuData = skuMap[p.id];
+                return (
+                  <div key={p.id} className="rounded-lg border border-gray-100">
+                    {/* SPU 行 */}
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(p.id)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                      )}
+                      {p.main_image && (
+                        <img
+                          src={p.main_image}
+                          alt={p.name}
+                          className="h-10 w-10 shrink-0 rounded border border-gray-100 object-cover"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
+                        <div className="text-xs text-gray-400">
+                          {p.spu_code} · {p.sku_count} SKU
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* SKU 列表 */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-100 bg-gray-50/50">
+                        {skuData?.loading && (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          </div>
+                        )}
+                        {skuData && !skuData.loading && skuData.skus.length === 0 && (
+                          <div className="py-4 text-center text-xs text-gray-400">
+                            {t("noSearchResult")}
+                          </div>
+                        )}
+                        {skuData &&
+                          !skuData.loading &&
+                          skuData.skus.map((sku) => {
+                            const added = existingSkuIds.has(sku.id);
+                            const spec = [sku.name, sku.color, sku.material]
+                              .filter(Boolean)
+                              .join(" / ");
+                            return (
+                              <div
+                                key={sku.id}
+                                className="flex items-center gap-3 px-4 py-2.5 pl-11"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm text-gray-700">
+                                    {spec || sku.sku_code}
+                                  </div>
+                                  <div className="text-xs text-gray-400">{sku.sku_code}</div>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={added}
+                                  onClick={() => handleAddSku(p, sku, skuData.unit)}
+                                  className={`shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                                    added
+                                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                      : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
+                                  }`}
+                                >
+                                  {added ? t("alreadyAdded") : t("add")}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- 主内容 ----------
 
 function RfqCreateContent() {
@@ -121,7 +390,6 @@ function RfqCreateContent() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const t = useTranslations("rfq");
-  const tCart = useTranslations("cart");
   const tMall = useTranslations("mall");
   const tError = useTranslations("error");
   const toast = useToast();
@@ -169,23 +437,21 @@ function RfqCreateContent() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 删除询价行（不删询价篮，只是本次提交不含该项）
-  const handleRemoveItem = useCallback((itemId: number) => {
+  const handleRemoveCartItem = useCallback((itemId: number) => {
     setCartItems((prev) => prev.filter((i) => i.item_id !== itemId));
-    idemRef.current = null; // 载荷变化,下次提交生成新 token
+    idemRef.current = null;
   }, []);
 
-  // 修改数量（同步更新询价篮）
+  // 修改篮中商品数量（同步更新询价篮）
   const qtyDebounceRef = useMemo(() => new Map<number, NodeJS.Timeout>(), []);
 
-  const handleQuantityChange = useCallback(
+  const handleCartQuantityChange = useCallback(
     (itemId: number, qty: number) => {
       if (qty <= 0) return;
-      idemRef.current = null; // 载荷变化,下次提交生成新 token
-      // 乐观更新本地
+      idemRef.current = null;
       setCartItems((prev) =>
         prev.map((i) => (i.item_id === itemId ? { ...i, quantity: qty } : i)),
       );
-      // debounce PATCH 询价篮
       const existing = qtyDebounceRef.get(itemId);
       if (existing) clearTimeout(existing);
       qtyDebounceRef.set(
@@ -196,7 +462,7 @@ function RfqCreateContent() {
             const updated = await updateCartItem(itemId, qty);
             syncFromCart(updated);
           } catch {
-            // 失败不回滚，用户可继续调整
+            // 失败不回滚
           }
         }, 500),
       );
@@ -204,17 +470,21 @@ function RfqCreateContent() {
     [qtyDebounceRef, syncFromCart],
   );
 
-  // 草稿持久化
+  // 草稿持久化（含 manualItems）
   const draftKey = `${DRAFT_KEY_PREFIX}${user?.id ?? "anon"}`;
 
   const [draft, setDraft] = useState<DraftData>(() => {
     if (typeof window === "undefined") return emptyDraft();
     try {
       const saved = sessionStorage.getItem(draftKey);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // 兼容旧版无 manualItems
+        if (!parsed.manualItems) parsed.manualItems = [];
+        return parsed;
+      }
     } catch {}
 
-    // 预填用户信息
     return {
       ...emptyDraft(),
       contact_name: user?.name ?? "",
@@ -223,7 +493,8 @@ function RfqCreateContent() {
     };
   });
 
-  // 保存草稿
+  const manualItems = draft.manualItems;
+
   useEffect(() => {
     try {
       sessionStorage.setItem(draftKey, JSON.stringify(draft));
@@ -232,26 +503,77 @@ function RfqCreateContent() {
 
   const updateDraft = useCallback(<K extends keyof DraftData>(key: K, value: DraftData[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
-    idemRef.current = null; // 载荷变化,下次提交生成新 token
+    idemRef.current = null;
   }, []);
 
-  // 幂等 token：同一次提交意图复用同一 key，载荷变化或成功后重置
+  // 手动添加商品
+  const handleAddManualItem = useCallback(
+    (item: ManualItem) => {
+      setDraft((prev) => ({
+        ...prev,
+        manualItems: [...prev.manualItems, item],
+      }));
+      idemRef.current = null;
+    },
+    [],
+  );
+
+  const handleRemoveManualItem = useCallback((skuId: number) => {
+    setDraft((prev) => ({
+      ...prev,
+      manualItems: prev.manualItems.filter((i) => i.sku_id !== skuId),
+    }));
+    idemRef.current = null;
+  }, []);
+
+  const handleManualQtyChange = useCallback((skuId: number, qty: number) => {
+    if (qty <= 0) return;
+    setDraft((prev) => ({
+      ...prev,
+      manualItems: prev.manualItems.map((i) =>
+        i.sku_id === skuId ? { ...i, quantity: qty } : i,
+      ),
+    }));
+    idemRef.current = null;
+  }, []);
+
+  // 已在列表中的所有 sku_id（篮中 + 手动）
+  const existingSkuIds = useMemo(() => {
+    const ids = new Set<number>();
+    cartItems.forEach((i) => ids.add(i.sku_id));
+    manualItems.forEach((i) => ids.add(i.sku_id));
+    return ids;
+  }, [cartItems, manualItems]);
+
+  // SKU 搜索弹窗
+  const [showSearch, setShowSearch] = useState(false);
+
+  // 全部商品数（篮中 + 手动）
+  const totalItemCount = cartItems.length + manualItems.length;
+
+  // 幂等 token
   const idemRef = useRef<string | null>(null);
 
-  // 提交
+  // 提交 / 保存草稿
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
-  const handleSubmit = useCallback(async () => {
-    if (submitting || cartItems.length === 0) return;
+  const doCreate = useCallback(async (asDraft: boolean) => {
+    if (submitting || savingDraft || totalItemCount === 0) return;
     if (!idemRef.current) {
       idemRef.current = crypto.randomUUID();
     }
-    setSubmitting(true);
+    if (asDraft) setSavingDraft(true); else setSubmitting(true);
     try {
+      const allItems = [
+        ...cartItems.map((c) => ({ sku_id: c.sku_id, quantity: c.quantity })),
+        ...manualItems.map((m) => ({ sku_id: m.sku_id, quantity: m.quantity })),
+      ];
+
       await createRfq(
         {
-          source_type: "CART",
-          cart_item_ids: cartItems.map((i) => i.item_id),
+          items: allItems,
+          as_draft: asDraft || undefined,
           contact_name: draft.contact_name || undefined,
           contact_phone: draft.contact_phone || undefined,
           contact_email: draft.contact_email || undefined,
@@ -267,16 +589,21 @@ function RfqCreateContent() {
         idemRef.current,
       );
 
-      // 成功：清 token + 清草稿 + 刷新询价篮 + 跳转
+      // 提交成功后清篮（草稿不清）
+      if (!asDraft && cartItems.length > 0) {
+        try {
+          await Promise.all(cartItems.map((c) => removeCartItem(c.item_id)));
+        } catch {}
+      }
+
       idemRef.current = null;
       try { sessionStorage.removeItem(draftKey); } catch {}
       const updatedCart = await getCart();
       syncFromCart(updatedCart);
       triggerRefresh();
-      toast.success(t("submitSuccess"));
+      toast.success(t(asDraft ? "saveDraftSuccess" : "submitSuccess"));
       router.push(`/${locale}/buyer/rfqs`);
     } catch (err) {
-      // 失败保留 idemRef 允许同 token 重试
       if (err instanceof ApiError && err.messageKey) {
         const key = err.messageKey.replace(/^error\./, "");
         try {
@@ -289,10 +616,14 @@ function RfqCreateContent() {
       }
     } finally {
       setSubmitting(false);
+      setSavingDraft(false);
     }
-  }, [submitting, cartItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
+  }, [submitting, savingDraft, totalItemCount, cartItems, manualItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
 
-  // 今天日期（限制 date picker 不能选过去）
+  const handleSubmit = useCallback(() => doCreate(false), [doCreate]);
+  const handleSaveDraft = useCallback(() => doCreate(true), [doCreate]);
+
+  // 今天日期
   const todayStr = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -309,7 +640,7 @@ function RfqCreateContent() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* 页标题 */}
       <div className="flex items-center gap-3">
         <button
@@ -327,7 +658,7 @@ function RfqCreateContent() {
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{itemsWarning}</span>
-          {cartItems.length === 0 && (
+          {cartItems.length === 0 && manualItems.length === 0 && (
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/cart`)}
@@ -355,8 +686,9 @@ function RfqCreateContent() {
               </tr>
             </thead>
             <tbody>
+              {/* 篮中商品 */}
               {cartItems.map((item) => (
-                <tr key={item.item_id} className="border-t border-gray-100 even:bg-slate-50/50">
+                <tr key={`cart-${item.item_id}`} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name ?? "—"}
                   </td>
@@ -372,7 +704,7 @@ function RfqCreateContent() {
                         value={item.quantity}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value);
-                          if (!isNaN(v) && v > 0) handleQuantityChange(item.item_id, v);
+                          if (!isNaN(v) && v > 0) handleCartQuantityChange(item.item_id, v);
                         }}
                         min={1}
                         className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
@@ -385,16 +717,55 @@ function RfqCreateContent() {
                   <td className="px-3 py-3 text-center">
                     <button
                       type="button"
-                      onClick={() => handleRemoveItem(item.item_id)}
+                      onClick={() => handleRemoveCartItem(item.item_id)}
                       className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                      title={cartItems.length <= 1 ? undefined : "移除"}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </td>
                 </tr>
               ))}
-              {cartItems.length === 0 && (
+
+              {/* 手动添加的商品 */}
+              {manualItems.map((item) => (
+                <tr key={`manual-${item.sku_id}`} className="border-t border-gray-100 even:bg-slate-50/50">
+                  <td className="px-5 py-3 font-medium text-gray-800">
+                    {item.product_name}
+                  </td>
+                  <td className="px-5 py-3 text-gray-500">
+                    {item.sku_spec}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v) && v > 0) handleManualQtyChange(item.sku_id, v);
+                        }}
+                        min={1}
+                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+                      />
+                      <span className="text-xs text-gray-500">
+                        {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveManualItem(item.sku_id)}
+                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* 空状态 */}
+              {totalItemCount === 0 && (
                 <tr>
                   <td colSpan={4} className="px-5 py-12 text-center">
                     <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-gray-200" />
@@ -409,6 +780,20 @@ function RfqCreateContent() {
                   </td>
                 </tr>
               )}
+
+              {/* 添加商品按钮 */}
+              <tr className="border-t border-gray-100">
+                <td colSpan={4} className="px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowSearch(true)}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D4D4D] transition-colors hover:text-[#0a3d3d]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t("addProduct")}
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -522,7 +907,7 @@ function RfqCreateContent() {
         </div>
       </div>
 
-      {/* 提交按钮 */}
+      {/* 操作按钮 */}
       <div className="flex justify-end gap-3 pb-8">
         <button
           type="button"
@@ -533,10 +918,23 @@ function RfqCreateContent() {
         </button>
         <button
           type="button"
-          disabled={submitting || cartItems.length === 0}
+          disabled={savingDraft || submitting || totalItemCount === 0}
+          onClick={handleSaveDraft}
+          className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
+            savingDraft || submitting || totalItemCount === 0
+              ? "border-gray-200 text-gray-400 cursor-not-allowed"
+              : "border-[#0D4D4D] text-[#0D4D4D] hover:bg-[#0D4D4D]/5"
+          }`}
+        >
+          {savingDraft && <Loader2 className="h-4 w-4 animate-spin" />}
+          {t("saveDraft")}
+        </button>
+        <button
+          type="button"
+          disabled={submitting || savingDraft || totalItemCount === 0}
           onClick={handleSubmit}
           className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
-            submitting || cartItems.length === 0
+            submitting || savingDraft || totalItemCount === 0
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
               : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
           }`}
@@ -549,6 +947,16 @@ function RfqCreateContent() {
           {t("create")}
         </button>
       </div>
+
+      {/* SKU 搜索弹窗 */}
+      <SkuSearchModal
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        onAdd={(item) => {
+          handleAddManualItem(item);
+        }}
+        existingSkuIds={existingSkuIds}
+      />
     </div>
   );
 }
