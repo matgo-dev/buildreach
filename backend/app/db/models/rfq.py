@@ -82,6 +82,12 @@ class Rfq(Base, TimestampUpdateMixin, SoftDeleteMixin):
             unique=True,
             postgresql_where="deleted_at IS NULL",
         ),
+        Index(
+            "uq_rfqs_idem_key_active",
+            "created_by_user_id", "idempotency_key",
+            unique=True,
+            postgresql_where="idempotency_key IS NOT NULL AND deleted_at IS NULL",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -121,6 +127,7 @@ class Rfq(Base, TimestampUpdateMixin, SoftDeleteMixin):
         ),
         nullable=True,
     )
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # 联系方式
