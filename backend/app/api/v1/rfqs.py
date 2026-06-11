@@ -92,6 +92,17 @@ async def claim_rfq(
     return success(result.model_dump())
 
 
+@router.patch("/{rfq_id}/submit", summary="提交草稿询价单")
+async def submit_rfq(
+    rfq_id: int,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_UPDATE)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.submit_rfq(db, current, rfq_id, request=request)
+    return success(result.model_dump())
+
+
 @router.patch("/{rfq_id}/withdraw", summary="撤回改单")
 async def withdraw_rfq(
     rfq_id: int,

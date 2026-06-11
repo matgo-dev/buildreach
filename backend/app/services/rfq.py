@@ -635,6 +635,47 @@ async def claim_rfq(
     return await _load_and_serialize(db, rfq.id, is_operator=True)
 
 
+# ── 提交草稿 ────────────────────────────────────────────
+
+
+async def submit_rfq(
+    db: AsyncSession, user: CurrentUser, rfq_id: int,
+    *, request: Request | None = None,
+) -> RfqBuyerPublic:
+    """买方提交草稿询价单：DRAFT → SUBMITTED。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+
+    # 幂等：已 SUBMITTED → 直接返回
+    if rfq.status == RfqStatus.SUBMITTED:
+        return _serialize_rfq(rfq, is_operator=False)
+
+    # 状态守卫
+    if not RfqStatus.can_transition(rfq.status, RfqStatus.SUBMITTED):
+        raise RfqStateInvalidError(rfq.status)
+
+    # 行项非空守卫
+    active_items = [it for it in rfq.items if getattr(it, "deleted_at", None) is None]
+    if not active_items:
+        raise RfqNoValidItemsError()
+
+    rfq.status = RfqStatus.SUBMITTED
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.SUBMIT,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no},
+        commit=False,
+    )
+    await db.commit()
+
+    return await _load_and_serialize(db, rfq.id, is_operator=False)
+
+
 # ── 撤回改单 ────────────────────────────────────────────
 
 

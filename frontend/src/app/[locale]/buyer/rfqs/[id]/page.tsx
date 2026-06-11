@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { ApiError } from "@/lib/api";
-import { getRfq, cancelRfq, withdrawRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
+import { getRfq, cancelRfq, withdrawRfq, submitRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
 import {
   listBuyerQuotes, acceptRfq, rejectRfq,
   type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
@@ -68,6 +68,10 @@ function RfqDetailContent() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // 提交草稿
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   // 接受/拒绝
   const [acceptOpen, setAcceptOpen] = useState(false);
   const [accepting, setAccepting] = useState(false);
@@ -95,6 +99,20 @@ function RfqDetailContent() {
       showError(err);
     } finally {
       setWithdrawing(false);
+    }
+  }, [rfqId, mutate, toast, t, showError]);
+
+  const handleSubmitDraft = useCallback(async () => {
+    setSubmitting(true);
+    try {
+      const updated = await submitRfq(rfqId);
+      mutate(updated, { revalidate: false });
+      setSubmitOpen(false);
+      toast.success(t("submitDraftSuccess"));
+    } catch (err) {
+      showError(err);
+    } finally {
+      setSubmitting(false);
     }
   }, [rfqId, mutate, toast, t, showError]);
 
@@ -169,6 +187,7 @@ function RfqDetailContent() {
     );
   }
 
+  const canSubmitDraft = rfq.status === "DRAFT";
   const canCancel = rfq.status === "SUBMITTED";
   const canWithdraw = rfq.status === "SUBMITTED";
   const canDecide = rfq.status === "QUOTED" && hasPermission(Permissions.RFQ_DECIDE);
@@ -203,6 +222,15 @@ function RfqDetailContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canSubmitDraft && (
+            <button
+              type="button"
+              onClick={() => setSubmitOpen(true)}
+              className="rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0D4D4D]/90"
+            >
+              {t("submitDraft")}
+            </button>
+          )}
           {canDecide && (
             <>
               <button
@@ -407,6 +435,18 @@ function RfqDetailContent() {
           </div>
         </div>
       )}
+
+      {/* 提交草稿确认框 */}
+      <ConfirmModal
+        open={submitOpen}
+        title={t("submitDraft")}
+        description={t("submitDraftConfirm")}
+        variant="primary"
+        loading={submitting}
+        confirmLabel={t("submitDraft")}
+        onConfirm={handleSubmitDraft}
+        onCancel={() => setSubmitOpen(false)}
+      />
 
       {/* 接受确认框 */}
       <ConfirmModal
