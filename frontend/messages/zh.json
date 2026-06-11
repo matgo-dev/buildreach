@@ -674,6 +674,18 @@
     "tradeTerm_CIF": "CIF 成本加保险加运费",
     "currency_USD": "美元 USD",
     "currency_CNY": "人民币 CNY",
-    "currency_TZS": "坦桑尼亚先令 TZS"
+    "currency_TZS": "坦桑尼亚先令 TZS",
+    "section": "报价",
+    "noQuote": "暂无报价",
+    "accept": "接受报价",
+    "reject": "拒绝报价",
+    "confirmAcceptTitle": "确认接受",
+    "confirmAccept": "确认接受该报价？接受后视为成交意向。",
+    "confirmRejectTitle": "确认拒绝",
+    "confirmReject": "确认拒绝该报价？",
+    "acceptSuccess": "已接受报价",
+    "rejectSuccess": "已拒绝报价",
+    "expiredHint": "报价已过有效期，可联系平台确认",
+    "acceptedTag": "成交报价"
   }
 }
