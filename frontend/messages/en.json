@@ -674,6 +674,18 @@
     "tradeTerm_CIF": "CIF Cost, Insurance & Freight",
     "currency_USD": "US Dollar (USD)",
     "currency_CNY": "Chinese Yuan (CNY)",
-    "currency_TZS": "Tanzanian Shilling (TZS)"
+    "currency_TZS": "Tanzanian Shilling (TZS)",
+    "section": "Quote",
+    "noQuote": "No quote yet",
+    "accept": "Accept Quote",
+    "reject": "Reject Quote",
+    "confirmAcceptTitle": "Confirm Accept",
+    "confirmAccept": "Accept this quote? Accepting indicates intent to transact.",
+    "confirmRejectTitle": "Confirm Reject",
+    "confirmReject": "Reject this quote?",
+    "acceptSuccess": "Quote accepted",
+    "rejectSuccess": "Quote rejected",
+    "expiredHint": "Quote has passed its validity date; contact the platform to confirm",
+    "acceptedTag": "Accepted quote"
   }
 }
