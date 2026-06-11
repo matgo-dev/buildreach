@@ -617,6 +617,7 @@
     "remark": "Remarks",
     "status_DRAFT": "Draft",
     "status_SUBMITTED": "Submitted",
+    "status_PROCESSING": "Processing",
     "status_QUOTED": "Quoted",
     "status_ACCEPTED": "Accepted",
     "status_REJECTED": "Rejected",
@@ -624,6 +625,19 @@
     "status_CANCELLED": "Cancelled",
     "itemsMissing": "Some items are no longer in your basket",
     "itemsAllMissing": "Items are no longer in your basket, please reselect",
-    "backToCart": "Back to Basket"
+    "backToCart": "Back to Basket",
+    "claim": "Claim",
+    "claimConfirm": "Claim this inquiry? The buyer will not be able to modify it after claiming.",
+    "claimSuccess": "Inquiry claimed",
+    "withdraw": "Withdraw",
+    "withdrawConfirm": "Withdraw this inquiry? It will return to draft for editing.",
+    "withdrawSuccess": "Inquiry withdrawn",
+    "alreadyClaimed": "This inquiry has been claimed by another operator",
+    "assignee": "Assignee",
+    "buyerOrg": "Buyer Org",
+    "editQuantity": "Edit Quantity",
+    "quantityUpdated": "Quantity updated",
+    "operatorRfqTitle": "RFQ Management",
+    "filterStatus": "Filter Status"
   }
 }

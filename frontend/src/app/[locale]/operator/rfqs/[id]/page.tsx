@@ -4,17 +4,113 @@ import { useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Check } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import { ApiError } from "@/lib/api";
-import { getRfq, cancelRfq, withdrawRfq, type RfqBuyerPublic } from "@/lib/api/rfqs";
+import {
+  getRfq,
+  claimRfq,
+  updateRfqItemQty,
+  type RfqBuyerPublic,
+  type RfqItemPublic,
+} from "@/lib/api/rfqs";
 import { formatDate } from "@/lib/formatters";
 
-function RfqDetailContent() {
+// 行内数量编辑组件
+function EditableQuantity({
+  item,
+  rfqId,
+  editable,
+  onUpdated,
+}: {
+  item: RfqItemPublic;
+  rfqId: number;
+  editable: boolean;
+  onUpdated: () => void;
+}) {
+  const t = useTranslations("rfq");
+  const tError = useTranslations("error");
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [qty, setQty] = useState(String(item.quantity));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    const num = Number(qty);
+    if (!num || num <= 0) return;
+    if (num === item.quantity) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateRfqItemQty(rfqId, item.id, num);
+      toast.success(t("quantityUpdated"));
+      setEditing(false);
+      onUpdated();
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try { toast.error(tError(key)); } catch { toast.error(err.message); }
+      } else {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [rfqId, item.id, item.quantity, qty, toast, t, tError, onUpdated]);
+
+  if (!editable) {
+    return (
+      <span className="font-semibold text-gray-800">
+        {item.quantity} {item.uom_snapshot ?? ""}
+      </span>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setQty(String(item.quantity)); setEditing(true); }}
+        className="font-semibold text-blue-600 hover:underline"
+        title={t("editQuantity")}
+      >
+        {item.quantity} {item.uom_snapshot ?? ""}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        min={0.001}
+        step="any"
+        value={qty}
+        onChange={(e) => setQty(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
+        className="w-20 rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-blue-500"
+        autoFocus
+      />
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+      >
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+}
+
+function OperatorRfqDetailContent() {
   const params = useParams();
   const router = useRouter();
   const locale = useLocale();
@@ -22,30 +118,26 @@ function RfqDetailContent() {
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
   const toast = useToast();
+  const { hasPermission } = usePermissions();
   const rfqId = Number(params.id);
 
   const { data: rfq, isLoading, error, mutate } = useSWR<RfqBuyerPublic>(
-    rfqId ? `rfq-detail-${rfqId}` : null,
+    rfqId ? `operator-rfq-detail-${rfqId}` : null,
     () => getRfq(rfqId),
     { revalidateOnFocus: false },
   );
 
-  // 取消询价
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
-  const [cancelling, setCancelling] = useState(false);
+  // 受理
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
-  // 撤回改单
-  const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
-
-  const handleWithdraw = useCallback(async () => {
-    setWithdrawing(true);
+  const handleClaim = useCallback(async () => {
+    setClaiming(true);
     try {
-      const updated = await withdrawRfq(rfqId);
+      const updated = await claimRfq(rfqId);
       mutate(updated, { revalidate: false });
-      setWithdrawOpen(false);
-      toast.success(t("withdrawSuccess"));
+      setClaimOpen(false);
+      toast.success(t("claimSuccess"));
     } catch (err) {
       if (err instanceof ApiError && err.messageKey) {
         const key = err.messageKey.replace(/^error\./, "");
@@ -54,36 +146,14 @@ function RfqDetailContent() {
         toast.error(err instanceof Error ? err.message : String(err));
       }
     } finally {
-      setWithdrawing(false);
+      setClaiming(false);
     }
   }, [rfqId, mutate, toast, t, tError]);
-
-  const handleCancel = useCallback(async () => {
-    setCancelling(true);
-    try {
-      const updated = await cancelRfq(rfqId, cancelReason || undefined);
-      mutate(updated, { revalidate: false });
-      setCancelOpen(false);
-      setCancelReason("");
-      toast.success(t("cancelSuccess"));
-    } catch (err) {
-      if (err instanceof ApiError && err.messageKey) {
-        const key = err.messageKey.replace(/^error\./, "");
-        try { toast.error(tError(key)); } catch { toast.error(err.message); }
-      } else {
-        toast.error(err instanceof Error ? err.message : String(err));
-      }
-    } finally {
-      setCancelling(false);
-    }
-  }, [rfqId, cancelReason, mutate, toast, t, tError]);
-
-  // ---- 渲染 ----
 
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -96,7 +166,7 @@ function RfqDetailContent() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="mt-4 text-sm text-[#0D4D4D] hover:underline"
+          className="mt-4 text-sm text-blue-600 hover:underline"
         >
           返回
         </button>
@@ -104,8 +174,8 @@ function RfqDetailContent() {
     );
   }
 
-  const canCancel = rfq.status === "SUBMITTED";
-  const canWithdraw = rfq.status === "SUBMITTED";
+  const canClaim = rfq.status === "SUBMITTED" && hasPermission("rfq:claim");
+  const canEditItems = rfq.status === "DRAFT";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -131,26 +201,15 @@ function RfqDetailContent() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {canWithdraw && (
-            <button
-              type="button"
-              onClick={() => setWithdrawOpen(true)}
-              className="rounded-lg border border-amber-200 px-4 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50"
-            >
-              {t("withdraw")}
-            </button>
-          )}
-          {canCancel && (
-            <button
-              type="button"
-              onClick={() => setCancelOpen(true)}
-              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-            >
-              {t("cancel")}
-            </button>
-          )}
-        </div>
+        {canClaim && (
+          <button
+            type="button"
+            onClick={() => setClaimOpen(true)}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            {t("claim")}
+          </button>
+        )}
       </div>
 
       {/* 商品清单 */}
@@ -176,8 +235,13 @@ function RfqDetailContent() {
                   <td className="px-5 py-3 text-gray-500">
                     {item.sku_spec_snapshot ?? "—"}
                   </td>
-                  <td className="px-5 py-3 text-right font-semibold text-gray-800">
-                    {item.quantity} {item.uom_snapshot ?? ""}
+                  <td className="px-5 py-3 text-right">
+                    <EditableQuantity
+                      item={item}
+                      rfqId={rfqId}
+                      editable={canEditItems}
+                      onUpdated={() => mutate()}
+                    />
                   </td>
                 </tr>
               ))}
@@ -201,10 +265,7 @@ function RfqDetailContent() {
               <div>
                 <span className="text-xs text-gray-400">{t("deliveryDate")}</span>
                 <p className="font-medium text-gray-800">
-                  {formatDate(rfq.expected_delivery_date, locale, {
-                    hour: undefined,
-                    minute: undefined,
-                  })}
+                  {formatDate(rfq.expected_delivery_date, locale, { hour: undefined, minute: undefined })}
                 </p>
               </div>
             )}
@@ -256,7 +317,7 @@ function RfqDetailContent() {
                 {rfq.required_certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-[#0D4D4D]/10 px-2 py-0.5 text-xs font-medium text-[#0D4D4D]"
+                    className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
                   >
                     {cert}
                   </span>
@@ -273,67 +334,27 @@ function RfqDetailContent() {
         </div>
       )}
 
-      {/* 撤回确认框 */}
-      {withdrawOpen && (
+      {/* 受理确认框 */}
+      {claimOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800">{t("withdrawConfirm")}</h3>
+            <h3 className="text-lg font-semibold text-gray-800">{t("claimConfirm")}</h3>
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setWithdrawOpen(false)}
-                disabled={withdrawing}
+                onClick={() => setClaimOpen(false)}
+                disabled={claiming}
                 className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
               >
                 {tCommon("cancel")}
               </button>
               <button
                 type="button"
-                onClick={handleWithdraw}
-                disabled={withdrawing}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+                onClick={handleClaim}
+                disabled={claiming}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
               >
-                {withdrawing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {tCommon("confirm")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 取消确认框（含原因输入） */}
-      {cancelOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800">{t("cancelConfirm")}</h3>
-            <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-gray-600">
-                {t("cancelReason")}
-              </label>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
-                placeholder={t("cancelReason")}
-              />
-            </div>
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => { setCancelOpen(false); setCancelReason(""); }}
-                disabled={cancelling}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              >
-                {tCommon("cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
-              >
-                {cancelling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {claiming && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {tCommon("confirm")}
               </button>
             </div>
@@ -344,10 +365,10 @@ function RfqDetailContent() {
   );
 }
 
-export default function RfqDetailPage() {
+export default function OperatorRfqDetailPage() {
   return (
     <RouteGuard requiredPermissions={[Permissions.RFQ_READ]}>
-      <RfqDetailContent />
+      <OperatorRfqDetailContent />
     </RouteGuard>
   );
 }

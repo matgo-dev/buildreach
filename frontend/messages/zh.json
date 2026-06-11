@@ -617,6 +617,7 @@
     "remark": "备注",
     "status_DRAFT": "草稿",
     "status_SUBMITTED": "已提交",
+    "status_PROCESSING": "受理中",
     "status_QUOTED": "已报价",
     "status_ACCEPTED": "已接受",
     "status_REJECTED": "已拒绝",
@@ -624,6 +625,19 @@
     "status_CANCELLED": "已取消",
     "itemsMissing": "部分商品已不在询价篮，请确认",
     "itemsAllMissing": "商品已不在询价篮，请重新选择",
-    "backToCart": "返回询价篮"
+    "backToCart": "返回询价篮",
+    "claim": "受理",
+    "claimConfirm": "确定受理该询价单？受理后买方将无法修改。",
+    "claimSuccess": "询价单已受理",
+    "withdraw": "撤回改单",
+    "withdrawConfirm": "确定撤回该询价单？撤回后将回到草稿态可重新编辑。",
+    "withdrawSuccess": "询价单已撤回",
+    "alreadyClaimed": "该询价已被其他运营受理",
+    "assignee": "受理人",
+    "buyerOrg": "买方组织",
+    "editQuantity": "修改数量",
+    "quantityUpdated": "数量已更新",
+    "operatorRfqTitle": "询价管理",
+    "filterStatus": "筛选状态"
   }
 }
