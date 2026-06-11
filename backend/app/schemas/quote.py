@@ -34,9 +34,11 @@ class QuoteCostInput(BaseModel):
 
 
 class QuoteLineInput(BaseModel):
-    """报价行输入。"""
+    """报价行输入。skipped=true 时 unit_price 可不填。"""
     rfq_item_id: int
-    unit_price: Decimal = Field(ge=0, max_digits=18, decimal_places=4)
+    skipped: bool = False
+    skip_reason: str | None = None
+    unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
     moq: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
     cbm_per_unit: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=4)
     gross_weight_per_unit: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=3)
@@ -88,6 +90,8 @@ class QuoteItemBuyerPublic(BaseModel):
     """买方可见报价行。无 cost/supplier。"""
     id: int
     rfq_item_id: int
+    skipped: bool = False
+    skip_reason: str | None = None
     unit_price: Decimal | None = None
     moq: Decimal | None = None
     cbm_per_unit: Decimal | None = None

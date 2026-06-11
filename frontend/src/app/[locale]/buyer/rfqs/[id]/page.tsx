@@ -632,6 +632,31 @@ function QuoteLineRow({
   const tQ = useTranslations("quote");
   const [showTiers, setShowTiers] = useState(false);
 
+  // skipped 行整行灰化 + 跨列标签
+  if (qi.skipped) {
+    return (
+      <tr className="border-t border-gray-100 bg-gray-50/80">
+        <td className="px-5 py-3 font-medium text-gray-400 line-through">
+          {rfqItem?.product_name_snapshot ?? "—"}
+        </td>
+        <td className="px-5 py-3 text-gray-400">
+          {rfqItem?.sku_spec_snapshot ?? "—"}
+        </td>
+        <td className="px-5 py-3 text-right text-gray-400">
+          {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
+        </td>
+        <td colSpan={5} className="px-5 py-3">
+          <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
+            {tQ("skippedLabel")}
+          </span>
+          {qi.skip_reason && (
+            <span className="ml-2 text-xs text-gray-400">{qi.skip_reason}</span>
+          )}
+        </td>
+      </tr>
+    );
+  }
+
   return (
     <>
       <tr className="border-t border-gray-100 even:bg-slate-50/50">
@@ -644,7 +669,7 @@ function QuoteLineRow({
         <td className="px-5 py-3 text-right text-gray-800">
           {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
         </td>
-        <td className="border-l border-l-gray-200 px-5 py-3 text-right font-semibold text-gray-800">
+        <td className="px-5 py-3 text-right font-semibold text-gray-800">
           {qi.unit_price != null
             ? formatCurrency(Number(qi.unit_price), currency, locale)
             : "—"}

@@ -129,6 +129,8 @@ interface LineState {
   sku_spec: string;
   quantity: number;
   uom: string;
+  skipped: boolean;
+  skip_reason: string;
   unit_price: string;
   moq: string;
   cbm_per_unit: string;
@@ -143,6 +145,8 @@ function buildInitialLines(items: RfqItemPublic[]): LineState[] {
     sku_spec: item.sku_spec_snapshot ?? "—",
     quantity: item.quantity,
     uom: item.uom_snapshot ?? "",
+    skipped: false,
+    skip_reason: "",
     unit_price: "",
     moq: "",
     cbm_per_unit: "",
@@ -209,9 +213,10 @@ function QuoteBackfillContent() {
     setLines((prev) => prev.map((line, i) => (i === idx ? { ...line, ...patch } : line)));
   }, []);
 
-  // 合计
+  // 合计——只算非 skipped 行
   const totalAmount = useMemo(() => {
     return lines.reduce((sum, line) => {
+      if (line.skipped) return sum;
       const price = parseFloat(line.unit_price);
       if (isNaN(price)) return sum;
       return sum + price * line.quantity;
@@ -220,11 +225,17 @@ function QuoteBackfillContent() {
 
   // 提交
   const handleSubmit = useCallback(async () => {
-    // 校验每行 unit_price
-    const hasEmpty = lines.some((l) => l.unit_price === "" || isNaN(parseFloat(l.unit_price)));
+    // 校验非 skipped 行必须有 unit_price
+    const hasEmpty = lines.some((l) => !l.skipped && (l.unit_price === "" || isNaN(parseFloat(l.unit_price))));
     if (hasEmpty) {
       setShowErrors(true);
       toast.error(t("unitPriceRequired"));
+      return;
+    }
+
+    // 不能全部跳过
+    if (lines.every((l) => l.skipped)) {
+      toast.error(t("allSkippedError"));
       return;
     }
 
@@ -248,6 +259,13 @@ function QuoteBackfillContent() {
       if (header.eta_days) headerPayload.eta_days = parseInt(header.eta_days);
 
       const linePayloads: QuoteLineInput[] = lines.map((line) => {
+        if (line.skipped) {
+          return {
+            rfq_item_id: line.rfq_item_id,
+            skipped: true,
+            skip_reason: line.skip_reason || undefined,
+          };
+        }
         const out: QuoteLineInput = {
           rfq_item_id: line.rfq_item_id,
           unit_price: parseFloat(line.unit_price),
@@ -442,20 +460,25 @@ function QuoteBackfillContent() {
                 <th className="px-4 py-2.5 font-medium text-right">{t("cbm")}</th>
                 <th className="px-4 py-2.5 font-medium text-right">{t("grossWeight")}</th>
                 <th className="px-4 py-2.5 font-medium text-center">{t("tiers")}</th>
+                <th className="px-4 py-2.5 font-medium text-center">{t("skipLabel")}</th>
               </tr>
             </thead>
             <tbody>
               {lines.map((line, idx) => {
-                const priceEmpty = showErrors && (line.unit_price === "" || isNaN(parseFloat(line.unit_price)));
+                const isSkipped = line.skipped;
+                const priceEmpty = showErrors && !isSkipped && (line.unit_price === "" || isNaN(parseFloat(line.unit_price)));
+                const inputCls = "h-8 w-24 rounded border px-2 text-right text-xs outline-none focus:border-blue-500";
+                const disabledCls = "bg-gray-100 text-gray-400 cursor-not-allowed";
+
                 return (
-                  <tr key={line.rfq_item_id} className="border-t border-gray-100 even:bg-slate-50/50">
-                    <td className="px-4 py-3 font-medium text-gray-800 max-w-[160px] truncate" title={line.product_name}>
+                  <tr key={line.rfq_item_id} className={`border-t border-gray-100 ${isSkipped ? "bg-gray-50/80" : "even:bg-slate-50/50"}`}>
+                    <td className={`px-4 py-3 font-medium max-w-[160px] truncate ${isSkipped ? "text-gray-400 line-through" : "text-gray-800"}`} title={line.product_name}>
                       {line.product_name}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 max-w-[120px] truncate" title={line.sku_spec}>
+                    <td className={`px-4 py-3 max-w-[120px] truncate ${isSkipped ? "text-gray-400" : "text-gray-500"}`} title={line.sku_spec}>
                       {line.sku_spec}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700">
+                    <td className={`px-4 py-3 text-right ${isSkipped ? "text-gray-400" : "text-gray-700"}`}>
                       {line.quantity} {line.uom}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -463,12 +486,11 @@ function QuoteBackfillContent() {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={line.unit_price}
+                        value={isSkipped ? "" : line.unit_price}
                         onChange={(e) => updateLine(idx, { unit_price: e.target.value })}
-                        className={`h-8 w-24 rounded border px-2 text-right text-xs outline-none focus:border-blue-500 ${
-                          priceEmpty ? "border-red-400 bg-red-50" : "border-gray-200"
-                        }`}
-                        placeholder="0.00"
+                        disabled={isSkipped}
+                        className={`${inputCls} ${isSkipped ? disabledCls : priceEmpty ? "border-red-400 bg-red-50" : "border-gray-200"}`}
+                        placeholder={isSkipped ? "—" : "0.00"}
                       />
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -476,9 +498,10 @@ function QuoteBackfillContent() {
                         type="number"
                         min="0"
                         step="any"
-                        value={line.moq}
+                        value={isSkipped ? "" : line.moq}
                         onChange={(e) => updateLine(idx, { moq: e.target.value })}
-                        className="h-8 w-20 rounded border border-gray-200 px-2 text-right text-xs outline-none focus:border-blue-500"
+                        disabled={isSkipped}
+                        className={`h-8 w-20 rounded border px-2 text-right text-xs outline-none focus:border-blue-500 ${isSkipped ? disabledCls : "border-gray-200"}`}
                       />
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -486,9 +509,10 @@ function QuoteBackfillContent() {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={line.cbm_per_unit}
+                        value={isSkipped ? "" : line.cbm_per_unit}
                         onChange={(e) => updateLine(idx, { cbm_per_unit: e.target.value })}
-                        className="h-8 w-20 rounded border border-gray-200 px-2 text-right text-xs outline-none focus:border-blue-500"
+                        disabled={isSkipped}
+                        className={`h-8 w-20 rounded border px-2 text-right text-xs outline-none focus:border-blue-500 ${isSkipped ? disabledCls : "border-gray-200"}`}
                       />
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -496,19 +520,46 @@ function QuoteBackfillContent() {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={line.gross_weight_per_unit}
+                        value={isSkipped ? "" : line.gross_weight_per_unit}
                         onChange={(e) => updateLine(idx, { gross_weight_per_unit: e.target.value })}
-                        className="h-8 w-20 rounded border border-gray-200 px-2 text-right text-xs outline-none focus:border-blue-500"
+                        disabled={isSkipped}
+                        className={`h-8 w-20 rounded border px-2 text-right text-xs outline-none focus:border-blue-500 ${isSkipped ? disabledCls : "border-gray-200"}`}
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setTierModalIdx(idx)}
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        {line.tiers.length > 0 ? `${line.tiers.length}` : t("setTiers")}
-                      </button>
+                      {isSkipped ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setTierModalIdx(idx)}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          {line.tiers.length > 0 ? `${line.tiers.length}` : t("setTiers")}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            checked={isSkipped}
+                            onChange={(e) => updateLine(idx, { skipped: e.target.checked })}
+                            className="peer sr-only"
+                          />
+                          <div className="h-5 w-9 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-red-400 peer-checked:after:translate-x-full peer-checked:after:border-white" />
+                        </label>
+                        {isSkipped && (
+                          <input
+                            type="text"
+                            value={line.skip_reason}
+                            onChange={(e) => updateLine(idx, { skip_reason: e.target.value })}
+                            placeholder={t("skipReasonPlaceholder")}
+                            className="h-6 w-28 rounded border border-gray-200 px-1.5 text-[10px] text-gray-600 outline-none focus:border-blue-500"
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

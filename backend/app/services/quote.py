@@ -23,6 +23,7 @@ from app.audit.logger import write_audit
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
     QuoteItemMismatchError,
+    QuoteLineNoPriceError,
     QuoteLinesIncompleteError,
     QuoteRfqStateInvalidError,
     RfqNotFoundError,
@@ -105,17 +106,27 @@ async def create_quote(
         if line.rfq_item_id in seen_ids:
             raise QuoteItemMismatchError()
         seen_ids.add(line.rfq_item_id)
+        # 非跳过行必须有 unit_price
+        if not line.skipped and line.unit_price is None:
+            raise QuoteLineNoPriceError()
 
-    # 必须覆盖全部未删 rfq_items
+    # 必须覆盖全部未删 rfq_items（包括 skipped 行）
     if seen_ids != set(rfq_item_map.keys()):
         raise QuoteLinesIncompleteError()
 
-    # 计算金额
+    # 不能全部跳过
+    if all(line.skipped for line in payload.lines):
+        raise QuoteLinesIncompleteError()
+
+    # 计算金额——只汇总非 skipped 行
     total_amount = Decimal(0)
-    line_amounts: dict[int, Decimal] = {}
+    line_amounts: dict[int, Decimal | None] = {}
     for line in payload.lines:
+        if line.skipped:
+            line_amounts[line.rfq_item_id] = None
+            continue
         rfq_item = rfq_item_map[line.rfq_item_id]
-        amt = line.unit_price * rfq_item.quantity
+        amt = line.unit_price * rfq_item.quantity  # type: ignore[operator]
         line_amounts[line.rfq_item_id] = amt
         total_amount += amt
 
@@ -198,10 +209,12 @@ async def create_quote(
         qi = RfqQuoteItem(
             quote_id=quote.id,
             rfq_item_id=line.rfq_item_id,
-            unit_price=line.unit_price,
-            moq=line.moq,
-            cbm_per_unit=line.cbm_per_unit,
-            gross_weight_per_unit=line.gross_weight_per_unit,
+            skipped=line.skipped,
+            skip_reason=line.skip_reason if line.skipped else None,
+            unit_price=None if line.skipped else line.unit_price,
+            moq=None if line.skipped else line.moq,
+            cbm_per_unit=None if line.skipped else line.cbm_per_unit,
+            gross_weight_per_unit=None if line.skipped else line.gross_weight_per_unit,
             line_amount=line_amounts[line.rfq_item_id],
         )
         db.add(qi)
@@ -473,6 +486,8 @@ def _serialize_quote_buyer(quote: RfqQuote) -> RfqQuoteBuyerPublic:
         QuoteItemBuyerPublic(
             id=qi.id,
             rfq_item_id=qi.rfq_item_id,
+            skipped=qi.skipped,
+            skip_reason=qi.skip_reason,
             unit_price=qi.unit_price,
             moq=qi.moq,
             cbm_per_unit=qi.cbm_per_unit,
@@ -520,6 +535,8 @@ def _serialize_quote_operator(quote: RfqQuote) -> RfqQuoteOperatorView:
         items.append(QuoteItemOperatorView(
             id=qi.id,
             rfq_item_id=qi.rfq_item_id,
+            skipped=qi.skipped,
+            skip_reason=qi.skip_reason,
             unit_price=qi.unit_price,
             moq=qi.moq,
             cbm_per_unit=qi.cbm_per_unit,
