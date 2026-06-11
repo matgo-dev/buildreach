@@ -9,7 +9,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from sqlalchemy import (
-    ForeignKey, Integer, Numeric, Text, UniqueConstraint,
+    Boolean, ForeignKey, Integer, Numeric, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,6 +37,10 @@ class RfqQuoteItem(Base, TimestampUpdateMixin, SoftDeleteMixin):
         ForeignKey("rfq_items.id", name="fk_rfq_quote_items_rfq_item_id"),
         nullable=False,
     )
+
+    # 跳过标记：运营无法报价的行项
+    skipped: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    skip_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     unit_price: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 4), nullable=True,

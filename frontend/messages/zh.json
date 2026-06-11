@@ -105,7 +105,8 @@
       "rfq_state_invalid": "当前询价单状态不允许此报价操作",
       "not_found": "报价不存在",
       "item_mismatch": "报价行项不属于此询价单或存在重复",
-      "lines_incomplete": "报价未覆盖全部询价行项"
+      "lines_incomplete": "报价未覆盖全部询价行项",
+      "line_no_price": "非跳过行必须填写单价"
     }
   },
   "category": {
@@ -692,6 +693,10 @@
     "acceptedTag": "成交报价",
     "tierConfirm": "保存阶梯价",
     "groupRequest": "询价信息",
-    "groupResponse": "报价回复"
+    "groupResponse": "报价回复",
+    "skipLabel": "跳过",
+    "skippedLabel": "无法供应",
+    "skipReasonPlaceholder": "原因（选填）",
+    "allSkippedError": "不能跳过全部行项"
   }
 }
