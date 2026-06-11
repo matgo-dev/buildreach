@@ -129,6 +129,11 @@ export async function claimRfq(rfqId: number): Promise<RfqOperatorView> {
   return api.patch<RfqOperatorView>(`/api/v1/rfqs/${rfqId}/claim`, {});
 }
 
+/** 买方提交草稿：DRAFT → SUBMITTED */
+export async function submitRfq(rfqId: number): Promise<RfqBuyerPublic> {
+  return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/submit`, {});
+}
+
 /** 买方撤回改单：SUBMITTED → DRAFT */
 export async function withdrawRfq(rfqId: number): Promise<RfqBuyerPublic> {
   return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/withdraw`, {});

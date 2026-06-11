@@ -3,14 +3,17 @@
 import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { Loader2, FileText, Eye } from "lucide-react";
+import { Loader2, FileText, Eye, FileEdit } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
+import { useToast } from "@/components/ui/Toast";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
-import { listRfqs, type RfqListResponse } from "@/lib/api/rfqs";
+import { ApiError } from "@/lib/api";
+import { listRfqs, claimRfq, type RfqListResponse } from "@/lib/api/rfqs";
 import { formatDate } from "@/lib/formatters";
 
 const PAGE_SIZE = 20;
@@ -22,12 +25,14 @@ const STATUS_OPTIONS = [
 function OperatorRfqListContent() {
   const locale = useLocale();
   const t = useTranslations("rfq");
+  const tError = useTranslations("error");
+  const toast = useToast();
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
 
   const swrKey = `operator-rfqs-${page}-${statusFilter}`;
-  const { data, isLoading } = useSWR<RfqListResponse>(
+  const { data, isLoading, mutate } = useSWR<RfqListResponse>(
     swrKey,
     () =>
       listRfqs({
@@ -40,6 +45,34 @@ function OperatorRfqListContent() {
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
   const handlePageChange = useCallback((p: number) => setPage(p), []);
+
+  // 受理确认
+  const [claimTarget, setClaimTarget] = useState<number | null>(null);
+  const [claiming, setClaiming] = useState(false);
+
+  const showError = useCallback((err: unknown) => {
+    if (err instanceof ApiError && err.messageKey) {
+      const key = err.messageKey.replace(/^error\./, "");
+      try { toast.error(tError(key)); } catch { toast.error(err.message); }
+    } else {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [toast, tError]);
+
+  const handleClaim = useCallback(async () => {
+    if (!claimTarget) return;
+    setClaiming(true);
+    try {
+      await claimRfq(claimTarget);
+      mutate();
+      setClaimTarget(null);
+      toast.success(t("claimSuccess"));
+    } catch (err) {
+      showError(err);
+    } finally {
+      setClaiming(false);
+    }
+  }, [claimTarget, mutate, toast, t, showError]);
 
   return (
     <div className="space-y-4">
@@ -69,7 +102,7 @@ function OperatorRfqListContent() {
         ) : !data || data.items.length === 0 ? (
           <div className="flex h-60 flex-col items-center justify-center text-gray-400">
             <FileText className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="text-sm">{t("filterAll")}</p>
+            <p className="text-sm">{t("emptyList")}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -106,13 +139,33 @@ function OperatorRfqListContent() {
                     {rfq.created_at ? formatDate(rfq.created_at, locale) : "—"}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/${locale}/operator/rfqs/${rfq.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 transition-colors hover:text-blue-800"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      {t("viewDetail")}
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      {rfq.status === "SUBMITTED" && (
+                        <button
+                          type="button"
+                          onClick={() => setClaimTarget(rfq.id)}
+                          className="text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          {t("claim")}
+                        </button>
+                      )}
+                      {rfq.status === "PROCESSING" && (
+                        <Link
+                          href={`/${locale}/operator/rfqs/${rfq.id}/quote`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          <FileEdit className="h-3.5 w-3.5" />
+                          {t("quoteBackfill")}
+                        </Link>
+                      )}
+                      <Link
+                        href={`/${locale}/operator/rfqs/${rfq.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        {t("viewDetail")}
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -129,6 +182,18 @@ function OperatorRfqListContent() {
           onChange={handlePageChange}
         />
       )}
+
+      {/* 受理确认弹窗 */}
+      <ConfirmModal
+        open={claimTarget !== null}
+        title={t("claim")}
+        description={t("claimConfirm")}
+        variant="primary"
+        loading={claiming}
+        confirmLabel={t("claim")}
+        onConfirm={handleClaim}
+        onCancel={() => setClaimTarget(null)}
+      />
     </div>
   );
 }

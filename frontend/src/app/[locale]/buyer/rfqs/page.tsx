@@ -4,17 +4,27 @@ import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Package } from "lucide-react";
+import { Loader2, FileText, Package, Eye } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useToast } from "@/components/ui/Toast";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
-import { listRfqs, type RfqListResponse } from "@/lib/api/rfqs";
+import { ApiError } from "@/lib/api";
+import {
+  listRfqs, submitRfq, cancelRfq, withdrawRfq,
+  type RfqListResponse,
+} from "@/lib/api/rfqs";
+import { acceptRfq, rejectRfq } from "@/lib/api/quotes";
 import { formatRelativeTime } from "@/lib/formatters";
 
 const PAGE_SIZE = 20;
-const STATUS_OPTIONS = ["", "SUBMITTED", "QUOTED", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"];
+const STATUS_OPTIONS = [
+  "", "DRAFT", "SUBMITTED", "QUOTED", "ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED",
+];
 
 /** 拼商品摘要：前 2 个商品名 + 超出数量 */
 function buildProductSummary(items: { product_name_snapshot: string | null }[]): string {
@@ -31,13 +41,18 @@ function RfqListContent() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("rfq");
+  const tQ = useTranslations("quote");
+  const tCommon = useTranslations("common");
+  const tError = useTranslations("error");
+  const toast = useToast();
+  const { hasPermission } = usePermissions();
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [mineOnly, setMineOnly] = useState(false);
 
   const swrKey = `rfqs-${page}-${statusFilter}-${mineOnly}`;
-  const { data, isLoading } = useSWR<RfqListResponse>(
+  const { data, isLoading, mutate } = useSWR<RfqListResponse>(
     swrKey,
     () =>
       listRfqs({
@@ -50,8 +65,142 @@ function RfqListContent() {
   );
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
-
   const handlePageChange = useCallback((p: number) => setPage(p), []);
+
+  // 操作状态
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    variant: "primary" | "danger";
+    confirmLabel: string;
+    action: (() => Promise<void>) | null;
+  }>({ open: false, title: "", description: "", variant: "primary", confirmLabel: "", action: null });
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const showError = useCallback((err: unknown) => {
+    if (err instanceof ApiError && err.messageKey) {
+      const key = err.messageKey.replace(/^error\./, "");
+      try { toast.error(tError(key)); } catch { toast.error(err.message); }
+    } else {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }, [toast, tError]);
+
+  const execAction = useCallback(async (fn: () => Promise<unknown>, successMsg: string) => {
+    setActionLoading(true);
+    try {
+      await fn();
+      mutate();
+      setConfirmModal((prev) => ({ ...prev, open: false }));
+      toast.success(successMsg);
+    } catch (err) {
+      showError(err);
+    } finally {
+      setActionLoading(false);
+    }
+  }, [mutate, toast, showError]);
+
+  const openConfirm = useCallback((
+    title: string, description: string, variant: "primary" | "danger",
+    confirmLabel: string, action: () => Promise<void>,
+  ) => {
+    setConfirmModal({ open: true, title, description, variant, confirmLabel, action });
+  }, []);
+
+  // 按状态渲染操作按钮
+  const renderActions = useCallback((rfq: { id: number; status: string }) => {
+    const btns: React.ReactNode[] = [];
+
+    if (rfq.status === "DRAFT") {
+      btns.push(
+        <button
+          key="submit"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openConfirm(t("submitDraft"), t("submitDraftConfirm"), "primary", t("submitDraft"),
+              () => execAction(() => submitRfq(rfq.id), t("submitDraftSuccess")));
+          }}
+          className="text-xs font-medium text-[#0D4D4D] hover:underline"
+        >
+          {t("submitDraft")}
+        </button>,
+      );
+    } else if (rfq.status === "SUBMITTED") {
+      btns.push(
+        <button
+          key="withdraw"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openConfirm(t("withdraw"), t("withdrawConfirm"), "primary", t("withdraw"),
+              () => execAction(() => withdrawRfq(rfq.id), t("withdrawSuccess")));
+          }}
+          className="text-xs font-medium text-amber-600 hover:underline"
+        >
+          {t("withdraw")}
+        </button>,
+        <button
+          key="cancel"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openConfirm(t("cancel"), t("cancelConfirm"), "danger", t("cancel"),
+              () => execAction(() => cancelRfq(rfq.id), t("cancelSuccess")));
+          }}
+          className="text-xs font-medium text-red-600 hover:underline"
+        >
+          {t("cancel")}
+        </button>,
+      );
+    } else if (rfq.status === "QUOTED" && hasPermission(Permissions.RFQ_DECIDE)) {
+      btns.push(
+        <button
+          key="accept"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "primary", tQ("accept"),
+              () => execAction(() => acceptRfq(rfq.id), tQ("acceptSuccess")));
+          }}
+          className="text-xs font-medium text-[#0D4D4D] hover:underline"
+        >
+          {tQ("accept")}
+        </button>,
+        <button
+          key="reject"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openConfirm(tQ("confirmRejectTitle"), tQ("confirmReject"), "danger", tQ("reject"),
+              () => execAction(() => rejectRfq(rfq.id), tQ("rejectSuccess")));
+          }}
+          className="text-xs font-medium text-red-600 hover:underline"
+        >
+          {tQ("reject")}
+        </button>,
+      );
+    }
+
+    // 所有状态都有查看详情
+    btns.push(
+      <button
+        key="view"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          router.push(`/${locale}/buyer/rfqs/${rfq.id}`);
+        }}
+        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
+      >
+        <Eye className="h-3.5 w-3.5" />
+        {t("viewDetail")}
+      </button>,
+    );
+
+    return <div className="flex items-center justify-end gap-3">{btns}</div>;
+  }, [t, tQ, locale, router, hasPermission, openConfirm, execAction]);
 
   return (
     <div className="space-y-4">
@@ -115,6 +264,7 @@ function RfqListContent() {
                 <th className="px-5 py-3 font-medium text-right">{t("totalQty")}</th>
                 <th className="px-5 py-3 font-medium">{t("status")}</th>
                 <th className="px-5 py-3 font-medium">{t("submitTime")}</th>
+                <th className="px-5 py-3 font-medium text-right">{t("actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -145,6 +295,9 @@ function RfqListContent() {
                     <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
                       {rfq.created_at ? formatRelativeTime(rfq.created_at, locale) : "—"}
                     </td>
+                    <td className="px-5 py-3">
+                      {renderActions(rfq)}
+                    </td>
                   </tr>
                 );
               })}
@@ -162,6 +315,18 @@ function RfqListContent() {
           onChange={handlePageChange}
         />
       )}
+
+      {/* 通用确认弹窗 */}
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        variant={confirmModal.variant}
+        loading={actionLoading}
+        confirmLabel={confirmModal.confirmLabel}
+        onConfirm={() => confirmModal.action?.()}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }
