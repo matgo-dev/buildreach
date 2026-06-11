@@ -21,7 +21,9 @@ export interface QuoteTierInput {
 
 export interface QuoteLineInput {
   rfq_item_id: number;
-  unit_price: number; // >= 0, 必填
+  skipped?: boolean;
+  skip_reason?: string;
+  unit_price?: number; // >= 0, skipped 时可不填
   moq?: number; // > 0
   cbm_per_unit?: number; // >= 0
   gross_weight_per_unit?: number; // >= 0
@@ -52,6 +54,8 @@ export interface QuoteTierPublic {
 export interface QuoteItemOperatorView {
   id: number;
   rfq_item_id: number;
+  skipped: boolean;
+  skip_reason: string | null;
   unit_price: number | null;
   moq: number | null;
   cbm_per_unit: number | null;
@@ -84,6 +88,8 @@ export interface RfqQuoteOperatorView {
 export interface QuoteItemBuyerPublic {
   id: number;
   rfq_item_id: number;
+  skipped: boolean;
+  skip_reason: string | null;
   unit_price: number | null;
   moq: number | null;
   cbm_per_unit: number | null;

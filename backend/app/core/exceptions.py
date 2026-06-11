@@ -543,6 +543,16 @@ class QuoteLinesIncompleteError(BusinessError):
         )
 
 
+class QuoteLineNoPriceError(BusinessError):
+    """40514 — 非跳过行缺少 unit_price。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40514,
+            "Non-skipped quote line must have unit_price",
+            message_key=MessageKey.QUOTE_LINE_NO_PRICE,
+        )
+
+
 class RfqAlreadyClaimedError(BusinessError):
     """40516 — 询价单已被其他运营受理。"""
     def __init__(self):

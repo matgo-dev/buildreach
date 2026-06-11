@@ -105,7 +105,8 @@
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",
       "not_found": "Quote not found",
       "item_mismatch": "Quote item does not belong to this RFQ or is duplicated",
-      "lines_incomplete": "Quote does not cover all RFQ items"
+      "lines_incomplete": "Quote does not cover all RFQ items",
+      "line_no_price": "Non-skipped quote line must have a unit price"
     }
   },
   "category": {
@@ -692,6 +693,10 @@
     "acceptedTag": "Accepted quote",
     "tierConfirm": "Save Tiers",
     "groupRequest": "Request",
-    "groupResponse": "Quote Response"
+    "groupResponse": "Quote Response",
+    "skipLabel": "Skip",
+    "skippedLabel": "Unavailable",
+    "skipReasonPlaceholder": "Reason (optional)",
+    "allSkippedError": "Cannot skip all line items"
   }
 }

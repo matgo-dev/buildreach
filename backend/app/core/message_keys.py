@@ -81,3 +81,4 @@ class MessageKey:
     QUOTE_NOT_FOUND = "error.quote.not_found"
     QUOTE_ITEM_MISMATCH = "error.quote.item_mismatch"
     QUOTE_LINES_INCOMPLETE = "error.quote.lines_incomplete"
+    QUOTE_LINE_NO_PRICE = "error.quote.line_no_price"
