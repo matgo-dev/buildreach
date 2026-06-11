@@ -121,6 +121,7 @@ function OperatorRfqDetailContent() {
   const t = useTranslations("rfq");
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
+  const tQuote = useTranslations("quote");
   const toast = useToast();
   const { hasPermission } = usePermissions();
   const rfqId = Number(params.id);
@@ -130,6 +131,15 @@ function OperatorRfqDetailContent() {
     () => getRfq(rfqId),
     { revalidateOnFocus: false },
   );
+
+  // 报价数据（QUOTED 态才请求）— 所有 hooks 必须在早期 return 之前
+  const showQuoteReadback = rfq?.status === "QUOTED";
+  const { data: quotes } = useSWR<RfqQuoteOperatorView[]>(
+    showQuoteReadback ? `operator-rfq-quotes-${rfqId}` : null,
+    () => listQuotes(rfqId),
+    { revalidateOnFocus: false },
+  );
+  const activeQuote = quotes?.find((q) => q.quote_status === "ACTIVE") ?? null;
 
   // 受理
   const [claimOpen, setClaimOpen] = useState(false);
@@ -181,17 +191,6 @@ function OperatorRfqDetailContent() {
   const canClaim = rfq.status === "SUBMITTED" && hasPermission("rfq:claim");
   const canBackfillQuote = rfq.status === "PROCESSING" && hasPermission("quote:write");
   const canEditItems = rfq.status === "DRAFT";
-  const showQuoteReadback = rfq.status === "QUOTED";
-
-  // 加载报价数据（QUOTED 态才请求）
-  const { data: quotes } = useSWR<RfqQuoteOperatorView[]>(
-    showQuoteReadback ? `operator-rfq-quotes-${rfqId}` : null,
-    () => listQuotes(rfqId),
-    { revalidateOnFocus: false },
-  );
-  const activeQuote = quotes?.find((q) => q.quote_status === "ACTIVE") ?? null;
-
-  const tQuote = useTranslations("quote");
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
