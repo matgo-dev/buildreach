@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Home,
   ShoppingCart,
-  Mail,
   MessageCircle,
   AlertCircle,
   Loader2,
@@ -642,24 +641,15 @@ function ProductDetailContent() {
                   {t("detail.addToBasket")}
                 </button>
               )}
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-gray-300 px-6 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed"
-                title={t("comingSoon")}
-              >
-                <Mail className="h-4 w-4" />
-                {t("detail.requestQuoteNow")}
-              </button>
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-300 px-5 py-3 text-sm font-semibold text-white cursor-not-allowed"
-                title={t("comingSoon")}
+              <a
+                href="https://wa.me/255697123456"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
-                WhatsApp
-              </button>
+                WhatsApp {t("detail.requestQuoteNow")}
+              </a>
             </div>
           </div>
         </div>
