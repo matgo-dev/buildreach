@@ -20,18 +20,17 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { getProduct, type ProductPublicDetail, type AttrGroup } from "@/lib/api/products";
+import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
 
 import { ProductGallery } from "@/components/mall/ProductGallery";
 
-// ---- 面包屑:从品类树解析路径 ----
+// ---- 面包屑 ----
 
 function buildBreadcrumb(
   tree: CategoryTreeNode[],
   categoryCode: string
 ): { code: string; name: string }[] {
   const path: { code: string; name: string }[] = [];
-
   function dfs(nodes: CategoryTreeNode[]): boolean {
     for (const node of nodes) {
       path.push({ code: node.code, name: node.name });
@@ -41,29 +40,31 @@ function buildBreadcrumb(
     }
     return false;
   }
-
   dfs(tree);
   return path;
 }
 
-// ---- 属性分组只读表 ----
+// ---- 色板缩略图 ----
 
-/** 色板缩略图 — 加载失败回退为文本 */
 function SwatchThumb({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
-    return <span className="text-sm text-gray-800">{alt || "—"}</span>;
+    return (
+      <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-500">
+        {alt || "—"}
+      </div>
+    );
   }
 
   return (
-    <div className="group/swatch relative inline-block">
+    <div className="relative">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}
         onError={() => setFailed(true)}
-        className="h-12 w-12 rounded-md border border-gray-200 object-cover"
+        className="h-[54px] w-[54px] rounded-md border border-gray-300 object-cover"
         loading="lazy"
       />
       {alt && (
@@ -75,159 +76,103 @@ function SwatchThumb({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-function AttributeGroups({ groups }: { groups: AttrGroup[] }) {
-  const t = useTranslations("mall");
+// ---- 右侧面板:属性以色板/chip 渲染 ----
 
-  if (groups.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>;
-  }
+/** 判断一个 AttrItem 是否含有色板图 */
+function hasSwatchImages(item: AttrItem): boolean {
+  return item.values.some((v) => v.value_type === "image" && v.swatch_image);
+}
+
+/** 右侧面板中的属性展示:色板图渲染为缩略图,文本渲染为 chip */
+function InlineAttrItem({ item }: { item: AttrItem }) {
+  const isSwatch = hasSwatchImages(item);
 
   return (
-    <div className="space-y-4">
-      {groups.map((group) => (
-        <div key={group.group}>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">{group.group}</h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <tbody>
-                {group.items.map((item) => {
-                  const hasImage = item.values.some((v) => v.value_type === "image" && v.swatch_image);
-
-                  return (
-                    <tr key={item.key} className="border-b border-gray-100">
-                      <td className="w-1/3 px-3 py-2 align-top text-gray-500">{item.key}</td>
-                      <td className="px-3 py-2 text-gray-800">
-                        {hasImage ? (
-                          <div className="flex flex-wrap gap-2">
-                            {item.values.map((v, i) =>
-                              v.value_type === "image" && v.swatch_image ? (
-                                <SwatchThumb key={i} src={v.swatch_image} alt={v.value} />
-                              ) : (
-                                <span key={i} className="self-center text-sm">{v.value}</span>
-                              )
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            {item.values.map((v) => v.value).join(", ")}
-                            {item.unit ? ` ${item.unit}` : ""}
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+    <div className="mb-4">
+      <div className="mb-1.5 text-xs font-semibold text-gray-500">
+        {item.key}
+        {!isSwatch && <span className="ml-1 font-normal text-gray-400">({item.values.length})</span>}
+      </div>
+      {isSwatch ? (
+        <div className="flex flex-wrap gap-2">
+          {item.values.map((v, i) =>
+            v.value_type === "image" && v.swatch_image ? (
+              <SwatchThumb key={i} src={v.swatch_image} alt={v.value} />
+            ) : (
+              <div
+                key={i}
+                className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-600"
+              >
+                {v.value}
+              </div>
+            )
+          )}
         </div>
-      ))}
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {item.values.map((v, i) => (
+            <span
+              key={i}
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700"
+            >
+              {v.value}
+              {item.unit ? ` ${item.unit}` : ""}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ---- Tab 区 ----
+// ---- 规格参数表(底部分段) ----
 
-type TabKey = "specifications" | "description" | "gallery";
-
-function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
+function SpecTable({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
 
-  // 基础信息行
   const baseRows: { label: string; value: string }[] = [];
   if (product.origin) baseRows.push({ label: t("detail.origin"), value: product.origin });
   if (product.brand) baseRows.push({ label: t("detail.brand"), value: product.brand });
   if (product.hs_code) baseRows.push({ label: t("detail.hsCode"), value: product.hs_code });
 
+  const groups = product.attribute_groups;
+  const hasContent = baseRows.length > 0 || groups.length > 0;
+
+  if (!hasContent) return null;
+
   return (
-    <div className="space-y-4">
-      {/* 基础信息 */}
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      {/* 基础信息行 */}
       {baseRows.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className="w-1/3 border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-                  {t("detail.specName")}
-                </th>
-                <th className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-                  {t("detail.specValue")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {baseRows.map((row) => (
-                <tr key={row.label}>
-                  <td className="border border-gray-200 px-3 py-2 text-gray-600">{row.label}</td>
-                  <td className="border border-gray-200 px-3 py-2">{row.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* 分组属性 */}
-      <AttributeGroups groups={product.attribute_groups} />
-    </div>
-  );
-}
-
-function DescriptionTab({ product }: { product: ProductPublicDetail }) {
-  const t = useTranslations("mall");
-
-  return (
-    <div className="space-y-4">
-      {product.selling_points && (
-        <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">
-            {t("detail.sellingPoints")}
-          </h4>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-            {product.selling_points}
+        <>
+          <div className="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
+            {t("detail.tabSpecs")}
           </div>
-        </div>
+          {baseRows.map((row) => (
+            <div key={row.label} className="flex border-t border-gray-100 px-3 py-2 text-sm">
+              <span className="w-[130px] shrink-0 text-gray-500">{row.label}</span>
+              <span className="text-gray-800">{row.value}</span>
+            </div>
+          ))}
+        </>
       )}
-      {product.description && (
-        <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">
-            {t("detail.description")}
-          </h4>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-            {product.description}
+
+      {/* 按 attr_group 分组 */}
+      {groups.map((group) => (
+        <React.Fragment key={group.group}>
+          <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
+            {group.group}
           </div>
-        </div>
-      )}
-      {!product.description && !product.selling_points && (
-        <p className="py-8 text-center text-sm text-gray-400">{t("detail.noDescription")}</p>
-      )}
-    </div>
-  );
-}
-
-function GalleryTab({ product }: { product: ProductPublicDetail }) {
-  const t = useTranslations("mall");
-  const images = product.images.filter((img) => img.sku_id == null).sort((a, b) => a.sort_order - b.sort_order);
-
-  if (images.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noImages")}</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-      {images.map((img) => (
-        <div
-          key={img.id}
-          className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={img.full_url}
-            alt=""
-            className="h-full w-full object-contain"
-            loading="lazy"
-          />
-        </div>
+          {group.items.map((item) => (
+            <div key={item.key} className="flex border-t border-gray-100 px-3 py-2 text-sm">
+              <span className="w-[130px] shrink-0 text-gray-500">{item.key}</span>
+              <span className="text-gray-800">
+                {item.values.map((v) => v.value).join(" · ")}
+                {item.unit ? ` ${item.unit}` : ""}
+              </span>
+            </div>
+          ))}
+        </React.Fragment>
       ))}
     </div>
   );
@@ -242,24 +187,41 @@ function ProductDetailContent() {
   const t = useTranslations("mall");
   const id = Number(params.id);
 
-  // 品类树
   const { tree: categoryTree } = useCategoryTree();
 
-  // SWR 取详情
   const { data: product, error, isLoading } = useSWR(
     id ? `/api/v1/products/${id}?locale=${locale}` : null,
     () => getProduct(id),
     { revalidateOnFocus: false }
   );
 
-  // Tab 状态
-  const [activeTab, setActiveTab] = useState<TabKey>("specifications");
-
-  // 面包屑
   const breadcrumb = useMemo(() => {
     if (!product || !categoryTree.length) return [];
     return buildBreadcrumb(categoryTree, product.category_code);
   }, [product, categoryTree]);
+
+  // 从属性中提取适合右侧面板展示的项(多值的,如颜色/厚度)
+  const inlineAttrs = useMemo(() => {
+    if (!product) return [];
+    const items: AttrItem[] = [];
+    for (const group of product.attribute_groups) {
+      for (const item of group.items) {
+        // 多值项或有色板图的放右侧面板展示
+        if (item.values.length > 1 || hasSwatchImages(item)) {
+          items.push(item);
+        }
+      }
+    }
+    return items;
+  }, [product]);
+
+  // 详情大图(DETAIL 类型)
+  const detailImages = useMemo(() => {
+    if (!product) return [];
+    return product.images
+      .filter((img) => img.image_type === "DETAIL" && img.sku_id == null)
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }, [product]);
 
   // ---- 加载/错误态 ----
   if (isLoading) {
@@ -299,19 +261,12 @@ function ProductDetailContent() {
     );
   }
 
-  // ---- 正常渲染 ----
-
-  const tabItems: { key: TabKey; label: string }[] = [
-    { key: "specifications", label: t("detail.tabSpecs") },
-    { key: "description", label: t("detail.tabDescription") },
-    { key: "gallery", label: t("detail.tabGallery") },
-  ];
-
   return (
     <PublicLayout>
       <div className="flex flex-col lg:flex-row gap-5">
         <CategorySidebar activeCategoryCode={product.category_code} />
         <div className="flex-1 min-w-0">
+
       {/* 面包屑 */}
       <nav className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
         <Link
@@ -336,114 +291,127 @@ function ProductDetailContent() {
         <span className="font-medium text-gray-700">{product.name}</span>
       </nav>
 
-      {/* 主体:左图 + 右信息 */}
+      {/* ===== 主区:左图 + 右信息 ===== */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          {/* 左:图片轮播 */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* 左:图片 gallery */}
           <ProductGallery
-            images={product.images.filter((img) => img.sku_id == null)}
+            images={product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL")}
             isFeatured={product.is_featured}
           />
 
           {/* 右:信息面板 */}
-          <div className="min-w-0 flex-1">
-            {/* SPU 编码 + 商品名 */}
-            <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
-            <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold leading-snug text-gray-800">{product.name}</h1>
+            {product.description && (
+              <p className="mt-1 text-xs text-gray-500 line-clamp-2">{product.description}</p>
+            )}
 
             {/* 认证徽章 */}
             {product.certifications && product.certifications.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {product.certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800"
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
                   >
-                    {cert}
+                    <span className="text-blue-500">✓</span> {cert}
                   </span>
                 ))}
               </div>
             )}
 
-            {/* 分组属性只读展示 */}
-            {product.attribute_groups.length > 0 && (
-              <div className="mt-4">
-                <AttributeGroups groups={product.attribute_groups} />
+            {/* 右侧面板内属性:颜色色板 / 厚度 chip 等(多值项) */}
+            {inlineAttrs.length > 0 && (
+              <div className="mt-5">
+                {inlineAttrs.map((item) => (
+                  <InlineAttrItem key={item.key} item={item} />
+                ))}
               </div>
             )}
 
-            {/* 操作按钮 */}
-            <div className="mt-6 flex flex-wrap gap-2.5">
-              {/* 加入询价单 — 置灰,机制待定 */}
+            {/* 操作按钮:询价篮 + WhatsApp 并排 */}
+            <div className="mt-5 flex gap-3">
               {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定,启用后接 addCartItem */}
               <button
                 type="button"
                 disabled
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-300 px-6 py-3 text-sm font-semibold text-white cursor-not-allowed"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#0f3d36] px-4 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
                 title={t("detail.comingSoon")}
               >
                 <ShoppingCart className="h-4 w-4" />
                 {t("detail.addToInquiry")}
               </button>
 
-              {/* 联系平台 WhatsApp — 保留(买家↔运营) */}
               {/* TODO: WhatsApp 平台运营号/链接配置化 */}
               <a
                 href="https://wa.me/255697123456"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#1aa951] px-4 py-3 text-sm font-semibold text-white hover:bg-[#158f43] transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
-                {t("detail.contactPlatform")}
+                WhatsApp {t("detail.contactPlatform")}
               </a>
-
-              {/* 发起询价 — 置灰 */}
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed"
-                title={t("detail.comingSoon")}
-              >
-                {t("detail.startInquiry")}
-              </button>
             </div>
-
-            {/* 置灰提示 */}
-            <p className="mt-2 text-xs text-gray-400">{t("detail.comingSoon")}</p>
+            <p className="mt-1.5 text-[11px] text-gray-400">
+              {t("detail.comingSoon")}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Tab 区 */}
-      <div className="mt-4 rounded-xl border border-gray-200 bg-white">
-        {/* Tab 头 */}
-        <div className="flex border-b border-gray-200">
-          {tabItems.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-5 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab 内容 */}
-        <div className="p-5">
-          {activeTab === "specifications" && (
-            <SpecificationsTab product={product} />
+      {/* ===== 商品详情图(DETAIL 类型竖排) ===== */}
+      {detailImages.length > 0 && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.description")}</h2>
+          <div className="space-y-3">
+            {detailImages.map((img) => (
+              <div key={img.id} className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.full_url}
+                  alt=""
+                  className="w-full object-contain"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+          {/* 文字描述/卖点 */}
+          {product.selling_points && (
+            <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+              {product.selling_points}
+            </div>
           )}
-          {activeTab === "description" && <DescriptionTab product={product} />}
-          {activeTab === "gallery" && <GalleryTab product={product} />}
         </div>
-      </div>
+      )}
+
+      {/* 如果没有 DETAIL 图但有文字描述 */}
+      {detailImages.length === 0 && (product.description || product.selling_points) && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.description")}</h2>
+          {product.selling_points && (
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+              {product.selling_points}
+            </div>
+          )}
+          {product.description && !product.selling_points && (
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+              {product.description}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== 规格参数表(按 attr_group 分组) ===== */}
+      {(product.attribute_groups.length > 0 || product.origin || product.brand) && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.tabSpecs")}</h2>
+          <SpecTable product={product} />
+        </div>
+      )}
+
         </div>
       </div>
     </PublicLayout>
