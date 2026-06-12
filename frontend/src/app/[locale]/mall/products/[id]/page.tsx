@@ -522,9 +522,10 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 操作按钮 */}
+            {/* 操作按钮 — 出口仍置灰,选中态仅前端本地,不发请求、不带出 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定 */}
+              {/* TODO: ① 带入询价:询价行粒度(SPU vs Product+selected_specs)定调后(张总/温总),把本地 specSelection 接到询价提交 */}
+              {/* TODO: ② SKU 轴去重汇总:手工建带 SKU 商品的规格轴,后端去重汇总后也纳入可选(需后端增量) */}
               <button
                 type="button"
                 disabled
