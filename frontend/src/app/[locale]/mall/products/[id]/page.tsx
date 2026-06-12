@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -20,24 +20,9 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { getProduct, type ProductPublicDetail, type SkuPublic } from "@/lib/api/products";
-import { formatCurrency } from "@/lib/formatters";
-import { addCartItem } from "@/lib/api/cart";
-import { useCartStore } from "@/stores/cartStore";
-import { useAuthStore } from "@/stores/authStore";
-import { useToast } from "@/components/ui/Toast";
-import { ApiError } from "@/lib/api";
+import { getProduct, type ProductPublicDetail, type AttrGroup } from "@/lib/api/products";
 
 import { ProductGallery } from "@/components/mall/ProductGallery";
-import {
-  SkuSelector,
-  extractDimensions,
-  getDefaultSelection,
-  locateSku,
-  type DimensionSelection,
-} from "@/components/mall/SkuSelector";
-import { PriceTiers, matchTier } from "@/components/mall/PriceTiers";
-import { QuantityInput } from "@/components/mall/QuantityInput";
 
 // ---- 面包屑:从品类树解析路径 ----
 
@@ -61,32 +46,47 @@ function buildBreadcrumb(
   return path;
 }
 
+// ---- 属性分组只读表 ----
+
+function AttributeGroups({ groups }: { groups: AttrGroup[] }) {
+  const t = useTranslations("mall");
+
+  if (groups.length === 0) {
+    return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <div key={group.group}>
+          <h4 className="mb-2 text-sm font-semibold text-gray-700">{group.group}</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                {group.items.map((item) => (
+                  <tr key={item.key} className="border-b border-gray-100">
+                    <td className="w-1/3 px-3 py-2 text-gray-500">{item.key}</td>
+                    <td className="px-3 py-2 text-gray-800">
+                      {item.values.map((v) => v.value).join(", ")}
+                      {item.unit ? ` ${item.unit}` : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ---- Tab 区 ----
 
 type TabKey = "specifications" | "description" | "gallery";
 
-function SpecificationsTab({
-  product,
-  selectedSku,
-}: {
-  product: ProductPublicDetail;
-  selectedSku: SkuPublic | null;
-}) {
+function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
-
-  // SPU 级属性
-  const spuAttrs = product.attributes.filter((a) => !a.sku_id);
-  // 选中 SKU 的属性(非差异维度的,即所有 SKU 都一样的)
-  const skuAttrs = selectedSku?.attributes ?? [];
-
-  // 合并:SPU 属性 + SKU 属性(去重)
-  const allAttrs = [...spuAttrs];
-  for (const attr of skuAttrs) {
-    if (!allAttrs.some((a) => a.attr_key === attr.attr_key)) {
-      allAttrs.push(attr);
-    }
-  }
-  allAttrs.sort((a, b) => a.sort_order - b.sort_order);
 
   // 基础信息行
   const baseRows: { label: string; value: string }[] = [];
@@ -95,41 +95,35 @@ function SpecificationsTab({
   if (product.hs_code) baseRows.push({ label: t("detail.hsCode"), value: product.hs_code });
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th className="w-1/3 border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-              {t("detail.specName")}
-            </th>
-            <th className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-              {t("detail.specValue")}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {baseRows.map((row) => (
-            <tr key={row.label}>
-              <td className="border border-gray-200 px-3 py-2 text-gray-600">{row.label}</td>
-              <td className="border border-gray-200 px-3 py-2">{row.value}</td>
-            </tr>
-          ))}
-          {allAttrs.map((attr) => (
-            <tr key={attr.attr_key}>
-              <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                {attr.display_name || attr.attr_key}
-              </td>
-              <td className="border border-gray-200 px-3 py-2">
-                {attr.attr_value}
-                {attr.attr_unit ? ` ${attr.attr_unit}` : ""}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {baseRows.length === 0 && allAttrs.length === 0 && (
-        <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>
+    <div className="space-y-4">
+      {/* 基础信息 */}
+      {baseRows.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="w-1/3 border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
+                  {t("detail.specName")}
+                </th>
+                <th className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
+                  {t("detail.specValue")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {baseRows.map((row) => (
+                <tr key={row.label}>
+                  <td className="border border-gray-200 px-3 py-2 text-gray-600">{row.label}</td>
+                  <td className="border border-gray-200 px-3 py-2">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      {/* 分组属性 */}
+      <AttributeGroups groups={product.attribute_groups} />
     </div>
   );
 }
@@ -213,165 +207,6 @@ function ProductDetailContent() {
     { revalidateOnFocus: false }
   );
 
-  // SKU 选择器状态
-  const activeSkus = useMemo(
-    () => (product?.skus ?? []).filter((s) => s.status === "ACTIVE"),
-    [product]
-  );
-
-  const dimensions = useMemo(() => extractDimensions(activeSkus), [activeSkus]);
-
-  const [selection, setSelection] = useState<DimensionSelection>({});
-
-  // 产品加载完成后初始化默认选中
-  useEffect(() => {
-    if (activeSkus.length > 0 && dimensions.length >= 0) {
-      setSelection(getDefaultSelection(activeSkus, dimensions));
-    }
-  }, [activeSkus, dimensions]);
-
-  const selectedSku = useMemo(
-    () => locateSku(activeSkus, dimensions, selection),
-    [activeSkus, dimensions, selection]
-  );
-
-  // 部分选择匹配到 SKU 时，自动补全剩余维度的选中状态
-  useEffect(() => {
-    if (!selectedSku || dimensions.length === 0) return;
-    const fullSel = { ...selection };
-    let changed = false;
-    for (const dim of dimensions) {
-      if (!fullSel[dim.key]) {
-        const val = selectedSku.color && dim.key === "color"
-          ? selectedSku.color
-          : selectedSku.material && dim.key === "material"
-            ? selectedSku.material
-            : selectedSku.attributes.find((a) => a.attr_key === dim.key)?.attr_value ?? null;
-        if (val) {
-          fullSel[dim.key] = val;
-          changed = true;
-        }
-      }
-    }
-    if (changed) setSelection(fullSel);
-  }, [selectedSku?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 数量
-  const [quantity, setQuantity] = useState<number>(0);
-
-  // 选中 SKU 变化时重置数量为 MOQ
-  useEffect(() => {
-    if (selectedSku) {
-      setQuantity(selectedSku.moq);
-    }
-  }, [selectedSku?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 价格计算
-  const priceDisplay = useMemo(() => {
-    if (!product) return null;
-
-    // 未选 SKU → SPU 级区间
-    if (!selectedSku) {
-      if (product.price_min !== null && product.price_max !== null) {
-        return {
-          type: "range" as const,
-          min: product.price_min,
-          max: product.price_max,
-          currency: product.currency ?? "USD",
-        };
-      }
-      return null;
-    }
-
-    const sku = selectedSku;
-
-    // 已选 SKU + 有数量 → 匹配阶梯价
-    if (quantity > 0 && sku.price_tiers.length > 0) {
-      const tier = matchTier(sku.price_tiers, quantity);
-      if (tier) {
-        return {
-          type: "exact" as const,
-          price: tier.unit_price,
-          currency: tier.currency,
-          tierLabel: tier.label,
-        };
-      }
-    }
-
-    // 已选 SKU,无阶梯价匹配 → SKU 级区间或 price_min
-    if (sku.price_min !== null) {
-      if (sku.price_max !== null && sku.price_max !== sku.price_min) {
-        return {
-          type: "range" as const,
-          min: sku.price_min,
-          max: sku.price_max,
-          currency: product.currency ?? "USD",
-        };
-      }
-      return {
-        type: "exact" as const,
-        price: sku.price_min,
-        currency: product.currency ?? "USD",
-      };
-    }
-
-    return null;
-  }, [product, selectedSku, quantity, activeSkus]);
-
-  // 小计
-  const subtotal = useMemo(() => {
-    if (!selectedSku || quantity <= 0) return null;
-    if (priceDisplay?.type === "exact") {
-      return {
-        amount: quantity * priceDisplay.price,
-        currency: priceDisplay.currency,
-      };
-    }
-    return null;
-  }, [selectedSku, quantity, priceDisplay]);
-
-  // 加购
-  const user = useAuthStore((s) => s.user);
-  const isBuyer = user?.roles.includes("BUYER") ?? false;
-  const syncFromCart = useCartStore((s) => s.syncFromCart);
-  const triggerRefresh = useCartStore((s) => s.triggerRefresh);
-  const toast = useToast();
-  const tError = useTranslations("error");
-  const tCart = useTranslations("cart");
-  const [addingToCart, setAddingToCart] = useState(false);
-
-  const canAddToCart = !!selectedSku && quantity > 0;
-
-  const handleAddToCart = useCallback(async () => {
-    // 未登录 → 跳登录
-    if (!user) {
-      router.push(`/${locale}/login`);
-      return;
-    }
-    if (!selectedSku || quantity <= 0) return;
-
-    setAddingToCart(true);
-    try {
-      const cart = await addCartItem(selectedSku.id, quantity);
-      syncFromCart(cart);
-      triggerRefresh();
-      toast.success(tCart("addSuccess"));
-    } catch (err) {
-      if (err instanceof ApiError && err.messageKey) {
-        const key = err.messageKey.replace(/^error\./, "");
-        try {
-          toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>));
-        } catch {
-          toast.error(err.message);
-        }
-      } else {
-        toast.error(err instanceof Error ? err.message : String(err));
-      }
-    } finally {
-      setAddingToCart(false);
-    }
-  }, [user, selectedSku, quantity, router, locale, syncFromCart, triggerRefresh, toast, tCart, tError]);
-
   // Tab 状态
   const [activeTab, setActiveTab] = useState<TabKey>("specifications");
 
@@ -380,17 +215,6 @@ function ProductDetailContent() {
     if (!product || !categoryTree.length) return [];
     return buildBreadcrumb(categoryTree, product.category_code);
   }, [product, categoryTree]);
-
-  // SKU 专属图
-  const skuImages = useMemo(
-    () => (selectedSku?.images.length ? selectedSku.images : undefined),
-    [selectedSku]
-  );
-
-  // 单位标签
-  const unitLabel = selectedSku
-    ? t(`unit_${product?.unit ?? "PCS"}` as Parameters<typeof t>[0])
-    : "";
 
   // ---- 加载/错误态 ----
   if (isLoading) {
@@ -473,7 +297,6 @@ function ProductDetailContent() {
           {/* 左:图片轮播 */}
           <ProductGallery
             images={product.images.filter((img) => img.sku_id == null)}
-            skuImages={skuImages}
             isFeatured={product.is_featured}
           />
 
@@ -497,150 +320,29 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 价格区 */}
-            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-              {priceDisplay ? (
-                <>
-                  <div>
-                    {priceDisplay.type === "range" ? (
-                      <>
-                        <span className="text-2xl font-bold text-[#0D4D4D]">
-                          {formatCurrency(priceDisplay.min, priceDisplay.currency, locale, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        <span className="mx-1 text-lg text-gray-400">~</span>
-                        <span className="text-2xl font-bold text-[#0D4D4D]">
-                          {formatCurrency(priceDisplay.max, priceDisplay.currency, locale, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        {selectedSku && (
-                          <span className="ml-2 text-sm text-gray-500">/ {unitLabel}</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-[28px] font-bold text-[#0D4D4D]">
-                          {formatCurrency(priceDisplay.price, priceDisplay.currency, locale, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        <span className="ml-1 text-sm text-gray-500">/ {unitLabel}</span>
-                      </>
-                    )}
-                  </div>
-                  {selectedSku && priceDisplay.type === "exact" && quantity > 0 && (
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      {t("detail.volumePriceHint", { qty: quantity, unit: unitLabel })}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <span className="text-lg text-gray-400">{t("noPrice")}</span>
-              )}
-            </div>
-
-            {/* SKU 属性选择器 */}
-            {activeSkus.length > 0 && (
+            {/* 分组属性只读展示 */}
+            {product.attribute_groups.length > 0 && (
               <div className="mt-4">
-                <SkuSelector
-                  skus={activeSkus}
-                  selection={selection}
-                  onSelectionChange={setSelection}
-                />
-              </div>
-            )}
-
-            {/* 选中 SKU 摘要 */}
-            {selectedSku && (
-              <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
-                <div>
-                  <div className="text-[10px] text-gray-400">{t("detail.skuCode")}</div>
-                  <div className="font-semibold text-gray-800">
-                    {selectedSku.sku_code}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-gray-400">{t("detail.moq")}</div>
-                  <div className="font-semibold text-gray-800">
-                    {selectedSku.moq} {unitLabel}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-gray-400">{t("detail.leadTime")}</div>
-                  <div className="font-semibold text-gray-800">
-                    {selectedSku.lead_time_min && selectedSku.lead_time_max
-                      ? selectedSku.lead_time_min === selectedSku.lead_time_max
-                        ? t("leadTimeDaysSingle", { days: selectedSku.lead_time_min })
-                        : t("leadTimeDays", {
-                            min: selectedSku.lead_time_min,
-                            max: selectedSku.lead_time_max,
-                          })
-                      : "-"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 阶梯价表 */}
-            {selectedSku && selectedSku.price_tiers.length > 0 && (
-              <PriceTiers
-                tiers={selectedSku.price_tiers}
-                unit={product.unit}
-                quantity={quantity}
-              />
-            )}
-
-            {/* 数量输入 */}
-            {selectedSku && (
-              <div className="mt-4">
-                <QuantityInput
-                  value={quantity}
-                  onChange={setQuantity}
-                  moq={selectedSku.moq}
-                  unit={product.unit}
-                />
-              </div>
-            )}
-
-            {/* 小计 */}
-            {subtotal && quantity >= (selectedSku?.moq ?? 0) && (
-              <div className="mt-2 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-2.5">
-                <span className="text-sm font-medium text-green-700">
-                  {t("detail.subtotal")}
-                </span>
-                <span className="text-xl font-bold text-green-700">
-                  {formatCurrency(subtotal.amount, subtotal.currency, locale, {
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
+                <AttributeGroups groups={product.attribute_groups} />
               </div>
             )}
 
             {/* 操作按钮 */}
-            <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* 加入询价篮：未登录显示（点击跳登录），已登录非 BUYER 隐藏 */}
-              {(!user || isBuyer) && (
-                <button
-                  type="button"
-                  disabled={addingToCart || (!!user && !canAddToCart)}
-                  onClick={handleAddToCart}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-6 py-3 text-sm font-semibold transition-colors ${
-                    addingToCart || (!!user && !canAddToCart)
-                      ? "bg-gray-300 text-white cursor-not-allowed"
-                      : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
-                  }`}
-                  title={user && !selectedSku ? tCart("selectSkuFirst") : undefined}
-                >
-                  {addingToCart ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ShoppingCart className="h-4 w-4" />
-                  )}
-                  {t("detail.addToBasket")}
-                </button>
-              )}
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              {/* 加入询价单 — 置灰,机制待定 */}
+              {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定,启用后接 addCartItem */}
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-300 px-6 py-3 text-sm font-semibold text-white cursor-not-allowed"
+                title={t("detail.comingSoon")}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {t("detail.addToInquiry")}
+              </button>
+
+              {/* 联系平台 WhatsApp — 保留(买家↔运营) */}
+              {/* TODO: WhatsApp 平台运营号/链接配置化 */}
               <a
                 href="https://wa.me/255697123456"
                 target="_blank"
@@ -648,9 +350,22 @@ function ProductDetailContent() {
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
-                WhatsApp {t("detail.requestQuoteNow")}
+                {t("detail.contactPlatform")}
               </a>
+
+              {/* 发起询价 — 置灰 */}
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed"
+                title={t("detail.comingSoon")}
+              >
+                {t("detail.startInquiry")}
+              </button>
             </div>
+
+            {/* 置灰提示 */}
+            <p className="mt-2 text-xs text-gray-400">{t("detail.comingSoon")}</p>
           </div>
         </div>
       </div>
@@ -678,7 +393,7 @@ function ProductDetailContent() {
         {/* Tab 内容 */}
         <div className="p-5">
           {activeTab === "specifications" && (
-            <SpecificationsTab product={product} selectedSku={selectedSku} />
+            <SpecificationsTab product={product} />
           )}
           {activeTab === "description" && <DescriptionTab product={product} />}
           {activeTab === "gallery" && <GalleryTab product={product} />}
