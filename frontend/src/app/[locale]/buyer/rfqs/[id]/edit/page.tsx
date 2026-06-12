@@ -83,7 +83,7 @@ function SkuSearchModal({
       const detail = await getProduct(productId);
       setSkuMap((prev) => ({
         ...prev,
-        [productId]: { skus: detail.skus.filter((s) => s.status === "ACTIVE"), unit: detail.unit, loading: false },
+        [productId]: { skus: (detail.skus ?? []).filter((s) => s.status === "ACTIVE"), unit: detail.unit, loading: false },
       }));
     } catch {
       setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: false } }));
