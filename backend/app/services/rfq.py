@@ -317,6 +317,12 @@ async def list_rfqs(
             q = q.where(Rfq.buyer_user_id == user.id)
             count_q = count_q.where(Rfq.buyer_user_id == user.id)
 
+    # Operator 不看买方草稿和已取消的询价单
+    if is_operator and not is_buyer:
+        hidden = (RfqStatus.DRAFT, RfqStatus.CANCELLED)
+        q = q.where(Rfq.status.notin_(hidden))
+        count_q = count_q.where(Rfq.status.notin_(hidden))
+
     if status_filter:
         q = q.where(Rfq.status == status_filter)
         count_q = count_q.where(Rfq.status == status_filter)
