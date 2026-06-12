@@ -574,8 +574,210 @@ def import_offer(
     run_meta: RunMeta,
     static_root: Path,
 ) -> None:
-    """导入单个 offer(Phase 5 填充)。"""
-    raise NotImplementedError("Phase 5")
+    """导入单个 offer:幂等 upsert + 子行先清后插 + 图片拷贝 + 审计。
+
+    事务边界:调用方负责 commit/rollback(一个 offer = 一个事务)。
+    """
+    data = offer.data
+    assert data is not None
+
+    offer_id = offer.offer_id
+    spu_code = f"P-{offer_id}"
+
+    # ── 1. 归类:source_category_path 叶子 → slug → DB code ──
+    src_path = data.get("source_category_path", [])
+    leaf_slug = _extract_leaf_slug(src_path)
+    category_code = slug_to_code.get(leaf_slug or "")
+    if not category_code:
+        raise ValueError(f"分类 slug '{leaf_slug}' 无法映射到 DB code")
+
+    # ── 2. SPU 字段映射 ──
+    name_en = data.get("product_name_en") or data.get("listing_title_en", "")
+    name_zh = data.get("product_name_zh") or data.get("listing_title_zh", "")
+    desc_en = data.get("description_en") or ""
+    desc_zh = data.get("description_zh") or ""
+
+    # selling_points:从 attributes 里找 Feature/特性 那条
+    sp_en, sp_zh = _extract_selling_points(data.get("attributes", []))
+
+    # ── 3. 幂等 upsert by spu_code ──
+    existing = db.execute(
+        select(Product).where(Product.spu_code == spu_code)
+    ).scalar_one_or_none()
+
+    if existing:
+        product = existing
+        product.name_en = name_en or product.name_en
+        product.name_zh = name_zh or product.name_zh
+        product.description_en = desc_en or product.description_en
+        product.description_zh = desc_zh or product.description_zh
+        product.selling_points_en = sp_en or product.selling_points_en
+        product.selling_points_zh = sp_zh or product.selling_points_zh
+        product.category_code = category_code
+        product.source = run_meta.source
+        product.last_ingest_run_id = run.id
+        product.updated_at = _utcnow()
+        audit_action = AuditAction.UPDATE
+    else:
+        product = Product(
+            spu_code=spu_code,
+            category_code=category_code,
+            name_en=name_en,
+            name_zh=name_zh or name_en,  # name_zh NOT NULL,回退英文
+            description_en=desc_en or None,
+            description_zh=desc_zh or None,
+            selling_points_en=sp_en or None,
+            selling_points_zh=sp_zh or None,
+            source=run_meta.source,
+            last_ingest_run_id=run.id,
+            status=ProductStatus.DRAFT,
+        )
+        db.add(product)
+        audit_action = AuditAction.IMPORT
+
+    db.flush()  # 拿到 product.id
+
+    # ── 4. 子行先清后插(同事务,防重导翻倍) ──
+    db.execute(
+        delete(ProductAttr).where(
+            ProductAttr.product_id == product.id,
+            ProductAttr.sku_id.is_(None),
+        )
+    )
+    db.execute(
+        delete(ProductImage).where(
+            ProductImage.product_id == product.id,
+            ProductImage.sku_id.is_(None),
+        )
+    )
+
+    # ── 5. product_attrs:values 有几个插几行 ──
+    attr_sort = 0
+    for attr_def in data.get("attributes", []):
+        group = attr_def.get("group", "")
+        key_en = attr_def.get("key_en", "")
+        key_zh = attr_def.get("key_zh", "")
+
+        for val in attr_def.get("values", []):
+            label_en = val.get("label_en", "")
+            label_zh = val.get("label_zh", "")
+            swatch_image = val.get("swatch_image")
+
+            # 确定 value_type
+            if swatch_image and not label_en:
+                value_type = "image"
+                attr_value = swatch_image
+            else:
+                value_type = "text"
+                attr_value = label_en
+
+            if not attr_value:
+                continue
+
+            db.add(ProductAttr(
+                product_id=product.id,
+                sku_id=None,
+                attr_key=key_en[:50] if key_en else (key_zh[:50] if key_zh else "unknown"),
+                attr_value=attr_value[:200],
+                attr_key_zh=key_zh[:50] if key_zh else None,
+                attr_value_zh=label_zh[:500] if label_zh else None,
+                attr_group=group[:100] if group else None,
+                value_type=value_type,
+                sort_order=attr_sort,
+            ))
+            attr_sort += 1
+
+            # 色板图:label + swatch_image 同时有 → 额外写一张 spec_value 绑定图
+            if swatch_image and label_en and value_type == "text":
+                _copy_image(offer.offer_dir / swatch_image, static_root, spu_code)
+                db.add(ProductImage(
+                    product_id=product.id,
+                    sku_id=None,
+                    image_key=_image_key(spu_code, swatch_image),
+                    image_type=ImageType.GALLERY,
+                    sort_order=9000 + attr_sort,  # 色板图排后面
+                    spec_value=f"颜色:{label_en}",
+                ))
+
+    # ── 6. product_images:gallery + description_images ──
+    img_sort = 0
+    for img_def in data.get("gallery", []):
+        img_path = img_def.get("path", "")
+        if not img_path:
+            continue
+        _copy_image(offer.offer_dir / img_path, static_root, spu_code)
+        img_type = ImageType.MAIN if img_sort == 0 else ImageType.GALLERY
+        db.add(ProductImage(
+            product_id=product.id,
+            sku_id=None,
+            image_key=_image_key(spu_code, img_path),
+            image_type=img_type,
+            sort_order=img_sort,
+        ))
+        img_sort += 1
+
+    for img_def in data.get("description_images", []):
+        img_path = img_def.get("path", "")
+        if not img_path:
+            continue
+        _copy_image(offer.offer_dir / img_path, static_root, spu_code)
+        db.add(ProductImage(
+            product_id=product.id,
+            sku_id=None,
+            image_key=_image_key(spu_code, img_path),
+            image_type=ImageType.DETAIL,
+            sort_order=img_sort,
+        ))
+        img_sort += 1
+
+    db.flush()
+
+    # ── 7. 审计(同事务) ──
+    write_audit_sync(
+        db,
+        resource_type=AuditResourceType.PRODUCT.value,
+        action=audit_action.value if isinstance(audit_action, AuditAction) else audit_action,
+        resource_id=product.id,
+        operator=run_meta.operator,
+        extra={
+            "spu_code": spu_code,
+            "source": run_meta.source,
+            "run_id": run.id,
+            "offer_id": offer_id,
+        },
+    )
+
+
+def _extract_selling_points(attributes: list[dict]) -> tuple[str, str]:
+    """从 attributes 里提取 Feature/特性 那条的值拼接。"""
+    sp_en_parts: list[str] = []
+    sp_zh_parts: list[str] = []
+    for attr in attributes:
+        key_en = (attr.get("key_en") or "").lower()
+        key_zh = attr.get("key_zh") or ""
+        if "feature" in key_en or "特性" in key_zh or "特点" in key_zh:
+            for val in attr.get("values", []):
+                if val.get("label_en"):
+                    sp_en_parts.append(val["label_en"])
+                if val.get("label_zh"):
+                    sp_zh_parts.append(val["label_zh"])
+    return "; ".join(sp_en_parts), "; ".join(sp_zh_parts)
+
+
+def _image_key(spu_code: str, rel_path: str) -> str:
+    """生成 image_key:products/<spu_code>/<文件名>。"""
+    filename = Path(rel_path).name
+    return f"products/{spu_code}/{filename}"
+
+
+def _copy_image(src: Path, static_root: Path, spu_code: str) -> None:
+    """拷贝图片到 static 目录。路径按 spu_code 隔离,重跑覆盖同路径。"""
+    if not src.exists():
+        return
+    dest_dir = static_root / "products" / spu_code
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / src.name
+    shutil.copy2(src, dest)
 
 
 # ────────────────────── 同步审计写入 ──────────────────────
@@ -729,9 +931,9 @@ def main() -> None:
 
             # 7. 导入商品(逐 offer 独立事务)
             leaf_lookup = build_leaf_lookup(cat_tree)
-            static_root = Path(settings.IMAGE_BASE_URL.replace("http://localhost:8000/", ""))
-            if not static_root.is_absolute():
-                static_root = _BACKEND_ROOT / static_root
+            # 图片存储目录:与 main.py 的 StaticFiles mount 一致
+            static_root = _BACKEND_ROOT / "uploads"
+            static_root.mkdir(exist_ok=True)
 
             success_count = 0
             import_errors: list[dict] = []
