@@ -16,59 +16,14 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import { QuantityInput } from "@/components/mall/QuantityInput";
 import { ApiError } from "@/lib/api";
 import {
   getCart,
-  updateCartItem,
   removeCartItem,
   type CartItemPublic,
   type CartPublic,
 } from "@/lib/api/cart";
-import { getProduct, type ProductPublicDetail, type PriceTier } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
-import { formatCurrency } from "@/lib/formatters";
-
-// ---------- 参考价：按 product_id 批量拉商品详情拿阶梯价 ----------
-
-function useProductDetails(productIds: number[]) {
-  // 用稳定的 key（排序后的 id 列表）做单次 SWR 请求
-  const sortedIds = useMemo(
-    () => [...productIds].sort((a, b) => a - b),
-    [productIds],
-  );
-  const swrKey = sortedIds.length > 0 ? `cart-products-${sortedIds.join(",")}` : null;
-
-  const { data } = useSWR<Map<number, ProductPublicDetail>>(
-    swrKey,
-    async () => {
-      const results = new Map<number, ProductPublicDetail>();
-      // 并行请求，失败的跳过
-      const settled = await Promise.allSettled(
-        sortedIds.map((pid) => getProduct(pid)),
-      );
-      for (let i = 0; i < settled.length; i++) {
-        const r = settled[i];
-        if (r.status === "fulfilled") results.set(sortedIds[i], r.value);
-      }
-      return results;
-    },
-    { revalidateOnFocus: false, dedupingInterval: 60000 },
-  );
-
-  return data ?? new Map<number, ProductPublicDetail>();
-}
-
-function getSkuTiers(
-  productMap: Map<number, ProductPublicDetail>,
-  productId: number,
-  skuId: number,
-): PriceTier[] {
-  const product = productMap.get(productId);
-  if (!product) return [];
-  const sku = product.skus.find((s) => s.id === skuId);
-  return sku?.price_tiers ?? [];
-}
 
 // ---------- 主页面 ----------
 
@@ -134,59 +89,6 @@ function CartContent() {
     });
   }, []);
 
-  // 参考价：拉商品详情
-  const productIds = useMemo(() => {
-    const ids = new Set<number>();
-    (cart?.items ?? []).forEach((i) => { if (i.is_purchasable) ids.add(i.product_id); });
-    return Array.from(ids);
-  }, [cart]);
-
-  const productMap = useProductDetails(productIds);
-
-  // 修改数量（debounce）
-  const debounceRef = useMemo(() => new Map<number, NodeJS.Timeout>(), []);
-
-  const handleQuantityChange = useCallback(
-    (itemId: number, qty: number) => {
-      // 乐观更新本地
-      mutate(
-        (prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            items: prev.items.map((i) =>
-              i.item_id === itemId ? { ...i, quantity: qty } : i
-            ),
-          };
-        },
-        { revalidate: false },
-      );
-
-      // debounce 调后端
-      const existing = debounceRef.get(itemId);
-      if (existing) clearTimeout(existing);
-      debounceRef.set(
-        itemId,
-        setTimeout(async () => {
-          debounceRef.delete(itemId);
-          try {
-            const updated = await updateCartItem(itemId, qty);
-            syncFromCart(updated);
-            mutate(updated, { revalidate: false });
-          } catch (err) {
-            // 回滚：重新拉取
-            mutate();
-            if (err instanceof ApiError && err.messageKey) {
-              const key = err.messageKey.replace(/^error\./, "");
-              try { toast.error(tError(key)); } catch { toast.error(err.message); }
-            }
-          }
-        }, 500),
-      );
-    },
-    [mutate, syncFromCart, debounceRef, toast, tError],
-  );
-
   // 删除单项
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -242,12 +144,11 @@ function CartContent() {
     }
   }, [checkedIds, syncFromCart, mutate, triggerRefresh, toast, t]);
 
-  // 提交询价
+  // TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定
+  // 提交询价 — 置灰,不接
   const handleSubmitInquiry = useCallback(() => {
-    const ids = Array.from(checkedIds);
-    if (ids.length === 0) return;
-    router.push(`/${locale}/buyer/rfqs/create?source=cart&items=${ids.join(",")}`);
-  }, [checkedIds, router, locale]);
+    // 功能完善中,暂不实现
+  }, []);
 
   // ---- 渲染 ----
 
@@ -306,22 +207,17 @@ function CartContent() {
                 />
               </th>
               <th className="px-4 py-3 font-medium">{t("productInfo")}</th>
-              <th className="px-4 py-3 font-medium">{t("referencePrice")}</th>
               <th className="px-4 py-3 font-medium">{t("quantity")}</th>
               <th className="w-14 px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {items.map((item) => {
-              const tiers = getSkuTiers(productMap, item.product_id, item.sku_id);
-              const product = productMap.get(item.product_id);
-              const unit = product?.unit ?? "PCS";
               const unavailable = !item.is_purchasable;
               const checked = checkedIds.has(item.item_id);
               const specParts = item.sku_name
                 ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
                 : [item.sku_code, item.color, item.material, item.manufacturer_model].filter(Boolean).join(" · ");
-              const sortedTiers = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
 
               return (
                 <tr
@@ -359,11 +255,6 @@ function CartContent() {
                           {item.product_name ?? "—"}
                         </p>
                         <p className="mt-0.5 truncate text-xs text-gray-500">{specParts}</p>
-                        {item.moq != null && (
-                          <p className="mt-1 text-[11px] text-gray-400">
-                            MOQ: {item.moq}
-                          </p>
-                        )}
                         {unavailable && item.unavailable_reason && (
                           <span className="mt-1 inline-block rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
                             {t(`unavailable_${item.unavailable_reason}` as Parameters<typeof t>[0])}
@@ -373,40 +264,10 @@ function CartContent() {
                     </div>
                   </td>
 
-                  {/* 参考价 */}
-                  <td className="px-4 py-3 align-top">
-                    {!unavailable && sortedTiers.length > 0 ? (
-                      <div className="space-y-0.5 text-xs text-gray-500">
-                        {sortedTiers.map((tier) => {
-                          const range = tier.max_qty
-                            ? `${tier.min_qty}-${tier.max_qty}`
-                            : `${tier.min_qty}+`;
-                          return (
-                            <div key={tier.id}>
-                              <span className="text-gray-400">{range}</span>{" "}
-                              <span className="font-semibold text-[#0D4D4D]">
-                                {formatCurrency(tier.unit_price, tier.currency, locale, {
-                                  maximumFractionDigits: 2,
-                                })}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
-                  </td>
-
-                  {/* 数量 */}
+                  {/* 数量（只读展示） */}
                   <td className="px-4 py-3 align-top">
                     {!unavailable ? (
-                      <QuantityInput
-                        value={item.quantity}
-                        onChange={(qty) => handleQuantityChange(item.item_id, qty)}
-                        moq={item.moq ?? 1}
-                        unit={unit}
-                      />
+                      <span className="text-sm font-semibold text-gray-700">{item.quantity}</span>
                     ) : (
                       <span className="text-sm text-gray-400">—</span>
                     )}
@@ -443,24 +304,22 @@ function CartContent() {
         </div>
       )}
 
-      {/* 底部操作栏 */}
+      {/* 底部操作栏 — 提交询价置灰 */}
       <div className="sticky bottom-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-6 py-4 shadow-sm">
         <span className="text-sm text-gray-600">
           {t("selected", { count: checkedIds.size })}
         </span>
-        <button
-          type="button"
-          disabled={checkedIds.size === 0}
-          onClick={handleSubmitInquiry}
-          className={`inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold transition-colors ${
-            checkedIds.size > 0
-              ? "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {t("submitInquiry")}
-          <ArrowRight className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400">{t("comingSoon")}</span>
+          <button
+            type="button"
+            disabled
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-6 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed"
+          >
+            {t("submitInquiry")}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* 删除单项确认框 */}
