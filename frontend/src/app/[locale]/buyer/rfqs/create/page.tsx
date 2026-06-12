@@ -197,7 +197,7 @@ function SkuSearchModal({
         setSkuMap((prev) => ({
           ...prev,
           [productId]: {
-            skus: detail.skus.filter((s) => s.status === "ACTIVE"),
+            skus: (detail.skus ?? []).filter((s) => s.status === "ACTIVE"),
             unit: detail.unit,
             loading: false,
           },
