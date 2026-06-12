@@ -422,29 +422,34 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 基础信息卡(产地/品牌/卖点) */}
-            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="space-y-1.5 text-sm">
-                {product.origin && (
-                  <div className="flex">
-                    <span className="w-20 shrink-0 text-gray-400">{t("detail.origin")}</span>
-                    <span className="font-medium text-gray-800">{product.origin}</span>
-                  </div>
-                )}
-                {product.brand && (
-                  <div className="flex">
-                    <span className="w-20 shrink-0 text-gray-400">{t("detail.brand")}</span>
-                    <span className="font-medium text-gray-800">{product.brand}</span>
-                  </div>
-                )}
+            {/* 商品描述/卖点 — 醒目展示 */}
+            {(product.selling_points || product.description) && (
+              <div className="mt-3 rounded-lg border border-[#0D4D4D]/10 bg-[#0D4D4D]/[0.03] px-4 py-3">
                 {product.selling_points && (
-                  <div className="flex">
-                    <span className="w-20 shrink-0 text-gray-400">{t("detail.sellingPoints")}</span>
-                    <span className="text-gray-700">{product.selling_points}</span>
+                  <div className="text-sm leading-relaxed text-gray-800">
+                    <span className="mr-1.5 text-xs font-semibold text-[#0D4D4D]">✦ {t("detail.sellingPoints")}</span>
+                    {product.selling_points}
+                  </div>
+                )}
+                {product.description && (
+                  <div className={`text-sm leading-relaxed text-gray-600 ${product.selling_points ? "mt-2" : ""}`}>
+                    {product.description}
                   </div>
                 )}
               </div>
-            </div>
+            )}
+
+            {/* 基础信息(产地/品牌) */}
+            {(product.origin || product.brand) && (
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+                {product.origin && (
+                  <span>{t("detail.origin")}: <span className="font-medium text-gray-700">{product.origin}</span></span>
+                )}
+                {product.brand && (
+                  <span>{t("detail.brand")}: <span className="font-medium text-gray-700">{product.brand}</span></span>
+                )}
+              </div>
+            )}
 
             {/* 属性:颜色色板 / 厚度 chip(多值项) */}
             {inlineAttrs.length > 0 && (
