@@ -561,7 +561,9 @@ function RfqCreateContent() {
   const doCreate = useCallback(async (asDraft: boolean) => {
     if (submitting || savingDraft || totalItemCount === 0) return;
     if (!idemRef.current) {
-      idemRef.current = crypto.randomUUID();
+      idemRef.current = typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     }
     if (asDraft) setSavingDraft(true); else setSubmitting(true);
     try {
@@ -823,8 +825,9 @@ function RfqCreateContent() {
               type="date"
               value={draft.expected_delivery_date}
               onChange={(e) => updateDraft("expected_delivery_date", e.target.value)}
+              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               min={todayStr}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+              className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
             />
           </div>
           <div>
