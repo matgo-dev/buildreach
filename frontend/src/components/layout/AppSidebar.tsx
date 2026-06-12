@@ -1,6 +1,7 @@
 "use client";
 import { Link, usePathname } from "@/i18n/navigation";
 import { Lock } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 
 import { useAuthStore } from "@/stores/authStore";
 import { useDebugMode } from "@/stores/uiStore";
@@ -197,15 +198,21 @@ function NavLink({
   access: { ok: boolean; reason: string };
   debugMode: boolean;
 }) {
+  const t = useTranslations("nav");
+  const locale = useLocale();
+
   // 子路径也算激活(/supplier/products/123 时高亮"商品管理")
   const isActive =
     currentPath === item.path || currentPath.startsWith(item.path + "/");
   const Icon = item.icon;
 
+  const displayLabel = t(item.labelKey);
+
   const TextBlock = (
     <span className="flex-1 leading-tight">
-      <span className="block truncate">{item.label}</span>
-      {item.labelEn && (
+      <span className="block truncate">{displayLabel}</span>
+      {/* 中文 locale 下显示英文副标题 */}
+      {locale === "zh" && item.labelEn && (
         <span
           className={
             "block text-[9px] font-normal " +

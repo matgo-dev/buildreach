@@ -1,5 +1,6 @@
 "use client";
 import { Link, usePathname } from "@/i18n/navigation";
+import { useTranslations, useLocale } from "next-intl";
 
 import { PUBLIC_NAV } from "@/config/navigation";
 import { useAuthStore } from "@/stores/authStore";
@@ -15,6 +16,8 @@ export function PublicNav() {
   const isSupplierOnly =
     !!user && user.roles.length > 0 && user.roles.every((r) => r === "SUPPLIER");
   // SUPPLIER 登录后世界观 = 工作台,顶部 nav 整体隐藏(出口走 logo / 工作台切换 / 头像菜单)
+  const t = useTranslations("nav");
+  const locale = useLocale();
   const items = isSupplierOnly ? [] : PUBLIC_NAV;
   return (
     <nav className="flex items-center gap-1" aria-label="主导航">
@@ -36,8 +39,8 @@ export function PublicNav() {
             }
           >
             <span className="block text-center leading-tight">
-              <span className="block">{item.label}</span>
-              {item.labelEn && (
+              <span className="block">{t(item.labelKey)}</span>
+              {locale === "zh" && item.labelEn && (
                 <span className="-mt-0.5 block text-[8px] font-normal text-gray-400">
                   {item.labelEn}
                 </span>
