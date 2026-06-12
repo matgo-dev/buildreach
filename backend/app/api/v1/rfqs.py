@@ -12,7 +12,7 @@ from app.core.exceptions import success
 from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_any_role, require_permission
-from app.schemas.rfq import RfqCancelRequest, RfqCreate, RfqItemUpdate
+from app.schemas.rfq import RfqCancelRequest, RfqCreate, RfqItemUpdate, RfqUpdate
 from app.services import rfq as rfq_svc
 
 router = APIRouter(
@@ -63,6 +63,20 @@ async def get_rfq(
     db: AsyncSession = Depends(get_db),
 ):
     result = await rfq_svc.get_rfq(db, current, rfq_id)
+    return success(result.model_dump())
+
+
+@router.patch("/{rfq_id}", summary="草稿态整单更新")
+async def update_rfq(
+    rfq_id: int,
+    data: RfqUpdate,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_UPDATE)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.update_rfq(
+        db, current, rfq_id, data, request=request,
+    )
     return success(result.model_dump())
 
 

@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Package, Eye } from "lucide-react";
+import { Loader2, FileText, Package } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -115,6 +115,17 @@ function RfqListContent() {
     if (rfq.status === "DRAFT") {
       btns.push(
         <button
+          key="edit"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/${locale}/buyer/rfqs/${rfq.id}/edit`);
+          }}
+          className="text-xs font-medium text-blue-600 hover:underline"
+        >
+          {t("edit")}
+        </button>,
+        <button
           key="submit"
           type="button"
           onClick={(e) => {
@@ -182,22 +193,6 @@ function RfqListContent() {
         </button>,
       );
     }
-
-    // 所有状态都有查看详情
-    btns.push(
-      <button
-        key="view"
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          router.push(`/${locale}/buyer/rfqs/${rfq.id}`);
-        }}
-        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
-      >
-        <Eye className="h-3.5 w-3.5" />
-        {t("viewDetail")}
-      </button>,
-    );
 
     return <div className="flex items-center justify-end gap-3">{btns}</div>;
   }, [t, tQ, locale, router, hasPermission, openConfirm, execAction]);

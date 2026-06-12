@@ -93,7 +93,6 @@ async def _create_submitted_rfq(
 
     items = [{"sku_id": sid, "quantity": "10.000"} for sid in sku_ids]
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "source_type": "DIRECT",
         "items": items,
     })
     assert r.status_code == 200, r.text

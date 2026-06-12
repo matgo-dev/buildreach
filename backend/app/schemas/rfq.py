@@ -7,23 +7,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-# ── 枚举(请求体用)──────────────────────────────────────
-
-class SourceType(str, Enum):
-    CART = "CART"
-    DIRECT = "DIRECT"
-
-
 # ── 请求体 ──────────────────────────────────────────────
 
-class RfqDirectItem(BaseModel):
-    """DIRECT 来源的行项目。"""
+class RfqItemInput(BaseModel):
+    """创建询价单行项。"""
     sku_id: int
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
     target_unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
@@ -32,13 +24,8 @@ class RfqDirectItem(BaseModel):
 
 class RfqCreate(BaseModel):
     """创建询价单请求体。"""
-    source_type: SourceType
-
-    # CART 来源
-    cart_item_ids: list[int] | None = None
-
-    # DIRECT 来源
-    items: list[RfqDirectItem] | None = None
+    items: list[RfqItemInput]          # 统一入参，必填，≥1 条
+    as_draft: bool = False             # True → 保存为草稿(DRAFT)，False → 直接提交(SUBMITTED)
 
     # 运营代客
     buyer_org_id: int | None = None
@@ -47,6 +34,22 @@ class RfqCreate(BaseModel):
     contact_email: str | None = None
 
     # 公共需求字段
+    requested_delivery_place: str | None = None
+    expected_delivery_date: datetime | None = None
+    target_currency: str | None = None
+    required_certifications: list[str] | None = None
+    attachment_urls: list[str] | None = None
+    remark: str | None = None
+
+
+class RfqUpdate(BaseModel):
+    """草稿态整单更新请求体。行项全量替换。"""
+    items: list[RfqItemInput]          # 全量替换，≥1 条
+
+    contact_name: str | None = None
+    contact_phone: str | None = None
+    contact_email: str | None = None
+
     requested_delivery_place: str | None = None
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None

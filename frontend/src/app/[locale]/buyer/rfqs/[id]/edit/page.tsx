@@ -1,0 +1,492 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  ArrowLeft,
+  Loader2,
+  Send,
+  Trash2,
+  Plus,
+  Search,
+  X,
+  ChevronDown,
+  ChevronRight,
+  Save,
+} from "lucide-react";
+
+import { RouteGuard } from "@/components/auth/RouteGuard";
+import { Permissions } from "@/lib/permissions";
+import { useToast } from "@/components/ui/Toast";
+import { ApiError } from "@/lib/api";
+import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
+import { listProducts, getProduct, type ProductPublic, type SkuPublic } from "@/lib/api/products";
+
+const CURRENCIES = ["USD", "KES", "CNY"];
+
+interface EditItem {
+  sku_id: number;
+  product_name: string;
+  sku_spec: string;
+  unit: string;
+  quantity: number;
+}
+
+// ---------- SKU 搜索弹窗(与创建页共用逻辑) ----------
+
+function SkuSearchModal({
+  open,
+  onClose,
+  onAdd,
+  existingSkuIds,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onAdd: (item: EditItem) => void;
+  existingSkuIds: Set<number>;
+}) {
+  const t = useTranslations("rfq");
+  const [keyword, setKeyword] = useState("");
+  const [products, setProducts] = useState<ProductPublic[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [skuMap, setSkuMap] = useState<Record<number, { skus: SkuPublic[]; unit: string; loading: boolean }>>({});
+
+  const handleSearch = useCallback(async () => {
+    if (!keyword.trim()) return;
+    setSearching(true);
+    setSearched(true);
+    setExpandedId(null);
+    try {
+      const res = await listProducts({ keyword: keyword.trim(), size: 20 });
+      setProducts(res.items);
+    } catch {
+      setProducts([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [keyword]);
+
+  const expandedIdRef = useRef(expandedId);
+  expandedIdRef.current = expandedId;
+  const skuMapRef = useRef(skuMap);
+  skuMapRef.current = skuMap;
+
+  const toggleExpand = useCallback(async (productId: number) => {
+    if (expandedIdRef.current === productId) { setExpandedId(null); return; }
+    setExpandedId(productId);
+    if (skuMapRef.current[productId]) return;
+    setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: true } }));
+    try {
+      const detail = await getProduct(productId);
+      setSkuMap((prev) => ({
+        ...prev,
+        [productId]: { skus: detail.skus.filter((s) => s.status === "ACTIVE"), unit: detail.unit, loading: false },
+      }));
+    } catch {
+      setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: false } }));
+    }
+  }, []);
+
+  const handleAddSku = useCallback((product: ProductPublic, sku: SkuPublic, unit: string) => {
+    const spec = [sku.name, sku.color, sku.material].filter(Boolean).join(" / ");
+    onAdd({ sku_id: sku.id, product_name: product.name, sku_spec: spec || sku.sku_code, unit: unit || product.unit || "PCS", quantity: 1 });
+  }, [onAdd]);
+
+  useEffect(() => {
+    if (!open) { setKeyword(""); setProducts([]); setSearched(false); setExpandedId(null); setSkuMap({}); }
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <h3 className="text-base font-semibold text-gray-800">{t("searchProduct")}</h3>
+          <button type="button" onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="border-b border-gray-100 px-5 py-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
+                placeholder={t("searchPlaceholder")} autoFocus
+                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+            </div>
+            <button type="button" onClick={handleSearch} disabled={searching || !keyword.trim()}
+              className="rounded-lg bg-[#0D4D4D] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d] disabled:bg-gray-200 disabled:text-gray-400">
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("searchProduct")}
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {searching && <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" /></div>}
+          {!searching && searched && products.length === 0 && <div className="py-12 text-center text-sm text-gray-400">{t("noSearchResult")}</div>}
+          {!searching && products.length > 0 && (
+            <div className="space-y-1">
+              {products.map((p) => {
+                const isExpanded = expandedId === p.id;
+                const skuData = skuMap[p.id];
+                return (
+                  <div key={p.id} className="rounded-lg border border-gray-100">
+                    <button type="button" onClick={() => toggleExpand(p.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50">
+                      {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />}
+                      {p.main_image && <img src={p.main_image} alt={p.name} className="h-10 w-10 shrink-0 rounded border border-gray-100 object-cover" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
+                        <div className="text-xs text-gray-400">{p.spu_code} · {p.sku_count} SKU</div>
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t border-gray-100 bg-gray-50/50">
+                        {skuData?.loading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>}
+                        {skuData && !skuData.loading && skuData.skus.length === 0 && <div className="py-4 text-center text-xs text-gray-400">{t("noSearchResult")}</div>}
+                        {skuData && !skuData.loading && skuData.skus.map((sku) => {
+                          const added = existingSkuIds.has(sku.id);
+                          const spec = [sku.name, sku.color, sku.material].filter(Boolean).join(" / ");
+                          return (
+                            <div key={sku.id} className="flex items-center gap-3 px-4 py-2.5 pl-11">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm text-gray-700">{spec || sku.sku_code}</div>
+                                <div className="text-xs text-gray-400">{sku.sku_code}</div>
+                              </div>
+                              <button type="button" disabled={added} onClick={() => handleAddSku(p, sku, skuData.unit)}
+                                className={`shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors ${added ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"}`}>
+                                {added ? t("alreadyAdded") : t("add")}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 主内容 ----------
+
+function RfqEditContent() {
+  const router = useRouter();
+  const locale = useLocale();
+  const params = useParams();
+  const rfqId = Number(params.id);
+  const t = useTranslations("rfq");
+  const tMall = useTranslations("mall");
+  const tError = useTranslations("error");
+  const toast = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [rfqNo, setRfqNo] = useState("");
+
+  // 行项
+  const [items, setItems] = useState<EditItem[]>([]);
+  // 元数据
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [deliveryPlace, setDeliveryPlace] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [remark, setRemark] = useState("");
+
+  // 加载已有数据
+  useEffect(() => {
+    getRfq(rfqId)
+      .then((rfq) => {
+        if (rfq.status !== "DRAFT") {
+          toast.error("Only DRAFT RFQ can be edited");
+          router.replace(`/${locale}/buyer/rfqs/${rfqId}`);
+          return;
+        }
+        setRfqNo(rfq.rfq_no);
+        setItems(
+          rfq.items.map((it) => ({
+            sku_id: it.sku_id,
+            product_name: it.product_name_snapshot ?? "—",
+            sku_spec: it.sku_spec_snapshot ?? "—",
+            unit: it.uom_snapshot ?? "PCS",
+            quantity: Number(it.quantity),
+          })),
+        );
+        setContactName(rfq.contact_name ?? "");
+        setContactPhone(rfq.contact_phone ?? "");
+        setContactEmail(rfq.contact_email ?? "");
+        setDeliveryPlace(rfq.requested_delivery_place ?? "");
+        setDeliveryDate(rfq.expected_delivery_date ? rfq.expected_delivery_date.slice(0, 10) : "");
+        setCurrency(rfq.target_currency ?? "USD");
+        setCertifications(rfq.required_certifications ?? []);
+        setRemark(rfq.remark ?? "");
+      })
+      .catch(() => {
+        toast.error("Failed to load RFQ");
+        router.replace(`/${locale}/buyer/rfqs`);
+      })
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRemoveItem = useCallback((skuId: number) => {
+    setItems((prev) => prev.filter((i) => i.sku_id !== skuId));
+  }, []);
+
+  const handleQtyChange = useCallback((skuId: number, qty: number) => {
+    if (qty <= 0) return;
+    setItems((prev) => prev.map((i) => (i.sku_id === skuId ? { ...i, quantity: qty } : i)));
+  }, []);
+
+  const handleAddItem = useCallback((item: EditItem) => {
+    setItems((prev) => [...prev, item]);
+  }, []);
+
+  const existingSkuIds = useMemo(() => new Set(items.map((i) => i.sku_id)), [items]);
+  const [showSearch, setShowSearch] = useState(false);
+
+  // 构建请求体
+  const buildPayload = useCallback(() => ({
+    items: items.map((i) => ({ sku_id: i.sku_id, quantity: i.quantity })),
+    contact_name: contactName || undefined,
+    contact_phone: contactPhone || undefined,
+    contact_email: contactEmail || undefined,
+    requested_delivery_place: deliveryPlace || undefined,
+    expected_delivery_date: deliveryDate ? `${deliveryDate}T00:00:00Z` : undefined,
+    target_currency: currency || undefined,
+    required_certifications: certifications.length > 0 ? certifications : undefined,
+    remark: remark || undefined,
+  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, deliveryDate, currency, certifications, remark]);
+
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    if (saving || submitting || items.length === 0) return;
+    setSaving(true);
+    try {
+      await updateRfq(rfqId, buildPayload());
+      toast.success(t("updateSuccess"));
+      router.push(`/${locale}/buyer/rfqs`);
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try { toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>)); } catch { toast.error(err.message); }
+      } else { toast.error(err instanceof Error ? err.message : String(err)); }
+    } finally { setSaving(false); }
+  }, [saving, submitting, items, rfqId, buildPayload, toast, t, tError, router, locale]);
+
+  const handleSubmitDraft = useCallback(async () => {
+    if (saving || submitting || items.length === 0) return;
+    setSubmitting(true);
+    try {
+      // 先保存再提交
+      await updateRfq(rfqId, buildPayload());
+      await submitRfq(rfqId);
+      toast.success(t("submitDraftSuccess"));
+      router.push(`/${locale}/buyer/rfqs`);
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try { toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>)); } catch { toast.error(err.message); }
+      } else { toast.error(err instanceof Error ? err.message : String(err)); }
+    } finally { setSubmitting(false); }
+  }, [saving, submitting, items, rfqId, buildPayload, toast, t, tError, router, locale]);
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  // 认证标签输入
+  const [certInput, setCertInput] = useState("");
+
+  if (loading) {
+    return <div className="flex min-h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" /></div>;
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* 页标题 */}
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => router.back()} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-xl font-bold text-gray-800">{t("editRfq")}</h1>
+        <span className="text-sm text-gray-400">{rfqNo}</span>
+      </div>
+
+      {/* 商品清单 */}
+      <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="border-b border-gray-100 px-5 py-3">
+          <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500">
+                <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
+                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
+                <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
+                <th className="w-12 px-3 py-2.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.sku_id} className="border-t border-gray-100 even:bg-slate-50/50">
+                  <td className="px-5 py-3 font-medium text-gray-800">{item.product_name}</td>
+                  <td className="px-5 py-3 text-gray-500">{item.sku_spec}</td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <input type="number" value={item.quantity}
+                        onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) handleQtyChange(item.sku_id, v); }}
+                        min={1} className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+                      <span className="text-xs text-gray-500">{tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button type="button" onClick={() => handleRemoveItem(item.sku_id)} className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr><td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-400">{t("noSearchResult")}</td></tr>
+              )}
+              <tr className="border-t border-gray-100">
+                <td colSpan={4} className="px-5 py-3">
+                  <button type="button" onClick={() => setShowSearch(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D4D4D] transition-colors hover:text-[#0a3d3d]">
+                    <Plus className="h-4 w-4" />{t("addProduct")}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 交货信息 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_delivery")}</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryPlace")}</label>
+            <input type="text" value={deliveryPlace} onChange={(e) => setDeliveryPlace(e.target.value)} placeholder={t("deliveryPlaceholder")}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryDate")}</label>
+            <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} min={todayStr}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("currency")}</label>
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20">
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 联系方式 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_contact")}</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("contactName")}</label>
+            <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("contactPhone")}</label>
+            <input type="text" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("contactEmail")}</label>
+            <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+          </div>
+        </div>
+      </div>
+
+      {/* 附加要求 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_extra")}</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("certifications")}</label>
+            <div className="flex flex-wrap gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
+              {certifications.map((tag) => (
+                <span key={tag} className="inline-flex items-center gap-1 rounded bg-[#0D4D4D]/10 px-2 py-0.5 text-xs font-medium text-[#0D4D4D]">
+                  {tag}
+                  <button type="button" onClick={() => setCertifications((prev) => prev.filter((v) => v !== tag))} className="text-[#0D4D4D]/50 hover:text-[#0D4D4D]">x</button>
+                </span>
+              ))}
+              <input type="text" value={certInput} onChange={(e) => setCertInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.key === "Enter" || e.key === ",") && certInput.trim()) {
+                    e.preventDefault();
+                    const tag = certInput.trim().toUpperCase();
+                    if (!certifications.includes(tag)) setCertifications((prev) => [...prev, tag]);
+                    setCertInput("");
+                  }
+                }}
+                placeholder="SGS, ISO9001..."
+                className="min-w-[120px] flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-400" />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("remark")}</label>
+            <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20" />
+          </div>
+        </div>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="flex justify-end gap-3 pb-8">
+        <button type="button" onClick={() => router.back()}
+          className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+          {t("cancel")}
+        </button>
+        <button type="button" disabled={saving || submitting || items.length === 0} onClick={handleSave}
+          className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
+            saving || submitting || items.length === 0 ? "border-gray-200 text-gray-400 cursor-not-allowed" : "border-[#0D4D4D] text-[#0D4D4D] hover:bg-[#0D4D4D]/5"
+          }`}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          {!saving && <Save className="h-4 w-4" />}
+          {t("saveDraft")}
+        </button>
+        <button type="button" disabled={submitting || saving || items.length === 0} onClick={handleSubmitDraft}
+          className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
+            submitting || saving || items.length === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
+          }`}>
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {t("submitDraft")}
+        </button>
+      </div>
+
+      <SkuSearchModal open={showSearch} onClose={() => setShowSearch(false)} onAdd={handleAddItem} existingSkuIds={existingSkuIds} />
+    </div>
+  );
+}
+
+export default function RfqEditPage() {
+  return (
+    <RouteGuard requiredPermissions={[Permissions.RFQ_UPDATE]}>
+      <RfqEditContent />
+    </RouteGuard>
+  );
+}
