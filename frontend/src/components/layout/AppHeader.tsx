@@ -20,6 +20,7 @@ import { useLogout } from "@/hooks/useAuth";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { BRAND } from "@/config/brand";
 import { defaultDashboardOf, workspaceDashboardOf } from "@/config/navigation";
+import { useSidebarStore } from "@/stores/uiStore";
 import type { RoleCode } from "@/lib/auth";
 
 const ROLE_PILL: Record<RoleCode, { label: string; cls: string }> = {
@@ -50,6 +51,7 @@ export function AppHeader({
   const locale = useLocale();
   const [searchValue, setSearchValue] = useState("");
   const [debugMode, setDebugMode] = useDebugMode();
+  const toggleSidebar = useSidebarStore((s) => s.toggle);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -64,17 +66,30 @@ export function AppHeader({
   return (
     <header className="shrink-0 z-50 border-b border-slate-200 bg-white">
       <div className="flex h-16 items-center justify-between gap-4 px-6">
-        {/* 左:品牌(已登录跳角色首页,未登录跳 /) */}
-        <Link href={user ? defaultDashboardOf(user.roles) : "/"} className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
-          <span className="relative flex h-8 w-8 items-center justify-center rounded bg-[#003366] transition-transform duration-300 group-hover:scale-105">
-            <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#FF6B35]" />
-          </span>
-          <span className="leading-none">
-            <span className="block text-xl font-black tracking-tight text-[#003366]">{BRAND.name}</span>
-            <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
-          </span>
-        </Link>
+        {/* 左:品牌 — 已登录切换侧边栏,未登录跳首页 */}
+        {user ? (
+          <button onClick={toggleSidebar} className="group flex shrink-0 items-center gap-3 cursor-pointer" aria-label={`${BRAND.name} 菜单`}>
+            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-[#003366] transition-transform duration-300 group-hover:scale-105">
+              <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#FF6B35]" />
+            </span>
+            <span className="leading-none text-left">
+              <span className="block text-xl font-black tracking-tight text-[#003366]">{BRAND.name}</span>
+              <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
+            </span>
+          </button>
+        ) : (
+          <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
+            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-[#003366] transition-transform duration-300 group-hover:scale-105">
+              <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#FF6B35]" />
+            </span>
+            <span className="leading-none">
+              <span className="block text-xl font-black tracking-tight text-[#003366]">{BRAND.name}</span>
+              <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
+            </span>
+          </Link>
+        )}
 
         {/* 中:搜索框占位 或 导航插槽 */}
         {showSearch ? (

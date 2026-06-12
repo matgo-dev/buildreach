@@ -31,7 +31,12 @@ export function AppSidebar() {
 
   const userPerms = new Set(user.permissions);
   const userRoles = user.roles as RoleCode[];
-  const currentWs = WORKSPACES.find((w) => pathname.startsWith(w.pathPrefix));
+  // /mall 属于 BUYER 工作台，但路径不以 /buyer 开头，需特殊匹配
+  const currentWs =
+    WORKSPACES.find((w) => pathname.startsWith(w.pathPrefix)) ??
+    (pathname.startsWith("/mall") && userRoles.includes("BUYER")
+      ? WORKSPACES.find((w) => w.code === "BUYER")
+      : undefined);
 
   const checkAccess = (item: NavItem): { ok: boolean; reason: string } => {
     if (item.resource) {
@@ -46,7 +51,7 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col overflow-y-auto bg-[#0A1929]">
+    <aside className="flex h-full w-60 shrink-0 flex-col overflow-y-auto bg-[#0A1929]">
       <UserCard />
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 text-sm">
         {currentWs && (
