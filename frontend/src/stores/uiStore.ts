@@ -1,5 +1,20 @@
 "use client";
+import { create } from "zustand";
 import { useEffect, useSyncExternalStore } from "react";
+
+/* ── 侧边栏抽屉(商城等无 sidebar 页面用 overlay 展开) ── */
+
+interface SidebarState {
+  open: boolean;
+  toggle: () => void;
+  close: () => void;
+}
+
+export const useSidebarStore = create<SidebarState>((set) => ({
+  open: false,
+  toggle: () => set((s) => ({ open: !s.open })),
+  close: () => set({ open: false }),
+}));
 
 /**
  * UI 全局开关。

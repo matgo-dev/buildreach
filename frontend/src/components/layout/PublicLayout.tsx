@@ -1,25 +1,41 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
+import { usePathname } from "@/i18n/navigation";
 
 import { AppHeader } from "./AppHeader";
+import { AppSidebar } from "./AppSidebar";
+import { useSidebarStore } from "@/stores/uiStore";
 
-/** 公开区 Layout(顶部单行 nav,无 sidebar)。 */
+/** 公开区 Layout(顶部 nav,Logo 点击展开/收起左侧导航栏,内容区自适应)。 */
 export function PublicLayout({
   children,
   noContainer = false,
 }: {
   children: ReactNode;
-  /** 关闭内置 max-w/padding,适合首页等需要全屏 hero 的场景 */
   noContainer?: boolean;
 }) {
+  const open = useSidebarStore((s) => s.open);
+  const close = useSidebarStore((s) => s.close);
+  const pathname = usePathname();
+
+  // 路由切换时自动收起
+  useEffect(() => {
+    close();
+  }, [pathname, close]);
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
       <AppHeader showSearch showCart />
-      {noContainer ? (
-        <main>{children}</main>
-      ) : (
-        <main className="px-6 py-8">{children}</main>
-      )}
+      <div className="flex flex-1 overflow-hidden">
+        {open && (
+          <div className="shrink-0">
+            <AppSidebar />
+          </div>
+        )}
+        <main className="flex-1 overflow-y-auto">
+          {noContainer ? children : <div className="px-6 py-8">{children}</div>}
+        </main>
+      </div>
     </div>
   );
 }
