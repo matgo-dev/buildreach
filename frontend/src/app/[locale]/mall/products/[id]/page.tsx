@@ -293,7 +293,7 @@ function ProductDetailContent() {
 
       {/* ===== 主区:左图 + 右信息 ===== */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-6 lg:flex-row">
           {/* 左:图片 gallery */}
           <ProductGallery
             images={product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL")}
@@ -301,52 +301,51 @@ function ProductDetailContent() {
           />
 
           {/* 右:信息面板 */}
-          <div className="min-w-0">
-            <p className="text-[11px] text-gray-400">{product.spu_code}</p>
-            <h1 className="text-lg font-semibold leading-snug text-gray-800">{product.name}</h1>
-            {product.description && (
-              <p className="mt-1 text-sm text-gray-500 line-clamp-3">{product.description}</p>
-            )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
+            <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
 
             {/* 认证徽章 */}
             {product.certifications && product.certifications.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-1">
                 {product.certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
+                    className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800"
                   >
-                    <span className="text-blue-500">✓</span> {cert}
+                    {cert}
                   </span>
                 ))}
               </div>
             )}
 
-            {/* 基础信息:产地/品牌/卖点 */}
-            <div className="mt-3 space-y-1.5 text-sm">
-              {product.origin && (
-                <div className="flex">
-                  <span className="w-16 shrink-0 text-gray-400">{t("detail.origin")}</span>
-                  <span className="text-gray-700">{product.origin}</span>
-                </div>
-              )}
-              {product.brand && (
-                <div className="flex">
-                  <span className="w-16 shrink-0 text-gray-400">{t("detail.brand")}</span>
-                  <span className="text-gray-700">{product.brand}</span>
-                </div>
-              )}
-              {product.selling_points && (
-                <div className="flex">
-                  <span className="w-16 shrink-0 text-gray-400">{t("detail.sellingPoints")}</span>
-                  <span className="text-gray-700">{product.selling_points}</span>
-                </div>
-              )}
+            {/* 基础信息卡 */}
+            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+              <div className="space-y-2 text-sm">
+                {product.origin && (
+                  <div className="flex">
+                    <span className="w-20 shrink-0 text-gray-400">{t("detail.origin")}</span>
+                    <span className="font-medium text-gray-800">{product.origin}</span>
+                  </div>
+                )}
+                {product.brand && (
+                  <div className="flex">
+                    <span className="w-20 shrink-0 text-gray-400">{t("detail.brand")}</span>
+                    <span className="font-medium text-gray-800">{product.brand}</span>
+                  </div>
+                )}
+                {product.selling_points && (
+                  <div className="flex">
+                    <span className="w-20 shrink-0 text-gray-400">{t("detail.sellingPoints")}</span>
+                    <span className="text-gray-700">{product.selling_points}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* 右侧面板内属性:颜色色板 / 厚度 chip 等(多值项) */}
+            {/* 属性:颜色色板 / 厚度 chip 等(多值项) */}
             {inlineAttrs.length > 0 && (
-              <div className="mt-5">
+              <div className="mt-4">
                 {inlineAttrs.map((item) => (
                   <InlineAttrItem key={item.key} item={item} />
                 ))}
@@ -354,12 +353,12 @@ function ProductDetailContent() {
             )}
 
             {/* 操作按钮:询价篮 + WhatsApp 并排 */}
-            <div className="mt-5 flex gap-3">
+            <div className="mt-4 flex flex-wrap gap-2.5">
               {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定,启用后接 addCartItem */}
               <button
                 type="button"
                 disabled
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#0f3d36] px-4 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D4D4D] px-6 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
                 title={t("detail.comingSoon")}
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -371,7 +370,7 @@ function ProductDetailContent() {
                 href="https://wa.me/255697123456"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#1aa951] px-4 py-3 text-sm font-semibold text-white hover:bg-[#158f43] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp {t("detail.contactPlatform")}
@@ -403,14 +402,14 @@ function ProductDetailContent() {
 
           {/* DETAIL 图片竖排 */}
           {detailImages.length > 0 && (
-            <div className="space-y-3">
+            <div className="mx-auto max-w-2xl space-y-3">
               {detailImages.map((img) => (
                 <div key={img.id} className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={img.full_url}
                     alt=""
-                    className="w-full object-contain"
+                    className="mx-auto max-h-[500px] object-contain"
                     loading="lazy"
                   />
                 </div>
