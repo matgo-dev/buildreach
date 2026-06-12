@@ -21,7 +21,6 @@ import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
-
 import { ProductGallery } from "@/components/mall/ProductGallery";
 
 // ---- 面包屑 ----
@@ -76,23 +75,18 @@ function SwatchThumb({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-// ---- 右侧面板:属性以色板/chip 渲染 ----
+// ---- 右侧面板属性(色板/chip) ----
 
-/** 判断一个 AttrItem 是否含有色板图 */
 function hasSwatchImages(item: AttrItem): boolean {
   return item.values.some((v) => v.value_type === "image" && v.swatch_image);
 }
 
-/** 右侧面板中的属性展示:色板图渲染为缩略图,文本渲染为 chip */
 function InlineAttrItem({ item }: { item: AttrItem }) {
   const isSwatch = hasSwatchImages(item);
 
   return (
     <div className="mb-4">
-      <div className="mb-1.5 text-xs font-semibold text-gray-500">
-        {item.key}
-        {!isSwatch && <span className="ml-1 font-normal text-gray-400">({item.values.length})</span>}
-      </div>
+      <div className="mb-1.5 text-xs font-semibold text-gray-600">{item.key}</div>
       {isSwatch ? (
         <div className="flex flex-wrap gap-2">
           {item.values.map((v, i) =>
@@ -109,11 +103,11 @@ function InlineAttrItem({ item }: { item: AttrItem }) {
           )}
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {item.values.map((v, i) => (
             <span
               key={i}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700"
+              className="rounded-md border-[1.5px] border-gray-200 bg-white px-3.5 py-1.5 text-xs text-gray-600"
             >
               {v.value}
               {item.unit ? ` ${item.unit}` : ""}
@@ -125,9 +119,11 @@ function InlineAttrItem({ item }: { item: AttrItem }) {
   );
 }
 
-// ---- 规格参数表(底部分段) ----
+// ---- Tab: 产品规格 ----
 
-function SpecTable({ product }: { product: ProductPublicDetail }) {
+type TabKey = "specifications" | "description" | "gallery";
+
+function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
 
   const baseRows: { label: string; value: string }[] = [];
@@ -136,44 +132,150 @@ function SpecTable({ product }: { product: ProductPublicDetail }) {
   if (product.hs_code) baseRows.push({ label: t("detail.hsCode"), value: product.hs_code });
 
   const groups = product.attribute_groups;
-  const hasContent = baseRows.length > 0 || groups.length > 0;
-
-  if (!hasContent) return null;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200">
-      {/* 基础信息行 */}
-      {baseRows.length > 0 && (
-        <>
-          <div className="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
-            {t("detail.tabSpecs")}
-          </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr>
+            <th className="w-1/3 border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
+              {t("detail.specName")}
+            </th>
+            <th className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
+              {t("detail.specValue")}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
           {baseRows.map((row) => (
-            <div key={row.label} className="flex border-t border-gray-100 px-3 py-2 text-sm">
-              <span className="w-[130px] shrink-0 text-gray-500">{row.label}</span>
-              <span className="text-gray-800">{row.value}</span>
-            </div>
+            <tr key={row.label}>
+              <td className="border border-gray-200 px-3 py-2 text-gray-600">{row.label}</td>
+              <td className="border border-gray-200 px-3 py-2">{row.value}</td>
+            </tr>
           ))}
-        </>
+          {groups.map((group) => (
+            <React.Fragment key={group.group}>
+              {/* 分组标题行 */}
+              <tr>
+                <td
+                  colSpan={2}
+                  className="border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500"
+                >
+                  {group.group}
+                </td>
+              </tr>
+              {group.items.map((item) => (
+                <tr key={`${group.group}-${item.key}`}>
+                  <td className="border border-gray-200 px-3 py-2 text-gray-600">{item.key}</td>
+                  <td className="border border-gray-200 px-3 py-2">
+                    {item.values.map((v) => v.value).join(" · ")}
+                    {item.unit ? ` ${item.unit}` : ""}
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+      {baseRows.length === 0 && groups.length === 0 && (
+        <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>
       )}
+    </div>
+  );
+}
 
-      {/* 按 attr_group 分组 */}
-      {groups.map((group) => (
-        <React.Fragment key={group.group}>
-          <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
-            {group.group}
+// ---- Tab: 产品描述 ----
+
+function DescriptionTab({ product }: { product: ProductPublicDetail }) {
+  const t = useTranslations("mall");
+
+  return (
+    <div className="space-y-4">
+      {product.selling_points && (
+        <div>
+          <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.sellingPoints")}</h4>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+            {product.selling_points}
           </div>
-          {group.items.map((item) => (
-            <div key={item.key} className="flex border-t border-gray-100 px-3 py-2 text-sm">
-              <span className="w-[130px] shrink-0 text-gray-500">{item.key}</span>
-              <span className="text-gray-800">
-                {item.values.map((v) => v.value).join(" · ")}
-                {item.unit ? ` ${item.unit}` : ""}
-              </span>
+        </div>
+      )}
+      {product.description && (
+        <div>
+          <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.description")}</h4>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+            {product.description}
+          </div>
+        </div>
+      )}
+      {!product.description && !product.selling_points && (
+        <p className="py-8 text-center text-sm text-gray-400">{t("detail.noDescription")}</p>
+      )}
+    </div>
+  );
+}
+
+// ---- Tab: 产品图片 ----
+
+function GalleryTab({ product }: { product: ProductPublicDetail }) {
+  const t = useTranslations("mall");
+  const images = product.images
+    .filter((img) => img.sku_id == null)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  if (images.length === 0) {
+    return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noImages")}</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      {images.map((img) => (
+        <div
+          key={img.id}
+          className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={img.full_url}
+            alt=""
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- 底部:商品详情(全部图片) ----
+
+function ProductDetailImages({ product }: { product: ProductPublicDetail }) {
+  const t = useTranslations("mall");
+  const allImages = product.images
+    .filter((img) => img.sku_id == null)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  if (allImages.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 bg-white">
+      <div className="border-b border-gray-200 px-5 py-3">
+        <h2 className="text-sm font-semibold text-gray-800">{t("detail.productDetail")}</h2>
+      </div>
+      <div className="p-5">
+        <div className="mx-auto max-w-3xl space-y-4">
+          {allImages.map((img) => (
+            <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.full_url}
+                alt=""
+                className="mx-auto w-full object-contain"
+                loading="lazy"
+              />
             </div>
           ))}
-        </React.Fragment>
-      ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -195,32 +297,25 @@ function ProductDetailContent() {
     { revalidateOnFocus: false }
   );
 
+  const [activeTab, setActiveTab] = useState<TabKey>("specifications");
+
   const breadcrumb = useMemo(() => {
     if (!product || !categoryTree.length) return [];
     return buildBreadcrumb(categoryTree, product.category_code);
   }, [product, categoryTree]);
 
-  // 从属性中提取适合右侧面板展示的项(多值的,如颜色/厚度)
+  // 多值属性提到右侧面板(颜色/厚度等)
   const inlineAttrs = useMemo(() => {
     if (!product) return [];
     const items: AttrItem[] = [];
     for (const group of product.attribute_groups) {
       for (const item of group.items) {
-        // 多值项或有色板图的放右侧面板展示
         if (item.values.length > 1 || hasSwatchImages(item)) {
           items.push(item);
         }
       }
     }
     return items;
-  }, [product]);
-
-  // 详情大图(DETAIL 类型)
-  const detailImages = useMemo(() => {
-    if (!product) return [];
-    return product.images
-      .filter((img) => img.image_type === "DETAIL" && img.sku_id == null)
-      .sort((a, b) => a.sort_order - b.sort_order);
   }, [product]);
 
   // ---- 加载/错误态 ----
@@ -261,6 +356,14 @@ function ProductDetailContent() {
     );
   }
 
+  // ---- 正常渲染 ----
+
+  const tabItems: { key: TabKey; label: string }[] = [
+    { key: "specifications", label: t("detail.tabSpecs") },
+    { key: "description", label: t("detail.tabDescription") },
+    { key: "gallery", label: t("detail.tabGallery") },
+  ];
+
   return (
     <PublicLayout>
       <div className="flex flex-col lg:flex-row gap-5">
@@ -291,10 +394,10 @@ function ProductDetailContent() {
         <span className="font-medium text-gray-700">{product.name}</span>
       </nav>
 
-      {/* ===== 主区:左图 + 右信息 ===== */}
+      {/* ===== 主体:左图 + 右信息(与旧版一致) ===== */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex flex-col gap-6 lg:flex-row">
-          {/* 左:图片 gallery */}
+          {/* 左:图片轮播(排除 DETAIL 类型) */}
           <ProductGallery
             images={product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL")}
             isFeatured={product.is_featured}
@@ -319,9 +422,9 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 基础信息卡 */}
+            {/* 基础信息卡(产地/品牌/卖点) */}
             <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="space-y-2 text-sm">
+              <div className="space-y-1.5 text-sm">
                 {product.origin && (
                   <div className="flex">
                     <span className="w-20 shrink-0 text-gray-400">{t("detail.origin")}</span>
@@ -343,7 +446,7 @@ function ProductDetailContent() {
               </div>
             </div>
 
-            {/* 属性:颜色色板 / 厚度 chip 等(多值项) */}
+            {/* 属性:颜色色板 / 厚度 chip(多值项) */}
             {inlineAttrs.length > 0 && (
               <div className="mt-4">
                 {inlineAttrs.map((item) => (
@@ -352,9 +455,9 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 操作按钮:询价篮 + WhatsApp 并排 */}
+            {/* 操作按钮 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定,启用后接 addCartItem */}
+              {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定 */}
               <button
                 type="button"
                 disabled
@@ -364,7 +467,6 @@ function ProductDetailContent() {
                 <ShoppingCart className="h-4 w-4" />
                 {t("detail.addToInquiry")}
               </button>
-
               {/* TODO: WhatsApp 平台运营号/链接配置化 */}
               <a
                 href="https://wa.me/255697123456"
@@ -376,56 +478,38 @@ function ProductDetailContent() {
                 WhatsApp {t("detail.contactPlatform")}
               </a>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-400">
-              {t("detail.comingSoon")}
-            </p>
+            <p className="mt-1.5 text-[11px] text-gray-400">{t("detail.comingSoon")}</p>
           </div>
         </div>
       </div>
 
-      {/* ===== 商品详情(文字 + DETAIL 图竖排) ===== */}
-      {(detailImages.length > 0 || product.description || product.selling_points) && (
-        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.description")}</h2>
-
-          {/* 文字描述在上 */}
-          {product.selling_points && (
-            <div className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-              {product.selling_points}
-            </div>
-          )}
-          {product.description && (
-            <div className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-              {product.description}
-            </div>
-          )}
-
-          {/* DETAIL 图片竖排 */}
-          {detailImages.length > 0 && (
-            <div className="mx-auto max-w-2xl space-y-3">
-              {detailImages.map((img) => (
-                <div key={img.id} className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.full_url}
-                    alt=""
-                    className="mx-auto max-h-[500px] object-contain"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+      {/* ===== Tab 区(与旧版一致:产品规格 / 产品描述 / 产品图片) ===== */}
+      <div className="mt-4 rounded-xl border border-gray-200 bg-white">
+        <div className="flex border-b border-gray-200">
+          {tabItems.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-5 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      )}
-
-      {/* ===== 规格参数表(按 attr_group 分组) ===== */}
-      {(product.attribute_groups.length > 0 || product.origin || product.brand) && (
-        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.tabSpecs")}</h2>
-          <SpecTable product={product} />
+        <div className="p-5">
+          {activeTab === "specifications" && <SpecificationsTab product={product} />}
+          {activeTab === "description" && <DescriptionTab product={product} />}
+          {activeTab === "gallery" && <GalleryTab product={product} />}
         </div>
-      )}
+      </div>
+
+      {/* ===== 商品详情:所有图片竖排展示(外观/细节/详情图) ===== */}
+      <ProductDetailImages product={product} />
 
         </div>
       </div>
