@@ -17,17 +17,17 @@ class ProductAttr(Base):
     __table_args__ = (
         Index("ix_product_attrs_product_id", "product_id"),
         Index("ix_product_attrs_sku_id", "sku_id"),
-        # 商品级维度内唯一(sku_id IS NULL 且未删除)
+        # 商品级:同 attr_key + attr_value 不可重复(允许同 key 多值)
         Index(
-            "uq_product_attrs_product_key",
-            "product_id", "attr_key",
+            "uq_product_attrs_product_key_val",
+            "product_id", "attr_key", "attr_value",
             unique=True,
             postgresql_where="sku_id IS NULL",
         ),
-        # SKU 级维度内唯一(sku_id IS NOT NULL 且未删除)
+        # SKU 级:同理
         Index(
-            "uq_product_attrs_sku_key",
-            "sku_id", "attr_key",
+            "uq_product_attrs_sku_key_val",
+            "sku_id", "attr_key", "attr_value",
             unique=True,
             postgresql_where="sku_id IS NOT NULL",
         ),
@@ -48,5 +48,13 @@ class ProductAttr(Base):
     attr_value: Mapped[str] = mapped_column(String(200), nullable=False)
     attr_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Phase 1 新增:导入用
+    value_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="text", server_default="text",
+    )
+    attr_group: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    attr_key_zh: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    attr_value_zh: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     product: Mapped["Product"] = relationship("Product", back_populates="attrs")

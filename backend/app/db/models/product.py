@@ -14,6 +14,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.db.models.ingest_run import IngestRun
+
 from app.db.base import Base, TimestampUpdateMixin
 from app.db.i18n_mixin import I18nMixin
 from app.db.soft_delete_mixin import SoftDeleteMixin
@@ -89,6 +93,16 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     created_by: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", name="fk_products_created_by"),
+        nullable=True,
+    )
+
+    # 商品来源:MANUAL(运营手动) / alibaba / 1688 等爬虫源
+    source: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="MANUAL", server_default="MANUAL",
+    )
+    last_ingest_run_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("ingest_runs.id", name="fk_products_last_ingest_run_id"),
         nullable=True,
     )
 
