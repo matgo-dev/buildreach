@@ -148,11 +148,12 @@ async def test_public_product_detail_draft_404(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_public_list_two_tier_fields(client: AsyncClient):
+async def test_public_list_billboard_no_price(client: AsyncClient):
+    """买方列表:广告牌模式,无价格/SKU 字段。"""
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "PUB-2TIER-001")
-    await _create_test_sku(client, headers, pid, "PUB-2TIER-SKU-001")
+    pid = await _create_test_product(client, headers, cat_code, "PUB-BILL-001")
+    await _create_test_sku(client, headers, pid, "PUB-BILL-SKU-001")
     await _upload_test_image(client, headers, pid)
 
     r = await client.patch(
@@ -161,24 +162,28 @@ async def test_public_list_two_tier_fields(client: AsyncClient):
     )
     assert r.status_code == 200, r.text
 
-    r = await client.get("/api/v1/products?keyword=PUB-2TIER-001")
+    r = await client.get("/api/v1/products?keyword=PUB-BILL-001")
     assert r.status_code == 200
     items = r.json()["data"]["items"]
     assert len(items) >= 1
-    item = next(i for i in items if i["spu_code"] == "PUB-2TIER-001")
+    item = next(i for i in items if i["spu_code"] == "PUB-BILL-001")
     assert "spu_code" in item
-    assert "price_min" in item
-    assert "price_max" in item
-    assert "sku_count" in item
-    assert item["sku_count"] >= 1
+    assert "name" in item
+    assert "unit" in item
+    # 广告牌模式:无价格/SKU
+    _REMOVED_LIST_FIELDS = {"price_min", "price_max", "currency", "moq",
+                            "lead_time_min", "lead_time_max", "sku_count"}
+    for field in _REMOVED_LIST_FIELDS:
+        assert field not in item, f"Buyer list should not contain '{field}'"
 
 
 @pytest.mark.asyncio
-async def test_public_detail_two_tier_with_skus(client: AsyncClient):
+async def test_public_detail_billboard_no_sku(client: AsyncClient):
+    """买方详情:广告牌模式,无 SKU/价格,有 attribute_groups。"""
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
-    pid = await _create_test_product(client, headers, cat_code, "PUB-DETAIL-2T")
-    await _create_test_sku(client, headers, pid, "PUB-DETAIL-SKU-2T")
+    pid = await _create_test_product(client, headers, cat_code, "PUB-DETAIL-BILL")
+    await _create_test_sku(client, headers, pid, "PUB-DETAIL-SKU-BILL")
     await _upload_test_image(client, headers, pid)
 
     await client.patch(
@@ -189,15 +194,12 @@ async def test_public_detail_two_tier_with_skus(client: AsyncClient):
     r = await client.get(f"/api/v1/products/{pid}")
     assert r.status_code == 200
     data = r.json()["data"]
-    assert "skus" in data
-    assert len(data["skus"]) >= 1
+    # 广告牌:有 attribute_groups,无 skus/价格
+    assert "attribute_groups" in data
     assert "images" in data
-    assert "attributes" in data
-
-    sku = data["skus"][0]
-    assert "price_tiers" in sku
-    assert "sku_code" in sku
-    assert "moq" in sku
+    _REMOVED_DETAIL_FIELDS = {"skus", "price_min", "price_max", "currency", "attributes"}
+    for field in _REMOVED_DETAIL_FIELDS:
+        assert field not in data, f"Buyer detail should not contain '{field}'"
 
 
 @pytest.mark.asyncio
@@ -238,6 +240,105 @@ async def test_public_isolation_no_supplier_fields(client: AsyncClient):
 
     r2 = await client.get(f"/api/v1/products/{pid}")
     _assert_no_supplier(r2.json()["data"], "detail")
+
+
+# ── 买方接口：属性分组 + i18n ────────────────────────────
+
+async def _add_spu_attr(
+    db_session,
+    product_id: int,
+    attr_key: str, attr_value: str,
+    attr_group: str | None = None,
+    attr_key_zh: str | None = None,
+    attr_value_zh: str | None = None,
+    value_type: str = "text",
+    sort_order: int = 0,
+):
+    """直接往 product_attrs 表插属性。
+
+    运营接口不支持 attr_group/value_type 等 ingest 新字段,
+    测试读侧分组逻辑需要直接用 DB session 写入。
+    """
+    from app.db.models.product_attr import ProductAttr
+    attr = ProductAttr(
+        product_id=product_id,
+        attr_key=attr_key,
+        attr_value=attr_value,
+        attr_group=attr_group,
+        attr_key_zh=attr_key_zh,
+        attr_value_zh=attr_value_zh,
+        value_type=value_type,
+        sort_order=sort_order,
+    )
+    db_session.add(attr)
+    await db_session.flush()
+
+
+@pytest.mark.asyncio
+async def test_public_detail_grouped_attributes(client: AsyncClient, db_session):
+    """详情属性按 attr_group 分组,同 key 多值合并。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-GRP-001")
+    await _create_test_sku(client, headers, pid, "PUB-GRP-SKU-001")
+    await _upload_test_image(client, headers, pid)
+
+    # 插入多个分组属性(模拟导入数据)
+    await _add_spu_attr(db_session, pid, "Material", "Aluminum", attr_group="Key Attributes", attr_key_zh="材质", attr_value_zh="铝合金", sort_order=1)
+    await _add_spu_attr(db_session, pid, "Material", "Steel", attr_group="Key Attributes", attr_key_zh="材质", attr_value_zh="钢", sort_order=1)
+    await _add_spu_attr(db_session, pid, "Surface", "Anodized", attr_group="Key Attributes", attr_key_zh="表面处理", attr_value_zh="阳极氧化", sort_order=2)
+    await _add_spu_attr(db_session, pid, "Package Type", "Carton", attr_group="Packaging", attr_key_zh="包装方式", attr_value_zh="纸箱", sort_order=10)
+
+    # 上架
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+
+    # 英文 locale
+    r = await client.get(f"/api/v1/products/{pid}", headers={"Accept-Language": "en"})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    groups = data["attribute_groups"]
+    assert len(groups) >= 2
+
+    # 验证分组结构
+    key_attrs_group = next((g for g in groups if g["group"] == "Key Attributes"), None)
+    assert key_attrs_group is not None
+    # Material 应有 2 个值(Aluminum + Steel)
+    material_item = next((i for i in key_attrs_group["items"] if i["key"] == "Material"), None)
+    assert material_item is not None
+    assert len(material_item["values"]) == 2
+    mat_vals = {v["value"] for v in material_item["values"]}
+    assert mat_vals == {"Aluminum", "Steel"}
+
+    pkg_group = next((g for g in groups if g["group"] == "Packaging"), None)
+    assert pkg_group is not None
+
+
+@pytest.mark.asyncio
+async def test_public_detail_i18n_zh(client: AsyncClient, db_session):
+    """中文 locale 下属性 key/value 取 _zh 列。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-I18N-001")
+    await _create_test_sku(client, headers, pid, "PUB-I18N-SKU-001")
+    await _upload_test_image(client, headers, pid)
+
+    await _add_spu_attr(db_session, pid, "Material", "Aluminum", attr_group="Key Attributes", attr_key_zh="材质", attr_value_zh="铝合金")
+
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+
+    r = await client.get(f"/api/v1/products/{pid}", headers={"Accept-Language": "zh"})
+    assert r.status_code == 200
+    groups = r.json()["data"]["attribute_groups"]
+    key_group = next(g for g in groups if g["group"] == "Key Attributes")
+    item = key_group["items"][0]
+    assert item["key"] == "材质"
+    assert item["values"][0]["value"] == "铝合金"
 
 
 # ── 运营 SPU CRUD ────────────────────────────────────────
