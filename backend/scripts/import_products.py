@@ -72,12 +72,15 @@ class RunMeta:
 
 @dataclass
 class CategoryNode:
-    """categories_raw.json 中的一个分类节点。"""
+    """categories_raw.json 中的一个分类节点。
+
+    约定格式:扁平数组 {level, name_en, name_zh, parent_en}。
+    name_en 是节点唯一标识(同层同父下唯一),parent_en 引用父节点 name_en。
+    """
     name_en: str
     name_zh: str
-    slug: str
     level: int
-    parent_slug: str | None = None
+    parent_name_en: str | None = None
     children: list["CategoryNode"] = field(default_factory=list)
     # 导入后填充的 DB code
     db_code: str | None = None
@@ -131,56 +134,37 @@ def read_categories_raw(batch_dir: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def build_category_tree(raw: dict | list) -> list[CategoryNode]:
+def build_category_tree(raw: list) -> list[CategoryNode]:
     """从 categories_raw.json 构建分类树。
 
-    支持两种格式:
-    1. list 格式:[{name_en, name_zh, slug, children: [...]}]
-    2. dict 格式:{slug: {name_en, name_zh, children: {...}}}
+    约定格式(§4.1):扁平数组,每行 {level, name_en, name_zh, parent_en}。
+    靠 parent_en(父节点的 name_en)挂父子。L1 的 parent_en 为 null。
     """
-    nodes: list[CategoryNode] = []
+    # 先建全部节点
+    nodes_by_name: dict[str, CategoryNode] = {}
+    all_nodes: list[CategoryNode] = []
 
-    def _parse_list(items: list, level: int, parent_slug: str | None) -> list[CategoryNode]:
-        result = []
-        for item in items:
-            node = CategoryNode(
-                name_en=item.get("name_en", ""),
-                name_zh=item.get("name_zh", ""),
-                slug=item.get("slug", item.get("code", "")),
-                level=level,
-                parent_slug=parent_slug,
-            )
-            child_data = item.get("children", [])
-            if isinstance(child_data, list):
-                node.children = _parse_list(child_data, level + 1, node.slug)
-            elif isinstance(child_data, dict):
-                node.children = _parse_dict(child_data, level + 1, node.slug)
-            result.append(node)
-        return result
+    for item in raw:
+        name_en = item.get("name_en", "")
+        node = CategoryNode(
+            name_en=name_en,
+            name_zh=item.get("name_zh", ""),
+            level=item.get("level", 1),
+            parent_name_en=item.get("parent_en"),
+        )
+        nodes_by_name[name_en] = node
+        all_nodes.append(node)
 
-    def _parse_dict(d: dict, level: int, parent_slug: str | None) -> list[CategoryNode]:
-        result = []
-        for slug, val in d.items():
-            node = CategoryNode(
-                name_en=val.get("name_en", ""),
-                name_zh=val.get("name_zh", ""),
-                slug=slug,
-                level=level,
-                parent_slug=parent_slug,
-            )
-            child_data = val.get("children", {})
-            if isinstance(child_data, list):
-                node.children = _parse_list(child_data, level + 1, node.slug)
-            elif isinstance(child_data, dict):
-                node.children = _parse_dict(child_data, level + 1, node.slug)
-            result.append(node)
-        return result
+    # 挂父子关系
+    roots: list[CategoryNode] = []
+    for node in all_nodes:
+        if node.parent_name_en and node.parent_name_en in nodes_by_name:
+            parent = nodes_by_name[node.parent_name_en]
+            parent.children.append(node)
+        else:
+            roots.append(node)
 
-    if isinstance(raw, list):
-        nodes = _parse_list(raw, 1, None)
-    elif isinstance(raw, dict):
-        nodes = _parse_dict(raw, 1, None)
-    return nodes
+    return roots
 
 
 def flatten_tree(nodes: list[CategoryNode]) -> list[CategoryNode]:
@@ -193,17 +177,17 @@ def flatten_tree(nodes: list[CategoryNode]) -> list[CategoryNode]:
 
 
 def build_leaf_lookup(nodes: list[CategoryNode]) -> dict[str, CategoryNode]:
-    """构建叶子节点查找表:slug → CategoryNode(叶子 = 无子节点)。"""
+    """构建叶子节点查找表:name_en → CategoryNode(叶子 = 无子节点)。"""
     lookup: dict[str, CategoryNode] = {}
     for node in flatten_tree(nodes):
         if not node.children:
-            lookup[node.slug] = node
+            lookup[node.name_en] = node
     return lookup
 
 
-def build_slug_lookup(nodes: list[CategoryNode]) -> dict[str, CategoryNode]:
-    """构建全节点查找表:slug → CategoryNode。"""
-    return {n.slug: n for n in flatten_tree(nodes)}
+def build_name_lookup(nodes: list[CategoryNode]) -> dict[str, CategoryNode]:
+    """构建全节点查找表:name_en → CategoryNode。"""
+    return {n.name_en: n for n in flatten_tree(nodes)}
 
 
 def scan_offers(batch_dir: Path) -> list[OfferFile]:
@@ -228,11 +212,18 @@ def scan_offers(batch_dir: Path) -> list[OfferFile]:
 # ────────────────────── 校验 ──────────────────────
 
 
-def _extract_leaf_slug(source_category_path: list[str]) -> str | None:
-    """从 source_category_path 取叶子 slug(最后一个元素)。"""
+def _extract_leaf_name(source_category_path: list) -> str | None:
+    """从 source_category_path 取叶子的 name_en。
+
+    约定格式:[{name_en, name_zh}, ...]，取最后一个元素的 name_en。
+    """
     if not source_category_path:
         return None
-    return source_category_path[-1]
+    last = source_category_path[-1]
+    if isinstance(last, dict):
+        return last.get("name_en")
+    # 兼容纯字符串格式
+    return str(last)
 
 
 def _strip_level_prefix(dir_name: str) -> str:
@@ -245,6 +236,16 @@ def _strip_level_prefix(dir_name: str) -> str:
     return name
 
 
+def _name_to_slug(name: str) -> str:
+    """将分类 name_en 转为 slug 格式,用于与目录名比较。"""
+    import re
+    s = name.lower().strip()
+    s = re.sub(r"[&]", "", s)
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = s.strip("-")
+    return s
+
+
 def validate_batch(
     batch_dir: Path,
     run_meta: RunMeta,
@@ -254,7 +255,7 @@ def validate_batch(
     """执行全部交付前校验。失败的整批拒绝(errors 非空)或单 offer 失败(offer_errors)。"""
     result = ValidationResult(offers=offers)
     leaf_lookup = build_leaf_lookup(cat_tree)
-    slug_lookup = build_slug_lookup(cat_tree)
+    name_lookup = build_name_lookup(cat_tree)
 
     if not offers:
         result.errors.append("未找到任何 offer.json")
@@ -271,19 +272,12 @@ def validate_batch(
             continue
 
         data = offer.data
-        # offer_id 与目录名一致性
-        json_offer_id = str(data.get("offer_id", ""))
+        # offer_id 与目录名一致性(约定:offer_id 在 source.offer_id)
+        source_obj = data.get("source", {})
+        json_offer_id = str(source_obj.get("offer_id", "")) if isinstance(source_obj, dict) else ""
         if json_offer_id and json_offer_id != offer.offer_id:
             offer_errs.append(
-                f"offer_id 不一致: 目录名={offer.offer_id}, JSON={json_offer_id}"
-            )
-
-        # spu_code 一致性:P-<offer_id>
-        expected_spu = f"P-{offer.offer_id}"
-        json_spu = data.get("spu_code", "")
-        if json_spu and json_spu != expected_spu:
-            offer_errs.append(
-                f"spu_code 不一致: 预期={expected_spu}, JSON={json_spu}"
+                f"offer_id 不一致: 目录名={offer.offer_id}, JSON source.offer_id={json_offer_id}"
             )
 
         # attributes 校验
@@ -309,33 +303,23 @@ def validate_batch(
             if img_path and not (offer.offer_dir / img_path).exists():
                 offer_errs.append(f"description_images 图片不存在: {img_path}")
 
-        # 归类校验(硬):source_category_path 叶子匹配 categories_raw.json
+        # 归类校验(硬):source_category_path 叶子的 name_en 匹配 categories_raw.json
         src_path = data.get("source_category_path", [])
-        leaf_slug = _extract_leaf_slug(src_path)
-        if not leaf_slug:
+        leaf_name = _extract_leaf_name(src_path)
+        if not leaf_name:
             offer_errs.append("source_category_path 为空")
-        elif leaf_slug not in leaf_lookup:
-            # 尝试全节点匹配,如果在但非叶子则警告
-            if leaf_slug in slug_lookup:
+        elif leaf_name not in leaf_lookup:
+            if leaf_name in name_lookup:
+                # 在分类树中但不是叶子
                 result.warnings.append(
-                    f"[{offer.offer_id}] source_category_path 叶子 '{leaf_slug}' "
+                    f"[{offer.offer_id}] source_category_path 叶子 '{leaf_name}' "
                     f"在分类树中但不是叶子节点"
                 )
             else:
                 offer_errs.append(
-                    f"source_category_path 叶子 '{leaf_slug}' "
+                    f"source_category_path 叶子 '{leaf_name}' "
                     f"在 categories_raw.json 中未找到"
                 )
-
-        # 中英文行数对比(告警不阻塞)
-        for attr in attributes:
-            values = attr.get("values", [])
-            for v in values:
-                label_en = v.get("label_en", "")
-                label_zh = v.get("label_zh", "")
-                # 只在两者都非空时对比
-                if label_en and label_zh:
-                    pass  # 一致性无需检查行数
 
         if offer_errs:
             result.offer_errors[offer.offer_id] = offer_errs
@@ -373,23 +357,25 @@ def _cross_validate_directories(
                 f"同时有子分类文件夹和 offers/(商品可能挂到了非叶子)"
             )
 
-    # 每个 offer 的目录 slug vs source_category_path 叶子
+    # 每个 offer 的目录 slug vs source_category_path 叶子 name_en
     for offer in offers:
         if not offer.data:
             continue
         src_path = offer.data.get("source_category_path", [])
-        leaf_slug = _extract_leaf_slug(src_path)
-        if not leaf_slug:
+        leaf_name = _extract_leaf_name(src_path)
+        if not leaf_name:
             continue
 
         # 从 offer 目录往上找分类目录名
         # 结构: categories/.../L<n>-<slug>__<中文>/offers/<offer_id>/
         cat_dir = offer.offer_dir.parent.parent  # offers/ 的父目录
         dir_slug = _strip_level_prefix(cat_dir.name)
+        # 将 leaf_name 也转 slug 格式(小写、空格换连字符)来比较
+        leaf_slug = _name_to_slug(leaf_name)
         if dir_slug and leaf_slug and dir_slug != leaf_slug:
             result.warnings.append(
                 f"[{offer.offer_id}] 目录叶子 slug '{dir_slug}' "
-                f"与 source_category_path 叶子 '{leaf_slug}' 不一致"
+                f"与 source_category_path 叶子 slug '{leaf_slug}' 不一致"
             )
 
 
@@ -467,7 +453,7 @@ def _make_code(parent_code: str | None, seq: int, level: int) -> str:
 
 
 def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, str]:
-    """将 categories_raw.json 全层存入 categories 表,返回 slug → code 映射。
+    """将 categories_raw.json 全层存入 categories 表,返回 name_en → code 映射。
 
     算法沿用 import_categories.py:按 (name_zh, parent_code) 匹配现有节点,
     沿用 code;新节点取空号生成稳定 code。append-only,永不物理删。
@@ -530,7 +516,7 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                 now = _utcnow()
                 cat = Category(
                     code=code,
-                    name_zh=node.name_zh or node.name_en or node.slug,
+                    name_zh=node.name_zh or node.name_en,
                     name_en=node.name_en or None,
                     level=node.level,
                     parent_code=parent_code,
@@ -545,7 +531,7 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                 existing_by_natural[natural_key] = cat
                 inserted += 1
 
-        slug_to_code[node.slug] = code
+        slug_to_code[node.name_en] = code
         node.db_code = code
 
         # 递归子节点
@@ -584,12 +570,12 @@ def import_offer(
     offer_id = offer.offer_id
     spu_code = f"P-{offer_id}"
 
-    # ── 1. 归类:source_category_path 叶子 → slug → DB code ──
+    # ── 1. 归类:source_category_path 叶子 name_en → DB code ──
     src_path = data.get("source_category_path", [])
-    leaf_slug = _extract_leaf_slug(src_path)
-    category_code = slug_to_code.get(leaf_slug or "")
+    leaf_name = _extract_leaf_name(src_path)
+    category_code = slug_to_code.get(leaf_name or "")
     if not category_code:
-        raise ValueError(f"分类 slug '{leaf_slug}' 无法映射到 DB code")
+        raise ValueError(f"分类 '{leaf_name}' 无法映射到 DB code")
 
     # ── 2. SPU 字段映射 ──
     name_en = data.get("product_name_en") or data.get("listing_title_en", "")
@@ -661,12 +647,18 @@ def import_offer(
         for val in attr_def.get("values", []):
             label_en = val.get("label_en", "")
             label_zh = val.get("label_zh", "")
-            swatch_image = val.get("swatch_image")
+            swatch_raw = val.get("swatch_image")
+            # swatch_image 约定为对象 {path, source_url} 或纯字符串 path
+            swatch_path: str | None = None
+            if isinstance(swatch_raw, dict):
+                swatch_path = swatch_raw.get("path")
+            elif isinstance(swatch_raw, str):
+                swatch_path = swatch_raw
 
             # 确定 value_type
-            if swatch_image and not label_en:
+            if swatch_path and not label_en:
                 value_type = "image"
-                attr_value = swatch_image
+                attr_value = swatch_path
             else:
                 value_type = "text"
                 attr_value = label_en
@@ -688,12 +680,12 @@ def import_offer(
             attr_sort += 1
 
             # 色板图:label + swatch_image 同时有 → 额外写一张 spec_value 绑定图
-            if swatch_image and label_en and value_type == "text":
-                _copy_image(offer.offer_dir / swatch_image, static_root, spu_code)
+            if swatch_path and label_en and value_type == "text":
+                _copy_image(offer.offer_dir / swatch_path, static_root, spu_code)
                 db.add(ProductImage(
                     product_id=product.id,
                     sku_id=None,
-                    image_key=_image_key(spu_code, swatch_image),
+                    image_key=_image_key(spu_code, swatch_path),
                     image_type=ImageType.GALLERY,
                     sort_order=9000 + attr_sort,  # 色板图排后面
                     spec_value=f"颜色:{label_en}",
@@ -795,8 +787,9 @@ def write_audit_sync(
     error_message: str | None = None,
 ) -> None:
     """同步版审计写入(CLI 脚本无 HTTP 请求,无 user_id)。"""
+    import uuid
     entry = AuditLog(
-        trace_id=None,
+        trace_id=str(uuid.uuid4()),
         user_id=None,
         user_email=None,
         resource_type=resource_type,
@@ -898,7 +891,7 @@ def main() -> None:
         for o in valid_offers:
             spu_code = f"P-{o.offer_id}"
             src_path = o.data.get("source_category_path", []) if o.data else []
-            leaf = _extract_leaf_slug(src_path)
+            leaf = _extract_leaf_name(src_path)
             name_en = ""
             if o.data:
                 name_en = o.data.get("product_name_en") or o.data.get("listing_title_en", "")

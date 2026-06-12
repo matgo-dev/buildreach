@@ -330,56 +330,62 @@ async def update_product_status(
     # errors 结构化：[{key, params}]，前端按 key 翻译
     if new_status == ProductStatus.ACTIVE and not skip_validation:
         errors: list[dict[str, object]] = []
-        active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE]
-        if not active_skus:
-            errors.append({"key": "publish_no_active_sku"})
-        else:
-            for sku in active_skus:
-                if sku.price_min is None or sku.price_max is None:
-                    errors.append({"key": "publish_sku_price_missing", "params": {"sku_code": sku.sku_code}})
-                elif sku.price_min > sku.price_max:
-                    errors.append({"key": "publish_sku_price_invalid", "params": {"sku_code": sku.sku_code}})
-                if (
-                    sku.lead_time_min is not None
-                    and sku.lead_time_max is not None
-                    and sku.lead_time_min > sku.lead_time_max
-                ):
-                    errors.append({"key": "publish_sku_leadtime_invalid", "params": {"sku_code": sku.sku_code}})
+
+        # 按 source 分支:非 MANUAL(如爬虫导入)跳过 SKU/价格/属性模板校验,
+        # 因为爬虫商品无 SKU 层,只有 SPU + 属性 + 图片。保留图片校验。
+        is_manual = (getattr(product, "source", "MANUAL") or "MANUAL") == "MANUAL"
+
+        if is_manual:
+            # ── MANUAL 路径:严格校验(原逻辑) ──
+            active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE]
+            if not active_skus:
+                errors.append({"key": "publish_no_active_sku"})
+            else:
+                for sku in active_skus:
+                    if sku.price_min is None or sku.price_max is None:
+                        errors.append({"key": "publish_sku_price_missing", "params": {"sku_code": sku.sku_code}})
+                    elif sku.price_min > sku.price_max:
+                        errors.append({"key": "publish_sku_price_invalid", "params": {"sku_code": sku.sku_code}})
+                    if (
+                        sku.lead_time_min is not None
+                        and sku.lead_time_max is not None
+                        and sku.lead_time_min > sku.lead_time_max
+                    ):
+                        errors.append({"key": "publish_sku_leadtime_invalid", "params": {"sku_code": sku.sku_code}})
+
+            # 必填属性校验
+            tpl_map = await _load_template_map(db, product.category_code)
+            required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
+            required_sku = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SKU"]
+
+            spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
+            missing_spu = [k for k in required_spu if k not in spu_attr_keys]
+            if missing_spu:
+                errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
+
+            if required_sku and active_skus:
+                sku_attrs_q = await db.execute(
+                    select(ProductAttr.sku_id, ProductAttr.attr_key)
+                    .where(
+                        ProductAttr.product_id == product.id,
+                        ProductAttr.sku_id.isnot(None),
+                    )
+                )
+                sku_attr_map: dict[int, set[str]] = {}
+                for row in sku_attrs_q:
+                    sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key)
+                for sku in active_skus:
+                    sku_keys = sku_attr_map.get(sku.id, set())
+                    missing = [k for k in required_sku if k not in sku_keys]
+                    if missing:
+                        errors.append({"key": "publish_sku_missing_attrs", "params": {"sku_code": sku.sku_code, "attrs": ", ".join(missing)}})
+
+            # TODO: 设计未覆盖,采用最简实现 — 当前允许无供货关系上架。
+            # 后续需决策：是否强制每个 active SKU 至少绑定一个供应商才能上架。
+
+        # ── 通用校验:所有来源都必须有图片 ──
         if not product.images:
             errors.append({"key": "publish_no_image"})
-
-        # 必填属性校验
-        tpl_map = await _load_template_map(db, product.category_code)
-        required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
-        required_sku = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SKU"]
-
-        # SPU 级必填
-        spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
-        missing_spu = [k for k in required_spu if k not in spu_attr_keys]
-        if missing_spu:
-            errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
-
-        # SKU 级必填：每个 active SKU 都需有值
-        if required_sku and active_skus:
-            sku_attrs_q = await db.execute(
-                select(ProductAttr.sku_id, ProductAttr.attr_key)
-                .where(
-                    ProductAttr.product_id == product.id,
-                    ProductAttr.sku_id.isnot(None),
-                )
-            )
-            sku_attr_map: dict[int, set[str]] = {}
-            for row in sku_attrs_q:
-                sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key)
-            for sku in active_skus:
-                sku_keys = sku_attr_map.get(sku.id, set())
-                missing = [k for k in required_sku if k not in sku_keys]
-                if missing:
-                    errors.append({"key": "publish_sku_missing_attrs", "params": {"sku_code": sku.sku_code, "attrs": ", ".join(missing)}})
-
-        # TODO: 设计未覆盖,采用最简实现 — 当前允许无供货关系上架。
-        # 后续需决策：是否强制每个 active SKU 至少绑定一个供应商才能上架。
-        # 如需强制,在此处检查 product_suppliers 表,缺失则 append error。
 
         if errors:
             raise PublishValidationFailedError(errors)
