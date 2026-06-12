@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 export default function AluminumSupplyChainPage() {
   return (
-    <div className="flex flex-col -m-6" style={{ height: "calc(100vh - 4rem)" }}>
+    <div className="-m-6 flex flex-col" style={{ height: "calc(100vh - 4rem)" }}>
       {/* 顶部导航栏 */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white shrink-0">
         <Link
@@ -27,7 +27,8 @@ export default function AluminumSupplyChainPage() {
       {/* iframe 撑满剩余空间 */}
       <iframe
         src="/demos/aluminum-supply-chain.html"
-        className="flex-1 w-full border-0"
+        className="w-full border-0 min-h-0"
+        style={{ flex: "1 1 0" }}
         title="铝卷海外供应链全景图"
       />
     </div>
