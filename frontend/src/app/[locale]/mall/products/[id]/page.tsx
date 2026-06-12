@@ -48,6 +48,33 @@ function buildBreadcrumb(
 
 // ---- 属性分组只读表 ----
 
+/** 色板缩略图 — 加载失败回退为文本 */
+function SwatchThumb({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <span className="text-sm text-gray-800">{alt || "—"}</span>;
+  }
+
+  return (
+    <div className="group/swatch relative inline-block">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        onError={() => setFailed(true)}
+        className="h-12 w-12 rounded-md border border-gray-200 object-cover"
+        loading="lazy"
+      />
+      {alt && (
+        <span className="mt-0.5 block text-center text-[10px] text-gray-500 leading-tight">
+          {alt}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function AttributeGroups({ groups }: { groups: AttrGroup[] }) {
   const t = useTranslations("mall");
 
@@ -63,16 +90,33 @@ function AttributeGroups({ groups }: { groups: AttrGroup[] }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                {group.items.map((item) => (
-                  <tr key={item.key} className="border-b border-gray-100">
-                    <td className="w-1/3 px-3 py-2 text-gray-500">{item.key}</td>
-                    <td className="px-3 py-2 text-gray-800">
-                      {/* TODO: 色板图展示 — 当 value_type=swatch 时渲染缩略图/色块,待定 */}
-                      {item.values.map((v) => v.value).join(", ")}
-                      {item.unit ? ` ${item.unit}` : ""}
-                    </td>
-                  </tr>
-                ))}
+                {group.items.map((item) => {
+                  const hasImage = item.values.some((v) => v.value_type === "image" && v.swatch_image);
+
+                  return (
+                    <tr key={item.key} className="border-b border-gray-100">
+                      <td className="w-1/3 px-3 py-2 align-top text-gray-500">{item.key}</td>
+                      <td className="px-3 py-2 text-gray-800">
+                        {hasImage ? (
+                          <div className="flex flex-wrap gap-2">
+                            {item.values.map((v, i) =>
+                              v.value_type === "image" && v.swatch_image ? (
+                                <SwatchThumb key={i} src={v.swatch_image} alt={v.value} />
+                              ) : (
+                                <span key={i} className="self-center text-sm">{v.value}</span>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            {item.values.map((v) => v.value).join(", ")}
+                            {item.unit ? ` ${item.unit}` : ""}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
