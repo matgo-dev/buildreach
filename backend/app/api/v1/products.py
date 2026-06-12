@@ -13,39 +13,81 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, success
 from app.core.i18n import get_localized
+from app.core.locale import get_current_locale
 from app.db.models.product import ProductStatus
 from app.db.models.product_image import ImageType
-from app.db.models.product_sku import SkuStatus
 from app.db.session import get_db
 from app.schemas.product import (
-    PriceTierSchema,
-    ProductAttrSchema,
+    AttrGroup,
+    AttrItem,
+    AttrValue,
     ProductImageSchema,
     ProductPublic,
     ProductPublicDetail,
-    SkuPublic,
 )
 from app.services import product as product_svc
-from app.services.product import spu_price_range, default_sku_fields
 
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-def _enrich_attrs(attrs, template_map: dict) -> list[dict]:
-    """属性序列化：attr_unit/sort_order/display_name 从模板取。"""
+def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
+    """SPU 属性按 attr_group → attr_key 两层聚合,色板值关联 swatch 图。
+
+    聚合逻辑:同 attr_key 的多行合成一个 AttrItem.values(N 行→多值)。
+    色板:value_type=image 时,从 images 按 spec_value 匹配取图 URL 填 swatch_image。
+    """
+    # 按 spec_value 索引图片,用于色板匹配
+    spec_image_map: dict[str, str] = {}
+    for img in images:
+        if img.spec_value:
+            spec_image_map[img.spec_value] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
+
+    # 两层聚合:group → key → values
+    from collections import OrderedDict
+    group_map: OrderedDict[str, OrderedDict[str, dict]] = OrderedDict()
+
+    for attr in sorted(attrs, key=lambda a: (a.sort_order or 0)):
+        group_name = attr.attr_group or "General"
+        # 按 locale 选 key/value
+        key = _localized_attr(attr, "attr_key", locale)
+        value = _localized_attr(attr, "attr_value", locale)
+
+        if group_name not in group_map:
+            group_map[group_name] = OrderedDict()
+        key_map = group_map[group_name]
+
+        if key not in key_map:
+            key_map[key] = {"unit": attr.attr_unit, "values": []}
+
+        swatch = None
+        if attr.value_type == "image" and attr.spec_value:
+            swatch = spec_image_map.get(attr.spec_value)
+
+        key_map[key]["values"].append(
+            AttrValue(value=value, value_type=attr.value_type or "text", swatch_image=swatch).model_dump()
+        )
+
+    # 组装最终结构
     result = []
-    for attr in attrs:
-        tpl = template_map.get(attr.attr_key)
-        result.append({
-            "attr_key": attr.attr_key,
-            "attr_value": attr.attr_value,
-            "attr_unit": tpl.attr_unit if tpl else attr.attr_unit,
-            "sort_order": tpl.sort_order if tpl else attr.sort_order,
-            "sku_id": attr.sku_id,
-            "display_name": tpl.display_name if tpl else attr.attr_key,
-        })
-    result.sort(key=lambda x: x["sort_order"])
+    for group_name, key_map in group_map.items():
+        items = []
+        for key, info in key_map.items():
+            items.append(AttrItem(key=key, unit=info["unit"], values=info["values"]).model_dump())
+        result.append(AttrGroup(group=group_name, items=items).model_dump())
     return result
+
+
+def _localized_attr(attr, field: str, locale: str) -> str:
+    """属性字段 i18n:attr_key/attr_value 按 locale 选 zh/en。
+
+    优先取 {field}_{locale} 列(如 attr_key_zh),缺则回退到 {field}(英文基准列)。
+    目前模型仅有 _zh 后缀列,en 值存 attr_key/attr_value 主列。
+    """
+    zh_col = f"{field}_zh"
+    if locale == "zh":
+        return getattr(attr, zh_col, None) or getattr(attr, field) or ""
+    # en 或其他 locale:用主列
+    return getattr(attr, field) or getattr(attr, zh_col, None) or ""
 
 
 def _img_to_dict(img) -> dict:
@@ -69,20 +111,7 @@ def _get_main_image_url(p) -> str | None:
     return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
 
 
-def _default_sku(p):
-    if not p.skus:
-        return None
-    default = next((s for s in p.skus if s.is_default), None)
-    if not default:
-        active = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
-        default = active[0] if active else p.skus[0]
-    return default
-
-
 def _to_public(p) -> dict:
-    prices = spu_price_range(p)
-    ds_fields = default_sku_fields(p)
-    active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE)
     return ProductPublic(
         id=p.id,
         spu_code=p.spu_code,
@@ -93,36 +122,7 @@ def _to_public(p) -> dict:
         certifications=p.certifications,
         is_featured=p.is_featured,
         main_image=_get_main_image_url(p),
-        price_min=prices["price_min"],
-        price_max=prices["price_max"],
-        currency=prices["currency"],
-        moq=ds_fields["moq"],
-        unit=ds_fields["unit"],
-        lead_time_min=ds_fields["lead_time_min"],
-        lead_time_max=ds_fields["lead_time_max"],
-        sku_count=active_count,
-    ).model_dump()
-
-
-def _sku_to_public(sku) -> dict:
-    sku_images = [_img_to_dict(img) for img in _alive_images(sku.images or [])]
-    tiers = [PriceTierSchema.model_validate(t).model_dump() for t in (sku.price_tiers or [])]
-    return SkuPublic(
-        id=sku.id,
-        sku_code=sku.sku_code,
-        name=get_localized(sku, "name") or None,
-        color=get_localized(sku, "color") or None,
-        material=get_localized(sku, "material") or None,
-        manufacturer_model=sku.manufacturer_model,
-        price_min=sku.price_min,
-        price_max=sku.price_max,
-        moq=sku.moq,
-        lead_time_min=sku.lead_time_min,
-        lead_time_max=sku.lead_time_max,
-        is_default=sku.is_default,
-        status=sku.status,
-        price_tiers=tiers,
-        images=sku_images,
+        unit=p.unit,
     ).model_dump()
 
 
@@ -159,24 +159,14 @@ async def get_product(
     if p.status != ProductStatus.ACTIVE:
         raise NotFoundError("Product not found")
 
-    tpl_map = {t.attr_key: t for t in await product_svc.get_attr_templates(db, p.category_code)}
-
-    active_skus = [s for s in p.skus if s.status == SkuStatus.ACTIVE]
+    # SPU 级属性(sku_id IS NULL),按 attr_group → attr_key 聚合
     spu_attrs = [a for a in p.attrs if a.sku_id is None]
+    alive_imgs = _alive_images(p.images)
+    locale = get_current_locale()
 
-    # SKU 级属性按 sku_id 分组
-    sku_attr_groups: dict[int, list] = {}
-    for a in p.attrs:
-        if a.sku_id is not None:
-            sku_attr_groups.setdefault(a.sku_id, []).append(a)
+    # 图片按 type 分:MAIN/GALLERY → 主图区;DETAIL → 详情图
+    all_images = [_img_to_dict(img) for img in alive_imgs]
 
-    skus_data = []
-    for s in active_skus:
-        d = _sku_to_public(s)
-        d["attributes"] = _enrich_attrs(sku_attr_groups.get(s.id, []), tpl_map)
-        skus_data.append(d)
-
-    prices = spu_price_range(p)
     data = ProductPublicDetail(
         id=p.id,
         spu_code=p.spu_code,
@@ -190,11 +180,7 @@ async def get_product(
         selling_points=get_localized(p, "selling_points"),
         is_featured=p.is_featured,
         unit=p.unit,
-        currency=p.currency,
-        price_min=prices["price_min"],
-        price_max=prices["price_max"],
-        skus=skus_data,
-        images=[_img_to_dict(img) for img in _alive_images(p.images)],
-        attributes=_enrich_attrs(spu_attrs, tpl_map),
+        attribute_groups=_build_attribute_groups(spu_attrs, alive_imgs, locale),
+        images=all_images,
     ).model_dump()
     return success(data)
