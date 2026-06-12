@@ -41,6 +41,28 @@ class ProductAttrSchema(BaseModel):
     display_name: str | None = None
 
 
+# ---------- 买方分组属性(广告牌模式) ----------
+
+class AttrValue(BaseModel):
+    """属性值 — 支持文本和色板图片两种类型。"""
+    value: str
+    value_type: str = "text"
+    swatch_image: str | None = None
+
+
+class AttrItem(BaseModel):
+    """属性项 — 同 key 多值聚合。"""
+    key: str
+    unit: str | None = None
+    values: List[AttrValue]
+
+
+class AttrGroup(BaseModel):
+    """属性分组 — 按 attr_group 归类。"""
+    group: str
+    items: List[AttrItem]
+
+
 class ProductAttrCreate(BaseModel):
     attr_key: str
     attr_value: str
@@ -215,6 +237,7 @@ class SkuOperator(SkuPublic):
 # ---------- 商品(SPU) — 公开（买方，无供应商） ----------
 
 class ProductPublic(BaseModel):
+    """买方列表 — 广告牌模式,无价格/SKU。"""
     model_config = ConfigDict(from_attributes=True)
     id: int
     spu_code: str
@@ -226,17 +249,11 @@ class ProductPublic(BaseModel):
     certifications: list | None = None
     is_featured: bool
     main_image: str | None = None
-    price_min: Decimal | None = None
-    price_max: Decimal | None = None
-    currency: str | None = None
-    moq: int | None = None
     unit: str | None = None
-    lead_time_min: int | None = None
-    lead_time_max: int | None = None
-    sku_count: int = 0
 
 
 class ProductPublicDetail(BaseModel):
+    """买方详情 — 广告牌模式,去价去 SKU,属性按 group 聚合。"""
     model_config = ConfigDict(from_attributes=True)
     id: int
     spu_code: str
@@ -251,12 +268,8 @@ class ProductPublicDetail(BaseModel):
     selling_points: str | None = None
     is_featured: bool
     unit: str = "PCS"
-    currency: str = "TZS"
-    price_min: Decimal | None = None
-    price_max: Decimal | None = None
-    skus: List[SkuPublic] = []
+    attribute_groups: List[AttrGroup] = []
     images: List[ProductImageSchema] = []
-    attributes: List[ProductAttrSchema] = []
 
 
 # ---------- 商品(SPU) — 运营（含供应商 + i18n 分列原始数据） ----------
