@@ -153,7 +153,15 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
               <td className="border border-gray-200 px-3 py-2">{row.value}</td>
             </tr>
           ))}
-          {groups.map((group) => (
+          {groups.map((group) => {
+            // attr_group 名翻译:优先查 i18n key,未匹配时原样展示
+            const groupKey = `detail.attrGroup_${group.group}` as Parameters<typeof t>[0];
+            let groupLabel: string;
+            try { groupLabel = t(groupKey); } catch { groupLabel = group.group; }
+            // 如果 t() 返回的就是 key 本身说明没匹配,用原值
+            if (groupLabel === groupKey || groupLabel.startsWith("detail.")) groupLabel = group.group;
+
+            return (
             <React.Fragment key={group.group}>
               {/* 分组标题行 */}
               <tr>
@@ -161,7 +169,7 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
                   colSpan={2}
                   className="border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500"
                 >
-                  {group.group}
+                  {groupLabel}
                 </td>
               </tr>
               {group.items.map((item) => (
@@ -174,7 +182,8 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
                 </tr>
               ))}
             </React.Fragment>
-          ))}
+          );
+          })}
         </tbody>
       </table>
       {baseRows.length === 0 && groups.length === 0 && (
