@@ -18,21 +18,14 @@ export interface ProductPublic {
   certifications: string[] | null;
   is_featured: boolean;
   main_image: string | null;
-  price_min: number | null;
-  price_max: number | null;
-  currency: string | null;
-  moq: number | null;
   unit: string | null;
-  lead_time_min: number | null;
-  lead_time_max: number | null;
-  sku_count: number;
 }
 
 export interface ProductListParams {
   category_code?: string;
   keyword?: string;
   featured?: boolean;
-  sort?: "newest" | "price_asc" | "price_desc";
+  sort?: "newest";
   page?: number;
   size?: number;
 }
@@ -47,15 +40,6 @@ export interface ProductListResponse {
 
 // ---------- 详情 ----------
 
-export interface PriceTier {
-  id: number;
-  min_qty: number;
-  max_qty: number | null;
-  unit_price: number;
-  currency: string;
-  label: string | null;
-}
-
 export interface ProductImage {
   id: number;
   image_key: string;
@@ -68,32 +52,24 @@ export interface ProductImage {
   file_size: number | null;
 }
 
-export interface ProductAttr {
-  attr_key: string;
-  attr_value: string;
-  attr_unit: string | null;
-  sort_order: number;
-  sku_id: number | null;
-  display_name: string | null;
+/** 属性值 — 支持文本和色板图片 */
+export interface AttrValue {
+  value: string;
+  value_type: string;
+  swatch_image: string | null;
 }
 
-export interface SkuPublic {
-  id: number;
-  sku_code: string;
-  name: string | null;
-  color: string | null;
-  material: string | null;
-  manufacturer_model: string | null;
-  price_min: number | null;
-  price_max: number | null;
-  moq: number;
-  lead_time_min: number | null;
-  lead_time_max: number | null;
-  is_default: boolean;
-  status: string;
-  price_tiers: PriceTier[];
-  images: ProductImage[];
-  attributes: ProductAttr[];
+/** 属性项 — 同 key 多值聚合 */
+export interface AttrItem {
+  key: string;
+  unit: string | null;
+  values: AttrValue[];
+}
+
+/** 属性分组 — 按 attr_group 归类 */
+export interface AttrGroup {
+  group: string;
+  items: AttrItem[];
 }
 
 export interface ProductPublicDetail {
@@ -110,12 +86,8 @@ export interface ProductPublicDetail {
   selling_points: string | null;
   is_featured: boolean;
   unit: string;
-  currency: string;
-  price_min: number | null;
-  price_max: number | null;
-  skus: SkuPublic[];
+  attribute_groups: AttrGroup[];
   images: ProductImage[];
-  attributes: ProductAttr[];
 }
 
 // ---------- API 函数 ----------

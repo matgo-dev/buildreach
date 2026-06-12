@@ -37,14 +37,10 @@ export function FilterBar({
 
   const sortOptions = [
     { value: "newest", label: t("sortNewest") },
-    { value: "price_asc", label: t("sortPriceAsc") },
-    { value: "price_desc", label: t("sortPriceDesc") },
   ];
 
   // 占位筛选项（后端暂无支持）
   const placeholderFilters = [
-    t("filterPrice"),
-    t("filterMoq"),
     t("filterCertification"),
     t("filterDelivery"),
   ];
