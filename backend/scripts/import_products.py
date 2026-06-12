@@ -643,6 +643,7 @@ def import_offer(
         group = attr_def.get("group", "")
         key_en = attr_def.get("key_en", "")
         key_zh = attr_def.get("key_zh", "")
+        selectable = bool(attr_def.get("selectable", False))
 
         for val in attr_def.get("values", []):
             label_en = val.get("label_en", "")
@@ -676,6 +677,7 @@ def import_offer(
                 attr_group=group[:100] if group else None,
                 value_type=value_type,
                 sort_order=attr_sort,
+                selectable=selectable,
             ))
             attr_sort += 1
 
