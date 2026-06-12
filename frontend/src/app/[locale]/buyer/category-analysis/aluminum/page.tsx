@@ -5,10 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 export default function AluminumSupplyChainPage() {
   return (
-    <div
-      className="fixed top-16 left-60 right-0 bottom-0 flex flex-col bg-white"
-      style={{ zIndex: 10 }}
-    >
+    <div className="flex flex-col -m-6" style={{ height: "calc(100vh - 4rem)" }}>
       {/* 顶部导航栏 */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white shrink-0">
         <Link
