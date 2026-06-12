@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ProductImage } from "@/lib/api/products";
 
 interface ProductGalleryProps {
@@ -30,6 +31,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
   }, [images, skuImages]);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // 切换图片源时重置到第一张
   useEffect(() => {
@@ -38,10 +40,37 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
 
   const activeImage = displayImages[activeIndex] ?? null;
 
+  const openLightbox = useCallback(() => {
+    if (activeImage) setLightboxOpen(true);
+  }, [activeImage]);
+
+  const goPrev = useCallback(() => {
+    setActiveIndex((i) => (i > 0 ? i - 1 : displayImages.length - 1));
+  }, [displayImages.length]);
+
+  const goNext = useCallback(() => {
+    setActiveIndex((i) => (i < displayImages.length - 1 ? i + 1 : 0));
+  }, [displayImages.length]);
+
+  // 键盘导航
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxOpen, goPrev, goNext]);
+
   return (
     <div className="shrink-0">
       {/* 主图 */}
-      <div className="relative w-[320px] h-[260px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+      <div
+        className="relative w-[320px] h-[260px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-pointer"
+        onClick={openLightbox}
+      >
         {activeImage ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -83,6 +112,75 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
               />
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Lightbox 全屏预览 */}
+      {lightboxOpen && activeImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80"
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* 关闭按钮 */}
+          <button
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {/* 计数器 */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 text-sm text-white/70">
+            {activeIndex + 1} / {displayImages.length}
+          </div>
+
+          {/* 上一张 */}
+          {displayImages.length > 1 && (
+            <button
+              className="absolute left-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            >
+              <ChevronLeft className="h-8 w-8" />
+            </button>
+          )}
+
+          {/* 大图 */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={activeImage.full_url}
+            alt=""
+            className="max-h-[85vh] max-w-[90vw] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* 下一张 */}
+          {displayImages.length > 1 && (
+            <button
+              className="absolute right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+            >
+              <ChevronRight className="h-8 w-8" />
+            </button>
+          )}
+
+          {/* 底部缩略图 */}
+          {displayImages.length > 1 && (
+            <div className="absolute bottom-6 flex gap-2 overflow-x-auto px-4">
+              {displayImages.map((img, idx) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setActiveIndex(idx); }}
+                  className={`h-12 w-12 shrink-0 rounded-md border-2 overflow-hidden transition-colors ${
+                    idx === activeIndex ? "border-white" : "border-transparent opacity-50 hover:opacity-80"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.full_url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
