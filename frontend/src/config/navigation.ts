@@ -139,14 +139,9 @@ export const WORKSPACES: Workspace[] = [
       {
         label: "OPERATOR 后台",
         items: [
-          { path: "/operator/dashboard",       labelKey: "adminDashboard",    label: "管理首页",     labelEn: "Dashboard",     icon: LayoutDashboard, resource: null,       requiredPermissions: [],                                description: "全平台数据概览" },
-          { path: "/operator/supplier-review", labelKey: "supplierReview",   label: "供应商审核",   labelEn: "Suppliers",     icon: Inspect,         resource: "supplier", requiredPermissions: [Permissions.SUPPLIER_APPROVE],     description: "入驻审批 / 评分 / 分层" },
           { path: "/operator/products",        labelKey: "productManagement", label: "商品管理",   labelEn: "Products",      icon: Package,         resource: "product",  requiredPermissions: [Permissions.PRODUCT_READ],         description: "SPU 列表 / 上下架 / 进入编辑详情" },
-          { path: "/operator/product-review",  labelKey: "productReview",   label: "商品审核",     labelEn: "Products",      icon: Inspect,         resource: "product",  requiredPermissions: [Permissions.PRODUCT_APPROVE],      description: "SKU 上架 + 国别准入资质审核" },
           { path: "/operator/rfqs",            labelKey: "rfqManagement",   label: "询价管理",     labelEn: "RFQ",           icon: Send,            resource: "rfq",      requiredPermissions: [Permissions.RFQ_READ],             description: "全平台询价单受理与管理" },
           { path: "/operator/orders",          labelKey: "orderOverview",   label: "订单总览",     labelEn: "Orders",        icon: Receipt,         resource: "order",    requiredPermissions: [Permissions.ORDER_READ],           description: "全平台订单监控" },
-          { path: "/operator/countries",       labelKey: "countryData",     label: "国别数据维护", labelEn: "Countries",     icon: Globe,           resource: "country",  requiredPermissions: [Permissions.COUNTRY_WRITE],        description: "8 国 × 品类准入规则维护" },
-          { path: "/operator/risk-cockpit",    labelKey: "riskCockpit",     label: "风控驾驶舱",   labelEn: "Risk Cockpit",  icon: Gauge,           resource: "risk",     requiredPermissions: [Permissions.RISK_READ],            description: "马甲关系 / 价格异常 / 合规雷达" },
         ],
       },
     ],
