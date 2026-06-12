@@ -302,9 +302,10 @@ function ProductDetailContent() {
 
           {/* 右:信息面板 */}
           <div className="min-w-0">
+            <p className="text-[11px] text-gray-400">{product.spu_code}</p>
             <h1 className="text-lg font-semibold leading-snug text-gray-800">{product.name}</h1>
             {product.description && (
-              <p className="mt-1 text-xs text-gray-500 line-clamp-2">{product.description}</p>
+              <p className="mt-1 text-sm text-gray-500 line-clamp-3">{product.description}</p>
             )}
 
             {/* 认证徽章 */}
@@ -320,6 +321,28 @@ function ProductDetailContent() {
                 ))}
               </div>
             )}
+
+            {/* 基础信息:产地/品牌/卖点 */}
+            <div className="mt-3 space-y-1.5 text-sm">
+              {product.origin && (
+                <div className="flex">
+                  <span className="w-16 shrink-0 text-gray-400">{t("detail.origin")}</span>
+                  <span className="text-gray-700">{product.origin}</span>
+                </div>
+              )}
+              {product.brand && (
+                <div className="flex">
+                  <span className="w-16 shrink-0 text-gray-400">{t("detail.brand")}</span>
+                  <span className="text-gray-700">{product.brand}</span>
+                </div>
+              )}
+              {product.selling_points && (
+                <div className="flex">
+                  <span className="w-16 shrink-0 text-gray-400">{t("detail.sellingPoints")}</span>
+                  <span className="text-gray-700">{product.selling_points}</span>
+                </div>
+              )}
+            </div>
 
             {/* 右侧面板内属性:颜色色板 / 厚度 chip 等(多值项) */}
             {inlineAttrs.length > 0 && (
@@ -361,44 +384,37 @@ function ProductDetailContent() {
         </div>
       </div>
 
-      {/* ===== 商品详情图(DETAIL 类型竖排) ===== */}
-      {detailImages.length > 0 && (
+      {/* ===== 商品详情(文字 + DETAIL 图竖排) ===== */}
+      {(detailImages.length > 0 || product.description || product.selling_points) && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.description")}</h2>
-          <div className="space-y-3">
-            {detailImages.map((img) => (
-              <div key={img.id} className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.full_url}
-                  alt=""
-                  className="w-full object-contain"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-          {/* 文字描述/卖点 */}
-          {product.selling_points && (
-            <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-              {product.selling_points}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* 如果没有 DETAIL 图但有文字描述 */}
-      {detailImages.length === 0 && (product.description || product.selling_points) && (
-        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-800">{t("detail.description")}</h2>
+          {/* 文字描述在上 */}
           {product.selling_points && (
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+            <div className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
               {product.selling_points}
             </div>
           )}
-          {product.description && !product.selling_points && (
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+          {product.description && (
+            <div className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
               {product.description}
+            </div>
+          )}
+
+          {/* DETAIL 图片竖排 */}
+          {detailImages.length > 0 && (
+            <div className="space-y-3">
+              {detailImages.map((img) => (
+                <div key={img.id} className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.full_url}
+                    alt=""
+                    className="w-full object-contain"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
