@@ -67,6 +67,7 @@ function AttributeGroups({ groups }: { groups: AttrGroup[] }) {
                   <tr key={item.key} className="border-b border-gray-100">
                     <td className="w-1/3 px-3 py-2 text-gray-500">{item.key}</td>
                     <td className="px-3 py-2 text-gray-800">
+                      {/* TODO: 色板图展示 — 当 value_type=swatch 时渲染缩略图/色块,待定 */}
                       {item.values.map((v) => v.value).join(", ")}
                       {item.unit ? ` ${item.unit}` : ""}
                     </td>

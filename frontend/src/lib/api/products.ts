@@ -19,6 +19,14 @@ export interface ProductPublic {
   is_featured: boolean;
   main_image: string | null;
   unit: string | null;
+  // 兼容字段:买方 API 已不返回,RFQ 模块仍引用
+  price_min?: number | null;
+  price_max?: number | null;
+  currency?: string | null;
+  moq?: number | null;
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  sku_count?: number;
 }
 
 export interface ProductListParams {
@@ -88,6 +96,51 @@ export interface ProductPublicDetail {
   unit: string;
   attribute_groups: AttrGroup[];
   images: ProductImage[];
+  // 兼容字段:买方 API 已不返回,RFQ 模块仍引用(后续迁移到运营 API)
+  skus?: SkuPublic[];
+  attributes?: ProductAttr[];
+  currency?: string;
+  price_min?: number | null;
+  price_max?: number | null;
+}
+
+// ---------- 兼容类型(RFQ 等模块仍引用,后续随 SKU 维度定调后清理) ----------
+
+export interface PriceTier {
+  id: number;
+  min_qty: number;
+  max_qty: number | null;
+  unit_price: number;
+  currency: string;
+  label: string | null;
+}
+
+export interface ProductAttr {
+  attr_key: string;
+  attr_value: string;
+  attr_unit: string | null;
+  sort_order: number;
+  sku_id: number | null;
+  display_name: string | null;
+}
+
+export interface SkuPublic {
+  id: number;
+  sku_code: string;
+  name: string | null;
+  color: string | null;
+  material: string | null;
+  manufacturer_model: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  moq: number;
+  lead_time_min: number | null;
+  lead_time_max: number | null;
+  is_default: boolean;
+  status: string;
+  price_tiers: PriceTier[];
+  images: ProductImage[];
+  attributes: ProductAttr[];
 }
 
 // ---------- API 函数 ----------
