@@ -16,7 +16,7 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 
 @router.get("", summary="商品分类扁平列表(可按 level / parent_code 过滤)")
 async def list_categories(
-    level: int | None = Query(None, ge=1, le=3, description="可选,只返回某一层(1/2/3)"),
+    level: int | None = Query(None, ge=1, description="可选,只返回某一层"),
     parent_code: str | None = Query(None, description="可选,只返回某父节点(按 code)的子级"),
     is_active: bool = Query(True, description="默认只返回启用的"),
     db: AsyncSession = Depends(get_db),
