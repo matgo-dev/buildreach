@@ -26,7 +26,7 @@ class CategoryLevel:
 class Category(Base, TimestampUpdateMixin):
     __tablename__ = "categories"
     __table_args__ = (
-        CheckConstraint("level IN (1, 2, 3)", name="ck_categories_level"),
+        CheckConstraint("level >= 1", name="ck_categories_level"),
         Index("ix_categories_parent_level", "parent_code", "level"),
         Index("ix_categories_level_active_sort", "level", "is_active", "sort_order"),
     )
