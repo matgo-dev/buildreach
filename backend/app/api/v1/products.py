@@ -57,7 +57,10 @@ def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
         key_map = group_map[group_name]
 
         if key not in key_map:
-            key_map[key] = {"unit": attr.attr_unit, "values": []}
+            key_map[key] = {"unit": attr.attr_unit, "selectable": False, "values": []}
+        # 同 key 多行 selectable 一致,取其一(有 True 即 True)
+        if getattr(attr, "selectable", False):
+            key_map[key]["selectable"] = True
 
         swatch = None
         if attr.value_type == "image" and attr.spec_value:
@@ -72,7 +75,7 @@ def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
     for group_name, key_map in group_map.items():
         items = []
         for key, info in key_map.items():
-            items.append(AttrItem(key=key, unit=info["unit"], values=info["values"]).model_dump())
+            items.append(AttrItem(key=key, unit=info["unit"], selectable=info["selectable"], values=info["values"]).model_dump())
         result.append(AttrGroup(group=group_name, items=items).model_dump())
     return result
 

@@ -6,7 +6,7 @@ sku_id 非空 = 该 SKU 的规格属性。
 """
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -56,5 +56,9 @@ class ProductAttr(Base):
     attr_group: Mapped[str | None] = mapped_column(String(100), nullable=True)
     attr_key_zh: Mapped[str | None] = mapped_column(String(50), nullable=True)
     attr_value_zh: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 该属性是否作为可选轴(如颜色、厚度),由爬数 offer.json 提供
+    selectable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false",
+    )
 
     product: Mapped["Product"] = relationship("Product", back_populates="attrs")
