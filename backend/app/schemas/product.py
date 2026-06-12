@@ -54,6 +54,7 @@ class AttrItem(BaseModel):
     """属性项 — 同 key 多值聚合。"""
     key: str
     unit: str | None = None
+    selectable: bool = False
     values: List[AttrValue]
 
 
