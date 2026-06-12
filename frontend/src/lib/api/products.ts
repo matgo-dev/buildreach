@@ -72,6 +72,8 @@ export interface AttrItem {
   key: string;
   unit: string | null;
   values: AttrValue[];
+  /** 后端标记:true=可选规格轴(颜色/厚度),false=纯展示(特性等) */
+  selectable: boolean;
 }
 
 /** 属性分组 — 按 attr_group 归类 */

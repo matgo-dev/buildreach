@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -81,38 +81,70 @@ function hasSwatchImages(item: AttrItem): boolean {
   return item.values.some((v) => v.value_type === "image" && v.swatch_image);
 }
 
-function InlineAttrItem({ item }: { item: AttrItem }) {
+function InlineAttrItem({
+  item,
+  selectedValue,
+  onSelect,
+}: {
+  item: AttrItem;
+  selectedValue?: string;
+  onSelect?: (key: string, value: string) => void;
+}) {
   const isSwatch = hasSwatchImages(item);
+  const canSelect = item.selectable && !!onSelect;
 
   return (
     <div className="mb-4">
       <div className="mb-1.5 text-xs font-semibold text-gray-600">{item.key}</div>
       {isSwatch ? (
         <div className="flex flex-wrap gap-2">
-          {item.values.map((v, i) =>
-            v.value_type === "image" && v.swatch_image ? (
-              <SwatchThumb key={i} src={v.swatch_image} alt={v.value} />
-            ) : (
-              <div
+          {item.values.map((v, i) => {
+            const isSelected = canSelect && selectedValue === v.value;
+            const swatchOk = v.value_type === "image" && v.swatch_image;
+            return (
+              <button
                 key={i}
-                className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-600"
+                type="button"
+                disabled={!canSelect}
+                onClick={() => canSelect && onSelect(item.key, v.value)}
+                className={`relative rounded-md border-2 transition-colors ${
+                  isSelected
+                    ? "border-[#0D4D4D] ring-1 ring-[#0D4D4D]/30"
+                    : "border-transparent hover:border-gray-300"
+                } ${canSelect ? "cursor-pointer" : "cursor-default"}`}
               >
-                {v.value}
-              </div>
-            )
-          )}
+                {swatchOk ? (
+                  <SwatchThumb src={v.swatch_image!} alt={v.value} />
+                ) : (
+                  <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-600">
+                    {v.value}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {item.values.map((v, i) => (
-            <span
-              key={i}
-              className="rounded-md border-[1.5px] border-gray-200 bg-white px-3.5 py-1.5 text-xs text-gray-600"
-            >
-              {v.value}
-              {item.unit ? ` ${item.unit}` : ""}
-            </span>
-          ))}
+          {item.values.map((v, i) => {
+            const isSelected = canSelect && selectedValue === v.value;
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={!canSelect}
+                onClick={() => canSelect && onSelect(item.key, v.value)}
+                className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
+                  isSelected
+                    ? "border-[#0D4D4D] bg-[#e6f3f3] text-[#0D4D4D] font-medium"
+                    : "border-gray-200 bg-white text-gray-600"
+                } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
+              >
+                {v.value}
+                {item.unit ? ` ${item.unit}` : ""}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -308,6 +340,22 @@ function ProductDetailContent() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("specifications");
 
+  // 规格选中态:仅前端本地,刷新即重置
+  const [specSelection, setSpecSelection] = useState<Record<string, string>>({});
+
+  // 点选/取消规格值(单选:每个 key 选一个值)
+  const handleSpecSelect = useCallback((key: string, value: string) => {
+    setSpecSelection((prev) => {
+      if (prev[key] === value) {
+        // 取消选中
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: value };
+    });
+  }, []);
+
   const breadcrumb = useMemo(() => {
     if (!product || !categoryTree.length) return [];
     return buildBreadcrumb(categoryTree, product.category_code);
@@ -460,18 +508,24 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 属性:颜色色板 / 厚度 chip(多值项) */}
+            {/* 属性:颜色色板 / 厚度 chip(多值项);selectable=true 可点选 */}
             {inlineAttrs.length > 0 && (
               <div className="mt-4">
                 {inlineAttrs.map((item) => (
-                  <InlineAttrItem key={item.key} item={item} />
+                  <InlineAttrItem
+                    key={item.key}
+                    item={item}
+                    selectedValue={specSelection[item.key]}
+                    onSelect={handleSpecSelect}
+                  />
                 ))}
               </div>
             )}
 
-            {/* 操作按钮 */}
+            {/* 操作按钮 — 出口仍置灰,选中态仅前端本地,不发请求、不带出 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定 */}
+              {/* TODO: ① 带入询价:询价行粒度(SPU vs Product+selected_specs)定调后(张总/温总),把本地 specSelection 接到询价提交 */}
+              {/* TODO: ② SKU 轴去重汇总:手工建带 SKU 商品的规格轴,后端去重汇总后也纳入可选(需后端增量) */}
               <button
                 type="button"
                 disabled
