@@ -1,27 +1,27 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { MessageCircle, Search, ShieldCheck, Truck, CreditCard, FileCheck } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { MessageCircle, Send, ShieldCheck, Truck, CreditCard, FileCheck } from "lucide-react";
 
 export function RightSidebar() {
   const t = useTranslations("mall");
 
   return (
     <div className="space-y-3">
-      {/* Quick Sourcing */}
+      {/* Quick Sourcing → 跳转询价篮 */}
       <div className="rounded-xl border border-green-200 bg-green-50 p-4">
         <div className="flex items-center gap-2 mb-2">
-          <Search className="h-4 w-4 text-green-700" />
+          <Send className="h-4 w-4 text-green-700" />
           <span className="text-sm font-bold text-green-700">{t("quickSourcing")}</span>
         </div>
         <p className="mb-3 text-xs text-green-600">{t("quickSourcingHint")}</p>
-        <button
-          disabled
-          title={t("comingSoon")}
-          className="w-full rounded-lg bg-[#0D4D4D] py-2 text-xs font-semibold text-white opacity-60 cursor-not-allowed"
+        <Link
+          href="/buyer/cart"
+          className="block w-full rounded-lg bg-[#0D4D4D] py-2 text-center text-xs font-semibold text-white hover:bg-[#0D4D4D]/90 transition-colors"
         >
           {t("requestQuote")}
-        </button>
+        </Link>
       </div>
 
       {/* WhatsApp */}

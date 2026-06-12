@@ -1,10 +1,11 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useAuthStore } from "@/stores/authStore";
+import { useSidebarStore } from "@/stores/uiStore";
 
 /**
  * 工作台 Layout(用于 buyer / supplier / operator / admin 路由)。
@@ -16,6 +17,10 @@ import { useAuthStore } from "@/stores/authStore";
 export function AppShell({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const isBuyer = user?.roles.includes("BUYER") ?? false;
+
+  // 工作台已有固定侧边栏，确保 overlay 状态关闭
+  const close = useSidebarStore((s) => s.close);
+  useEffect(() => { close(); }, [close]);
 
   return (
     <RouteGuard>
