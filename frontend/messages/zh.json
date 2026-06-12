@@ -340,6 +340,10 @@
       "moqWarning": "最低起订量: {moq} {unit}",
       "subtotal": "小计",
       "addToBasket": "加入询价篮",
+      "addToInquiry": "加入询价单",
+      "contactPlatform": "联系平台",
+      "startInquiry": "发起询价",
+      "comingSoon": "功能完善中",
       "requestQuoteNow": "立即询价",
       "tabSpecs": "产品规格",
       "tabDescription": "产品描述",
@@ -581,7 +585,8 @@
     "referencePriceUnavailable": "—",
     "deletePartialFail": "{failed} 件删除失败，已刷新列表",
     "productInfo": "商品信息",
-    "quantity": "数量"
+    "quantity": "数量",
+    "comingSoon": "功能完善中"
   },
   "rfq": {
     "title": "询价管理",

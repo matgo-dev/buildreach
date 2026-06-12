@@ -340,6 +340,10 @@
       "moqWarning": "Minimum order: {moq} {unit}",
       "subtotal": "Subtotal",
       "addToBasket": "Add to Quote Basket",
+      "addToInquiry": "Add to inquiry list",
+      "contactPlatform": "Contact us",
+      "startInquiry": "Start inquiry",
+      "comingSoon": "Coming soon",
       "requestQuoteNow": "Request Quote Now",
       "tabSpecs": "Specifications",
       "tabDescription": "Description",
@@ -581,7 +585,8 @@
     "referencePriceUnavailable": "—",
     "deletePartialFail": "{failed} items failed to remove, list refreshed",
     "productInfo": "Product Info",
-    "quantity": "Quantity"
+    "quantity": "Quantity",
+    "comingSoon": "Coming soon"
   },
   "rfq": {
     "title": "My Inquiries",
