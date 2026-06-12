@@ -163,14 +163,14 @@ async def _generate_sku_code(
 async def create_product(
     db: AsyncSession, data: ProductCreate, operator_id: int,
 ) -> Product:
-    # 品类存在 + 叶子校验
+    # 品类存在 + 叶子校验(叶子 = DB 中无子节点,不硬编码层级)
     cat = await db.execute(
         select(Category).where(Category.code == data.category_code)
     )
     category = cat.scalar_one_or_none()
     if not category:
         raise NotFoundError("Category not found")
-    if category.level != 3:
+    if await _has_children(db, data.category_code):
         raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
@@ -1169,13 +1169,13 @@ async def create_product_aggregate(
 
     service 持 commit；审计以 commit=False 写入，与业务写共用同一次 commit。
     """
-    # 品类校验
+    # 品类校验(叶子 = DB 中无子节点,不硬编码层级)
     cat = (await db.execute(
         select(Category).where(Category.code == data.category_code)
     )).scalar_one_or_none()
     if not cat:
         raise NotFoundError("Category not found")
-    if cat.level != 3:
+    if await _has_children(db, data.category_code):
         raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
@@ -1607,6 +1607,17 @@ async def get_purchasable_sku(
 
 
 # ── 内部工具 ─────────────────────────────────────────────
+
+async def _has_children(db: AsyncSession, category_code: str) -> bool:
+    """判断分类是否有子节点(叶子 = 无子节点,不硬编码层级)。"""
+    child = (await db.execute(
+        select(Category.code).where(
+            Category.parent_code == category_code,
+            Category.is_active.is_(True),
+        ).limit(1)
+    )).scalar_one_or_none()
+    return child is not None
+
 
 async def _get_product_or_404(
     db: AsyncSession, product_id: int, *, load_relations: bool = False,

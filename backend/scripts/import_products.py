@@ -446,13 +446,119 @@ def close_run(
 # ────────────────────── 分类导入(Phase 4 实现) ──────────────────────
 
 
-def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, str]:
-    """将 categories_raw.json 全层存入 categories 表。
+def _split_seq(code: str) -> int:
+    """从 code 末尾段取整数序号:'01'→1, '01.005'→5。"""
+    return int(code.split(".")[-1])
 
-    返回 slug → code 映射。
+
+def _next_seq(used: set[int]) -> int:
+    seq = 1
+    while seq in used:
+        seq += 1
+    return seq
+
+
+def _make_code(parent_code: str | None, seq: int, level: int) -> str:
+    """生成分类 code:L1 两位,L2+ 三位,父子用点分隔。"""
+    if level == 1:
+        return f"{seq:02d}"
+    assert parent_code is not None
+    return f"{parent_code}.{seq:03d}"
+
+
+def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, str]:
+    """将 categories_raw.json 全层存入 categories 表,返回 slug → code 映射。
+
+    算法沿用 import_categories.py:按 (name_zh, parent_code) 匹配现有节点,
+    沿用 code;新节点取空号生成稳定 code。append-only,永不物理删。
     """
-    # Phase 4 填充
-    raise NotImplementedError("Phase 4")
+    # 加载所有现有分类
+    existing_by_natural: dict[tuple[str, str | None], Category] = {}
+    used_seq_by_parent: dict[str | None, set[int]] = {}
+
+    for c in db.execute(select(Category)).scalars().all():
+        existing_by_natural[(c.name_zh, c.parent_code)] = c
+        used_seq_by_parent.setdefault(c.parent_code, set()).add(_split_seq(c.code))
+
+    slug_to_code: dict[str, str] = {}
+    inserted = 0
+    updated = 0
+
+    def _upsert_node(node: CategoryNode, parent_code: str | None) -> str:
+        nonlocal inserted, updated
+
+        # name_en 也纳入匹配辅助,但 natural key 仍以 name_zh 为主
+        natural_key = (node.name_zh, parent_code)
+        existing = existing_by_natural.get(natural_key)
+
+        if existing:
+            code = existing.code
+            # 更新 name_en(抓取可能比 Excel 更完整)
+            changed = False
+            if node.name_en and existing.name_en != node.name_en:
+                existing.name_en = node.name_en
+                changed = True
+            if existing.level != node.level:
+                existing.level = node.level
+                changed = True
+            if not existing.is_active:
+                existing.is_active = True
+                changed = True
+            if changed:
+                existing.updated_at = _utcnow()
+                updated += 1
+        else:
+            # 也尝试用 name_en + parent 匹配(九云数据可能只有英文)
+            en_key = (node.name_en, parent_code) if node.name_en else None
+            existing_by_en = existing_by_natural.get(en_key) if en_key else None
+            if existing_by_en:
+                code = existing_by_en.code
+                if node.name_zh and existing_by_en.name_zh != node.name_zh:
+                    existing_by_en.name_zh = node.name_zh
+                if node.name_en and existing_by_en.name_en != node.name_en:
+                    existing_by_en.name_en = node.name_en
+                existing_by_en.is_active = True
+                existing_by_en.updated_at = _utcnow()
+                updated += 1
+            else:
+                # 新建
+                used = used_seq_by_parent.setdefault(parent_code, set())
+                seq = _next_seq(used)
+                used.add(seq)
+                code = _make_code(parent_code, seq, node.level)
+
+                now = _utcnow()
+                cat = Category(
+                    code=code,
+                    name_zh=node.name_zh or node.name_en or node.slug,
+                    name_en=node.name_en or None,
+                    level=node.level,
+                    parent_code=parent_code,
+                    sort_order=0,
+                    is_active=True,
+                    created_at=now,
+                    updated_at=now,
+                )
+                db.add(cat)
+                db.flush()  # 让后续子节点的 FK 可引用
+                # 注册到 lookup 避免重复
+                existing_by_natural[natural_key] = cat
+                inserted += 1
+
+        slug_to_code[node.slug] = code
+        node.db_code = code
+
+        # 递归子节点
+        for child in node.children:
+            _upsert_node(child, code)
+
+        return code
+
+    for root in cat_tree:
+        _upsert_node(root, None)
+
+    log.info("  分类导入: 新增=%d, 更新=%d, 总映射=%d", inserted, updated, len(slug_to_code))
+    return slug_to_code
 
 
 # ────────────────────── 商品导入(Phase 5 实现) ──────────────────────
