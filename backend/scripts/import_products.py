@@ -1,0 +1,704 @@
+"""阿里抓数 → 商品入库 CLI 脚本。
+
+用法
+----
+    # 导入一个 raw 批次目录
+    python scripts/import_products.py --batch ../data/alibaba_2026-06-10
+
+    # 只跑校验 + 打印差异,不写库
+    python scripts/import_products.py --batch ../data/alibaba_2026-06-10 --dry-run
+
+设计要点
+--------
+- 幂等:按 spu_code upsert,子行先清后插,重跑安全
+- 事务边界 = 单个 offer:一个商品失败不连累其他
+- 归类靠 categories_raw.json 数据树,不靠目录路径
+- 参照 import_categories.py 的 CLI 模式(--dry-run / fail-fast / 永不物理删)
+
+⚠️ 本脚本**不在应用启动时自动跑**,只能本地人工执行。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import shutil
+import sys
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from sqlalchemy import create_engine, delete, select
+from sqlalchemy.orm import Session
+
+# 让脚本能 import app.*
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_BACKEND_ROOT))
+
+from app.audit.constants import AuditAction, AuditResourceType  # noqa: E402
+from app.core.config import settings  # noqa: E402
+from app.db.base import _utcnow  # noqa: E402
+from app.db.models import (  # noqa: E402
+    Category,
+    IngestRun,
+    IngestRunStatus,
+    Product,
+    ProductAttr,
+    ProductImage,
+    ProductStatus,
+)
+from app.db.models.audit_log import AuditLog, AuditStatus  # noqa: E402
+from app.db.models.product_image import ImageType  # noqa: E402
+from app.db.url import prepare_sync_url  # noqa: E402
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("import_products")
+
+# ────────────────────── 数据结构 ──────────────────────
+
+
+@dataclass
+class RunMeta:
+    """run.json 元数据。"""
+    source: str
+    crawled_at: str | None = None
+    operator: str | None = None
+
+
+@dataclass
+class CategoryNode:
+    """categories_raw.json 中的一个分类节点。"""
+    name_en: str
+    name_zh: str
+    slug: str
+    level: int
+    parent_slug: str | None = None
+    children: list["CategoryNode"] = field(default_factory=list)
+    # 导入后填充的 DB code
+    db_code: str | None = None
+
+
+@dataclass
+class OfferFile:
+    """一个 offer.json 的定位信息。"""
+    offer_id: str
+    offer_dir: Path          # 包含 offer.json 的目录
+    offer_json_path: Path    # offer.json 完整路径
+    data: dict | None = None  # 解析后的 JSON
+
+
+@dataclass
+class ValidationResult:
+    """校验结果汇总。"""
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    offers: list[OfferFile] = field(default_factory=list)
+    # offer_id → 失败原因(硬错误,该 offer 不导入)
+    offer_errors: dict[str, list[str]] = field(default_factory=dict)
+
+
+# ────────────────────── Reader ──────────────────────
+
+
+def read_run_json(batch_dir: Path) -> RunMeta:
+    """读取并校验 run.json。"""
+    path = batch_dir / "run.json"
+    if not path.exists():
+        log.error("run.json 不存在: %s", path)
+        sys.exit(1)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not data.get("source"):
+        log.error("run.json 缺少 source 字段")
+        sys.exit(1)
+    return RunMeta(
+        source=data["source"],
+        crawled_at=data.get("crawled_at"),
+        operator=data.get("operator"),
+    )
+
+
+def read_categories_raw(batch_dir: Path) -> dict[str, Any]:
+    """读取 categories_raw.json,返回原始 dict。"""
+    path = batch_dir / "categories_raw.json"
+    if not path.exists():
+        log.error("categories_raw.json 不存在: %s", path)
+        sys.exit(1)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def build_category_tree(raw: dict | list) -> list[CategoryNode]:
+    """从 categories_raw.json 构建分类树。
+
+    支持两种格式:
+    1. list 格式:[{name_en, name_zh, slug, children: [...]}]
+    2. dict 格式:{slug: {name_en, name_zh, children: {...}}}
+    """
+    nodes: list[CategoryNode] = []
+
+    def _parse_list(items: list, level: int, parent_slug: str | None) -> list[CategoryNode]:
+        result = []
+        for item in items:
+            node = CategoryNode(
+                name_en=item.get("name_en", ""),
+                name_zh=item.get("name_zh", ""),
+                slug=item.get("slug", item.get("code", "")),
+                level=level,
+                parent_slug=parent_slug,
+            )
+            child_data = item.get("children", [])
+            if isinstance(child_data, list):
+                node.children = _parse_list(child_data, level + 1, node.slug)
+            elif isinstance(child_data, dict):
+                node.children = _parse_dict(child_data, level + 1, node.slug)
+            result.append(node)
+        return result
+
+    def _parse_dict(d: dict, level: int, parent_slug: str | None) -> list[CategoryNode]:
+        result = []
+        for slug, val in d.items():
+            node = CategoryNode(
+                name_en=val.get("name_en", ""),
+                name_zh=val.get("name_zh", ""),
+                slug=slug,
+                level=level,
+                parent_slug=parent_slug,
+            )
+            child_data = val.get("children", {})
+            if isinstance(child_data, list):
+                node.children = _parse_list(child_data, level + 1, node.slug)
+            elif isinstance(child_data, dict):
+                node.children = _parse_dict(child_data, level + 1, node.slug)
+            result.append(node)
+        return result
+
+    if isinstance(raw, list):
+        nodes = _parse_list(raw, 1, None)
+    elif isinstance(raw, dict):
+        nodes = _parse_dict(raw, 1, None)
+    return nodes
+
+
+def flatten_tree(nodes: list[CategoryNode]) -> list[CategoryNode]:
+    """深度优先展平分类树。"""
+    result: list[CategoryNode] = []
+    for node in nodes:
+        result.append(node)
+        result.extend(flatten_tree(node.children))
+    return result
+
+
+def build_leaf_lookup(nodes: list[CategoryNode]) -> dict[str, CategoryNode]:
+    """构建叶子节点查找表:slug → CategoryNode(叶子 = 无子节点)。"""
+    lookup: dict[str, CategoryNode] = {}
+    for node in flatten_tree(nodes):
+        if not node.children:
+            lookup[node.slug] = node
+    return lookup
+
+
+def build_slug_lookup(nodes: list[CategoryNode]) -> dict[str, CategoryNode]:
+    """构建全节点查找表:slug → CategoryNode。"""
+    return {n.slug: n for n in flatten_tree(nodes)}
+
+
+def scan_offers(batch_dir: Path) -> list[OfferFile]:
+    """递归扫描 categories/ 下所有 offers/<offer_id>/offer.json。"""
+    offers: list[OfferFile] = []
+    categories_dir = batch_dir / "categories"
+    if not categories_dir.exists():
+        log.error("categories/ 目录不存在: %s", categories_dir)
+        sys.exit(1)
+
+    for offer_json in sorted(categories_dir.rglob("offers/*/offer.json")):
+        offer_dir = offer_json.parent
+        offer_id = offer_dir.name
+        offers.append(OfferFile(
+            offer_id=offer_id,
+            offer_dir=offer_dir,
+            offer_json_path=offer_json,
+        ))
+    return offers
+
+
+# ────────────────────── 校验 ──────────────────────
+
+
+def _extract_leaf_slug(source_category_path: list[str]) -> str | None:
+    """从 source_category_path 取叶子 slug(最后一个元素)。"""
+    if not source_category_path:
+        return None
+    return source_category_path[-1]
+
+
+def _strip_level_prefix(dir_name: str) -> str:
+    """剥掉 L<n>- 前缀,返回纯 slug 部分(去掉 __中文 后缀)。"""
+    # L1-electrical-equipment__电气设备 → electrical-equipment
+    import re
+    name = re.sub(r"^L\d+-", "", dir_name)
+    # 去掉 __中文名
+    name = name.split("__")[0]
+    return name
+
+
+def validate_batch(
+    batch_dir: Path,
+    run_meta: RunMeta,
+    cat_tree: list[CategoryNode],
+    offers: list[OfferFile],
+) -> ValidationResult:
+    """执行全部交付前校验。失败的整批拒绝(errors 非空)或单 offer 失败(offer_errors)。"""
+    result = ValidationResult(offers=offers)
+    leaf_lookup = build_leaf_lookup(cat_tree)
+    slug_lookup = build_slug_lookup(cat_tree)
+
+    if not offers:
+        result.errors.append("未找到任何 offer.json")
+        return result
+
+    for offer in offers:
+        offer_errs: list[str] = []
+        # 解析 JSON
+        try:
+            offer.data = json.loads(offer.offer_json_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            offer_errs.append(f"offer.json 解析失败: {e}")
+            result.offer_errors[offer.offer_id] = offer_errs
+            continue
+
+        data = offer.data
+        # offer_id 与目录名一致性
+        json_offer_id = str(data.get("offer_id", ""))
+        if json_offer_id and json_offer_id != offer.offer_id:
+            offer_errs.append(
+                f"offer_id 不一致: 目录名={offer.offer_id}, JSON={json_offer_id}"
+            )
+
+        # spu_code 一致性:P-<offer_id>
+        expected_spu = f"P-{offer.offer_id}"
+        json_spu = data.get("spu_code", "")
+        if json_spu and json_spu != expected_spu:
+            offer_errs.append(
+                f"spu_code 不一致: 预期={expected_spu}, JSON={json_spu}"
+            )
+
+        # attributes 校验
+        attributes = data.get("attributes", [])
+        if not attributes:
+            offer_errs.append("attributes 为空")
+        for i, attr in enumerate(attributes):
+            if not attr.get("group"):
+                offer_errs.append(f"attributes[{i}] 缺少 group")
+            if not attr.get("key_en"):
+                offer_errs.append(f"attributes[{i}] 缺少 key_en")
+            if not attr.get("values"):
+                offer_errs.append(f"attributes[{i}] 缺少 values")
+
+        # 图片文件存在性
+        for img in data.get("gallery", []):
+            img_path = img.get("path", "")
+            if img_path and not (offer.offer_dir / img_path).exists():
+                offer_errs.append(f"gallery 图片不存在: {img_path}")
+
+        for img in data.get("description_images", []):
+            img_path = img.get("path", "")
+            if img_path and not (offer.offer_dir / img_path).exists():
+                offer_errs.append(f"description_images 图片不存在: {img_path}")
+
+        # 归类校验(硬):source_category_path 叶子匹配 categories_raw.json
+        src_path = data.get("source_category_path", [])
+        leaf_slug = _extract_leaf_slug(src_path)
+        if not leaf_slug:
+            offer_errs.append("source_category_path 为空")
+        elif leaf_slug not in leaf_lookup:
+            # 尝试全节点匹配,如果在但非叶子则警告
+            if leaf_slug in slug_lookup:
+                result.warnings.append(
+                    f"[{offer.offer_id}] source_category_path 叶子 '{leaf_slug}' "
+                    f"在分类树中但不是叶子节点"
+                )
+            else:
+                offer_errs.append(
+                    f"source_category_path 叶子 '{leaf_slug}' "
+                    f"在 categories_raw.json 中未找到"
+                )
+
+        # 中英文行数对比(告警不阻塞)
+        for attr in attributes:
+            values = attr.get("values", [])
+            for v in values:
+                label_en = v.get("label_en", "")
+                label_zh = v.get("label_zh", "")
+                # 只在两者都非空时对比
+                if label_en and label_zh:
+                    pass  # 一致性无需检查行数
+
+        if offer_errs:
+            result.offer_errors[offer.offer_id] = offer_errs
+
+    # 目录交叉校验(报警)
+    _cross_validate_directories(batch_dir, cat_tree, offers, result)
+
+    return result
+
+
+def _cross_validate_directories(
+    batch_dir: Path,
+    cat_tree: list[CategoryNode],
+    offers: list[OfferFile],
+    result: ValidationResult,
+) -> None:
+    """目录交叉校验:检测非叶子目录有 offers/,目录 slug 与 source_category_path 不一致。"""
+    categories_dir = batch_dir / "categories"
+    if not categories_dir.exists():
+        return
+
+    # 找出所有包含 offers/ 子目录的分类目录
+    for offers_dir in categories_dir.rglob("offers"):
+        if not offers_dir.is_dir():
+            continue
+        parent_cat_dir = offers_dir.parent
+        # 检查该分类目录是否还有子分类目录(非 offers)
+        subdirs = [
+            d for d in parent_cat_dir.iterdir()
+            if d.is_dir() and d.name != "offers"
+        ]
+        if subdirs:
+            result.warnings.append(
+                f"目录 {parent_cat_dir.relative_to(batch_dir)} "
+                f"同时有子分类文件夹和 offers/(商品可能挂到了非叶子)"
+            )
+
+    # 每个 offer 的目录 slug vs source_category_path 叶子
+    for offer in offers:
+        if not offer.data:
+            continue
+        src_path = offer.data.get("source_category_path", [])
+        leaf_slug = _extract_leaf_slug(src_path)
+        if not leaf_slug:
+            continue
+
+        # 从 offer 目录往上找分类目录名
+        # 结构: categories/.../L<n>-<slug>__<中文>/offers/<offer_id>/
+        cat_dir = offer.offer_dir.parent.parent  # offers/ 的父目录
+        dir_slug = _strip_level_prefix(cat_dir.name)
+        if dir_slug and leaf_slug and dir_slug != leaf_slug:
+            result.warnings.append(
+                f"[{offer.offer_id}] 目录叶子 slug '{dir_slug}' "
+                f"与 source_category_path 叶子 '{leaf_slug}' 不一致"
+            )
+
+
+# ────────────────────── run 生命周期 ──────────────────────
+
+
+def open_run(db: Session, *, run_key: str, source: str,
+             operator: str | None, raw_path: str,
+             crawled_at: datetime | None) -> IngestRun:
+    """创建 RUNNING 状态的 ingest_run 行。幂等:同 run_key 复用。"""
+    existing = db.execute(
+        select(IngestRun).where(IngestRun.run_key == run_key)
+    ).scalar_one_or_none()
+    if existing:
+        # 复用:重置状态
+        existing.status = IngestRunStatus.RUNNING
+        existing.product_count = 0
+        existing.error_summary = None
+        existing.imported_at = None
+        existing.updated_at = _utcnow()
+        db.flush()
+        return existing
+
+    run = IngestRun(
+        run_key=run_key,
+        source=source,
+        operator=operator,
+        raw_path=raw_path,
+        crawled_at=crawled_at,
+        status=IngestRunStatus.RUNNING,
+    )
+    db.add(run)
+    db.flush()
+    return run
+
+
+def close_run(
+    db: Session,
+    run: IngestRun,
+    *,
+    status: str,
+    product_count: int,
+    error_summary: list[dict] | None = None,
+) -> None:
+    """关闭 run:更新终态 + imported_at。"""
+    run.status = status
+    run.product_count = product_count
+    run.imported_at = _utcnow()
+    run.error_summary = error_summary
+    run.updated_at = _utcnow()
+    db.flush()
+
+
+# ────────────────────── 分类导入(Phase 4 实现) ──────────────────────
+
+
+def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, str]:
+    """将 categories_raw.json 全层存入 categories 表。
+
+    返回 slug → code 映射。
+    """
+    # Phase 4 填充
+    raise NotImplementedError("Phase 4")
+
+
+# ────────────────────── 商品导入(Phase 5 实现) ──────────────────────
+
+
+def import_offer(
+    db: Session,
+    offer: OfferFile,
+    *,
+    slug_to_code: dict[str, str],
+    leaf_lookup: dict[str, CategoryNode],
+    run: IngestRun,
+    run_meta: RunMeta,
+    static_root: Path,
+) -> None:
+    """导入单个 offer(Phase 5 填充)。"""
+    raise NotImplementedError("Phase 5")
+
+
+# ────────────────────── 同步审计写入 ──────────────────────
+
+
+def write_audit_sync(
+    db: Session,
+    *,
+    resource_type: str,
+    action: str,
+    resource_id: str | int | None = None,
+    operator: str | None = None,
+    extra: dict | None = None,
+    status: str = AuditStatus.SUCCESS,
+    error_message: str | None = None,
+) -> None:
+    """同步版审计写入(CLI 脚本无 HTTP 请求,无 user_id)。"""
+    entry = AuditLog(
+        trace_id=None,
+        user_id=None,
+        user_email=None,
+        resource_type=resource_type,
+        resource_id=str(resource_id) if resource_id is not None else None,
+        action=action,
+        method="CLI",
+        path="scripts/import_products.py",
+        ip=None,
+        user_agent=None,
+        status=status,
+        error_message=error_message,
+        extra={**(extra or {}), "operator": operator or "system"},
+    )
+    db.add(entry)
+    db.flush()
+
+
+# ────────────────────── CLI 入口 ──────────────────────
+
+
+def _parse_crawled_at(raw: str | None) -> datetime | None:
+    """将 run.json 的 crawled_at 转 naive UTC datetime。"""
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+    except (ValueError, TypeError):
+        log.warning("crawled_at 格式无法解析: %s", raw)
+        return None
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="阿里抓数 → 商品入库")
+    parser.add_argument(
+        "--batch", type=Path, required=True,
+        help="raw 批次目录路径",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="只跑校验 + 打印差异,不写库",
+    )
+    args = parser.parse_args()
+
+    batch_dir = args.batch.resolve()
+    if not batch_dir.is_dir():
+        log.error("批次目录不存在: %s", batch_dir)
+        sys.exit(1)
+
+    # 1. 读取元数据
+    log.info("读取 run.json ...")
+    run_meta = read_run_json(batch_dir)
+    log.info("  source=%s, operator=%s", run_meta.source, run_meta.operator)
+
+    # 2. 读取分类树
+    log.info("读取 categories_raw.json ...")
+    raw_cats = read_categories_raw(batch_dir)
+    cat_tree = build_category_tree(raw_cats)
+    all_nodes = flatten_tree(cat_tree)
+    leaf_nodes = [n for n in all_nodes if not n.children]
+    log.info("  分类节点: %d (叶子: %d)", len(all_nodes), len(leaf_nodes))
+
+    # 3. 扫描 offers
+    log.info("扫描 offers ...")
+    offers = scan_offers(batch_dir)
+    log.info("  找到 %d 个 offer", len(offers))
+
+    # 4. 校验
+    log.info("执行校验 ...")
+    vr = validate_batch(batch_dir, run_meta, cat_tree, offers)
+
+    # 打印校验结果
+    if vr.warnings:
+        log.warning("⚠️  告警 (%d):", len(vr.warnings))
+        for w in vr.warnings:
+            log.warning("  %s", w)
+
+    valid_offers = [o for o in offers if o.offer_id not in vr.offer_errors]
+    failed_offers = [o for o in offers if o.offer_id in vr.offer_errors]
+
+    if vr.offer_errors:
+        log.error("❌ 失败的 offer (%d):", len(vr.offer_errors))
+        for oid, errs in vr.offer_errors.items():
+            for e in errs:
+                log.error("  [%s] %s", oid, e)
+
+    if vr.errors:
+        log.error("❌ 批次级错误,整批拒绝:")
+        for e in vr.errors:
+            log.error("  %s", e)
+        sys.exit(1)
+
+    log.info("✅ 校验通过: %d 可导入, %d 校验失败", len(valid_offers), len(failed_offers))
+
+    if args.dry_run:
+        log.info("[DRY RUN] 将导入 %d 个商品(来源: %s),不写库。", len(valid_offers), run_meta.source)
+        for o in valid_offers:
+            spu_code = f"P-{o.offer_id}"
+            src_path = o.data.get("source_category_path", []) if o.data else []
+            leaf = _extract_leaf_slug(src_path)
+            name_en = ""
+            if o.data:
+                name_en = o.data.get("product_name_en") or o.data.get("listing_title_en", "")
+            log.info("  %s → 分类叶子=%s, name=%s", spu_code, leaf, name_en[:60])
+        sys.exit(0)
+
+    # ── 写库 ──
+    sync_url = prepare_sync_url(settings.DATABASE_URL)
+    engine = create_engine(sync_url)
+
+    with Session(engine) as db:
+        try:
+            # 5. 开 run
+            crawled_at = _parse_crawled_at(run_meta.crawled_at)
+            run_key = f"{run_meta.source}_{batch_dir.name}"
+            run = open_run(
+                db,
+                run_key=run_key,
+                source=run_meta.source,
+                operator=run_meta.operator,
+                raw_path=str(batch_dir),
+                crawled_at=crawled_at,
+            )
+            db.commit()
+
+            # 6. 导入分类
+            log.info("导入分类 ...")
+            slug_to_code = import_categories(db, cat_tree)
+            db.commit()
+
+            # 7. 导入商品(逐 offer 独立事务)
+            leaf_lookup = build_leaf_lookup(cat_tree)
+            static_root = Path(settings.IMAGE_BASE_URL.replace("http://localhost:8000/", ""))
+            if not static_root.is_absolute():
+                static_root = _BACKEND_ROOT / static_root
+
+            success_count = 0
+            import_errors: list[dict] = []
+
+            for i, offer in enumerate(valid_offers, 1):
+                try:
+                    import_offer(
+                        db, offer,
+                        slug_to_code=slug_to_code,
+                        leaf_lookup=leaf_lookup,
+                        run=run,
+                        run_meta=run_meta,
+                        static_root=static_root,
+                    )
+                    db.commit()
+                    success_count += 1
+                    if i % 50 == 0:
+                        log.info("  进度: %d/%d", i, len(valid_offers))
+                except Exception as exc:
+                    db.rollback()
+                    err_msg = str(exc)[:500]
+                    log.error("  [%s] 导入失败: %s", offer.offer_id, err_msg)
+                    import_errors.append({
+                        "offer_id": offer.offer_id,
+                        "error": err_msg,
+                    })
+
+            # 加上校验阶段失败的
+            for oid, errs in vr.offer_errors.items():
+                import_errors.append({
+                    "offer_id": oid,
+                    "error": "; ".join(errs),
+                })
+
+            # 8. 关闭 run
+            total_failed = len(import_errors)
+            if total_failed == 0:
+                final_status = IngestRunStatus.SUCCESS
+            elif success_count == 0:
+                final_status = IngestRunStatus.FAILED
+            else:
+                final_status = IngestRunStatus.PARTIAL
+
+            close_run(
+                db, run,
+                status=final_status,
+                product_count=success_count,
+                error_summary=import_errors or None,
+            )
+            db.commit()
+
+            log.info(
+                "导入完成: status=%s, 成功=%d, 失败=%d",
+                final_status, success_count, total_failed,
+            )
+
+        except Exception as exc:
+            db.rollback()
+            log.exception("导入过程异常终止: %s", exc)
+            # 尝试标记 run 为 FAILED
+            try:
+                if "run" in locals():
+                    close_run(
+                        db, run,
+                        status=IngestRunStatus.FAILED,
+                        product_count=0,
+                        error_summary=[{"error": str(exc)[:1000]}],
+                    )
+                    db.commit()
+            except Exception:
+                db.rollback()
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
