@@ -63,6 +63,7 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("DELETE", "/api/v1/cart/items"),
     # rfq — 询价单写操作
     ("POST", "/api/v1/rfqs"),
+    ("PATCH", "/api/v1/rfqs/{rfq_id}"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/cancel"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/claim"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/submit"),

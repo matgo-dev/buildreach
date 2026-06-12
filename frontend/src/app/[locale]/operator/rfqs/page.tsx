@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { Loader2, FileText, Eye, FileEdit } from "lucide-react";
+import { Loader2, FileText, FileEdit } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -23,6 +24,7 @@ const STATUS_OPTIONS = [
 ];
 
 function OperatorRfqListContent() {
+  const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("rfq");
   const tError = useTranslations("error");
@@ -119,7 +121,8 @@ function OperatorRfqListContent() {
               {data.items.map((rfq) => (
                 <tr
                   key={rfq.id}
-                  className="border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
+                  className="border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50 cursor-pointer"
+                  onClick={() => router.push(`/${locale}/operator/rfqs/${rfq.id}`)}
                 >
                   <td className="px-5 py-3">
                     <Link
@@ -139,7 +142,7 @@ function OperatorRfqListContent() {
                     {rfq.created_at ? formatDate(rfq.created_at, locale) : "—"}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
                       {rfq.status === "SUBMITTED" && (
                         <button
                           type="button"
@@ -158,13 +161,6 @@ function OperatorRfqListContent() {
                           {t("quoteBackfill")}
                         </Link>
                       )}
-                      <Link
-                        href={`/${locale}/operator/rfqs/${rfq.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        {t("viewDetail")}
-                      </Link>
                     </div>
                   </td>
                 </tr>
