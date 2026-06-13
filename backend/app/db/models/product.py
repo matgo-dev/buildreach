@@ -86,6 +86,11 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     origin_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
     selling_points_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # 详情区长文产品介绍(与短描述 description 区分)
+    detail_description_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detail_description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detail_description_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certifications: Mapped[list | None] = mapped_column(JSON, default=list)
 
