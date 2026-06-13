@@ -126,6 +126,8 @@ def _to_public(p) -> dict:
         is_featured=p.is_featured,
         main_image=_get_main_image_url(p),
         unit=p.unit,
+        moq=p.moq,
+        moq_unit=p.moq_unit,
     ).model_dump()
 
 
@@ -183,6 +185,8 @@ async def get_product(
         selling_points=get_localized(p, "selling_points"),
         is_featured=p.is_featured,
         unit=p.unit,
+        moq=p.moq,
+        moq_unit=p.moq_unit,
         attribute_groups=_build_attribute_groups(spu_attrs, alive_imgs, locale),
         images=all_images,
     ).model_dump()

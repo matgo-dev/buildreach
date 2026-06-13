@@ -88,6 +88,10 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     unit: Mapped[str] = mapped_column(String(20), nullable=False, default="PCS")
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="TZS")
 
+    # 最低起订量(SPU 级,抓数导入或运营手填)
+    moq: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    moq_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
     created_by: Mapped[int | None] = mapped_column(
