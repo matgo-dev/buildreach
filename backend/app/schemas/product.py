@@ -262,6 +262,7 @@ class ProductPublicDetail(BaseModel):
     spu_code: str
     name: str
     description: str | None = None
+    detail_description: str | None = None
     category_code: str
     category_name: str = ""
     origin: str

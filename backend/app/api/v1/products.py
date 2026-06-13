@@ -177,6 +177,7 @@ async def get_product(
         spu_code=p.spu_code,
         name=get_localized(p, "name"),
         description=get_localized(p, "description"),
+        detail_description=get_localized(p, "detail_description") or None,
         category_code=p.category_code,
         origin=get_localized(p, "origin"),
         brand=get_localized(p, "brand") or None,
