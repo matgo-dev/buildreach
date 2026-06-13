@@ -629,6 +629,8 @@ def import_offer(
     name_zh = data.get("product_name_zh") or data.get("listing_title_zh", "")
     desc_en = data.get("description_en") or ""
     desc_zh = data.get("description_zh") or ""
+    detail_desc_en = data.get("detail_description_en") or None
+    detail_desc_zh = data.get("detail_description_zh") or None
 
     # 知名属性统一提取(selling_points / certifications / brand / origin)
     spu_fields = _extract_spu_fields(data.get("attributes", []))
@@ -673,6 +675,10 @@ def import_offer(
             product.origin_en = origin_en
         if origin_zh:
             product.origin_zh = origin_zh
+        if detail_desc_en:
+            product.detail_description_en = detail_desc_en
+        if detail_desc_zh:
+            product.detail_description_zh = detail_desc_zh
         product.category_code = category_code
         if moq_value is not None:
             product.moq = moq_value
@@ -697,6 +703,8 @@ def import_offer(
             brand_zh=brand_zh or None,
             origin_en=origin_en or "China",
             origin_zh=origin_zh or "中国",
+            detail_description_en=detail_desc_en,
+            detail_description_zh=detail_desc_zh,
             moq=moq_value,
             moq_unit=moq_unit,
             source=run_meta.source,
