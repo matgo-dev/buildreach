@@ -321,6 +321,9 @@ def validate_batch(
                     f"在 categories_raw.json 中未找到"
                 )
 
+        # 归类校验(软):source_category_path 逐层与 categories_raw.json 对比
+        _validate_category_path(src_path, name_lookup, offer.offer_id, result)
+
         if offer_errs:
             result.offer_errors[offer.offer_id] = offer_errs
 
@@ -328,6 +331,50 @@ def validate_batch(
     _cross_validate_directories(batch_dir, cat_tree, offers, result)
 
     return result
+
+
+def _validate_category_path(
+    src_path: list,
+    name_lookup: dict[str, "CategoryNode"],
+    offer_id: str,
+    result: "ValidationResult",
+) -> None:
+    """逐层校验 offer 的 source_category_path 与 categories_raw.json 是否一致。
+
+    检查每一层的 name_en 是否存在于分类树，以及父子关系是否对得上。
+    不匹配时报 warning，不阻断导入。
+    """
+    if not src_path or len(src_path) < 2:
+        return
+
+    for i, level in enumerate(src_path):
+        name_en = level.get("name_en", "") if isinstance(level, dict) else str(level)
+        if not name_en:
+            continue
+
+        node = name_lookup.get(name_en)
+        if not node:
+            result.warnings.append(
+                f"[{offer_id}] source_category_path 第{i + 1}层 '{name_en}' "
+                f"在 categories_raw.json 中未找到"
+            )
+            # 某层找不到,后续父子关系也没法校验了
+            return
+
+        # 校验父子关系:第 1 层(i=0)应该无 parent,后续层的 parent 应该是上一层
+        if i > 0:
+            parent_level = src_path[i - 1]
+            expected_parent = (
+                parent_level.get("name_en", "")
+                if isinstance(parent_level, dict)
+                else str(parent_level)
+            )
+            if node.parent_name_en and node.parent_name_en != expected_parent:
+                result.warnings.append(
+                    f"[{offer_id}] source_category_path 第{i + 1}层 '{name_en}' "
+                    f"的父节点应该是 '{node.parent_name_en}'，"
+                    f"但 offer 路径中上一层是 '{expected_parent}'"
+                )
 
 
 def _cross_validate_directories(

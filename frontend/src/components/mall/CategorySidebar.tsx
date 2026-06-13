@@ -61,7 +61,7 @@ export function CategorySidebar({
 
 
   return (
-    <aside className="lg:w-52 shrink-0 lg:sticky lg:top-4 lg:self-start">
+    <aside className="lg:w-52 shrink-0 lg:sticky lg:top-4 lg:self-start z-40">
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         {/* Desktop: hover 飞出二级面板 */}
         <div
