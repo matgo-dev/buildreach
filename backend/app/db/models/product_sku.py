@@ -60,6 +60,9 @@ class ProductSku(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     color_en: Mapped[str | None] = mapped_column(String(50), nullable=True)
     material_zh: Mapped[str | None] = mapped_column(String(100), nullable=True)
     material_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    name_sw: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    color_sw: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    material_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # 定价（展示价，可空——运营后补录；币种和单位在 SPU 级）
     price_min: Mapped[float | None] = mapped_column(DECIMAL(12, 2), nullable=True)

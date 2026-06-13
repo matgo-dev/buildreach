@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 import { useDebugMode } from "@/stores/uiStore";
@@ -49,6 +49,7 @@ export function AppHeader({
   const cartCount = useCartStore((s) => s.count);
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("mall");
   const [searchValue, setSearchValue] = useState("");
   const [debugMode, setDebugMode] = useDebugMode();
   const toggleSidebar = useSidebarStore((s) => s.toggle);
@@ -100,7 +101,7 @@ export function AppHeader({
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search products / 搜索商品..."
+                placeholder={t("searchPlaceholder")}
                 className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-12 text-sm text-gray-700 placeholder-gray-400 transition-colors hover:border-slate-300 focus:border-[#003366] focus:outline-none focus:ring-1 focus:ring-[#003366]/20"
               />
               <button

@@ -80,6 +80,11 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     origin_en: Mapped[str | None] = mapped_column(String(100), nullable=True, default="China")
     selling_points_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
     selling_points_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    name_sw: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    origin_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    selling_points_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certifications: Mapped[list | None] = mapped_column(JSON, default=list)

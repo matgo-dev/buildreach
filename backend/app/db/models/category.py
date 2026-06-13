@@ -37,6 +37,7 @@ class Category(Base, TimestampUpdateMixin):
     code: Mapped[str] = mapped_column(String(16), unique=True, nullable=False)
     name_zh: Mapped[str] = mapped_column(String(128), nullable=False)
     name_en: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    name_sw: Mapped[str | None] = mapped_column(String(128), nullable=True)
     level: Mapped[int] = mapped_column(Integer, nullable=False)
     # 自关联:引用父节点的 code(不引用 id);L1 时为 NULL
     parent_code: Mapped[str | None] = mapped_column(
