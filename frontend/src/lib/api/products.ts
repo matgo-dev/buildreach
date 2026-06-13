@@ -88,6 +88,7 @@ export interface ProductPublicDetail {
   spu_code: string;
   name: string;
   description: string | null;
+  detail_description: string | null;
   category_code: string;
   category_name: string;
   origin: string;
