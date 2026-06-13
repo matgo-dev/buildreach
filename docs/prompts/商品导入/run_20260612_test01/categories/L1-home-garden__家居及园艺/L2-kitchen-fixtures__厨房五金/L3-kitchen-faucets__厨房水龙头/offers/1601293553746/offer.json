@@ -12,6 +12,10 @@
   "description_en": "Deck mounted pull-out kitchen mixer tap.", "description_zh": null,
   "moq": { "value": 50, "unit": "pcs" },
   "attributes": [
+    { "group": "Key attributes", "key_en": "Brand", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "Gicasa" }] },
+    { "group": "Key attributes", "key_en": "Place of Origin", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "Guangdong, China" }] },
     { "group": "Key attributes", "key_en": "Material", "key_zh": null,
       "selectable": false, "values": [{ "label_en": "Stainless Steel" }] },
     { "group": "Key attributes", "key_en": "Body Material", "key_zh": null,
