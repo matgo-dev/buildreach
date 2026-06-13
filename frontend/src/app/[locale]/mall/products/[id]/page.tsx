@@ -260,7 +260,7 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
     .filter((img) => img.sku_id == null)
     .sort((a, b) => a.sort_order - b.sort_order);
 
-  const hasText = !!(product.description || product.selling_points);
+  const hasText = !!(product.description || product.selling_points || product.detail_description);
 
   return (
     <div className="space-y-6">
@@ -275,6 +275,15 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
       {product.description && (
         <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
           {product.description}
+        </div>
+      )}
+      {/* 产品介绍长文:在详情图之前 */}
+      {product.detail_description && (
+        <div>
+          <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.productIntroduction")}</h4>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+            {product.detail_description}
+          </div>
         </div>
       )}
       {/* DETAIL 描述长图 */}
