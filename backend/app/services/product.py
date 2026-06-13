@@ -37,6 +37,7 @@ from app.core.exceptions import (
 )
 from app.core.message_keys import MessageKey
 from app.core.i18n_write import apply_i18n_create, apply_i18n_edit
+from app.core.i18n_registry import get_i18n_fields
 from app.core.locale import SUPPORTED_LOCALES
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
@@ -66,9 +67,11 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_IMAGES_PER_PRODUCT = 8
 
-# i18n 字段声明
-_PRODUCT_I18N_FIELDS = ("name", "description", "brand", "origin", "selling_points")
-_SKU_I18N_FIELDS = ("name", "color", "material")
+# i18n 字段声明:从注册表读取(单一来源)
+from app.db.models.product import Product as _Product
+from app.db.models.product_sku import ProductSku as _ProductSku
+_PRODUCT_I18N_FIELDS = get_i18n_fields(_Product)
+_SKU_I18N_FIELDS = get_i18n_fields(_ProductSku)
 
 
 # ── 软删除工具 ──────────────────────────────────────────

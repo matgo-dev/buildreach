@@ -13,6 +13,7 @@ from app.core.i18n_write import (
     _set_meta,
     apply_i18n_create,
     apply_i18n_edit,
+    process_pending_translations,
     retranslate_pending_or_failed,
 )
 from app.core.locale import DEFAULT_LOCALE, normalize_locale
@@ -35,6 +36,7 @@ class DummyI18nRow:
         self.name_zh = name_zh
         self.name_en = name_en
         self.trans_meta: dict = {}
+        self.i18n_pending_at = None
 
 
 class DummyLegacyRow:
@@ -191,19 +193,21 @@ class TestMetaHelpers:
 
 
 # ---------------------------------------------------------------------------
-# apply_i18n_create
+# apply_i18n_create(异步化:只标 pending,不内联翻译)
 # ---------------------------------------------------------------------------
 
 class TestApplyI18nCreate:
     @pytest.mark.asyncio
-    async def test_create_sets_source_and_auto(self):
+    async def test_create_sets_source_and_pending(self):
+        """创建时源列写值标 src,其他 locale 标 pending。"""
         row = DummyI18nRow(source_lang="zh")
         await apply_i18n_create(row, "name", "钢筋", "zh")
 
         assert row.name_zh == "钢筋"
-        assert row.name_en == "钢筋"  # mock 翻译返回原文
         assert row.trans_meta["name_zh"] == "src"
-        assert row.trans_meta["name_en"] == "auto"
+        assert row.trans_meta["name_en"] == "pending"
+        assert row.trans_meta.get("name_sw") == "pending"
+        assert row.i18n_pending_at is not None
 
     @pytest.mark.asyncio
     async def test_create_source_en(self):
@@ -211,41 +215,26 @@ class TestApplyI18nCreate:
         await apply_i18n_create(row, "name", "Rebar", "en")
 
         assert row.name_en == "Rebar"
-        assert row.name_zh == "Rebar"  # mock
         assert row.trans_meta["name_en"] == "src"
-        assert row.trans_meta["name_zh"] == "auto"
-
-    @pytest.mark.asyncio
-    async def test_create_translation_failure_marks_failed(self):
-        row = DummyI18nRow(source_lang="zh")
-        with patch(
-            "app.core.i18n_write.translate_text",
-            side_effect=RuntimeError("API down"),
-        ):
-            await apply_i18n_create(row, "name", "钢筋", "zh")
-
-        assert row.name_zh == "钢筋"
-        assert row.trans_meta["name_zh"] == "src"
-        assert row.trans_meta["name_en"] == "failed"
+        assert row.trans_meta["name_zh"] == "pending"
 
 
 # ---------------------------------------------------------------------------
-# apply_i18n_edit
+# apply_i18n_edit(异步化:只标 pending/stale,不内联翻译)
 # ---------------------------------------------------------------------------
 
 class TestApplyI18nEdit:
     @pytest.mark.asyncio
-    async def test_edit_source_retranslates_auto(self):
-        """编辑源语言 → auto 列被重新翻译。"""
+    async def test_edit_source_marks_pending(self):
+        """编辑源语言 → auto 列标 pending。"""
         row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Rebar")
         row.trans_meta = {"name_zh": "src", "name_en": "auto"}
 
         await apply_i18n_edit(row, "name", "zh", "螺纹钢", "钢筋")
 
         assert row.name_zh == "螺纹钢"
-        assert row.name_en == "螺纹钢"  # mock 返回原文
         assert row.trans_meta["name_zh"] == "src"
-        assert row.trans_meta["name_en"] == "auto"
+        assert row.trans_meta["name_en"] == "pending"
 
     @pytest.mark.asyncio
     async def test_edit_source_stales_manual(self):
@@ -282,75 +271,97 @@ class TestApplyI18nEdit:
         # trans_meta 不变
         assert row.trans_meta["name_en"] == "auto"
 
+
+# ---------------------------------------------------------------------------
+# process_pending_translations(后台任务调翻译 API)
+# ---------------------------------------------------------------------------
+
+class TestProcessPendingTranslations:
     @pytest.mark.asyncio
-    async def test_edit_source_translate_failure(self):
-        """编辑源语言时翻译失败 → 标 failed,不阻塞。"""
-        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Rebar")
-        row.trans_meta = {"name_zh": "src", "name_en": "auto"}
+    async def test_process_pending_translates(self):
+        """pending 状态被翻译 → auto。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
+        row.trans_meta = {"name_zh": "src", "name_en": "pending"}
+
+        await process_pending_translations(row)
+
+        # mock provider 返回源文
+        assert row.name_en == "钢筋"
+        assert row.trans_meta["name_en"] == "mock"
+        assert row.i18n_pending_at is None  # 无剩余 pending
+
+    @pytest.mark.asyncio
+    async def test_process_failed_retries(self):
+        """failed 状态也会被重试。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
+        row.trans_meta = {"name_zh": "src", "name_en": "failed"}
+
+        await process_pending_translations(row)
+
+        assert row.name_en == "钢筋"
+        assert row.trans_meta["name_en"] == "mock"
+
+    @pytest.mark.asyncio
+    async def test_process_skips_manual(self):
+        """manual/auto/src/stale 不处理。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Steel Bar")
+        row.trans_meta = {"name_zh": "src", "name_en": "manual"}
+
+        await process_pending_translations(row)
+
+        assert row.name_en == "Steel Bar"
+        assert row.trans_meta["name_en"] == "manual"
+
+    @pytest.mark.asyncio
+    async def test_process_translate_failure_marks_failed(self):
+        """翻译抛异常 → 标 failed。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
+        row.trans_meta = {"name_zh": "src", "name_en": "pending"}
 
         with patch(
             "app.core.i18n_write.translate_text",
-            side_effect=RuntimeError("timeout"),
+            side_effect=RuntimeError("API down"),
         ):
-            await apply_i18n_edit(row, "name", "zh", "螺纹钢", "钢筋")
+            await process_pending_translations(row)
 
-        assert row.name_zh == "螺纹钢"
         assert row.trans_meta["name_en"] == "failed"
+
+    @pytest.mark.asyncio
+    async def test_process_skipped_keeps_pending(self):
+        """provider=none 时 status=skipped,保持 pending 不改。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
+        row.trans_meta = {"name_zh": "src", "name_en": "pending"}
+
+        with patch(
+            "app.core.i18n_write.translate_text",
+            return_value={"translated": "钢筋", "status": "skipped"},
+        ):
+            await process_pending_translations(row)
+
+        assert row.trans_meta["name_en"] == "pending"
 
 
 # ---------------------------------------------------------------------------
-# retranslate_pending_or_failed
+# retranslate_pending_or_failed(兼容旧接口)
 # ---------------------------------------------------------------------------
 
 class TestRetranslatePendingOrFailed:
     @pytest.mark.asyncio
-    async def test_retranslate_failed(self):
-        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
-        row.trans_meta = {"name_zh": "src", "name_en": "failed"}
-
-        await retranslate_pending_or_failed(row, "name")
-
-        assert row.name_en == "钢筋"  # mock
-        assert row.trans_meta["name_en"] == "auto"
-
-    @pytest.mark.asyncio
-    async def test_retranslate_pending(self):
+    async def test_retranslate_delegates(self):
+        """retranslate_pending_or_failed 委托给 process_pending_translations。"""
         row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
         row.trans_meta = {"name_zh": "src", "name_en": "pending"}
 
         await retranslate_pending_or_failed(row, "name")
 
-        assert row.trans_meta["name_en"] == "auto"
-
-    @pytest.mark.asyncio
-    async def test_retranslate_skips_non_pending(self):
-        """manual / auto / src / stale 不重试。"""
-        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Steel Bar")
-        row.trans_meta = {"name_zh": "src", "name_en": "manual"}
-
-        await retranslate_pending_or_failed(row, "name")
-
-        assert row.name_en == "Steel Bar"
-        assert row.trans_meta["name_en"] == "manual"
+        assert row.name_en == "钢筋"
+        assert row.trans_meta["name_en"] == "mock"
 
     @pytest.mark.asyncio
     async def test_retranslate_no_source_lang(self):
         """无 source_lang 的对象静默跳过。"""
         row = DummyLegacyRow(name_zh="水泥", name_en=None)
         await retranslate_pending_or_failed(row, "name")  # 不报错
-
-    @pytest.mark.asyncio
-    async def test_retranslate_still_fails(self):
-        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
-        row.trans_meta = {"name_zh": "src", "name_en": "failed"}
-
-        with patch(
-            "app.core.i18n_write.translate_text",
-            side_effect=RuntimeError("still down"),
-        ):
-            await retranslate_pending_or_failed(row, "name")
-
-        assert row.trans_meta["name_en"] == "failed"
 
 
 # ---------------------------------------------------------------------------
