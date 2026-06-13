@@ -586,6 +586,16 @@ def import_offer(
     # selling_points:从 attributes 里找 Feature/特性 那条
     sp_en, sp_zh = _extract_selling_points(data.get("attributes", []))
 
+    # MOQ:offer.json 里的 moq 对象
+    moq_obj = data.get("moq") or {}
+    moq_value = moq_obj.get("value")
+    moq_unit = moq_obj.get("unit") or None
+    if moq_value is not None:
+        try:
+            moq_value = int(moq_value)
+        except (TypeError, ValueError):
+            moq_value = None
+
     # ── 3. 幂等 upsert by spu_code ──
     existing = db.execute(
         select(Product).where(Product.spu_code == spu_code)
@@ -600,6 +610,10 @@ def import_offer(
         product.selling_points_en = sp_en or product.selling_points_en
         product.selling_points_zh = sp_zh or product.selling_points_zh
         product.category_code = category_code
+        if moq_value is not None:
+            product.moq = moq_value
+        if moq_unit:
+            product.moq_unit = moq_unit
         product.source = run_meta.source
         product.last_ingest_run_id = run.id
         product.updated_at = _utcnow()
@@ -614,6 +628,8 @@ def import_offer(
             description_zh=desc_zh or None,
             selling_points_en=sp_en or None,
             selling_points_zh=sp_zh or None,
+            moq=moq_value,
+            moq_unit=moq_unit,
             source=run_meta.source,
             last_ingest_run_id=run.id,
             status=ProductStatus.DRAFT,

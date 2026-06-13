@@ -84,6 +84,14 @@ export function ProductCard({ product, categoryTree }: Props) {
             ))}
           </div>
         )}
+
+        {/* MOQ */}
+        {product.moq != null && (
+          <p className="text-xs text-gray-500">
+            <span className="font-medium text-gray-700">MOQ:</span>{" "}
+            {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
+          </p>
+        )}
       </div>
     </Link>
   );

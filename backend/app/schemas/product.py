@@ -251,6 +251,8 @@ class ProductPublic(BaseModel):
     is_featured: bool
     main_image: str | None = None
     unit: str | None = None
+    moq: int | None = None
+    moq_unit: str | None = None
 
 
 class ProductPublicDetail(BaseModel):
@@ -269,6 +271,8 @@ class ProductPublicDetail(BaseModel):
     selling_points: str | None = None
     is_featured: bool
     unit: str = "PCS"
+    moq: int | None = None
+    moq_unit: str | None = None
     attribute_groups: List[AttrGroup] = []
     images: List[ProductImageSchema] = []
 

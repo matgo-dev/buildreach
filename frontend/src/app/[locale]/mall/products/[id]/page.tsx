@@ -529,9 +529,12 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 基础信息(产地/品牌) */}
-            {(product.origin || product.brand) && (
+            {/* 基础信息(产地/品牌/MOQ) */}
+            {(product.origin || product.brand || product.moq != null) && (
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+                {product.moq != null && (
+                  <span>{t("detail.moq")}: <span className="font-medium text-gray-700">{product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}</span></span>
+                )}
                 {product.origin && (
                   <span>{t("detail.origin")}: <span className="font-medium text-gray-700">{product.origin}</span></span>
                 )}
