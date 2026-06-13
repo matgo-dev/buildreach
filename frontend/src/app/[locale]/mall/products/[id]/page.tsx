@@ -153,7 +153,7 @@ function InlineAttrItem({
 
 // ---- Tab: 产品规格 ----
 
-type TabKey = "specifications" | "description" | "gallery";
+type TabKey = "specifications" | "description";
 
 function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
@@ -230,8 +230,15 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
 function DescriptionTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
 
+  // DETAIL 长图(描述区信息图/安装图/规格图)
+  const detailImages = product.images
+    .filter((img) => img.sku_id == null && img.image_type === "DETAIL")
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const hasText = !!(product.description || product.selling_points);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {product.selling_points && (
         <div>
           <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.sellingPoints")}</h4>
@@ -248,73 +255,25 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
           </div>
         </div>
       )}
-      {!product.description && !product.selling_points && (
+      {/* DETAIL 描述长图 */}
+      {detailImages.length > 0 && (
+        <div className="mx-auto max-w-3xl space-y-4">
+          {detailImages.map((img) => (
+            <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.full_url}
+                alt=""
+                className="mx-auto w-full object-contain"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {!hasText && detailImages.length === 0 && (
         <p className="py-8 text-center text-sm text-gray-400">{t("detail.noDescription")}</p>
       )}
-    </div>
-  );
-}
-
-// ---- Tab: 产品图片 ----
-
-function GalleryTab({ product }: { product: ProductPublicDetail }) {
-  const t = useTranslations("mall");
-  // 只展示 MAIN/GALLERY 产品外观图,不含 DETAIL 描述图
-  const images = product.images
-    .filter((img) => img.sku_id == null && img.image_type !== "DETAIL")
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  if (images.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noImages")}</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-      {images.map((img) => (
-        <div
-          key={img.id}
-          className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={img.full_url}
-            alt=""
-            className="h-full w-full object-contain"
-            loading="lazy"
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ---- 底部:商品详情(全部图片) ----
-
-function ProductDetailImages({ product }: { product: ProductPublicDetail }) {
-  const t = useTranslations("mall");
-  // 只展示 DETAIL 描述长图(安装图/规格图/信息图)
-  const allImages = product.images
-    .filter((img) => img.sku_id == null && img.image_type === "DETAIL")
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  if (allImages.length === 0) return null;
-
-  return (
-    <div className="mt-6">
-      <h4 className="mb-3 text-sm font-semibold text-gray-700">{t("detail.productDetail")}</h4>
-      <div className="mx-auto max-w-3xl space-y-4">
-        {allImages.map((img) => (
-          <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={img.full_url}
-              alt=""
-              className="mx-auto w-full object-contain"
-              loading="lazy"
-            />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -341,7 +300,6 @@ function ProductDetailContent() {
   const sectionRefs = useRef<Record<TabKey, HTMLDivElement | null>>({
     specifications: null,
     description: null,
-    gallery: null,
   });
 
   const scrollToSection = useCallback((key: TabKey) => {
@@ -356,7 +314,7 @@ function ProductDetailContent() {
   // 滚动监听:距离视口顶部最近的 section 高亮
   useEffect(() => {
     const handleScroll = () => {
-      const keys: TabKey[] = ["specifications", "description", "gallery"];
+      const keys: TabKey[] = ["specifications", "description"];
       let closest: TabKey = "specifications";
       let minDist = Infinity;
       for (const key of keys) {
@@ -452,7 +410,6 @@ function ProductDetailContent() {
   const tabItems: { key: TabKey; label: string }[] = [
     { key: "specifications", label: t("detail.tabSpecs") },
     { key: "description", label: t("detail.tabDescription") },
-    { key: "gallery", label: t("detail.tabGallery") },
   ];
 
   return (
@@ -618,20 +575,10 @@ function ProductDetailContent() {
 
         <hr className="border-gray-100" />
 
-        {/* 产品描述 */}
+        {/* 产品描述(文字 + DETAIL 描述长图合并) */}
         <div ref={(el) => { sectionRefs.current.description = el; }} className="scroll-mt-14 p-5">
           <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabDescription")}</h3>
           <DescriptionTab product={product} />
-        </div>
-
-        <hr className="border-gray-100" />
-
-        {/* 产品图片 */}
-        <div ref={(el) => { sectionRefs.current.gallery = el; }} className="scroll-mt-14 p-5">
-          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabGallery")}</h3>
-          <GalleryTab product={product} />
-          {/* 商品详情大图(平铺在图片 section 内) */}
-          <ProductDetailImages product={product} />
         </div>
       </div>
 
