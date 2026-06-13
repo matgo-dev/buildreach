@@ -47,7 +47,7 @@ COUNTRY_META: dict[str, dict[str, str]] = {
 # language_preference 合法值:BCP 47 locale tag 封闭白名单(10 个)
 # 与前端 LANGUAGE_CODES 必须逐字一致
 LANGUAGE_CODES: tuple[str, ...] = (
-    "zh-CN", "en", "km-KH", "ur-PK", "ar-MA", "ar-IQ", "ar-SA", "ar-AE", "id-ID", "ms-MY",
+    "zh-CN", "en", "km-KH", "ur-PK", "ar-MA", "ar-IQ", "ar-SA", "ar-AE", "id-ID", "ms-MY", "sw-TZ",
 )
 
 # 后端长度兜底(所有国家)
