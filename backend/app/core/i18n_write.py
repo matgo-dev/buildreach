@@ -1,18 +1,26 @@
 """i18n 写入中枢 — 所有多语言字段的写入必须经过此模块。
 
-禁止任何 route / service 直接操作 trans_meta,统一走这里的三个入口:
-- apply_i18n_create: 创建时写源列 + 触发其他 locale 翻译
+禁止任何 route / service 直接操作 trans_meta,统一走这里的入口:
+- apply_i18n_create: 创建时写源列 + 标 pending(不内联翻译)
 - apply_i18n_edit: 编辑某个 locale 列
-- retranslate_pending_or_failed: 补偿重试失败/挂起的翻译
+- process_pending_translations: 后台任务/CLI 调用,处理 pending/failed 翻译
+- retranslate_pending_or_failed: 单行补偿重试(兼容旧调用)
+
+写路径异步化:请求事务内只做状态记账,翻译在提交后后台任务执行。
 """
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from app.core.locale import SUPPORTED_LOCALES
 from app.services.translation_service import translate_text
 
 logger = logging.getLogger("app.i18n_write")
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 # ---------------------------------------------------------------------------
@@ -36,8 +44,26 @@ def _get_field_status(obj: object, field: str, locale: str) -> str | None:
     return meta.get(f"{field}_{locale}")
 
 
+def _set_pending_at(obj: object) -> None:
+    """设置 i18n_pending_at,标记有待处理翻译。"""
+    if hasattr(obj, "i18n_pending_at"):
+        obj.i18n_pending_at = _utcnow()  # type: ignore[attr-defined]
+
+
+def _clear_pending_at_if_done(obj: object) -> None:
+    """如果 trans_meta 中无 pending/failed,清除 i18n_pending_at。"""
+    if not hasattr(obj, "i18n_pending_at"):
+        return
+    meta = _get_meta(obj)
+    has_pending = any(
+        v in ("pending", "failed") for v in meta.values()
+    )
+    if not has_pending:
+        obj.i18n_pending_at = None  # type: ignore[attr-defined]
+
+
 # ---------------------------------------------------------------------------
-# 创建流程
+# 创建流程(只做状态记账,不调翻译 API)
 # ---------------------------------------------------------------------------
 
 async def apply_i18n_create(
@@ -48,9 +74,9 @@ async def apply_i18n_create(
     *,
     domain: str = "general",
 ) -> None:
-    """创建时写入:设置源列值 + 标记 src,然后为其他 locale 触发翻译。
+    """创建时写入:设置源列值 + 标记 src,其他 locale 标 pending。
 
-    翻译失败不阻塞主流程,仅标记 failed。
+    不内联翻译,翻译由后台任务异步完成。
     """
     meta = _get_meta(obj)
 
@@ -59,26 +85,19 @@ async def apply_i18n_create(
     setattr(obj, src_col, value)
     meta[f"{field}_{source_lang}"] = "src"
 
-    # 为其他 locale 触发翻译
+    # 其他 locale 标 pending
     for locale in SUPPORTED_LOCALES:
         if locale == source_lang:
             continue
-        target_col = f"{field}_{locale}"
         meta_key = f"{field}_{locale}"
         meta[meta_key] = "pending"
-        try:
-            result = await translate_text(value, source_lang, locale, domain=domain)
-            setattr(obj, target_col, result["translated"])
-            meta[meta_key] = "auto"
-        except Exception:
-            logger.warning("翻译失败: field=%s, %s→%s", field, source_lang, locale, exc_info=True)
-            meta[meta_key] = "failed"
 
     _set_meta(obj, meta)
+    _set_pending_at(obj)
 
 
 # ---------------------------------------------------------------------------
-# 编辑流程
+# 编辑流程(只做状态记账)
 # ---------------------------------------------------------------------------
 
 async def apply_i18n_edit(
@@ -92,7 +111,7 @@ async def apply_i18n_edit(
 ) -> None:
     """编辑某个 locale 的字段值。遵循 diff 原则:值未变则不动。
 
-    源语言编辑 → 重新翻译 auto 列,manual 列标 stale(不覆盖值)。
+    源语言编辑 → 其他 locale:auto 标 pending,manual 标 stale(不覆盖值)。
     非源语言编辑 → 标 manual,其他列不动。
     """
     if new_value == old_value:
@@ -107,6 +126,7 @@ async def apply_i18n_edit(
     if locale == source_lang:
         # 编辑源语言
         meta[f"{field}_{locale}"] = "src"
+        has_pending = False
         for other in SUPPORTED_LOCALES:
             if other == locale:
                 continue
@@ -116,15 +136,11 @@ async def apply_i18n_edit(
                 # 人工编辑的翻译不覆盖,仅标记过期
                 meta[other_key] = "stale"
             else:
-                # auto / pending / failed / src(不应出现) → 重新翻译
+                # auto / pending / failed → 标 pending 等后台任务重翻
                 meta[other_key] = "pending"
-                try:
-                    result = await translate_text(new_value, locale, other, domain=domain)
-                    setattr(obj, f"{field}_{other}", result["translated"])
-                    meta[other_key] = "auto"
-                except Exception:
-                    logger.warning("重翻译失败: field=%s, %s→%s", field, locale, other, exc_info=True)
-                    meta[other_key] = "failed"
+                has_pending = True
+        if has_pending:
+            _set_pending_at(obj)
     else:
         # 编辑非源语言 → manual
         meta[f"{field}_{locale}"] = "manual"
@@ -133,7 +149,65 @@ async def apply_i18n_edit(
 
 
 # ---------------------------------------------------------------------------
-# 补偿重试
+# 后台翻译处理(提交后调用)
+# ---------------------------------------------------------------------------
+
+async def process_pending_translations(obj: object) -> None:
+    """处理单个对象的所有 pending/failed 翻译。
+
+    由后台任务或 CLI 在独立 session 中调用,事务外执行翻译 API。
+    字段状态 CAS:仅 pending/failed 才翻,避免覆盖并发手工编辑。
+    """
+    source_lang = getattr(obj, "source_lang", None)
+    if not source_lang:
+        return
+
+    meta = _get_meta(obj)
+    changed = False
+
+    for meta_key, status in list(meta.items()):
+        if status not in ("pending", "failed"):
+            continue
+
+        # 解析 meta_key → field + locale
+        parts = meta_key.rsplit("_", 1)
+        if len(parts) != 2:
+            continue
+        field, locale = parts
+        if locale not in SUPPORTED_LOCALES or locale == source_lang:
+            continue
+
+        # 读当前源值
+        src_col = f"{field}_{source_lang}"
+        source_value = getattr(obj, src_col, None)
+        if not source_value:
+            continue
+
+        # CAS:再检一次当前状态,仍为 pending/failed 才处理
+        current_status = meta.get(meta_key)
+        if current_status not in ("pending", "failed"):
+            continue
+
+        try:
+            result = await translate_text(source_value, source_lang, locale)
+            if result["status"] == "skipped":
+                # provider=none,保持 pending 不改
+                continue
+            setattr(obj, f"{field}_{locale}", result["translated"])
+            meta[meta_key] = "auto" if result["status"] != "mock" else "mock"
+            changed = True
+        except Exception:
+            logger.warning("翻译失败: %s, %s→%s", field, source_lang, locale, exc_info=True)
+            meta[meta_key] = "failed"
+            changed = True
+
+    if changed:
+        _set_meta(obj, meta)
+    _clear_pending_at_if_done(obj)
+
+
+# ---------------------------------------------------------------------------
+# 补偿重试(兼容旧接口)
 # ---------------------------------------------------------------------------
 
 async def retranslate_pending_or_failed(
@@ -144,37 +218,6 @@ async def retranslate_pending_or_failed(
 ) -> None:
     """扫描 trans_meta 中 pending/failed 的条目,重试翻译。
 
-    调度(cron)不在本版本实现,此函数供上层按需调用。
+    兼容旧接口,内部委托给 process_pending_translations。
     """
-    meta = _get_meta(obj)
-    source_lang = getattr(obj, "source_lang", None)
-    if not source_lang:
-        return
-
-    # 读取源列值
-    src_col = f"{field}_{source_lang}"
-    source_value = getattr(obj, src_col, None)
-    if not source_value:
-        return
-
-    changed = False
-    for locale in SUPPORTED_LOCALES:
-        if locale == source_lang:
-            continue
-        meta_key = f"{field}_{locale}"
-        status = meta.get(meta_key)
-        if status not in ("pending", "failed"):
-            continue
-        meta[meta_key] = "pending"
-        try:
-            result = await translate_text(source_value, source_lang, locale, domain=domain)
-            setattr(obj, f"{field}_{locale}", result["translated"])
-            meta[meta_key] = "auto"
-            changed = True
-        except Exception:
-            logger.warning("补偿翻译失败: field=%s, %s→%s", field, source_lang, locale, exc_info=True)
-            meta[meta_key] = "failed"
-            changed = True
-
-    if changed:
-        _set_meta(obj, meta)
+    await process_pending_translations(obj)
