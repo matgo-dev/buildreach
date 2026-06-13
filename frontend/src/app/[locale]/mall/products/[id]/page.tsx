@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -298,24 +298,20 @@ function ProductDetailImages({ product }: { product: ProductPublicDetail }) {
   if (allImages.length === 0) return null;
 
   return (
-    <div className="mt-4 rounded-xl border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 px-5 py-3">
-        <h2 className="text-sm font-semibold text-gray-800">{t("detail.productDetail")}</h2>
-      </div>
-      <div className="p-5">
-        <div className="mx-auto max-w-3xl space-y-4">
-          {allImages.map((img) => (
-            <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.full_url}
-                alt=""
-                className="mx-auto w-full object-contain"
-                loading="lazy"
-              />
-            </div>
-          ))}
-        </div>
+    <div className="mt-6">
+      <h4 className="mb-3 text-sm font-semibold text-gray-700">{t("detail.productDetail")}</h4>
+      <div className="mx-auto max-w-3xl space-y-4">
+        {allImages.map((img) => (
+          <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={img.full_url}
+              alt=""
+              className="mx-auto w-full object-contain"
+              loading="lazy"
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -338,7 +334,44 @@ function ProductDetailContent() {
     { revalidateOnFocus: false }
   );
 
+  // 锚点导航:Tab 点击滚动到对应区域,滚动时高亮联动
   const [activeTab, setActiveTab] = useState<TabKey>("specifications");
+  const sectionRefs = useRef<Record<TabKey, HTMLDivElement | null>>({
+    specifications: null,
+    description: null,
+    gallery: null,
+  });
+
+  const scrollToSection = useCallback((key: TabKey) => {
+    const el = sectionRefs.current[key];
+    if (el) {
+      // 偏移量:留出 tab 栏高度
+      const offset = 60;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  }, []);
+
+  // 滚动监听:距离视口顶部最近的 section 高亮
+  useEffect(() => {
+    const handleScroll = () => {
+      const keys: TabKey[] = ["specifications", "description", "gallery"];
+      let closest: TabKey = "specifications";
+      let minDist = Infinity;
+      for (const key of keys) {
+        const el = sectionRefs.current[key];
+        if (!el) continue;
+        const dist = Math.abs(el.getBoundingClientRect().top - 80);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = key;
+        }
+      }
+      setActiveTab(closest);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // 规格选中态:仅前端本地,刷新即重置
   const [specSelection, setSpecSelection] = useState<Record<string, string>>({});
@@ -551,14 +584,14 @@ function ProductDetailContent() {
         </div>
       </div>
 
-      {/* ===== Tab 区(与旧版一致:产品规格 / 产品描述 / 产品图片) ===== */}
-      <div className="mt-4 rounded-xl border border-gray-200 bg-white">
+      {/* ===== Tab 锚点导航(阿里风格:点击滚动,滚动联动高亮) ===== */}
+      <div className="sticky top-0 z-20 mt-4 rounded-t-xl border border-gray-200 bg-white">
         <div className="flex border-b border-gray-200">
           {tabItems.map((tab) => (
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]"
@@ -569,15 +602,34 @@ function ProductDetailContent() {
             </button>
           ))}
         </div>
-        <div className="p-5">
-          {activeTab === "specifications" && <SpecificationsTab product={product} />}
-          {activeTab === "description" && <DescriptionTab product={product} />}
-          {activeTab === "gallery" && <GalleryTab product={product} />}
-        </div>
       </div>
 
-      {/* ===== 商品详情:所有图片竖排展示(外观/细节/详情图) ===== */}
-      <ProductDetailImages product={product} />
+      {/* ===== 内容平铺(所有 section 展开) ===== */}
+      <div className="rounded-b-xl border border-t-0 border-gray-200 bg-white">
+        {/* 产品规格 */}
+        <div ref={(el) => { sectionRefs.current.specifications = el; }} className="p-5">
+          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabSpecs")}</h3>
+          <SpecificationsTab product={product} />
+        </div>
+
+        <hr className="border-gray-100" />
+
+        {/* 产品描述 */}
+        <div ref={(el) => { sectionRefs.current.description = el; }} className="p-5">
+          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabDescription")}</h3>
+          <DescriptionTab product={product} />
+        </div>
+
+        <hr className="border-gray-100" />
+
+        {/* 产品图片 */}
+        <div ref={(el) => { sectionRefs.current.gallery = el; }} className="p-5">
+          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabGallery")}</h3>
+          <GalleryTab product={product} />
+          {/* 商品详情大图(平铺在图片 section 内) */}
+          <ProductDetailImages product={product} />
+        </div>
+      </div>
 
         </div>
       </div>
