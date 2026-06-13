@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronRight, SlidersHorizontal, Star } from "lucide-react";
@@ -59,10 +59,6 @@ export function CategorySidebar({
     return "text-gray-700 hover:bg-blue-50 hover:text-[#0D4D4D]";
   };
 
-  const activeLevel1Category = useMemo(
-    () => categoryTree.find((c) => c.code === hoveredLevel1) || null,
-    [categoryTree, hoveredLevel1]
-  );
 
   return (
     <aside className="lg:w-52 shrink-0">
@@ -93,7 +89,7 @@ export function CategorySidebar({
               <li className="px-3 py-2 text-xs text-gray-400">{t("loadError")}...</li>
             ) : (
               categoryTree.map((cat) => (
-                <li key={cat.code}>
+                <li key={cat.code} className="relative">
                   <button
                     onClick={() => handleCategoryClick(cat.code)}
                     onMouseEnter={() => setHoveredLevel1(cat.code)}
@@ -123,51 +119,51 @@ export function CategorySidebar({
                       </span>
                     )}
                   </button>
+
+                  {/* 二级飞出面板 — 相对当前 hover 品类项定位 */}
+                  {hoveredLevel1 === cat.code &&
+                    (cat.children?.length || 0) > 0 && (
+                      <div className="absolute left-full top-0 z-30 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-gray-100 bg-white p-5 shadow-xl">
+                        <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
+                          {cat.children?.map((level2) => (
+                            <div
+                              key={level2.code}
+                              className="border-b border-dashed border-gray-100 pb-4 last:border-b-0 last:pb-0"
+                            >
+                              <button
+                                onClick={() => handleCategoryClick(level2.code)}
+                                className={`mb-2 block text-left text-sm font-bold leading-6 transition-colors ${
+                                  activeCategoryCode && categoryContainsCode(level2, activeCategoryCode)
+                                    ? "text-[#0D4D4D]"
+                                    : "text-gray-900 hover:text-[#0D4D4D]"
+                                }`}
+                              >
+                                {level2.name}
+                              </button>
+                              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                {(level2.children || []).map((level3) => (
+                                  <button
+                                    key={level3.code}
+                                    onClick={() => handleCategoryClick(level3.code)}
+                                    className={`text-left text-sm leading-6 transition-colors ${
+                                      activeCategoryCode === level3.code
+                                        ? "font-semibold text-[#0D4D4D]"
+                                        : "text-gray-600 hover:text-[#0D4D4D]"
+                                    }`}
+                                  >
+                                    {level3.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 </li>
               ))
             )}
           </ul>
-
-          {/* 二级飞出面板 */}
-          {activeLevel1Category &&
-            (activeLevel1Category.children?.length || 0) > 0 && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 z-30 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-gray-100 bg-white p-5 shadow-xl">
-                <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
-                  {activeLevel1Category.children?.map((level2) => (
-                    <div
-                      key={level2.code}
-                      className="border-b border-dashed border-gray-100 pb-4 last:border-b-0 last:pb-0"
-                    >
-                      <button
-                        onClick={() => handleCategoryClick(level2.code)}
-                        className={`mb-2 block text-left text-sm font-bold leading-6 transition-colors ${
-                          activeCategoryCode && categoryContainsCode(level2, activeCategoryCode)
-                            ? "text-[#0D4D4D]"
-                            : "text-gray-900 hover:text-[#0D4D4D]"
-                        }`}
-                      >
-                        {level2.name}
-                      </button>
-                      <div className="flex flex-wrap gap-x-4 gap-y-2">
-                        {(level2.children || []).map((level3) => (
-                          <button
-                            key={level3.code}
-                            onClick={() => handleCategoryClick(level3.code)}
-                            className={`text-left text-sm leading-6 transition-colors ${
-                              activeCategoryCode === level3.code
-                                ? "font-semibold text-[#0D4D4D]"
-                                : "text-gray-600 hover:text-[#0D4D4D]"
-                            }`}
-                          >
-                            {level3.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
         </div>
 
         {/* Mobile: 折叠版 */}
