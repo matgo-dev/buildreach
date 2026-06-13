@@ -68,7 +68,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
     <div className="shrink-0">
       {/* 主图 */}
       <div
-        className="relative w-[320px] h-[260px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-pointer"
+        className="relative w-[400px] h-[360px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-pointer"
         onClick={openLightbox}
       >
         {activeImage ? (
@@ -144,12 +144,12 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
             </button>
           )}
 
-          {/* 大图 */}
+          {/* 大图 — 小图也撑到合理尺寸 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={activeImage.full_url}
             alt=""
-            className="max-h-[85vh] max-w-[90vw] object-contain"
+            className="max-h-[85vh] max-w-[90vw] min-h-[50vh] min-w-[40vw] object-contain"
             onClick={(e) => e.stopPropagation()}
           />
 
