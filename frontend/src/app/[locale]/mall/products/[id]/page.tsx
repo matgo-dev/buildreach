@@ -230,9 +230,9 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
 function DescriptionTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
 
-  // DETAIL 长图(描述区信息图/安装图/规格图)
+  // 所有 SPU 级图片平铺在描述区
   const detailImages = product.images
-    .filter((img) => img.sku_id == null && img.image_type === "DETAIL")
+    .filter((img) => img.sku_id == null)
     .sort((a, b) => a.sort_order - b.sort_order);
 
   const hasText = !!(product.description || product.selling_points);
