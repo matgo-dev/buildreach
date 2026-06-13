@@ -345,11 +345,10 @@ function ProductDetailContent() {
   const scrollToSection = useCallback((key: TabKey) => {
     const el = sectionRefs.current[key];
     if (el) {
-      // 偏移量:留出 tab 栏高度
-      const offset = 60;
-      const top = el.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top, behavior: "smooth" });
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+    // 立即更新 Tab 高亮,不等滚动监听
+    setActiveTab(key);
   }, []);
 
   // 滚动监听:距离视口顶部最近的 section 高亮
@@ -610,7 +609,7 @@ function ProductDetailContent() {
       {/* ===== 内容平铺(所有 section 展开) ===== */}
       <div className="rounded-b-xl border border-t-0 border-gray-200 bg-white">
         {/* 产品规格 */}
-        <div ref={(el) => { sectionRefs.current.specifications = el; }} className="p-5">
+        <div ref={(el) => { sectionRefs.current.specifications = el; }} className="scroll-mt-14 p-5">
           <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabSpecs")}</h3>
           <SpecificationsTab product={product} />
         </div>
@@ -618,7 +617,7 @@ function ProductDetailContent() {
         <hr className="border-gray-100" />
 
         {/* 产品描述 */}
-        <div ref={(el) => { sectionRefs.current.description = el; }} className="p-5">
+        <div ref={(el) => { sectionRefs.current.description = el; }} className="scroll-mt-14 p-5">
           <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabDescription")}</h3>
           <DescriptionTab product={product} />
         </div>
@@ -626,7 +625,7 @@ function ProductDetailContent() {
         <hr className="border-gray-100" />
 
         {/* 产品图片 */}
-        <div ref={(el) => { sectionRefs.current.gallery = el; }} className="p-5">
+        <div ref={(el) => { sectionRefs.current.gallery = el; }} className="scroll-mt-14 p-5">
           <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabGallery")}</h3>
           <GalleryTab product={product} />
           {/* 商品详情大图(平铺在图片 section 内) */}
