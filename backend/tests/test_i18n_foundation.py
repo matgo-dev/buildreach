@@ -138,6 +138,27 @@ class TestGetLocalized:
         with patch("app.core.i18n.get_current_locale", return_value="zh"):
             assert get_localized(row, "name") == "Rebar"
 
+    def test_sw_fallback_to_en_before_zh(self):
+        """请求 sw, name_sw 为空, name_en 有值 → 回退 en 而非 zh。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Rebar")
+        row.name_sw = None
+        with patch("app.core.i18n.get_current_locale", return_value="sw"):
+            assert get_localized(row, "name") == "Rebar"
+
+    def test_sw_fallback_to_zh_when_en_also_empty(self):
+        """请求 sw, name_sw 和 name_en 都空 → 最终回退 source_lang(zh)。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
+        row.name_sw = None
+        with patch("app.core.i18n.get_current_locale", return_value="sw"):
+            assert get_localized(row, "name") == "钢筋"
+
+    def test_sw_direct_hit(self):
+        """请求 sw, name_sw 有值 → 直接返回。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Rebar")
+        row.name_sw = "Chuma"
+        with patch("app.core.i18n.get_current_locale", return_value="sw"):
+            assert get_localized(row, "name") == "Chuma"
+
 
 # ---------------------------------------------------------------------------
 # trans_meta 工具函数
