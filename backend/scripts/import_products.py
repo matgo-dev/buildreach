@@ -586,6 +586,9 @@ def import_offer(
     # selling_points:从 attributes 里找 Feature/特性 那条
     sp_en, sp_zh = _extract_selling_points(data.get("attributes", []))
 
+    # certifications:从 attributes 里找 Certification/认证 那条
+    certs = _extract_certifications(data.get("attributes", []))
+
     # MOQ:offer.json 里的 moq 对象
     moq_obj = data.get("moq") or {}
     moq_value = moq_obj.get("value")
@@ -609,6 +612,8 @@ def import_offer(
         product.description_zh = desc_zh or product.description_zh
         product.selling_points_en = sp_en or product.selling_points_en
         product.selling_points_zh = sp_zh or product.selling_points_zh
+        if certs:
+            product.certifications = certs
         product.category_code = category_code
         if moq_value is not None:
             product.moq = moq_value
@@ -628,6 +633,7 @@ def import_offer(
             description_zh=desc_zh or None,
             selling_points_en=sp_en or None,
             selling_points_zh=sp_zh or None,
+            certifications=certs or [],
             moq=moq_value,
             moq_unit=moq_unit,
             source=run_meta.source,
@@ -772,6 +778,22 @@ def _extract_selling_points(attributes: list[dict]) -> tuple[str, str]:
                 if val.get("label_zh"):
                     sp_zh_parts.append(val["label_zh"])
     return "; ".join(sp_en_parts), "; ".join(sp_zh_parts)
+
+
+def _extract_certifications(attributes: list[dict]) -> list[str]:
+    """从 attributes 里提取 Certification/认证 的值列表,去重保序。"""
+    certs: list[str] = []
+    seen: set[str] = set()
+    for attr in attributes:
+        key_en = (attr.get("key_en") or "").lower()
+        key_zh = attr.get("key_zh") or ""
+        if "certif" in key_en or "认证" in key_zh:
+            for val in attr.get("values", []):
+                label = (val.get("label_en") or val.get("label_zh") or "").strip()
+                if label and label not in seen:
+                    certs.append(label)
+                    seen.add(label)
+    return certs
 
 
 def _image_key(spu_code: str, rel_path: str) -> str:
