@@ -19,11 +19,12 @@ export interface ProductPublic {
   is_featured: boolean;
   main_image: string | null;
   unit: string | null;
+  moq: number | null;
+  moq_unit: string | null;
   // 兼容字段:买方 API 已不返回,RFQ 模块仍引用
   price_min?: number | null;
   price_max?: number | null;
   currency?: string | null;
-  moq?: number | null;
   lead_time_min?: number | null;
   lead_time_max?: number | null;
   sku_count?: number;
@@ -94,6 +95,8 @@ export interface ProductPublicDetail {
   hs_code: string | null;
   certifications: string[] | null;
   selling_points: string | null;
+  moq: number | null;
+  moq_unit: string | null;
   is_featured: boolean;
   unit: string;
   attribute_groups: AttrGroup[];
