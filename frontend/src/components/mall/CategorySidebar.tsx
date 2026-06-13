@@ -131,7 +131,7 @@ export function CategorySidebar({
           {/* 二级飞出面板 */}
           {activeLevel1Category &&
             (activeLevel1Category.children?.length || 0) > 0 && (
-              <div className="absolute left-full top-0 z-30 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-gray-100 bg-white p-5 shadow-xl">
+              <div className="absolute left-full top-1/2 -translate-y-1/2 z-30 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-gray-100 bg-white p-5 shadow-xl">
                 <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
                   {activeLevel1Category.children?.map((level2) => (
                     <div

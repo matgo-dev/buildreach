@@ -13,6 +13,10 @@
   "description_en": "Waterproof click-lock SPC flooring.", "description_zh": null,
   "moq": { "value": 500, "unit": "sqm" },
   "attributes": [
+    { "group": "Key attributes", "key_en": "Brand", "key_zh": "品牌",
+      "selectable": false, "values": [{ "label_en": "ENTOP", "label_zh": "ENTOP" }] },
+    { "group": "Key attributes", "key_en": "Place of Origin", "key_zh": "产地",
+      "selectable": false, "values": [{ "label_en": "Zhejiang, China", "label_zh": "浙江, 中国" }] },
     { "group": "Key attributes", "key_en": "Material", "key_zh": "材质",
       "selectable": false, "values": [{ "label_en": "PVC", "label_zh": "PVC" }] },
     { "group": "Key attributes", "key_en": "Feature", "key_zh": "特性",

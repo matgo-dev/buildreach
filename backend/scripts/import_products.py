@@ -583,11 +583,15 @@ def import_offer(
     desc_en = data.get("description_en") or ""
     desc_zh = data.get("description_zh") or ""
 
-    # selling_points:从 attributes 里找 Feature/特性 那条
-    sp_en, sp_zh = _extract_selling_points(data.get("attributes", []))
-
-    # certifications:从 attributes 里找 Certification/认证 那条
-    certs = _extract_certifications(data.get("attributes", []))
+    # 知名属性统一提取(selling_points / certifications / brand / origin)
+    spu_fields = _extract_spu_fields(data.get("attributes", []))
+    sp_en = spu_fields["selling_points"]["en"]
+    sp_zh = spu_fields["selling_points"]["zh"]
+    certs = spu_fields["certifications"]
+    brand_en = spu_fields["brand"]["en"]
+    brand_zh = spu_fields["brand"]["zh"]
+    origin_en = spu_fields["origin"]["en"]
+    origin_zh = spu_fields["origin"]["zh"]
 
     # MOQ:offer.json 里的 moq 对象
     moq_obj = data.get("moq") or {}
@@ -614,6 +618,14 @@ def import_offer(
         product.selling_points_zh = sp_zh or product.selling_points_zh
         if certs:
             product.certifications = certs
+        if brand_en:
+            product.brand_en = brand_en
+        if brand_zh:
+            product.brand_zh = brand_zh
+        if origin_en:
+            product.origin_en = origin_en
+        if origin_zh:
+            product.origin_zh = origin_zh
         product.category_code = category_code
         if moq_value is not None:
             product.moq = moq_value
@@ -634,6 +646,10 @@ def import_offer(
             selling_points_en=sp_en or None,
             selling_points_zh=sp_zh or None,
             certifications=certs or [],
+            brand_en=brand_en or None,
+            brand_zh=brand_zh or None,
+            origin_en=origin_en or "China",
+            origin_zh=origin_zh or "中国",
             moq=moq_value,
             moq_unit=moq_unit,
             source=run_meta.source,
@@ -764,36 +780,111 @@ def import_offer(
     )
 
 
-def _extract_selling_points(attributes: list[dict]) -> tuple[str, str]:
-    """从 attributes 里提取 Feature/特性 那条的值拼接。"""
-    sp_en_parts: list[str] = []
-    sp_zh_parts: list[str] = []
+# ── 知名属性 → SPU 字段提取映射 ──
+# 一次遍历 attributes,按映射表提取所有知名字段到 SPU 专用列。
+# 后续新增知名属性只需往 _SPU_EXTRACTORS 加一行,不改逻辑。
+_SPU_EXTRACTORS: list[dict[str, Any]] = [
+    {
+        "field": "selling_points",
+        "match_en": ["feature"],          # key_en.lower() 包含任一即命中
+        "match_zh": ["特性", "特点"],     # key_zh 包含任一即命中
+        "type": "i18n_join",              # 多值分号拼接,产出 (str_en, str_zh)
+    },
+    {
+        "field": "certifications",
+        "match_en": ["certif"],
+        "match_zh": ["认证"],
+        "type": "list",                   # 多值去重列表,产出 list[str]
+    },
+    {
+        "field": "brand",
+        "match_en": ["brand"],
+        "match_zh": ["品牌"],
+        "type": "i18n_single",            # 单值,产出 (str_en, str_zh)
+    },
+    {
+        "field": "origin",
+        "match_en": ["place of origin", "origin"],
+        "match_zh": ["产地", "原产地"],
+        "type": "i18n_single",
+    },
+]
+
+
+def _extract_spu_fields(attributes: list[dict]) -> dict[str, Any]:
+    """从 attributes 统一提取知名字段到 SPU 列。
+
+    返回 dict,key 为字段名,value 根据 type 不同:
+    - i18n_join  → {"en": "A; B", "zh": "甲; 乙"}
+    - i18n_single → {"en": "...", "zh": "..."}
+    - list       → ["CE", "ISO 9001"]
+    """
+    # 初始化收集器
+    collectors: dict[str, Any] = {}
+    for ext in _SPU_EXTRACTORS:
+        if ext["type"] == "i18n_join":
+            collectors[ext["field"]] = {"en": [], "zh": []}
+        elif ext["type"] == "i18n_single":
+            collectors[ext["field"]] = {"en": None, "zh": None}
+        elif ext["type"] == "list":
+            collectors[ext["field"]] = {"items": [], "seen": set()}
+
+    # 一次遍历
     for attr in attributes:
         key_en = (attr.get("key_en") or "").lower()
         key_zh = attr.get("key_zh") or ""
-        if "feature" in key_en or "特性" in key_zh or "特点" in key_zh:
-            for val in attr.get("values", []):
-                if val.get("label_en"):
-                    sp_en_parts.append(val["label_en"])
-                if val.get("label_zh"):
-                    sp_zh_parts.append(val["label_zh"])
-    return "; ".join(sp_en_parts), "; ".join(sp_zh_parts)
 
+        for ext in _SPU_EXTRACTORS:
+            matched = (
+                any(m in key_en for m in ext["match_en"])
+                or any(m in key_zh for m in ext["match_zh"])
+            )
+            if not matched:
+                continue
 
-def _extract_certifications(attributes: list[dict]) -> list[str]:
-    """从 attributes 里提取 Certification/认证 的值列表,去重保序。"""
-    certs: list[str] = []
-    seen: set[str] = set()
-    for attr in attributes:
-        key_en = (attr.get("key_en") or "").lower()
-        key_zh = attr.get("key_zh") or ""
-        if "certif" in key_en or "认证" in key_zh:
-            for val in attr.get("values", []):
-                label = (val.get("label_en") or val.get("label_zh") or "").strip()
-                if label and label not in seen:
-                    certs.append(label)
-                    seen.add(label)
-    return certs
+            vals = attr.get("values", [])
+            field = ext["field"]
+
+            if ext["type"] == "i18n_join":
+                for v in vals:
+                    if v.get("label_en"):
+                        collectors[field]["en"].append(v["label_en"])
+                    if v.get("label_zh"):
+                        collectors[field]["zh"].append(v["label_zh"])
+
+            elif ext["type"] == "i18n_single":
+                # 取第一个有值的
+                if not collectors[field]["en"]:
+                    for v in vals:
+                        if v.get("label_en"):
+                            collectors[field]["en"] = v["label_en"]
+                            break
+                if not collectors[field]["zh"]:
+                    for v in vals:
+                        if v.get("label_zh"):
+                            collectors[field]["zh"] = v["label_zh"]
+                            break
+
+            elif ext["type"] == "list":
+                for v in vals:
+                    label = (v.get("label_en") or v.get("label_zh") or "").strip()
+                    if label and label not in collectors[field]["seen"]:
+                        collectors[field]["items"].append(label)
+                        collectors[field]["seen"].add(label)
+            break  # 一个 attr 只匹配一个 extractor
+
+    # 组装结果
+    result: dict[str, Any] = {}
+    for ext in _SPU_EXTRACTORS:
+        field = ext["field"]
+        c = collectors[field]
+        if ext["type"] == "i18n_join":
+            result[field] = {"en": "; ".join(c["en"]), "zh": "; ".join(c["zh"])}
+        elif ext["type"] == "i18n_single":
+            result[field] = c  # {"en": ..., "zh": ...}
+        elif ext["type"] == "list":
+            result[field] = c["items"]
+    return result
 
 
 def _image_key(spu_code: str, rel_path: str) -> str:
