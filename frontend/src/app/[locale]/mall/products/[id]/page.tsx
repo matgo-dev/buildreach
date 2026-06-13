@@ -165,60 +165,85 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
 
   const groups = product.attribute_groups;
 
+  // 把属性组的 items 打平成 { label, value } 列表,按组分段
+  type SpecSection = { groupLabel: string; rows: { label: string; value: string }[] };
+  const sections: SpecSection[] = [];
+
+  // 基础属性作为第一段(无分组标题)
+  if (baseRows.length > 0) {
+    sections.push({ groupLabel: "", rows: baseRows });
+  }
+
+  for (const group of groups) {
+    const groupKey = `detail.attrGroup_${group.group}` as Parameters<typeof t>[0];
+    let groupLabel: string;
+    try { groupLabel = t(groupKey); } catch { groupLabel = group.group; }
+    if (groupLabel === groupKey || groupLabel.startsWith("detail.")) groupLabel = group.group;
+
+    const rows = group.items.map((item) => ({
+      label: item.key,
+      value: item.values.map((v) => v.value).join(", ") + (item.unit ? ` ${item.unit}` : ""),
+    }));
+    if (rows.length > 0) {
+      sections.push({ groupLabel, rows });
+    }
+  }
+
+  // 每行放两组 key-value（4 列布局）
+  const renderPairedRows = (rows: { label: string; value: string }[]) => {
+    const paired: React.ReactNode[] = [];
+    for (let i = 0; i < rows.length; i += 2) {
+      const left = rows[i];
+      const right = rows[i + 1];
+      paired.push(
+        <tr key={i} className={i % 4 === 0 ? "bg-white" : "bg-gray-50/40"}>
+          <td className="border border-gray-200 px-4 py-2.5 text-gray-500 whitespace-nowrap">{left.label}</td>
+          <td className="border border-gray-200 px-4 py-2.5 text-gray-800">{left.value}</td>
+          {right ? (
+            <>
+              <td className="border border-gray-200 px-4 py-2.5 text-gray-500 whitespace-nowrap">{right.label}</td>
+              <td className="border border-gray-200 px-4 py-2.5 text-gray-800">{right.value}</td>
+            </>
+          ) : (
+            <>
+              <td className="border border-gray-200 px-4 py-2.5" />
+              <td className="border border-gray-200 px-4 py-2.5" />
+            </>
+          )}
+        </tr>
+      );
+    }
+    return paired;
+  };
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th className="w-1/3 border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-              {t("detail.specName")}
-            </th>
-            <th className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-              {t("detail.specValue")}
-            </th>
-          </tr>
-        </thead>
+      <table className="w-full table-fixed text-sm">
+        <colgroup>
+          <col className="w-[18%]" />
+          <col className="w-[32%]" />
+          <col className="w-[18%]" />
+          <col className="w-[32%]" />
+        </colgroup>
         <tbody>
-          {baseRows.map((row) => (
-            <tr key={row.label}>
-              <td className="border border-gray-200 px-3 py-2 text-gray-600">{row.label}</td>
-              <td className="border border-gray-200 px-3 py-2">{row.value}</td>
-            </tr>
-          ))}
-          {groups.map((group) => {
-            // attr_group 名翻译:优先查 i18n key,未匹配时原样展示
-            const groupKey = `detail.attrGroup_${group.group}` as Parameters<typeof t>[0];
-            let groupLabel: string;
-            try { groupLabel = t(groupKey); } catch { groupLabel = group.group; }
-            // 如果 t() 返回的就是 key 本身说明没匹配,用原值
-            if (groupLabel === groupKey || groupLabel.startsWith("detail.")) groupLabel = group.group;
-
-            return (
-            <React.Fragment key={group.group}>
-              {/* 分组标题行 */}
-              <tr>
-                <td
-                  colSpan={2}
-                  className="border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500"
-                >
-                  {groupLabel}
-                </td>
-              </tr>
-              {group.items.map((item) => (
-                <tr key={`${group.group}-${item.key}`}>
-                  <td className="border border-gray-200 px-3 py-2 text-gray-600">{item.key}</td>
-                  <td className="border border-gray-200 px-3 py-2">
-                    {item.values.map((v) => v.value).join(" · ")}
-                    {item.unit ? ` ${item.unit}` : ""}
+          {sections.map((section, si) => (
+            <React.Fragment key={si}>
+              {section.groupLabel && (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-bold text-gray-700"
+                  >
+                    {section.groupLabel}
                   </td>
                 </tr>
-              ))}
+              )}
+              {renderPairedRows(section.rows)}
             </React.Fragment>
-          );
-          })}
+          ))}
         </tbody>
       </table>
-      {baseRows.length === 0 && groups.length === 0 && (
+      {sections.length === 0 && (
         <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>
       )}
     </div>
@@ -248,11 +273,8 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
         </div>
       )}
       {product.description && (
-        <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.description")}</h4>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-            {product.description}
-          </div>
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+          {product.description}
         </div>
       )}
       {/* DETAIL 描述长图 */}
