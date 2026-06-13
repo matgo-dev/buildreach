@@ -52,11 +52,8 @@ from app.db.models.audit_log import AuditLog, AuditStatus  # noqa: E402
 from app.db.models.product_image import ImageType  # noqa: E402
 from app.db.url import prepare_sync_url  # noqa: E402
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
-)
+from scripts._log_setup import setup_logging  # noqa: E402
+setup_logging("import_products")
 log = logging.getLogger("import_products")
 
 # ────────────────────── 数据结构 ──────────────────────
