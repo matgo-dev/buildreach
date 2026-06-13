@@ -24,6 +24,8 @@ dependencies = [
     # Δ7 v0.3:柬埔寨域名白名单 YAML 配置加载
     "pyyaml>=6.0",
     "Pillow>=10.0.0",
+    # i18n 翻译:Google Cloud Translation v3
+    "google-cloud-translate>=3.15.0",
 ]
 
 [project.optional-dependencies]
