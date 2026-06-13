@@ -34,11 +34,8 @@ from app.core.locale import SUPPORTED_LOCALES  # noqa: E402
 from app.db.models.product import Product  # noqa: E402
 from app.db.models.product_sku import ProductSku  # noqa: E402
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
-)
+from scripts._log_setup import setup_logging  # noqa: E402
+setup_logging("backfill_translations")
 log = logging.getLogger("backfill_translations")
 
 # 实体别名映射
