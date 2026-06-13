@@ -259,8 +259,9 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
 
 function GalleryTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
+  // 只展示 MAIN/GALLERY 产品外观图,不含 DETAIL 描述图
   const images = product.images
-    .filter((img) => img.sku_id == null)
+    .filter((img) => img.sku_id == null && img.image_type !== "DETAIL")
     .sort((a, b) => a.sort_order - b.sort_order);
 
   if (images.length === 0) {
@@ -291,8 +292,9 @@ function GalleryTab({ product }: { product: ProductPublicDetail }) {
 
 function ProductDetailImages({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
+  // 只展示 DETAIL 描述长图(安装图/规格图/信息图)
   const allImages = product.images
-    .filter((img) => img.sku_id == null)
+    .filter((img) => img.sku_id == null && img.image_type === "DETAIL")
     .sort((a, b) => a.sort_order - b.sort_order);
 
   if (allImages.length === 0) return null;
