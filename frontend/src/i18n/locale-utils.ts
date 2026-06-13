@@ -14,6 +14,9 @@ const LOCALE_MAP: Record<string, string> = {
   "en-us": "en",
   "en-gb": "en",
   "en-au": "en",
+  sw: "sw",
+  "sw-tz": "sw",
+  "sw-ke": "sw",
 };
 
 /**

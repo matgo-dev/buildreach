@@ -162,7 +162,7 @@ export type CountryCode =
   | "CN" | "KH" | "PK" | "MA" | "IQ" | "ID" | "MY" | "SA" | "AE";
 
 /** language_preference 合法值:BCP 47 locale tag 封闭白名单(10 个)。与后端 LANGUAGE_CODES 必须逐字一致 */
-export const LANGUAGE_CODES = ["zh-CN", "en", "km-KH", "ur-PK", "ar-MA", "ar-IQ", "ar-SA", "ar-AE", "id-ID", "ms-MY"] as const;
+export const LANGUAGE_CODES = ["zh-CN", "en", "km-KH", "ur-PK", "ar-MA", "ar-IQ", "ar-SA", "ar-AE", "id-ID", "ms-MY", "sw-TZ"] as const;
 export type LanguageCode = typeof LANGUAGE_CODES[number];
 
 /** 重复注册错误文案:前后端逐字一致(后端 constants 中同名常量),不暴露任何 owner 信息 */

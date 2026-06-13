@@ -81,7 +81,12 @@ class TestNormalizeLocale:
         """不支持的语言兜底到 en(外国用户比中国用户更可能触发)。"""
         assert normalize_locale("fr") == "en"
         assert normalize_locale("ja-JP") == "en"
-        assert normalize_locale("sw") == "en"
+
+    def test_sw_supported(self):
+        """sw 已接入,直接映射到 sw。"""
+        assert normalize_locale("sw") == "sw"
+        assert normalize_locale("sw-TZ") == "sw"
+        assert normalize_locale("sw-KE") == "sw"
 
     def test_whitespace_stripped(self):
         assert normalize_locale("  en-US  ") == "en"
@@ -132,6 +137,27 @@ class TestGetLocalized:
         row = DummyI18nRow(source_lang="en", name_zh=None, name_en="Rebar")
         with patch("app.core.i18n.get_current_locale", return_value="zh"):
             assert get_localized(row, "name") == "Rebar"
+
+    def test_sw_fallback_to_en_before_zh(self):
+        """请求 sw, name_sw 为空, name_en 有值 → 回退 en 而非 zh。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Rebar")
+        row.name_sw = None
+        with patch("app.core.i18n.get_current_locale", return_value="sw"):
+            assert get_localized(row, "name") == "Rebar"
+
+    def test_sw_fallback_to_zh_when_en_also_empty(self):
+        """请求 sw, name_sw 和 name_en 都空 → 最终回退 source_lang(zh)。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en=None)
+        row.name_sw = None
+        with patch("app.core.i18n.get_current_locale", return_value="sw"):
+            assert get_localized(row, "name") == "钢筋"
+
+    def test_sw_direct_hit(self):
+        """请求 sw, name_sw 有值 → 直接返回。"""
+        row = DummyI18nRow(source_lang="zh", name_zh="钢筋", name_en="Rebar")
+        row.name_sw = "Chuma"
+        with patch("app.core.i18n.get_current_locale", return_value="sw"):
+            assert get_localized(row, "name") == "Chuma"
 
 
 # ---------------------------------------------------------------------------
