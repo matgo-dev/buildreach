@@ -81,7 +81,12 @@ class TestNormalizeLocale:
         """不支持的语言兜底到 en(外国用户比中国用户更可能触发)。"""
         assert normalize_locale("fr") == "en"
         assert normalize_locale("ja-JP") == "en"
-        assert normalize_locale("sw") == "en"
+
+    def test_sw_supported(self):
+        """sw 已接入,直接映射到 sw。"""
+        assert normalize_locale("sw") == "sw"
+        assert normalize_locale("sw-TZ") == "sw"
+        assert normalize_locale("sw-KE") == "sw"
 
     def test_whitespace_stripped(self):
         assert normalize_locale("  en-US  ") == "en"
