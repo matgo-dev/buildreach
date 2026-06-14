@@ -189,7 +189,7 @@ export function defaultDashboardOf(roles: RoleCode[]): string {
   if (roles.includes("ADMIN")) return "/admin/users";
   if (roles.includes("OPERATOR")) return "/operator/products";
   if (roles.includes("SUPPLIER")) return "/supplier/dashboard";
-  if (roles.includes("BUYER")) return "/buyer/rfqs";
+  if (roles.includes("BUYER")) return "/mall";
   return "/";
 }
 
