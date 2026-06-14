@@ -3,25 +3,33 @@
  *
  * 所有显示品牌名 / Logo 字 / 平台定位 / SEO 描述 的位置都从这里取,
  * 避免硬编码不同步。
- *
- * TODO(品牌):当前是占位"基建严选",待团队最终定调后只改本文件即可。
  */
 export const BRAND = {
   /** 短品牌名:Logo 旁、Header、登录页 H1、首页 H1 */
-  name: "基建严选",
+  name: "东非建材采购平台",
 
-  /** 英文副标题:登录页品牌区 subtitle、视觉强化用 */
-  nameEn: "JIJIAN SELECT",
+  /** 英文副标题 */
+  nameEn: "East Africa Building Materials Procurement Platform",
+
+  /** 英文短标 */
+  nameEnShort: "East Africa Building Materials Procurem...",
 
   /** Logo 单字:Header / 登录页 / favicon */
-  logoChar: "基",
+  logoChar: "建",
 
   /** 长定位语:平台属性短句(slogan) */
-  tagline: "央企海外 EPC 供应链平台",
+  tagline: "东非建材采购入口 · Built for East Africa",
 
-  /** 浏览器 tab 完整 title(短品牌 + 定位语 dash 拼接) */
-  fullTitle: "基建严选 - 央企海外EPC供应链平台",
+  /** 浏览器 tab 完整 title */
+  fullTitle: "东非建材采购平台 - East Africa Building Materials Procurement",
 
   /** SEO description meta + 首页 hero 描述段 */
-  description: "面向中国央企海外 EPC 项目的 B2B 工业品供应链平台",
+  description:
+    "面向坦桑尼亚本地门店、批发商、承包商和项目客户的 B2B 建材采购平台",
+
+  /** WhatsApp 客服号码(东非) */
+  whatsapp: "+255 697 123 456",
+
+  /** 默认交付城市 */
+  deliverTo: "Dar es Salaam, TZ",
 } as const;

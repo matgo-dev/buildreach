@@ -68,7 +68,7 @@ export default function CategoryAnalysisPage() {
                 href={cat.href}
                 className="group flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-blue-400 hover:shadow-md"
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#003366] to-[#0F4C81] text-white shadow-sm">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-900 to-teal-800 text-white shadow-sm">
                   <Icon className="h-7 w-7" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -82,9 +82,9 @@ export default function CategoryAnalysisPage() {
                   <p className="mt-1 text-sm text-gray-500 line-clamp-1">{cat.description}</p>
                   {cat.stats && (
                     <div className="mt-2 flex gap-4 text-xs text-gray-400">
-                      <span><b className="text-[#003366]">{cat.stats.countries}</b> 国准入</span>
-                      <span><b className="text-[#003366]">{cat.stats.suppliers}</b> 家供应商</span>
-                      <span><b className="text-[#003366]">{cat.stats.projects}</b> 个商机</span>
+                      <span><b className="text-teal-900">{cat.stats.countries}</b> 国准入</span>
+                      <span><b className="text-teal-900">{cat.stats.suppliers}</b> 家供应商</span>
+                      <span><b className="text-teal-900">{cat.stats.projects}</b> 个商机</span>
                     </div>
                   )}
                 </div>
