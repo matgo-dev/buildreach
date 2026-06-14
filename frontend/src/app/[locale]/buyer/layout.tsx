@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { TopStrip } from "@/components/layout/TopStrip";
 import { MallHeader } from "@/components/layout/MallHeader";
-import { MallNavRow } from "@/components/layout/MallNavRow";
 import { MallFooter } from "@/components/layout/MallFooter";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -27,17 +26,15 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
 
   return (
     <RouteGuard allowRoles={["BUYER"]}>
-      <div className="flex min-h-screen flex-col bg-bg">
+      <div className="flex h-screen flex-col overflow-hidden bg-bg">
         <TopStrip />
         <MallHeader />
-        <MallNavRow />
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
           <main className="flex-1 overflow-y-auto">
             <div className="p-6">{children}</div>
           </main>
         </div>
-        <MallFooter />
       </div>
     </RouteGuard>
   );
