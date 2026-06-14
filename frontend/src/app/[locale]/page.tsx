@@ -9,6 +9,10 @@ import {
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { BRAND } from "@/config/brand";
+import { MallButton } from "@/components/mall/MallButton";
+import { LetterIcon } from "@/components/mall/LetterIcon";
+import { SectionTitle } from "@/components/mall/SectionTitle";
+import { MallCard } from "@/components/mall/MallCard";
 
 const CATEGORIES: { code: string; name: string; nameEn: string; icon: LucideIcon }[] = [
   { code: "LIGHTING",     name: "照明电气",  nameEn: "Lighting & Electrical", icon: Zap },
@@ -140,12 +144,7 @@ export default function HomePage() {
                   href="/mall"
                   className="flex items-center gap-2.5 min-h-[76px] p-3 rounded-xl border border-line bg-white shadow-mall-sm hover:shadow-mall-md hover:-translate-y-0.5 transition-all group"
                 >
-                  <span
-                    className="w-[30px] h-[30px] rounded-[7px] grid place-items-center text-xs font-black text-white shrink-0 transition-all group-hover:scale-110"
-                    style={{ background: "linear-gradient(135deg, #07808b, #00505a, #003f46)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,63,70,.18)" }}
-                  >
-                    {letter}
-                  </span>
+                  <LetterIcon letter={letter} className="transition-all group-hover:scale-110" />
                   <span>
                     <strong className="block text-[13px] text-navy leading-tight">{cat.name}</strong>
                     <small className="text-muted text-[11px]">{cat.nameEn}</small>
@@ -160,18 +159,16 @@ export default function HomePage() {
       {/* ===== 平台核心能力 ===== */}
       <section className="bg-white py-12">
         <div className="mx-auto max-w-mall px-6">
-          <h2 className="relative pl-3.5 text-[23px] font-black text-navy mb-1.5 before:content-[''] before:absolute before:left-0 before:top-[0.18em] before:bottom-[0.18em] before:w-1 before:rounded before:bg-gradient-to-b before:from-gold before:to-teal-700">
-            平台核心能力
-            <small className="ml-2 text-[11px] font-extrabold text-teal-700 uppercase tracking-widest">Platform Capabilities</small>
-          </h2>
+          <SectionTitle sub="Platform Capabilities">平台核心能力</SectionTitle>
           <p className="text-muted text-xs mb-6">面向东非建材市场的一站式采购服务</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {FOUR_CAPABILITIES.map((item) => {
               const Icon = item.icon;
               return (
-                <div
+                <MallCard
                   key={item.title}
-                  className="rounded-xl border border-line bg-white p-5 shadow-mall-sm hover:shadow-mall-lg hover:-translate-y-0.5 transition-all"
+                  padding="p-5"
+                  hoverable
                 >
                   <div className={`w-[38px] h-[38px] rounded-lg ${item.color} grid place-items-center mb-4`}
                     style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,63,70,.18)" }}>
@@ -180,7 +177,7 @@ export default function HomePage() {
                   <h3 className="text-[15px] font-black text-navy mb-1">{item.title}</h3>
                   <p className="text-xs text-muted leading-relaxed">{item.titleEn}</p>
                   <p className="text-xs text-muted leading-relaxed mt-2">{item.desc}</p>
-                </div>
+                </MallCard>
               );
             })}
           </div>

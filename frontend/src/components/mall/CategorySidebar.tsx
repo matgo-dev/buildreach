@@ -7,6 +7,8 @@ import { ChevronRight } from "lucide-react";
 
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { LetterIcon } from "./LetterIcon";
+import { MallButton } from "./MallButton";
 
 function categoryContainsCode(category: CategoryTreeNode, code: string): boolean {
   if (category.code === code) return true;
@@ -90,20 +92,7 @@ export function CategorySidebar({
                       }`}
                     >
                       {/* 首字母图标 */}
-                      <span
-                        className={`w-[30px] h-[30px] rounded-[7px] grid place-items-center text-xs font-black transition-colors ${
-                          isActive
-                            ? "bg-teal-800 text-white"
-                            : "text-white"
-                        }`}
-                        style={
-                          isActive
-                            ? undefined
-                            : { background: "linear-gradient(135deg, #07808b, #00505a, #003f46)" }
-                        }
-                      >
-                        {letter}
-                      </span>
+                      <LetterIcon letter={letter} active={!!isActive} />
 
                       {/* 品类名 */}
                       <span className="min-w-0">
@@ -179,15 +168,16 @@ export function CategorySidebar({
         >
           <strong className="block text-sm mb-1">{t("quickSourcing")}</strong>
           <p className="text-[12.5px] text-[#bfe1e0] mb-3">{t("quickSourcingHint")}</p>
-          <button
+          <MallButton
+            variant="gold"
+            block
             onClick={() => {
               if (onFeaturedToggle) onFeaturedToggle();
               else router.push(`/${locale}/mall?featured=true`);
             }}
-            className="w-full h-10 rounded-[10px] bg-gold text-white font-extrabold text-sm hover:bg-white hover:text-teal-900 transition-colors"
           >
             {t("requestQuote")}
-          </button>
+          </MallButton>
         </div>
       </div>
     </aside>
