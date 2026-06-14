@@ -115,7 +115,7 @@ export function CategorySidebar({
                     {/* 二级飞出面板 */}
                     {isHovered && (cat.children?.length || 0) > 0 && (
                       <div
-                        className="absolute left-full top-0 z-30 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-line bg-white p-5"
+                        className="absolute left-full top-0 z-[100] w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-line bg-white p-5"
                         style={{ boxShadow: "0 8px 20px rgba(16,36,65,.08), 0 28px 60px rgba(16,36,65,.12)" }}
                       >
                         <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
