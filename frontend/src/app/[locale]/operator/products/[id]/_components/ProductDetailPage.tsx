@@ -179,11 +179,13 @@ export default function ProductDetailPage() {
     }
   }, [startInEdit, product, hasPermission, enterEditMode]);
 
-  // i18n 字段取值
+  // i18n 字段取值:fallback 是后端 get_localized() 返回的已本地化值(含 sw 等)
   const localized = useCallback(
     (zhVal: string | null, enVal: string | null, fallback?: string | null) => {
-      if (locale === "en") return enVal || zhVal || fallback || "";
-      return zhVal || enVal || fallback || "";
+      if (locale === "zh") return zhVal || fallback || enVal || "";
+      if (locale === "en") return enVal || fallback || zhVal || "";
+      // sw 等其他语言:优先用后端已本地化的 fallback
+      return fallback || enVal || zhVal || "";
     }, [locale]
   );
 
