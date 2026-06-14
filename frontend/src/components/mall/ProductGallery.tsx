@@ -84,7 +84,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
           </div>
         )}
         {isFeatured && (
-          <span className="absolute left-2 top-2 rounded bg-[#FF6B35] px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="absolute left-2 top-2 rounded bg-[#15935f] px-2 py-0.5 text-[10px] font-semibold text-white">
             {t("featured")}
           </span>
         )}
@@ -100,7 +100,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
               onClick={() => setActiveIndex(idx)}
               className={`relative h-14 w-14 shrink-0 rounded-md border-2 overflow-hidden transition-colors ${
                 idx === activeIndex
-                  ? "border-[#0D4D4D]"
+                  ? "border-[#00505a]"
                   : "border-gray-200 hover:border-gray-400"
               }`}
             >

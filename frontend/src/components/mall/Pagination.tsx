@@ -32,7 +32,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3 shadow-mall-sm">
       <span className="text-xs text-gray-500">
         {t("showing", { start, end, total })}
       </span>
@@ -55,7 +55,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
               onClick={() => onPageChange(p)}
               className={`flex h-7 min-w-[28px] items-center justify-center rounded border text-xs font-medium transition-colors ${
                 p === page
-                  ? "border-[#0D4D4D] bg-[#0D4D4D] text-white"
+                  ? "border-teal-900 bg-teal-900 text-white"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50"
               }`}
             >

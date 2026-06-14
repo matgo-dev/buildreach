@@ -109,7 +109,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`relative rounded-md border-2 transition-colors ${
                   isSelected
-                    ? "border-[#0D4D4D] ring-1 ring-[#0D4D4D]/30"
+                    ? "border-[#00505a] ring-1 ring-[#00505a]/30"
                     : "border-transparent hover:border-gray-300"
                 } ${canSelect ? "cursor-pointer" : "cursor-default"}`}
               >
@@ -136,7 +136,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
                   isSelected
-                    ? "border-[#0D4D4D] bg-[#e6f3f3] text-[#0D4D4D] font-medium"
+                    ? "border-[#00505a] bg-[#e6f3f3] text-[#00505a] font-medium"
                     : "border-gray-200 bg-white text-gray-600"
                 } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
               >
@@ -404,7 +404,7 @@ function ProductDetailContent() {
         <div className="flex flex-col lg:flex-row gap-5">
           <CategorySidebar />
           <div className="flex flex-1 min-h-[400px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
           </div>
         </div>
       </PublicLayout>
@@ -423,7 +423,7 @@ function ProductDetailContent() {
               <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
               <button
                 onClick={() => router.push(`/${locale}/mall`)}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0D4D4D] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00505a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
               >
                 <ArrowLeft className="h-4 w-4" />
                 {t("detail.backToList")}
@@ -452,7 +452,7 @@ function ProductDetailContent() {
       <nav className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
         <Link
           href={`/${locale}/mall`}
-          className="flex items-center gap-1 text-[#0D4D4D] transition-colors hover:underline"
+          className="flex items-center gap-1 text-[#00505a] transition-colors hover:underline"
         >
           <Home className="h-3 w-3" />
           Home
@@ -462,7 +462,7 @@ function ProductDetailContent() {
             <ChevronRight className="h-3 w-3" />
             <Link
               href={`/${locale}/mall?cat=${crumb.code}`}
-              className="text-[#0D4D4D] transition-colors hover:underline"
+              className="text-[#00505a] transition-colors hover:underline"
             >
               {crumb.name}
             </Link>
@@ -502,10 +502,10 @@ function ProductDetailContent() {
 
             {/* 商品描述/卖点 — 醒目展示 */}
             {(product.selling_points || product.description) && (
-              <div className="mt-3 rounded-lg border border-[#0D4D4D]/10 bg-[#0D4D4D]/[0.03] px-4 py-3">
+              <div className="mt-3 rounded-lg border border-[#00505a]/10 bg-[#00505a]/[0.03] px-4 py-3">
                 {product.selling_points && (
                   <div className="text-sm leading-relaxed text-gray-800">
-                    <span className="mr-1.5 text-xs font-semibold text-[#0D4D4D]">✦ {t("detail.sellingPoints")}</span>
+                    <span className="mr-1.5 text-xs font-semibold text-[#00505a]">✦ {t("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
@@ -553,7 +553,7 @@ function ProductDetailContent() {
               <button
                 type="button"
                 disabled
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D4D4D] px-6 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
                 title={t("detail.comingSoon")}
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -585,7 +585,7 @@ function ProductDetailContent() {
               onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]"
+                  ? "border-b-2 border-[#00505a] text-[#00505a]"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
