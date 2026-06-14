@@ -133,7 +133,7 @@ function RfqListContent() {
             openConfirm(t("submitDraft"), t("submitDraftConfirm"), "primary", t("submitDraft"),
               () => execAction(() => submitRfq(rfq.id), t("submitDraftSuccess")));
           }}
-          className="text-xs font-medium text-[#0D4D4D] hover:underline"
+          className="text-xs font-medium text-[#00505a] hover:underline"
         >
           {t("submitDraft")}
         </button>,
@@ -175,7 +175,7 @@ function RfqListContent() {
             openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "primary", tQ("accept"),
               () => execAction(() => acceptRfq(rfq.id), tQ("acceptSuccess")));
           }}
-          className="text-xs font-medium text-[#0D4D4D] hover:underline"
+          className="text-xs font-medium text-[#00505a] hover:underline"
         >
           {tQ("accept")}
         </button>,
@@ -209,7 +209,7 @@ function RfqListContent() {
             type="button"
             onClick={() => { setMineOnly(false); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              !mineOnly ? "bg-[#0D4D4D] text-white" : "text-gray-600 hover:bg-gray-50"
+              !mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             {t("filterAll")}
@@ -218,7 +218,7 @@ function RfqListContent() {
             type="button"
             onClick={() => { setMineOnly(true); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              mineOnly ? "bg-[#0D4D4D] text-white" : "text-gray-600 hover:bg-gray-50"
+              mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             {t("filterMine")}
@@ -229,7 +229,7 @@ function RfqListContent() {
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#0D4D4D]"
+          className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#00505a]"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
@@ -243,7 +243,7 @@ function RfqListContent() {
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#00505a]" />
           </div>
         ) : !data || data.items.length === 0 ? (
           <div className="flex h-60 flex-col items-center justify-center text-gray-400">
@@ -272,7 +272,7 @@ function RfqListContent() {
                     onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
                     className="cursor-pointer border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
                   >
-                    <td className="px-5 py-3 font-medium text-[#0D4D4D]">
+                    <td className="px-5 py-3 font-medium text-[#00505a]">
                       {rfq.rfq_no}
                     </td>
                     <td className="max-w-[280px] px-5 py-3">

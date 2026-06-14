@@ -155,7 +155,7 @@ function CartContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
       </div>
     );
   }
@@ -171,7 +171,7 @@ function CartContent() {
         <button
           type="button"
           onClick={() => router.push(`/${locale}/mall`)}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#0D4D4D] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
         >
           {t("goToMall")}
           <ArrowRight className="h-4 w-4" />
@@ -203,7 +203,7 @@ function CartContent() {
                   checked={allChecked}
                   onChange={handleToggleAll}
                   disabled={purchasableItems.length === 0}
-                  className="h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D]"
+                  className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
                 />
               </th>
               <th className="px-4 py-3 font-medium">{t("productInfo")}</th>
@@ -233,7 +233,7 @@ function CartContent() {
                       checked={checked}
                       disabled={unavailable}
                       onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D] disabled:opacity-40"
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
                     />
                   </td>
 

@@ -1,61 +1,83 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { MessageCircle, Send, ShieldCheck, Truck, CreditCard, FileCheck } from "lucide-react";
+import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck } from "lucide-react";
+import { useCartStore } from "@/stores/cartStore";
+import { BRAND } from "@/config/brand";
+import { MallButton } from "./MallButton";
+import { MallCard } from "./MallCard";
 
+/**
+ * 商城右侧栏 — WhatsApp 客服 + RFQ 购物车摘要。
+ */
 export function RightSidebar() {
   const t = useTranslations("mall");
+  const cartCount = useCartStore((s) => s.count);
 
   return (
-    <div className="space-y-3">
-      {/* Quick Sourcing → 跳转询价篮 */}
-      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Send className="h-4 w-4 text-green-700" />
-          <span className="text-sm font-bold text-green-700">{t("quickSourcing")}</span>
-        </div>
-        <p className="mb-3 text-xs text-green-600">{t("quickSourcingHint")}</p>
-        <Link
-          href="/buyer/cart"
-          className="block w-full rounded-lg bg-[#0D4D4D] py-2 text-center text-xs font-semibold text-white hover:bg-[#0D4D4D]/90 transition-colors"
-        >
-          {t("requestQuote")}
-        </Link>
-      </div>
+    <aside className="w-[300px] shrink-0 hidden xl:block">
+      <div className="sticky top-[148px] space-y-3.5">
+        {/* 专属客服 */}
+        <MallCard>
+          <h3 className="text-navy text-base font-black mb-1">{t("customerSupport")}</h3>
+          <p className="text-muted text-[13px] mb-3">{t("customerSupportHint")}</p>
+          <p className="text-navy text-xl font-black mb-3">{BRAND.whatsapp}</p>
+          <MallButton
+            variant="whatsapp"
+            block
+            href={`https://wa.me/${BRAND.whatsapp.replace(/[\s+]/g, "")}`}
+          >
+            <MessageCircle className="h-4 w-4" />
+            {t("chatOnWhatsApp")}
+          </MallButton>
+        </MallCard>
 
-      {/* WhatsApp */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="flex items-center gap-2 mb-1">
-          <MessageCircle className="h-4 w-4 text-green-600" />
-          <span className="text-sm font-bold text-gray-800">WhatsApp</span>
-        </div>
-        <p className="text-xs text-gray-600">+255 697 123 456</p>
-        <p className="text-[10px] text-gray-400">{t("whatsappHours")}</p>
-      </div>
+        {/* 询价单 RFQ Cart */}
+        <MallCard>
+          <h3 className="text-navy text-base font-black mb-1">{t("rfqCart")}</h3>
+          <p className="text-muted text-xs mb-3">{t("rfqCartHint")}</p>
+          <div className="rounded-lg bg-[#f7fafb] border border-[#e4edf2] p-3 space-y-2 mb-3">
+            <div className="flex justify-between text-xs text-muted">
+              <span>{t("rfqItems")}</span>
+              <strong className="text-navy">{cartCount}</strong>
+            </div>
+            <div className="flex justify-between text-xs text-muted">
+              <span>{t("rfqQuoteSheet")}</span>
+              <strong className="text-navy">{t("rfqCartQuoteByCS")}</strong>
+            </div>
+            <div className="flex justify-between text-xs text-muted">
+              <span>{t("rfqEstCBM")}</span>
+              <strong className="text-navy">0.00</strong>
+            </div>
+          </div>
+          <MallButton variant="teal" block href="/buyer/cart">
+            {t("submitRfq")}
+          </MallButton>
+        </MallCard>
 
-      {/* Trust Marks */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <p className="mb-2 text-sm font-bold text-gray-800">{t("trustMarks")}</p>
-        <ul className="space-y-1.5 text-xs text-gray-500">
-          <li className="flex items-center gap-2">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#0D4D4D]" />
-            {t("trustVerified")}
-          </li>
-          <li className="flex items-center gap-2">
-            <FileCheck className="h-3.5 w-3.5 text-[#0D4D4D]" />
-            {t("trustCertified")}
-          </li>
-          <li className="flex items-center gap-2">
-            <CreditCard className="h-3.5 w-3.5 text-[#0D4D4D]" />
-            {t("trustPrice")}
-          </li>
-          <li className="flex items-center gap-2">
-            <Truck className="h-3.5 w-3.5 text-[#0D4D4D]" />
-            {t("trustDelivery")}
-          </li>
-        </ul>
+        {/* Trust Marks */}
+        <MallCard>
+          <p className="text-navy text-sm font-black mb-3">{t("trustMarks")}</p>
+          <ul className="space-y-2.5">
+            {[
+              { icon: ShieldCheck, title: t("trustVerified"), desc: t("trustVerifiedDesc") },
+              { icon: FileCheck,   title: t("trustCertified"), desc: t("trustCertifiedDesc") },
+              { icon: CreditCard,  title: t("trustPrice"),    desc: t("trustPriceDesc") },
+              { icon: Truck,       title: t("trustDelivery"), desc: t("trustDeliveryDesc") },
+            ].map(({ icon: Icon, title, desc }) => (
+              <li key={title} className="grid grid-cols-[24px_1fr] gap-2.5 items-start">
+                <span className="w-6 h-6 rounded-full grid place-items-center text-whatsapp" style={{ background: "#e5f7ee" }}>
+                  <Icon className="h-3 w-3" />
+                </span>
+                <span>
+                  <strong className="block text-[13px] text-navy mb-0.5">{title}</strong>
+                  <span className="text-xs text-muted leading-snug">{desc}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </MallCard>
       </div>
-    </div>
+    </aside>
   );
 }
