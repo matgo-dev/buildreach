@@ -13,6 +13,7 @@ import Toggle from "@/components/ui/Toggle";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
+import { localizedField } from "@/lib/formatters";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { ApiError } from "@/lib/api";
 import {
@@ -149,20 +150,15 @@ export default function ProductDetailPage() {
   // 进入编辑态
   const enterEditMode = useCallback(() => {
     if (!product) return;
-    // 按当前 locale 选取编辑值:zh→_zh, en→_en, 其他→后端 get_localized 返回的字段
-    const pick = (zh: string | null, en: string | null, fb?: string | null) => {
-      if (locale === "zh") return zh || fb || en || "";
-      if (locale === "en") return en || fb || zh || "";
-      return fb || en || zh || "";
-    };
+    const lf = (zh: string | null, en: string | null, fb?: string | null) => localizedField(locale, zh, en, fb);
     setSpuForm({
-      name: pick(product.name_zh, product.name_en, product.name),
-      description: pick(product.description_zh, product.description_en, product.description),
-      brand: pick(product.brand_zh, product.brand_en, product.brand),
-      origin: pick(product.origin_zh, product.origin_en, product.origin),
+      name: lf(product.name_zh, product.name_en, product.name),
+      description: lf(product.description_zh, product.description_en, product.description),
+      brand: lf(product.brand_zh, product.brand_en, product.brand),
+      origin: lf(product.origin_zh, product.origin_en, product.origin),
       hs_code: product.hs_code,
       certifications: product.certifications || [],
-      selling_points: pick(product.selling_points_zh, product.selling_points_en, product.selling_points),
+      selling_points: lf(product.selling_points_zh, product.selling_points_en, product.selling_points),
       is_featured: product.is_featured,
       attributes: product.attributes.filter((a) => a.sku_id == null).map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
     });
@@ -185,14 +181,11 @@ export default function ProductDetailPage() {
     }
   }, [startInEdit, product, hasPermission, enterEditMode]);
 
-  // i18n 字段取值:fallback 是后端 get_localized() 返回的已本地化值(含 sw 等)
+  // i18n 字段取值:统一用公共工具函数
   const localized = useCallback(
-    (zhVal: string | null, enVal: string | null, fallback?: string | null) => {
-      if (locale === "zh") return zhVal || fallback || enVal || "";
-      if (locale === "en") return enVal || fallback || zhVal || "";
-      // sw 等其他语言:优先用后端已本地化的 fallback
-      return fallback || enVal || zhVal || "";
-    }, [locale]
+    (zhVal: string | null, enVal: string | null, fallback?: string | null) =>
+      localizedField(locale, zhVal, enVal, fallback),
+    [locale]
   );
 
   // 品类名解析
@@ -872,11 +865,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
 }
 
 function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations>; onImageClick?: (images: { url: string }[], index: number) => void; unit: string; currency: string }) {
-  const loc = (zh: string | null, en: string | null, fb?: string | null) => {
-    if (locale === "zh") return zh || fb || en || "";
-    if (locale === "en") return en || fb || zh || "";
-    return fb || en || zh || "";
-  };
+  const loc = (zh: string | null, en: string | null, fb?: string | null) => localizedField(locale, zh, en, fb);
   const Val = ({ v }: { v: string | number | null | undefined }) => <span className="text-slate-800">{v != null && v !== "" ? String(v) : "—"}</span>;
 
   return (
