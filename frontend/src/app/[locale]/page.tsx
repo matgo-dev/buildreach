@@ -7,6 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { useTranslations } from "next-intl";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { BRAND } from "@/config/brand";
 import { MallButton } from "@/components/mall/MallButton";
@@ -47,6 +48,7 @@ function DisabledCta({ children, className = "", title = "功能开发中" }: { 
 }
 
 export default function HomePage() {
+  const t = useTranslations("mall");
   return (
     <PublicLayout noContainer>
       {/* ===== HERO — 深青渐变 + 暖金点缀 ===== */}
@@ -69,19 +71,18 @@ export default function HomePage() {
               <div className="inline-flex items-center gap-2 min-h-[30px] px-3.5 rounded-full text-[12.5px] font-extrabold text-[#d6fffb] uppercase tracking-wider"
                 style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)", backdropFilter: "blur(6px)" }}>
                 <span className="w-[7px] h-[7px] rounded-full bg-gold" style={{ boxShadow: "0 0 10px #e3a615" }} />
-                DAR ES SALAAM FIRST · WEBSITE + WHATSAPP + SHOWROOM
+                {t("heroEyebrow")}
               </div>
 
               <h1 className="mt-4 mb-3 text-white font-black leading-[1.15]" style={{ fontSize: "clamp(32px, 3.2vw, 48px)", textShadow: "0 2px 20px rgba(0,30,34,.3)" }}>
-                能找货 · 能询价 · 能拼柜 · 能跟踪
+                {t("heroHeadline")}
                 <span className="block mt-2 text-gold font-extrabold" style={{ fontSize: "clamp(20px, 2vw, 27px)" }}>
                   {BRAND.tagline}
                 </span>
               </h1>
 
               <p className="text-[#e3f3f2] text-[15.5px] leading-relaxed max-w-[620px] mb-6">
-                {BRAND.description}。
-                客户在网站选品或上传图片/BOM，客服确认规格、MOQ、CBM、认证和贸易条款后，再发送正式报价单或 PI；网站不展示公开价格。
+                {t("heroDesc")}
               </p>
 
               <div className="flex flex-wrap gap-3">
@@ -93,16 +94,16 @@ export default function HomePage() {
                     boxShadow: "0 10px 24px rgba(193,133,11,.4)",
                   }}
                 >
-                  开始采购 Start Sourcing
+                  {t("heroCtaStart")}
                 </Link>
                 <DisabledCta className="h-10 px-5 inline-flex items-center justify-center rounded-[10px] text-sm font-extrabold text-white" title="功能开发中">
                   <span style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.24)", borderRadius: 10, padding: "0 16px", height: 40, display: "inline-flex", alignItems: "center" }}>
-                    申请报价 Request Quote
+                    {t("heroCtaQuote")}
                   </span>
                 </DisabledCta>
                 <DisabledCta className="h-10 px-5 inline-flex items-center justify-center rounded-[10px] text-sm font-extrabold text-white" title="功能开发中">
                   <span style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.24)", borderRadius: 10, padding: "0 16px", height: 40, display: "inline-flex", alignItems: "center" }}>
-                    拼柜进度 Container Slots
+                    {t("heroCtaContainer")}
                   </span>
                 </DisabledCta>
               </div>
@@ -159,8 +160,8 @@ export default function HomePage() {
       {/* ===== 平台核心能力 ===== */}
       <section className="bg-white py-12">
         <div className="mx-auto max-w-mall px-6">
-          <SectionTitle sub="Platform Capabilities">平台核心能力</SectionTitle>
-          <p className="text-muted text-xs mb-6">面向东非建材市场的一站式采购服务</p>
+          <SectionTitle sub="Platform Capabilities">{t("capTitle")}</SectionTitle>
+          <p className="text-muted text-xs mb-6">{t("capSubtitle")}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {FOUR_CAPABILITIES.map((item) => {
               const Icon = item.icon;
@@ -193,13 +194,13 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="w-6 h-6 text-gold" />
-                <h2 className="text-lg font-black text-white">AI 智能体工具箱</h2>
+                <h2 className="text-lg font-black text-white">{t("aiToolbox")}</h2>
                 <span className="text-[9px] px-2 py-0.5 bg-gold/20 text-gold rounded-full font-extrabold">
-                  Claude AI 驱动
+                  {t("aiPowered")}
                 </span>
               </div>
               <p className="text-white/50 text-sm">
-                9 大 AI Agent 覆盖证书审查、报价比价、国别准入、风险预警等全场景智能决策
+                {t("aiDesc")}
               </p>
             </div>
             <Link
@@ -210,7 +211,7 @@ export default function HomePage() {
                 boxShadow: "0 10px 24px rgba(193,133,11,.4)",
               }}
             >
-              进入工具箱 <ArrowRight className="w-4 h-4" />
+              {t("aiEnter")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -221,9 +222,9 @@ export default function HomePage() {
         background: "linear-gradient(120deg, #003f46 0%, #00505a 60%, #006773 100%)",
       }}>
         <div className="mx-auto max-w-mall px-6 text-center">
-          <h2 className="text-2xl font-black text-white mb-3">开启您的东非建材采购之旅</h2>
+          <h2 className="text-2xl font-black text-white mb-3">{t("ctaTitle")}</h2>
           <p className="text-white/50 text-sm mb-6">
-            加入 200+ 认证供应商网络，为东非门店、批发商和项目客户提供可信赖的建材供应链服务
+            {t("ctaDesc")}
           </p>
           <div className="flex justify-center gap-3">
             <Link
@@ -234,14 +235,14 @@ export default function HomePage() {
                 boxShadow: "0 10px 24px rgba(193,133,11,.4)",
               }}
             >
-              立即注册
+              {t("ctaRegister")}
             </Link>
             <DisabledCta
               title="关于页面待上线"
               className="px-8 py-3 rounded-[10px] text-sm font-extrabold text-white"
             >
               <span style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.24)", borderRadius: 10, padding: "12px 32px" }}>
-                了解更多
+                {t("ctaLearnMore")}
               </span>
             </DisabledCta>
           </div>

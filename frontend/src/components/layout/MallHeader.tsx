@@ -212,7 +212,7 @@ function UserMenu() {
       </button>
 
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-[9999] mt-2 w-60 overflow-hidden rounded-xl border border-line bg-white shadow-mall-lg">
+        <div role="menu" className="absolute right-0 top-full z-[200] mt-2 w-60 overflow-hidden rounded-xl border border-line bg-white shadow-mall-lg">
           {/* 用户信息 */}
           <div className="border-b border-slate-100 bg-gradient-to-br from-teal-50 to-white px-4 py-3">
             <div className="flex items-center gap-3">

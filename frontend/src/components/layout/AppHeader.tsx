@@ -236,7 +236,7 @@ function UserMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[999] mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute right-0 top-full z-[200] mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
         >
           {/* 用户信息卡 */}
           <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-4 py-3">

@@ -28,7 +28,7 @@ export function RightSidebar() {
             href={`https://wa.me/${BRAND.whatsapp.replace(/[\s+]/g, "")}`}
           >
             <MessageCircle className="h-4 w-4" />
-            Chat on WhatsApp
+            {t("chatOnWhatsApp")}
           </MallButton>
         </MallCard>
 
@@ -38,15 +38,15 @@ export function RightSidebar() {
           <p className="text-muted text-xs mb-3">{t("rfqCartHint")}</p>
           <div className="rounded-lg bg-[#f7fafb] border border-[#e4edf2] p-3 space-y-2 mb-3">
             <div className="flex justify-between text-xs text-muted">
-              <span>Items</span>
+              <span>{t("rfqItems")}</span>
               <strong className="text-navy">{cartCount}</strong>
             </div>
             <div className="flex justify-between text-xs text-muted">
-              <span>Quote sheet</span>
+              <span>{t("rfqQuoteSheet")}</span>
               <strong className="text-navy">{t("rfqCartQuoteByCS")}</strong>
             </div>
             <div className="flex justify-between text-xs text-muted">
-              <span>Estimated CBM</span>
+              <span>{t("rfqEstCBM")}</span>
               <strong className="text-navy">0.00</strong>
             </div>
           </div>
