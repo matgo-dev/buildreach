@@ -346,6 +346,7 @@
     "menuSettings": "账户设置",
     "menuSettingsDisabled": "改版中",
     "menuLogout": "退出登录",
+    "debugOtherWorkspaces": "其他工作台(调试可见)",
     "headerDeliverTo": "配送至",
     "headerQuoteByCS": "客服报价",
     "headerRfqCart": "询价栏",

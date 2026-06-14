@@ -34,8 +34,8 @@ export function PublicNav() {
             className={
               "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 " +
               (active
-                ? "text-[#003366]"
-                : "text-gray-500 hover:bg-slate-50 hover:text-[#003366]")
+                ? "text-teal-900"
+                : "text-gray-500 hover:bg-slate-50 hover:text-teal-900")
             }
           >
             <span className="block text-center leading-tight">
@@ -47,7 +47,7 @@ export function PublicNav() {
               )}
             </span>
             {active && (
-              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-[#FF6B35]" />
+              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gold" />
             )}
           </Link>
         );

@@ -166,7 +166,7 @@ function RfqDetailContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
       </div>
     );
   }
@@ -179,7 +179,7 @@ function RfqDetailContent() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="mt-4 text-sm text-[#0D4D4D] hover:underline"
+          className="mt-4 text-sm text-[#00505a] hover:underline"
         >
           返回
         </button>
@@ -226,7 +226,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setSubmitOpen(true)}
-              className="rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0D4D4D]/90"
+              className="rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#00505a]/90"
             >
               {t("submitDraft")}
             </button>
@@ -243,7 +243,7 @@ function RfqDetailContent() {
               <button
                 type="button"
                 onClick={() => setAcceptOpen(true)}
-                className="rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0D4D4D]/90"
+                className="rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#00505a]/90"
               >
                 {tQ("accept")}
               </button>
@@ -349,7 +349,7 @@ function RfqDetailContent() {
                 {rfq.required_certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-[#0D4D4D]/10 px-2 py-0.5 text-xs font-medium text-[#0D4D4D]"
+                    className="rounded bg-[#00505a]/10 px-2 py-0.5 text-xs font-medium text-[#00505a]"
                   >
                     {cert}
                   </span>
@@ -409,7 +409,7 @@ function RfqDetailContent() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
                 placeholder={t("cancelReason")}
               />
             </div>
@@ -565,7 +565,7 @@ function ItemsAndQuoteCard({
           {quote.total_amount != null && (
             <div>
               <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
-              <p className="text-base font-bold text-[#0D4D4D]">
+              <p className="text-base font-bold text-[#00505a]">
                 {formatCurrency(Number(quote.total_amount), currency, locale)}
               </p>
             </div>
@@ -589,7 +589,7 @@ function ItemsAndQuoteCard({
                   </th>
                   <th
                     colSpan={5}
-                    className="border-b border-gray-100 border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-5 py-1.5 text-left font-semibold text-[#0D4D4D]/60"
+                    className="border-b border-gray-100 border-l border-l-gray-200 bg-[#00505a]/[0.04] px-5 py-1.5 text-left font-semibold text-[#00505a]/60"
                   >
                     {tQ("groupResponse")}
                   </th>
@@ -599,11 +599,11 @@ function ItemsAndQuoteCard({
                   <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("product")}</th>
                   <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("spec")}</th>
                   <th className="bg-gray-50 px-4 py-2 font-medium text-right">{tQ("quantity")}</th>
-                  <th className="border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("unitPrice")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("moq")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("cbm")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("grossWeight")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("totalAmount")}</th>
+                  <th className="border-l border-l-gray-200 bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("unitPrice")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("moq")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("cbm")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("grossWeight")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("totalAmount")}</th>
                 </tr>
               </>
             ) : (
@@ -736,7 +736,7 @@ function QuoteLineRow({
             <button
               type="button"
               onClick={() => setShowTiers(!showTiers)}
-              className="text-xs font-medium text-[#0D4D4D] hover:underline"
+              className="text-xs font-medium text-[#00505a] hover:underline"
             >
               {tQ("tiers")} ({qi.tiers.length})
             </button>
@@ -750,7 +750,7 @@ function QuoteLineRow({
                       className="flex items-center gap-4 rounded px-2 py-1 text-xs text-gray-600"
                     >
                       <span className="w-24">≥ {tier.min_qty}</span>
-                      <span className="font-semibold text-[#0D4D4D]">
+                      <span className="font-semibold text-[#00505a]">
                         {formatCurrency(Number(tier.unit_price), currency, locale)}
                       </span>
                     </div>

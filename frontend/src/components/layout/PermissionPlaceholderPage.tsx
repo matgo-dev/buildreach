@@ -222,7 +222,7 @@ function ScopeDebugSection({ resource }: { resource: ResourceCode }) {
 
   return (
     <Section
-      accent="#003366"
+      accent="#00505a"
       title="维度 4:后端 scope 调试接口"
       sub="调用 GET /api/v1/_debug/scope 查后端真实返回(不返回业务数据)"
       ok={null}
@@ -230,7 +230,7 @@ function ScopeDebugSection({ resource }: { resource: ResourceCode }) {
       <button
         onClick={onClick}
         disabled={loading}
-        className="inline-flex h-9 items-center gap-2 rounded-md bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#002244] disabled:opacity-60"
+        className="inline-flex h-9 items-center gap-2 rounded-md bg-[#00505a] px-4 text-xs font-semibold text-white hover:bg-[#003f46] disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
         调用 /_debug/scope?resource={resource}
