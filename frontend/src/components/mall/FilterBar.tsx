@@ -5,6 +5,8 @@ import { Search, X } from "lucide-react";
 import { useState } from "react";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { SectionTitle } from "./SectionTitle";
+import { MallButton } from "./MallButton";
 
 interface Props {
   keyword: string;
@@ -54,16 +56,17 @@ export function FilterBar({
       className="rounded-xl border border-line bg-white shadow-mall-sm overflow-hidden"
     >
       {/* 区块标题 */}
-      <div className="flex items-end justify-between px-6 pt-5 pb-3">
-        <h2 className="relative pl-3.5 text-xl font-black text-navy leading-tight before:content-[''] before:absolute before:left-0 before:top-[0.15em] before:bottom-[0.15em] before:w-1 before:rounded before:bg-gradient-to-b before:from-gold before:to-teal-700">
+      <div className="px-6 pt-5 pb-3">
+        <SectionTitle
+          sub="FEATURED PRODUCTS"
+          right={
+            <span className="text-xs font-extrabold text-teal-900">
+              {t("totalProducts", { count: total })}
+            </span>
+          }
+        >
           {t("featuredProducts")}
-          <span className="ml-2 text-[11px] font-extrabold text-teal-700 uppercase tracking-widest">
-            FEATURED PRODUCTS
-          </span>
-        </h2>
-        <span className="text-xs font-extrabold text-teal-900">
-          {t("totalProducts", { count: total })}
-        </span>
+        </SectionTitle>
       </div>
 
       {/* 筛选行 */}
@@ -123,16 +126,9 @@ export function FilterBar({
           </select>
 
           {/* 筛选按钮 — 最右 */}
-          <button
-            type="submit"
-            className="h-[42px] px-5 rounded-[7px] text-sm font-extrabold text-white shrink-0 whitespace-nowrap transition-all hover:-translate-y-px"
-            style={{
-              background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
-              boxShadow: "0 4px 12px rgba(0,63,70,.22)",
-            }}
-          >
+          <MallButton type="submit" variant="teal" className="h-[42px] shrink-0">
             {t("filterSearch")} Filter
-          </button>
+          </MallButton>
         </div>
       </form>
 

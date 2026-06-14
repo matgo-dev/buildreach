@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { BRAND } from "@/config/brand";
+import { MallButton } from "./MallButton";
+import { MallCard } from "./MallCard";
 
 /**
  * 商城右侧栏 — WhatsApp 客服 + RFQ 购物车摘要。
- * 参考 HTML .rail > .whatsapp-card + .rail-card
  */
 export function RightSidebar() {
   const t = useTranslations("mall");
@@ -17,46 +17,25 @@ export function RightSidebar() {
   return (
     <aside className="w-[300px] shrink-0 hidden xl:block">
       <div className="sticky top-[148px] space-y-3.5">
-        {/* ===== 专属客服 Customer Support ===== */}
-        <div
-          className="rounded-xl border border-line bg-white p-4"
-          style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)" }}
-        >
-          <h3 className="text-navy text-base font-black mb-1">
-            {t("customerSupport")}
-          </h3>
-          <p className="text-muted text-[13px] mb-3">
-            {t("customerSupportHint")}
-          </p>
+        {/* 专属客服 */}
+        <MallCard>
+          <h3 className="text-navy text-base font-black mb-1">{t("customerSupport")}</h3>
+          <p className="text-muted text-[13px] mb-3">{t("customerSupportHint")}</p>
           <p className="text-navy text-xl font-black mb-3">{BRAND.whatsapp}</p>
-          <a
+          <MallButton
+            variant="whatsapp"
+            block
             href={`https://wa.me/${BRAND.whatsapp.replace(/[\s+]/g, "")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full h-10 rounded-[10px] text-white font-extrabold text-sm transition-colors"
-            style={{
-              background: "linear-gradient(135deg, #2bd86e, #1aa851)",
-              boxShadow: "0 8px 20px rgba(37,211,102,.4)",
-            }}
           >
             <MessageCircle className="h-4 w-4" />
             Chat on WhatsApp
-          </a>
-        </div>
+          </MallButton>
+        </MallCard>
 
-        {/* ===== 询价单 RFQ Cart ===== */}
-        <div
-          className="rounded-xl border border-line bg-white p-4"
-          style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)" }}
-        >
-          <h3 className="text-navy text-base font-black mb-1">
-            {t("rfqCart")}
-          </h3>
-          <p className="text-muted text-xs mb-3">
-            {t("rfqCartHint")}
-          </p>
-
-          {/* 摘要 */}
+        {/* 询价单 RFQ Cart */}
+        <MallCard>
+          <h3 className="text-navy text-base font-black mb-1">{t("rfqCart")}</h3>
+          <p className="text-muted text-xs mb-3">{t("rfqCartHint")}</p>
           <div className="rounded-lg bg-[#f7fafb] border border-[#e4edf2] p-3 space-y-2 mb-3">
             <div className="flex justify-between text-xs text-muted">
               <span>Items</span>
@@ -71,25 +50,13 @@ export function RightSidebar() {
               <strong className="text-navy">0.00</strong>
             </div>
           </div>
-
-          {/* 按钮 */}
-          <Link
-            href="/buyer/cart"
-            className="flex items-center justify-center w-full h-10 rounded-[10px] text-white font-extrabold text-sm transition-all"
-            style={{
-              background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
-              boxShadow: "0 6px 16px rgba(0,63,70,.22)",
-            }}
-          >
+          <MallButton variant="teal" block href="/buyer/cart">
             {t("submitRfq")}
-          </Link>
-        </div>
+          </MallButton>
+        </MallCard>
 
-        {/* ===== Trust Marks ===== */}
-        <div
-          className="rounded-xl border border-line bg-white p-4"
-          style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)" }}
-        >
+        {/* Trust Marks */}
+        <MallCard>
           <p className="text-navy text-sm font-black mb-3">{t("trustMarks")}</p>
           <ul className="space-y-2.5">
             {[
@@ -99,10 +66,7 @@ export function RightSidebar() {
               { icon: Truck,       title: t("trustDelivery"), desc: t("trustDeliveryDesc") },
             ].map(({ icon: Icon, title, desc }) => (
               <li key={title} className="grid grid-cols-[24px_1fr] gap-2.5 items-start">
-                <span
-                  className="w-6 h-6 rounded-full grid place-items-center text-whatsapp"
-                  style={{ background: "#e5f7ee" }}
-                >
+                <span className="w-6 h-6 rounded-full grid place-items-center text-whatsapp" style={{ background: "#e5f7ee" }}>
                   <Icon className="h-3 w-3" />
                 </span>
                 <span>
@@ -112,7 +76,7 @@ export function RightSidebar() {
               </li>
             ))}
           </ul>
-        </div>
+        </MallCard>
       </div>
     </aside>
   );

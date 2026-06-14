@@ -6,6 +6,7 @@ import { Package, ShoppingCart } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { MallButton } from "./MallButton";
 
 /** 从品类树中按 code 查找品类名称 */
 function findCategoryLabel(tree: CategoryTreeNode[], code: string): string {
@@ -22,9 +23,7 @@ function findCategoryLabel(tree: CategoryTreeNode[], code: string): string {
 }
 
 /**
- * 商品卡片 — 深青信任风格。参考 HTML .product-card
- *
- * 图片区 teal-50 渐变底 + hover 上浮 + 分层阴影
+ * 商品卡片 — 深青信任风格。
  */
 export function ProductCard({
   product,
@@ -39,8 +38,7 @@ export function ProductCard({
   return (
     <Link
       href={`/mall/products/${product.id}`}
-      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md"
-      style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)" }}
+      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
     >
       {/* 图片区 */}
       <div
@@ -66,12 +64,10 @@ export function ProductCard({
 
       {/* 信息区 */}
       <div className="p-3.5 space-y-2">
-        {/* 商品名 */}
         <h3 className="min-h-[46px] text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
           {product.name}
         </h3>
 
-        {/* 标签行:品类 + 认证 */}
         <div className="flex flex-wrap gap-1.5">
           {categoryLabel && (
             <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">
@@ -89,7 +85,6 @@ export function ProductCard({
           ))}
         </div>
 
-        {/* MOQ */}
         {product.moq != null && (
           <p className="text-xs text-muted">
             <span className="font-extrabold text-navy">MOQ:</span>{" "}
@@ -99,15 +94,9 @@ export function ProductCard({
 
         {/* 底部操作 */}
         <div className="grid grid-cols-[1fr_40px] gap-2 pt-1">
-          <span
-            className="h-10 rounded-[10px] flex items-center justify-center text-white text-[13px] font-extrabold transition-all"
-            style={{
-              background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
-              boxShadow: "0 6px 16px rgba(0,63,70,.22)",
-            }}
-          >
+          <MallButton variant="teal" size="md" className="text-[13px]">
             {t("startInquiry")}
-          </span>
+          </MallButton>
           <span
             className="h-10 w-10 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors"
             title={t("addToInquiryCart")}

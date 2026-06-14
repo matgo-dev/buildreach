@@ -6,6 +6,7 @@ import { Search, AlertCircle, RefreshCw } from "lucide-react";
 import type { ProductPublic } from "@/lib/api/products";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { ProductCard } from "./ProductCard";
+import { MallButton } from "./MallButton";
 
 interface Props {
   products: ProductPublic[];
@@ -16,7 +17,6 @@ interface Props {
   onClearFilters: () => void;
 }
 
-/** 骨架屏卡片 — 深青风格 */
 function SkeletonCard() {
   return (
     <div className="animate-pulse rounded-xl border border-line bg-white overflow-hidden shadow-mall-sm">
@@ -56,14 +56,10 @@ export function ProductGrid({
       <div className="rounded-xl border border-line bg-white py-20 text-center shadow-mall-sm">
         <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-300" />
         <p className="text-sm font-extrabold text-navy">{t("loadError")}</p>
-        <button
-          onClick={onRetry}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold text-white transition-colors"
-          style={{ background: "linear-gradient(135deg, #07808b, #00505a, #003f46)" }}
-        >
+        <MallButton variant="teal" size="sm" onClick={onRetry} className="mt-3">
           <RefreshCw className="h-3.5 w-3.5" />
           {t("retry")}
-        </button>
+        </MallButton>
       </div>
     );
   }
@@ -74,13 +70,9 @@ export function ProductGrid({
         <Search className="mx-auto mb-3 h-10 w-10 text-gray-300" />
         <p className="text-sm font-extrabold text-navy">{t("noProducts")}</p>
         <p className="mt-1 text-xs text-muted">{t("noProductsHint")}</p>
-        <button
-          onClick={onClearFilters}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold text-white transition-colors"
-          style={{ background: "linear-gradient(135deg, #07808b, #00505a, #003f46)" }}
-        >
+        <MallButton variant="teal" size="sm" onClick={onClearFilters} className="mt-3">
           {t("clearFilters")}
-        </button>
+        </MallButton>
       </div>
     );
   }
