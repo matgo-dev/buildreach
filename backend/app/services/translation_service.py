@@ -1,5 +1,6 @@
-"""翻译服务 — 三态 provider:google / mock / none。
+"""翻译服务 — 四态 provider:aliyun / google / mock / none。
 
+aliyun:调阿里云机器翻译通用版
 google:调 Google Cloud Translation v3 NMT
 mock:返回源文,status="mock"(开发用)
 none:短路返回,status="skipped"(未配置/降级)
@@ -20,7 +21,15 @@ _GOOGLE_LANG_MAP: dict[str, str] = {
     "sw": "sw",
 }
 
-# 延迟初始化的 Google 客户端
+# 平台 locale → 阿里云语言码
+_ALIYUN_LANG_MAP: dict[str, str] = {
+    "zh": "zh",
+    "en": "en",
+    "sw": "sw",
+}
+
+# ---- Google 客户端(延迟初始化) ----
+
 _google_client = None
 _google_available = None  # None=未检测, True/False=已检测
 
@@ -49,6 +58,44 @@ def _get_google_client():
     return _google_client
 
 
+# ---- 阿里云客户端(延迟初始化) ----
+
+_aliyun_client = None
+_aliyun_available = None
+
+
+def _get_aliyun_client():
+    """延迟初始化阿里云机器翻译客户端,缺凭据降级为 None。"""
+    global _aliyun_client, _aliyun_available
+    if _aliyun_available is not None:
+        return _aliyun_client
+
+    ak_id = settings.ALIYUN_TRANSLATE_ACCESS_KEY_ID
+    ak_secret = settings.ALIYUN_TRANSLATE_ACCESS_KEY_SECRET
+    if not ak_id or not ak_secret:
+        logger.warning("ALIYUN_TRANSLATE_ACCESS_KEY_ID/SECRET 未配置,翻译降级为 none")
+        _aliyun_available = False
+        return None
+
+    try:
+        from aliyunsdkcore.client import AcsClient
+        _aliyun_client = AcsClient(
+            ak_id,
+            ak_secret,
+            settings.ALIYUN_TRANSLATE_REGION,
+        )
+        _aliyun_available = True
+        logger.info("阿里云机器翻译客户端初始化成功 (region=%s)", settings.ALIYUN_TRANSLATE_REGION)
+    except Exception as e:
+        logger.warning("阿里云机器翻译客户端初始化失败,降级为 none: %s", e)
+        _aliyun_available = False
+        _aliyun_client = None
+
+    return _aliyun_client
+
+
+# ---- 公共入口 ----
+
 async def translate_text(
     text: str,
     source_locale: str,
@@ -73,6 +120,9 @@ async def translate_text(
     if provider == "mock":
         return {"translated": text, "status": "mock"}
 
+    if provider == "aliyun":
+        return await _translate_aliyun(text, source_locale, target_locale)
+
     if provider == "google":
         return await _translate_google(text, source_locale, target_locale)
 
@@ -80,6 +130,8 @@ async def translate_text(
     logger.warning("未知 TRANSLATION_PROVIDER=%s,降级为 none", provider)
     return {"translated": text, "status": "skipped"}
 
+
+# ---- Google 实现 ----
 
 async def _translate_google(
     text: str,
@@ -97,7 +149,6 @@ async def _translate_google(
     parent = f"projects/{settings.GOOGLE_TRANSLATE_PROJECT_ID}/locations/{settings.GOOGLE_TRANSLATE_LOCATION}"
 
     try:
-        # Google v3 同步 API,用 run_in_executor 避免阻塞事件循环
         import asyncio
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
@@ -117,4 +168,44 @@ async def _translate_google(
         return {"translated": translated, "status": "nmt"}
     except Exception as e:
         logger.error("Google Translation 调用失败: %s→%s, error=%s", source_locale, target_locale, e)
+        raise
+
+
+# ---- 阿里云实现 ----
+
+async def _translate_aliyun(
+    text: str,
+    source_locale: str,
+    target_locale: str,
+) -> dict:
+    """调阿里云机器翻译通用版。"""
+    client = _get_aliyun_client()
+    if client is None:
+        return {"translated": text, "status": "skipped"}
+
+    source_lang = _ALIYUN_LANG_MAP.get(source_locale, source_locale)
+    target_lang = _ALIYUN_LANG_MAP.get(target_locale, target_locale)
+
+    try:
+        import asyncio
+        import json
+        from aliyunsdkalimt.request.v20181012 import TranslateGeneralRequest
+
+        request = TranslateGeneralRequest.TranslateGeneralRequest()
+        request.set_SourceLanguage(source_lang)
+        request.set_TargetLanguage(target_lang)
+        request.set_SourceText(text)
+        request.set_FormatType("text")
+        request.set_method("POST")
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.do_action_with_exception(request),
+        )
+        result = json.loads(response)
+        translated = result["Data"]["Translated"]
+        return {"translated": translated, "status": "nmt"}
+    except Exception as e:
+        logger.error("阿里云机器翻译调用失败: %s→%s, error=%s", source_locale, target_locale, e)
         raise
