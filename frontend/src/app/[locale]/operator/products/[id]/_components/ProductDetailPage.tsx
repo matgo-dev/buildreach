@@ -149,14 +149,20 @@ export default function ProductDetailPage() {
   // 进入编辑态
   const enterEditMode = useCallback(() => {
     if (!product) return;
+    // 按当前 locale 选取编辑值:zh→_zh, en→_en, 其他→后端 get_localized 返回的字段
+    const pick = (zh: string | null, en: string | null, fb?: string | null) => {
+      if (locale === "zh") return zh || fb || en || "";
+      if (locale === "en") return en || fb || zh || "";
+      return fb || en || zh || "";
+    };
     setSpuForm({
-      name: locale === "en" ? product.name_en : product.name_zh || product.name,
-      description: locale === "en" ? product.description_en : product.description_zh || product.description,
-      brand: locale === "en" ? product.brand_en : product.brand_zh || product.brand,
-      origin: locale === "en" ? product.origin_en : product.origin_zh || product.origin,
+      name: pick(product.name_zh, product.name_en, product.name),
+      description: pick(product.description_zh, product.description_en, product.description),
+      brand: pick(product.brand_zh, product.brand_en, product.brand),
+      origin: pick(product.origin_zh, product.origin_en, product.origin),
       hs_code: product.hs_code,
       certifications: product.certifications || [],
-      selling_points: locale === "en" ? product.selling_points_en : product.selling_points_zh || product.selling_points,
+      selling_points: pick(product.selling_points_zh, product.selling_points_en, product.selling_points),
       is_featured: product.is_featured,
       attributes: product.attributes.filter((a) => a.sku_id == null).map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
     });
@@ -779,7 +785,7 @@ export default function ProductDetailPage() {
       {/* SKU Modal */}
       <SkuEditModal
         open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates} currency={product.currency}
-        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
+        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: localized(skuModalData.sku.name_zh, skuModalData.sku.name_en, skuModalData.sku.name), color: localized(skuModalData.sku.color_zh, skuModalData.sku.color_en, skuModalData.sku.color), material: localized(skuModalData.sku.material_zh, skuModalData.sku.material_en, skuModalData.sku.material), price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
       />
 
       {/* Lightbox 图片预览 */}
@@ -866,7 +872,11 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
 }
 
 function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations>; onImageClick?: (images: { url: string }[], index: number) => void; unit: string; currency: string }) {
-  const loc = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
+  const loc = (zh: string | null, en: string | null, fb?: string | null) => {
+    if (locale === "zh") return zh || fb || en || "";
+    if (locale === "en") return en || fb || zh || "";
+    return fb || en || zh || "";
+  };
   const Val = ({ v }: { v: string | number | null | undefined }) => <span className="text-slate-800">{v != null && v !== "" ? String(v) : "—"}</span>;
 
   return (
