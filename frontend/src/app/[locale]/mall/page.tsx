@@ -4,7 +4,6 @@ import React, { Suspense, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { Sparkles } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -41,7 +40,6 @@ function MallContent() {
         if (value) params.set(key, value);
         else params.delete(key);
       }
-      // 非翻页操作时重置到第 1 页
       if (!("page" in updates)) params.delete("page");
       const qs = params.toString();
       router.replace(`/${locale}/mall${qs ? `?${qs}` : ""}`, { scroll: false });
@@ -81,14 +79,11 @@ function MallContent() {
   const total = data?.total ?? 0;
   const pages = data?.pages ?? 0;
 
-  // 品类选择
-  // 筛选
   const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };
 
-  // 翻页滚动到顶
   const handlePageChange = (page: number) => {
     updateParams({ page: page > 1 ? String(page) : undefined });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -96,8 +91,9 @@ function MallContent() {
 
   return (
     <PublicLayout>
-      <div className="flex flex-col lg:flex-row gap-5">
-        {/* ===== 左侧品类导航 ===== */}
+      {/* 三栏布局:左品类(240) + 中内容(auto) + 右客服/RFQ(300) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px] gap-5 items-start">
+        {/* 左侧品类导航 */}
         <CategorySidebar
           activeCategoryCode={urlCat}
           showQuickLinks
@@ -105,16 +101,19 @@ function MallContent() {
           onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
         />
 
-        {/* ===== 主内容区 ===== */}
-        <div className="flex-1 min-w-0 space-y-3">
+        {/* 主内容区 */}
+        <div className="min-w-0 space-y-4">
           <FilterBar
             keyword={urlKeyword}
             sort={urlSort}
             featured={urlFeatured}
             total={total}
+            activeCategoryCode={urlCat}
+            categoryTree={categoryTree}
             onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
             onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
             onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+            onCategoryChange={(code) => updateParams({ cat: code || undefined })}
             onClearAll={clearAll}
             hasActiveFilters={hasActiveFilters}
           />
@@ -139,10 +138,8 @@ function MallContent() {
           )}
         </div>
 
-        {/* ===== 右侧栏 ===== */}
-        <aside className="hidden xl:block xl:w-48 shrink-0">
-          <RightSidebar />
-        </aside>
+        {/* 右侧栏 */}
+        <RightSidebar />
       </div>
     </PublicLayout>
   );
