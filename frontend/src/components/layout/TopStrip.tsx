@@ -65,7 +65,7 @@ export function TopStrip() {
             </button>
 
             {open && (
-              <div className="absolute right-0 z-[999] mt-1 w-40 rounded-lg border border-line bg-white py-1 shadow-mall-lg">
+              <div className="absolute right-0 z-[200] mt-1 w-40 rounded-lg border border-line bg-white py-1 shadow-mall-lg">
                 {LOCALES.map((l) => (
                   <Link
                     key={l.code}

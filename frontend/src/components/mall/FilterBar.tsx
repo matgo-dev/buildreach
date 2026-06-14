@@ -58,7 +58,7 @@ export function FilterBar({
       {/* 区块标题 */}
       <div className="px-6 pt-5 pb-3">
         <SectionTitle
-          sub="FEATURED PRODUCTS"
+          sub={t("sectionFeatured")}
           right={
             <span className="text-xs font-extrabold text-teal-900">
               {t("totalProducts", { count: total })}
@@ -101,7 +101,7 @@ export function FilterBar({
             onChange={(e) => onCategoryChange(e.target.value)}
             className="h-[42px] rounded-[7px] border border-line-strong bg-white px-3 text-[14px] text-ink outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14]"
           >
-            <option value="">{t("allCategories")} All Ca...</option>
+            <option value="">{t("filterAllCat")}</option>
             {categoryTree.map((cat) => (
               <option key={cat.code} value={cat.code}>{cat.name}</option>
             ))}
@@ -127,7 +127,7 @@ export function FilterBar({
 
           {/* 筛选按钮 — 最右 */}
           <MallButton type="submit" variant="teal" className="h-[42px] shrink-0">
-            {t("filterSearch")} Filter
+            {t("filterSearch")}
           </MallButton>
         </div>
       </form>
@@ -166,7 +166,7 @@ export function FilterBar({
             boxShadow: "0 4px 12px rgba(0,63,70,.22)",
           } : undefined}
         >
-          {t("allCategories")} All
+          {t("chipAll")}
         </button>
         {categoryTree.map((cat) => (
           <button

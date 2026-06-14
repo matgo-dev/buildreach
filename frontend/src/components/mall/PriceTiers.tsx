@@ -67,7 +67,7 @@ export function PriceTiers({ tiers, unit, quantity }: PriceTiersProps) {
               </span>
               {isActive && (
                 <span className="ml-2 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
-                  Best Price
+                  {t("detail.bestPrice")}
                 </span>
               )}
             </div>

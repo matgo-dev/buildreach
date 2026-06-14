@@ -43,7 +43,7 @@ export function MallNavRow() {
               <span
                 key={link.labelKey}
                 className="relative h-[50px] inline-flex items-center px-[18px] text-[14px] font-extrabold text-gray-300 whitespace-nowrap cursor-not-allowed select-none"
-                title="Coming soon"
+                title={t("navComingSoon")}
               >
                 {t(link.labelKey)}
               </span>
