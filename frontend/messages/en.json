@@ -346,6 +346,7 @@
     "menuSettings": "Account Settings",
     "menuSettingsDisabled": "Coming soon",
     "menuLogout": "Log out",
+    "debugOtherWorkspaces": "Other workspaces (debug)",
     "headerDeliverTo": "Deliver to",
     "headerQuoteByCS": "Quote by CS",
     "headerRfqCart": "RFQ Cart",

@@ -14,30 +14,28 @@ import { scopeOf } from "@/config/permission-matrix";
 import type { RoleCode } from "@/lib/auth";
 
 /**
- * 侧边栏(v3 §8)。深色主题对齐参考工程 overseas-supply-platform 的 SupplierSidebar/BuyerSidebar/AdminSidebar。
+ * 侧边栏(v3 §8)。
  *
- * tab 可见性:
- *   1. 没绑 resource 且无 requiredPermissions → 一律可见
- *   2. 绑了 resource → scope=NONE 无权;否则有权
- *   3. 有 requiredPermissions(无 resource)→ 检查权限点全部满足
- *
- * 调试模式:无权置灰 + lock 图标 + hover 提示;线上模式:无权不渲染。
+ * BUYER 工作台使用深青(teal-950)底色,与买方前台视觉统一;
+ * 其他工作台保持深蓝灰(#0A1929)底色。
  */
 export function AppSidebar() {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
+  const t = useTranslations("mall");
   const [debugMode] = useDebugMode();
 
   if (!user) return null;
 
   const userPerms = new Set(user.permissions);
   const userRoles = user.roles as RoleCode[];
-  // /mall 属于 BUYER 工作台，但路径不以 /buyer 开头，需特殊匹配
   const currentWs =
     WORKSPACES.find((w) => pathname.startsWith(w.pathPrefix)) ??
     (pathname.startsWith("/mall") && userRoles.includes("BUYER")
       ? WORKSPACES.find((w) => w.code === "BUYER")
       : undefined);
+
+  const isBuyer = currentWs?.code === "BUYER";
 
   const checkAccess = (item: NavItem): { ok: boolean; reason: string } => {
     if (item.resource) {
@@ -46,14 +44,14 @@ export function AppSidebar() {
     }
     if (item.requiredPermissions.length > 0) {
       const missing = item.requiredPermissions.find((p) => !userPerms.has(p));
-      if (missing) return { ok: false, reason: `缺权限点 ${missing}` };
+      if (missing) return { ok: false, reason: `missing: ${missing}` };
     }
     return { ok: true, reason: "" };
   };
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col overflow-y-auto bg-[#0A1929]">
-      <UserCard />
+    <aside className={`flex h-full w-60 shrink-0 flex-col overflow-y-auto ${isBuyer ? "bg-teal-950" : "bg-[#0A1929]"}`}>
+      <UserCard isBuyer={isBuyer} />
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 text-sm">
         {currentWs && (
           <WorkspaceGroups
@@ -61,13 +59,14 @@ export function AppSidebar() {
             currentPath={pathname}
             debugMode={debugMode}
             checkAccess={checkAccess}
+            isBuyer={isBuyer}
           />
         )}
 
         {debugMode && (
           <>
             <div className="mt-4 px-3 pb-1 pt-3 text-[10px] uppercase tracking-widest text-slate-500">
-              其他工作台(调试可见)
+              {t("debugOtherWorkspaces")}
             </div>
             {WORKSPACES.filter((w) => w.code !== currentWs?.code).map((w) => (
               <WorkspaceGroups
@@ -76,6 +75,7 @@ export function AppSidebar() {
                 currentPath={pathname}
                 debugMode={debugMode}
                 checkAccess={checkAccess}
+                isBuyer={false}
                 muted
               />
             ))}
@@ -86,12 +86,13 @@ export function AppSidebar() {
   );
 }
 
-/** 顶部用户信息卡:头像首字母 + 名字 + 角色徽章。 */
-function UserCard() {
+/** 顶部用户信息卡 */
+function UserCard({ isBuyer }: { isBuyer: boolean }) {
   const user = useAuthStore((s) => s.user);
+  const t = useTranslations("mall");
   if (!user) return null;
 
-  const displayName = user.username || user.email || "用户";
+  const displayName = user.username || user.email || t("headerMyAccount");
   const initial = (displayName[0] ?? "U").toUpperCase();
   const primaryRole = user.roles[0] as RoleCode | undefined;
   const meta = primaryRole ? ROLE_BADGE[primaryRole] : null;
@@ -99,16 +100,14 @@ function UserCard() {
   return (
     <div className="border-b border-white/10 p-5">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0F4C81] text-sm font-medium text-white">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium text-white ${isBuyer ? "bg-teal-800" : "bg-[#0F4C81]"}`}>
           {initial}
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-white">{displayName}</p>
           {meta && (
-            <span
-              className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-xs ${meta.cls}`}
-            >
-              {meta.label}
+            <span className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-xs ${isBuyer ? meta.clsBuyer : meta.cls}`}>
+              {t(meta.labelKey)}
             </span>
           )}
         </div>
@@ -117,11 +116,11 @@ function UserCard() {
   );
 }
 
-const ROLE_BADGE: Record<RoleCode, { label: string; cls: string }> = {
-  BUYER:    { label: "采购方",     cls: "bg-[#FF6B35]/20 text-[#FF6B35]" },
-  SUPPLIER: { label: "供应商",     cls: "bg-[#10B981]/20 text-[#10B981]" },
-  OPERATOR: { label: "平台运营",   cls: "bg-sky-500/20 text-sky-400" },
-  ADMIN:    { label: "系统管理员", cls: "bg-yellow-500/20 text-yellow-400" },
+const ROLE_BADGE: Record<RoleCode, { labelKey: string; cls: string; clsBuyer: string }> = {
+  BUYER:    { labelKey: "roleBuyer",    cls: "bg-[#FF6B35]/20 text-[#FF6B35]",   clsBuyer: "bg-gold/20 text-gold" },
+  SUPPLIER: { labelKey: "roleSupplier", cls: "bg-[#10B981]/20 text-[#10B981]",   clsBuyer: "bg-[#10B981]/20 text-[#10B981]" },
+  OPERATOR: { labelKey: "roleOperator", cls: "bg-sky-500/20 text-sky-400",       clsBuyer: "bg-sky-500/20 text-sky-400" },
+  ADMIN:    { labelKey: "roleAdmin",    cls: "bg-yellow-500/20 text-yellow-400", clsBuyer: "bg-yellow-500/20 text-yellow-400" },
 };
 
 function WorkspaceGroups({
@@ -129,12 +128,14 @@ function WorkspaceGroups({
   currentPath,
   debugMode,
   checkAccess,
+  isBuyer,
   muted = false,
 }: {
   workspace: Workspace;
   currentPath: string;
   debugMode: boolean;
   checkAccess: (item: NavItem) => { ok: boolean; reason: string };
+  isBuyer: boolean;
   muted?: boolean;
 }) {
   return (
@@ -154,6 +155,7 @@ function WorkspaceGroups({
                 currentPath={currentPath}
                 access={access}
                 debugMode={debugMode}
+                isBuyer={isBuyer}
               />
             );
           })}
@@ -192,26 +194,27 @@ function NavLink({
   currentPath,
   access,
   debugMode,
+  isBuyer,
 }: {
   item: NavItem;
   currentPath: string;
   access: { ok: boolean; reason: string };
   debugMode: boolean;
+  isBuyer: boolean;
 }) {
   const t = useTranslations("nav");
   const locale = useLocale();
 
-  // 子路径也算激活(/supplier/products/123 时高亮"商品管理")
   const isActive =
     currentPath === item.path || currentPath.startsWith(item.path + "/");
   const Icon = item.icon;
-
   const displayLabel = t(item.labelKey);
+
+  const activeClass = isBuyer ? "bg-teal-800 text-white" : "bg-[#0F4C81] text-white";
 
   const TextBlock = (
     <span className="flex-1 leading-tight">
       <span className="block truncate">{displayLabel}</span>
-      {/* 中文 locale 下显示英文副标题 */}
       {locale === "zh" && item.labelEn && (
         <span
           className={
@@ -231,9 +234,7 @@ function NavLink({
         href={item.path}
         className={
           "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors " +
-          (isActive
-            ? "bg-[#0F4C81] text-white"
-            : "text-gray-400 hover:bg-white/5 hover:text-white")
+          (isActive ? activeClass : "text-gray-400 hover:bg-white/5 hover:text-white")
         }
       >
         <Icon className="h-4 w-4 shrink-0" />
