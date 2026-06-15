@@ -702,6 +702,19 @@ def import_offer(
         product.updated_at = _utcnow()
         audit_action = AuditAction.UPDATE
     else:
+        # i18n:根据哪些字段有值决定 trans_meta 状态
+        _src_lang = "zh" if name_zh else "en"
+        _i18n_fields = ["name", "description", "brand", "origin",
+                        "selling_points", "detail_description"]
+        _trans_meta: dict[str, str] = {}
+        for _f in _i18n_fields:
+            for _loc in ("zh", "en", "sw"):
+                mk = f"{_f}_{_loc}"
+                if _loc == _src_lang:
+                    _trans_meta[mk] = "src"
+                else:
+                    _trans_meta[mk] = "pending"
+
         product = Product(
             spu_code=spu_code,
             category_code=category_code,
@@ -723,6 +736,9 @@ def import_offer(
             source=run_meta.source,
             last_ingest_run_id=run.id,
             status=ProductStatus.DRAFT,
+            source_lang=_src_lang,
+            trans_meta=_trans_meta,
+            i18n_pending_at=_utcnow(),
         )
         db.add(product)
         audit_action = AuditAction.IMPORT
