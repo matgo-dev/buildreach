@@ -1,11 +1,15 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Package, ShoppingCart } from "lucide-react";
+import { Package, ShoppingCart, Loader2 } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { addCartItem } from "@/lib/api/cart";
+import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/stores/cartStore";
 import { MallButton } from "./MallButton";
 
 /** 从品类树中按 code 查找品类名称 */
@@ -34,6 +38,24 @@ export function ProductCard({
 }) {
   const t = useTranslations("mall");
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
+  const [adding, setAdding] = useState(false);
+  const toast = useToast();
+  const triggerCartRefresh = useCartStore((s) => s.triggerRefresh);
+
+  const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setAdding(true);
+    try {
+      await addCartItem(product.id, [], 1);
+      triggerCartRefresh();
+      toast.success(t("addedToCart"));
+    } catch {
+      toast.error(t("addToCartFailed"));
+    } finally {
+      setAdding(false);
+    }
+  }, [product.id, triggerCartRefresh, toast, t]);
 
   return (
     <Link
@@ -114,12 +136,15 @@ export function ProductCard({
           <MallButton variant="teal" size="md" className="text-[13px]">
             {t("startInquiry")}
           </MallButton>
-          <span
-            className="h-10 w-10 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors"
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={adding}
+            className="h-10 w-10 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={t("addToInquiryCart")}
           >
-            <ShoppingCart className="h-4 w-4" />
-          </span>
+            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+          </button>
         </div>
       </div>
     </Link>

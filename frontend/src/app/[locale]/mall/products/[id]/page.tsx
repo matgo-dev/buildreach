@@ -21,6 +21,9 @@ import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
+import { addCartItem } from "@/lib/api/cart";
+import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/stores/cartStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
 
 // ---- 面包屑 ----
@@ -364,6 +367,26 @@ function ProductDetailContent() {
 
   // 规格选中态:仅前端本地,刷新即重置
   const [specSelection, setSpecSelection] = useState<Record<string, string>>({});
+  const [addingToCart, setAddingToCart] = useState(false);
+  const toast = useToast();
+  const triggerCartRefresh = useCartStore((s) => s.triggerRefresh);
+
+  const handleAddToCart = useCallback(async () => {
+    if (!product) return;
+    setAddingToCart(true);
+    try {
+      const selectedVariants = Object.entries(specSelection)
+        .filter(([, v]) => v)
+        .map(([attr_name, value]) => ({ attr_name, value }));
+      await addCartItem(product.id, selectedVariants, 1);
+      triggerCartRefresh();
+      toast.success(t("detail.addedToCart"));
+    } catch {
+      toast.error(t("detail.addToCartFailed"));
+    } finally {
+      setAddingToCart(false);
+    }
+  }, [product, specSelection, triggerCartRefresh, toast, t]);
 
   // 点选/取消规格值(单选:每个 key 选一个值)
   const handleSpecSelect = useCallback((key: string, value: string) => {
@@ -566,15 +589,13 @@ function ProductDetailContent() {
 
             {/* 操作按钮 — 出口仍置灰,选中态仅前端本地,不发请求、不带出 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* TODO: ① 带入询价:询价行粒度(SPU vs Product+selected_specs)定调后(张总/温总),把本地 specSelection 接到询价提交 */}
-              {/* TODO: ② SKU 轴去重汇总:手工建带 SKU 商品的规格轴,后端去重汇总后也纳入可选(需后端增量) */}
               <button
                 type="button"
-                disabled
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
-                title={t("detail.comingSoon")}
+                disabled={addingToCart}
+                onClick={handleAddToCart}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#003d45] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ShoppingCart className="h-4 w-4" />
+                {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("detail.addToInquiry")}
               </button>
               {/* TODO: WhatsApp 平台运营号/链接配置化 */}
