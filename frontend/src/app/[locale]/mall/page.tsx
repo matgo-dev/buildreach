@@ -30,6 +30,7 @@ function MallContent() {
   const urlKeyword = searchParams.get("keyword") || "";
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
+  const urlSupplyMode = searchParams.get("supply_mode") || "";
   const urlPage = Number(searchParams.get("page")) || 1;
 
   // 更新 URL 参数的统一方法
@@ -54,10 +55,11 @@ function MallContent() {
       keyword: urlKeyword || undefined,
       sort: urlSort as ProductListParams["sort"],
       featured: urlFeatured || undefined,
+      supply_mode: urlSupplyMode || undefined,
       page: urlPage,
       size: PAGE_SIZE,
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlPage]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage]
   );
 
   const swrKey = useMemo(
@@ -79,7 +81,7 @@ function MallContent() {
   const total = data?.total ?? 0;
   const pages = data?.pages ?? 0;
 
-  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSort !== "newest");
+  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };
@@ -107,12 +109,14 @@ function MallContent() {
             keyword={urlKeyword}
             sort={urlSort}
             featured={urlFeatured}
+            supplyMode={urlSupplyMode}
             total={total}
             activeCategoryCode={urlCat}
             categoryTree={categoryTree}
             onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
             onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
             onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+            onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
             onCategoryChange={(code) => updateParams({ cat: code || undefined })}
             onClearAll={clearAll}
             hasActiveFilters={hasActiveFilters}

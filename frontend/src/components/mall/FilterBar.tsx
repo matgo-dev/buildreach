@@ -12,12 +12,14 @@ interface Props {
   keyword: string;
   sort: string;
   featured: boolean;
+  supplyMode: string;
   total: number;
   activeCategoryCode: string;
   categoryTree: CategoryTreeNode[];
   onKeywordChange: (keyword: string) => void;
   onSortChange: (sort: string) => void;
   onFeaturedToggle: () => void;
+  onSupplyModeChange: (mode: string) => void;
   onCategoryChange: (code: string) => void;
   onClearAll: () => void;
   hasActiveFilters: boolean;
@@ -33,12 +35,14 @@ export function FilterBar({
   keyword,
   sort,
   featured,
+  supplyMode,
   total,
   activeCategoryCode,
   categoryTree,
   onKeywordChange,
   onSortChange,
   onFeaturedToggle,
+  onSupplyModeChange,
   onCategoryChange,
   onClearAll,
   hasActiveFilters,
@@ -148,6 +152,29 @@ export function FilterBar({
           } : undefined}
         >
           ⭐ {t("featuredOnly")}
+        </button>
+
+        {/* 履约模式 chips */}
+        <div className="h-8 w-px bg-line self-center" />
+        <button
+          onClick={() => onSupplyModeChange(supplyMode === "PLATFORM_STOCK" ? "" : "PLATFORM_STOCK")}
+          className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+            supplyMode === "PLATFORM_STOCK"
+              ? "bg-blue-600 text-white border-transparent shadow-sm"
+              : "bg-white text-ink border border-line hover:border-blue-500 hover:bg-blue-50"
+          }`}
+        >
+          📦 {t("supplyModePlatformStock")}
+        </button>
+        <button
+          onClick={() => onSupplyModeChange(supplyMode === "SUPPLIER_DIRECT" ? "" : "SUPPLIER_DIRECT")}
+          className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+            supplyMode === "SUPPLIER_DIRECT"
+              ? "bg-emerald-600 text-white border-transparent shadow-sm"
+              : "bg-white text-ink border border-line hover:border-emerald-500 hover:bg-emerald-50"
+          }`}
+        >
+          🏭 {t("supplyModeSupplierDirect")}
         </button>
 
         {/* 分隔线 */}
