@@ -12,45 +12,63 @@ import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { MallButton } from "./MallButton";
 
-/** 飞入购物车动画：从按钮位置飞向右上角购物车图标 */
+/** 飞入购物车动画：带尾巴的流星效果，渐出渐入 */
 function flyToCart(startEl: HTMLElement) {
-  // 找到 header 里的购物车图标
   const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
   if (!target) return;
 
   const startRect = startEl.getBoundingClientRect();
   const endRect = target.getBoundingClientRect();
 
-  const dot = document.createElement("div");
-  dot.style.cssText = `
+  const sx = startRect.left + startRect.width / 2;
+  const sy = startRect.top + startRect.height / 2;
+  const ex = endRect.left + endRect.width / 2;
+  const ey = endRect.top + endRect.height / 2;
+
+  // 计算角度，让尾巴朝运动反方向
+  const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
+
+  const meteor = document.createElement("div");
+  meteor.style.cssText = `
     position: fixed;
     z-index: 99999;
-    left: ${startRect.left + startRect.width / 2}px;
-    top: ${startRect.top + startRect.height / 2}px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #0D4D4D;
+    left: ${sx}px;
+    top: ${sy}px;
+    width: 36px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, transparent 0%, #0D4D4D 40%, #1A6B6B 100%);
+    box-shadow: 0 0 8px rgba(13, 77, 77, 0.5), 0 0 16px rgba(13, 77, 77, 0.2);
     pointer-events: none;
-    transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-    opacity: 1;
+    transform: rotate(${angle}deg);
+    transform-origin: right center;
+    opacity: 0;
+    transition: left 1s cubic-bezier(0.25, 0.1, 0.25, 1),
+                top 1s cubic-bezier(0.25, 0.1, 0.25, 1),
+                opacity 0.3s ease,
+                width 0.8s ease;
   `;
-  document.body.appendChild(dot);
+  document.body.appendChild(meteor);
 
+  // 渐入
   requestAnimationFrame(() => {
-    dot.style.left = `${endRect.left + endRect.width / 2}px`;
-    dot.style.top = `${endRect.top + endRect.height / 2}px`;
-    dot.style.width = "8px";
-    dot.style.height = "8px";
-    dot.style.opacity = "0.3";
+    meteor.style.opacity = "1";
+    requestAnimationFrame(() => {
+      meteor.style.left = `${ex}px`;
+      meteor.style.top = `${ey}px`;
+      meteor.style.width = "12px";
+      // 飞行后半段渐出
+      setTimeout(() => { meteor.style.opacity = "0"; }, 600);
+    });
   });
 
   setTimeout(() => {
-    dot.remove();
-    // 购物车图标弹跳效果
-    target.classList.add("animate-bounce");
-    setTimeout(() => target.classList.remove("animate-bounce"), 500);
-  }, 650);
+    meteor.remove();
+    // 购物车图标弹跳
+    target.style.transition = "transform 0.3s ease";
+    target.style.transform = "scale(1.3)";
+    setTimeout(() => { target.style.transform = "scale(1)"; }, 300);
+  }, 1050);
 }
 
 /** 从品类树中按 code 查找品类名称 */
