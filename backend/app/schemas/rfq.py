@@ -71,6 +71,14 @@ class RfqItemUpdate(BaseModel):
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
 
 
+class RfqItemEdit(BaseModel):
+    """运营编辑行项：可改变体、数量、备注。None = 不改该字段。"""
+    selected_variants: list[dict[str, str]] | None = None
+    quantity: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
+    target_unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
+    remark: str | None = None
+
+
 class RfqListQuery(BaseModel):
     """列表查询参数。"""
     page: int = Field(default=1, ge=1)

@@ -88,7 +88,8 @@
       "sku_not_purchasable": "SKU hii haipatikani kwa ununuzi",
       "quantity_invalid": "Idadi si sahihi",
       "item_not_found": "Bidhaa ya kikapu haikupatikana",
-      "buyer_org_required": "Hakuna shirika la mnunuzi linalopatikana"
+      "buyer_org_required": "Hakuna shirika la mnunuzi linalopatikana",
+      "product_not_available": "Bidhaa hii haipatikani au imeondolewa"
     },
     "rfq": {
       "no_valid_items": "Hakuna bidhaa halali za kuwasilisha RFQ",
@@ -99,7 +100,9 @@
       "source_not_allowed": "Opereta anaweza tu kuunda RFQ kupitia uingizaji wa moja kwa moja",
       "no_generation_failed": "Uzalishaji wa nambari ya RFQ umeshindwa, tafadhali jaribu tena",
       "already_claimed": "RFQ hii tayari imedaiwa na opereta mwingine",
-      "item_not_found": "Kipande cha RFQ hakikupatikana"
+      "item_not_found": "Kipande cha RFQ hakikupatikana",
+      "not_assigned_to_you": "Ombi hili halikupewa wewe",
+      "min_one_item": "Angalau kipengee kimoja kinahitajika"
     },
     "quote": {
       "rfq_state_invalid": "Operesheni ya nukuu hairuhusiwi kwa hali ya sasa ya RFQ",
@@ -785,7 +788,25 @@
     "searchPlaceholder": "Tafuta kwa jina la bidhaa...",
     "alreadyAdded": "Imeongezwa",
     "add": "Ongeza",
-    "noSearchResult": "Hakuna bidhaa zinazofanana zilizopatikana"
+    "noSearchResult": "Hakuna bidhaa zinazofanana zilizopatikana",
+    "addItem": "Ongeza Kipande",
+    "editItem": "Hariri Kipande",
+    "deleteItem": "Futa",
+    "deleteItemConfirm": "Futa kipande hiki? Hatua hii haiwezi kutenduliwa.",
+    "itemAdded": "Kipande kimeongezwa",
+    "itemUpdated": "Kipande kimesasishwa",
+    "itemDeleted": "Kipande kimefutwa",
+    "noVariant": "Hakuna anuwai",
+    "minOneItem": "Angalau kipande kimoja kinahitajika",
+    "createOnBehalf": "Unda Ombi kwa Niaba",
+    "selectBuyerOrg": "Chagua Shirika la Mnunuzi",
+    "searchBuyerOrg": "Tafuta shirika la mnunuzi...",
+    "saveDraft": "Hifadhi Rasimu",
+    "submitDirectly": "Wasilisha Moja kwa Moja",
+    "buyerOrgRequired": "Tafadhali chagua shirika la mnunuzi",
+    "itemsRequired": "Tafadhali ongeza angalau bidhaa moja",
+    "createSuccess": "Ombi limeundwa",
+    "draftSaved": "Rasimu imehifadhiwa"
   },
   "quote": {
     "backfillTitle": "Jaza Nukuu",

@@ -30,6 +30,8 @@ from app.core.exceptions import (
     RfqAlreadyClaimedError,
     RfqDuplicateItemError,
     RfqItemNotFoundError,
+    RfqMinOneItemError,
+    RfqNotAssignedToYouError,
     RfqProductNotAvailableError,
     RfqNoGenerationFailedError,
     RfqNoValidItemsError,
@@ -46,6 +48,8 @@ from app.db.models.rfq_item import RfqItem
 from app.schemas.rfq import (
     RfqBuyerPublic,
     RfqCreate,
+    RfqItemEdit,
+    RfqItemInput,
     RfqItemPublic,
     RfqOperatorView,
     RfqUpdate,
@@ -506,9 +510,16 @@ def _resolve_direct_items(items: list) -> list[dict]:
 # ── 加载与序列化 ──────────────────────────────────────
 
 async def _load_and_serialize(
-    db: AsyncSession, rfq_id: int, *, is_operator: bool,
+    db: AsyncSession, rfq_id: int, *, is_operator: bool, refresh: bool = False,
 ) -> RfqBuyerPublic | RfqOperatorView:
-    """重新加载并序列化。"""
+    """重新加载并序列化。refresh=True 时强制从 DB 刷新（行项增删后需要）。"""
+    if refresh:
+        # 清除 identity map 中的旧缓存，确保 selectinload 拿到最新行项
+        await db.execute(
+            select(Rfq).where(Rfq.id == rfq_id)
+            .options(selectinload(Rfq.items))
+            .execution_options(populate_existing=True)
+        )
     rfq = await load_rfq(db, rfq_id, with_items=True)
     if not rfq:
         raise RfqNotFoundError()
@@ -790,28 +801,60 @@ async def update_rfq(
     return await _load_and_serialize(db, rfq.id, is_operator=False)
 
 
-# ── 草稿态编辑行项数量 ──────────────────────────────────
+# ── 运营行项编辑辅助函数 ──────────────────────────────────
+
+
+def _assert_operator_can_edit_items(rfq: Rfq, user: CurrentUser) -> None:
+    """校验运营是否可编辑行项：PROCESSING + 是受理人。"""
+    if rfq.status != RfqStatus.PROCESSING:
+        raise RfqStateInvalidError(rfq.status)
+    if rfq.operator_assignee_id != user.id:
+        raise RfqNotAssignedToYouError()
+
+
+def _find_item(rfq: Rfq, item_id: int) -> RfqItem:
+    """在询价单行项中查找指定 ID 的活跃行项。"""
+    for it in rfq.items:
+        if it.id == item_id and getattr(it, "deleted_at", None) is None:
+            return it
+    raise RfqItemNotFoundError()
+
+
+def _make_fingerprint(product_id: int, variant_snapshot: list) -> str:
+    """生成 product_id + variant_snapshot 的去重指纹。"""
+    normalized = sorted(
+        (variant_snapshot or []),
+        key=lambda x: (x.get("attr_name", ""), x.get("value", "")),
+    )
+    return f"{product_id}::{json.dumps(normalized, sort_keys=True, ensure_ascii=False)}"
+
+
+def _item_fingerprint(item: RfqItem) -> str:
+    """从已有行项生成去重指纹。"""
+    return _make_fingerprint(item.product_id, item.variant_snapshot or [])
+
+
+# ── 编辑行项数量（DRAFT + PROCESSING） ──────────────────
 
 
 async def update_rfq_item_qty(
     db: AsyncSession, user: CurrentUser,
     rfq_id: int, item_id: int, quantity: Decimal,
     *, request: Request | None = None,
-) -> RfqBuyerPublic:
-    """草稿态修改行项数量。仅 DRAFT 可操作。"""
+) -> RfqBuyerPublic | RfqOperatorView:
+    """修改行项数量。DRAFT（买方）或 PROCESSING（受理人）可操作。"""
     rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
 
-    if rfq.status != RfqStatus.DRAFT:
+    is_operator = "OPERATOR" in user.roles
+
+    if rfq.status == RfqStatus.DRAFT:
+        pass  # 买方可改
+    elif rfq.status == RfqStatus.PROCESSING:
+        _assert_operator_can_edit_items(rfq, user)
+    else:
         raise RfqStateInvalidError(rfq.status)
 
-    target_item = None
-    for it in rfq.items:
-        if it.id == item_id and getattr(it, "deleted_at", None) is None:
-            target_item = it
-            break
-    if not target_item:
-        raise RfqItemNotFoundError()
-
+    target_item = _find_item(rfq, item_id)
     target_item.quantity = quantity
 
     await write_audit(
@@ -827,4 +870,138 @@ async def update_rfq_item_qty(
     )
     await db.commit()
 
-    return await _load_and_serialize(db, rfq.id, is_operator=False)
+    return await _load_and_serialize(db, rfq.id, is_operator=is_operator)
+
+
+# ── 运营行项增删改（PROCESSING 态） ──────────────────────
+
+
+async def add_rfq_item(
+    db: AsyncSession, user: CurrentUser,
+    rfq_id: int, payload: RfqItemInput,
+    *, request: Request | None = None,
+) -> RfqOperatorView:
+    """PROCESSING 态添加行项（运营受理人）。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+    _assert_operator_can_edit_items(rfq, user)
+
+    # SPU 可用性校验
+    product = await _get_viewable_product(db, payload.product_id)
+    if not product:
+        raise RfqProductNotAvailableError([payload.product_id])
+
+    # 变体规范化
+    variant_snapshot = await _normalize_variants_to_en(
+        db, product.id, payload.selected_variants,
+    )
+
+    # 去重检查
+    existing_fps = {
+        _item_fingerprint(it) for it in rfq.items
+        if getattr(it, "deleted_at", None) is None
+    }
+    if _make_fingerprint(payload.product_id, variant_snapshot) in existing_fps:
+        raise RfqDuplicateItemError()
+
+    db.add(RfqItem(
+        rfq_id=rfq.id,
+        product_id=product.id,
+        variant_snapshot=variant_snapshot,
+        product_name_snapshot_zh=product.name_zh,
+        product_name_snapshot_en=product.name_en,
+        uom_snapshot=product.unit,
+        quantity=payload.quantity,
+        target_unit_price=payload.target_unit_price,
+        remark=payload.remark,
+    ))
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.UPDATE,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no, "op": "ADD_ITEM", "product_id": product.id},
+        commit=False,
+    )
+    await db.commit()
+    return await _load_and_serialize(db, rfq.id, is_operator=True, refresh=True)
+
+
+async def edit_rfq_item(
+    db: AsyncSession, user: CurrentUser,
+    rfq_id: int, item_id: int, payload: RfqItemEdit,
+    *, request: Request | None = None,
+) -> RfqOperatorView:
+    """PROCESSING 态编辑行项（运营受理人）：可改变体、数量、备注。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+    _assert_operator_can_edit_items(rfq, user)
+
+    target = _find_item(rfq, item_id)
+
+    if payload.selected_variants is not None:
+        product = await _get_viewable_product(db, target.product_id)
+        if not product:
+            raise RfqProductNotAvailableError([target.product_id])
+        target.variant_snapshot = await _normalize_variants_to_en(
+            db, product.id, payload.selected_variants,
+        )
+        # 快照刷新
+        target.product_name_snapshot_zh = product.name_zh
+        target.product_name_snapshot_en = product.name_en
+        target.uom_snapshot = product.unit
+
+    if payload.quantity is not None:
+        target.quantity = payload.quantity
+    if payload.target_unit_price is not None:
+        target.target_unit_price = payload.target_unit_price
+    if payload.remark is not None:
+        target.remark = payload.remark
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.UPDATE,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no, "op": "EDIT_ITEM", "item_id": item_id},
+        commit=False,
+    )
+    await db.commit()
+    return await _load_and_serialize(db, rfq.id, is_operator=True, refresh=True)
+
+
+async def delete_rfq_item(
+    db: AsyncSession, user: CurrentUser,
+    rfq_id: int, item_id: int,
+    *, request: Request | None = None,
+) -> RfqOperatorView:
+    """PROCESSING 态删除行项（运营受理人）。至少保留 1 行。"""
+    rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
+    _assert_operator_can_edit_items(rfq, user)
+
+    active_items = [it for it in rfq.items if getattr(it, "deleted_at", None) is None]
+    if len(active_items) <= 1:
+        raise RfqMinOneItemError()
+
+    target = _find_item(rfq, item_id)
+    # 行项是配置数据，硬删
+    await db.delete(target)
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.RFQ,
+        action=AuditAction.UPDATE,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=rfq.id,
+        request=request,
+        extra={"rfq_no": rfq.rfq_no, "op": "DELETE_ITEM", "item_id": item_id},
+        commit=False,
+    )
+    await db.commit()
+    return await _load_and_serialize(db, rfq.id, is_operator=True, refresh=True)
