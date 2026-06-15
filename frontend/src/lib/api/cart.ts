@@ -9,19 +9,17 @@ import { api } from "../api";
 
 export interface CartItemPublic {
   item_id: number;
-  sku_id: number;
   product_id: number;
+  sku_id: number | null;                                          // 历史兼容
+  selected_variants: Array<{ attr_name: string; value: string }>;
   quantity: number;
-  sku_code: string;
-  sku_name: string | null;
   product_name: string | null;
-  manufacturer_model: string | null;
-  color: string | null;
-  material: string | null;
+  variant_display: string | null;
   unit: string | null;
   moq: number | null;
   is_purchasable: boolean;
-  unavailable_reason: string | null; // SKU_DELETED | SKU_INACTIVE | PRODUCT_DELETED | PRODUCT_INACTIVE
+  unavailable_reason: string | null;
+  // 可能的值: PRODUCT_DELETED | PRODUCT_INACTIVE | VARIANT_UNAVAILABLE
   main_image: string | null;
 }
 
@@ -37,13 +35,15 @@ export async function getCart(): Promise<CartPublic> {
   return api.get<CartPublic>("/api/v1/cart");
 }
 
-/** 加入询价篮（同 SKU 自动累加数量） */
+/** 加入询价篮（同 SPU + 相同变体自动累加数量） */
 export async function addCartItem(
-  skuId: number,
-  quantity: number
+  productId: number,
+  selectedVariants: Array<{ attr_name: string; value: string }>,
+  quantity: number,
 ): Promise<CartPublic> {
   return api.post<CartPublic>("/api/v1/cart/items", {
-    sku_id: skuId,
+    product_id: productId,
+    selected_variants: selectedVariants,
     quantity,
   });
 }

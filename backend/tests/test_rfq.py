@@ -87,10 +87,10 @@ async def _create_active_product(
     return product_id, sku_id
 
 
-async def _add_to_cart(client: AsyncClient, headers: dict, sku_id: int, qty: str = "5.000") -> int:
+async def _add_to_cart(client: AsyncClient, headers: dict, product_id: int, qty: str = "5.000") -> int:
     """加购并返回 cart_item_id。"""
     r = await client.post("/api/v1/cart/items", headers=headers, json={
-        "sku_id": sku_id, "quantity": qty,
+        "product_id": product_id, "selected_variants": [], "quantity": qty,
     })
     assert r.status_code == 200, r.text
     return r.json()["data"]["items"][-1]["item_id"]
@@ -146,7 +146,7 @@ async def test_buyer_create_no_cart_side_effect(client, db_session):
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
     product_id, sku_id = await _create_active_product(client, op, db_session)
-    ci_id = await _add_to_cart(client, bh, sku_id)
+    ci_id = await _add_to_cart(client, bh, product_id)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
         "items": [{"product_id": product_id, "selected_variants": [], "quantity": "5.000"}],
@@ -672,7 +672,7 @@ async def test_idempotency_cart_items_untouched(client: AsyncClient, db_session:
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
     product_id, sku_id = await _create_active_product(client, op, db_session)
-    cart_item_id = await _add_to_cart(client, bh, sku_id)
+    cart_item_id = await _add_to_cart(client, bh, product_id)
     idem_key = str(uuid4())
 
     payload = {
