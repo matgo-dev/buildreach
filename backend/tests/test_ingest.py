@@ -327,6 +327,33 @@ class TestProductImport:
         assert product.status == ProductStatus.DRAFT
         assert product.last_ingest_run_id == run.id
 
+    def test_import_description_falls_back_to_listing_title(
+        self, prepared_db, cat_tree, offers, run_meta,
+    ):
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        assert offer.data is not None
+        offer.data["description_en"] = ""
+        offer.data["description_zh"] = ""
+        offer.data["listing_title_en"] = "Fallback listing title EN"
+        offer.data["listing_title_zh"] = "兜底列表标题中文"
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        assert product.description_en == "Fallback listing title EN"
+        assert product.description_zh == "兜底列表标题中文"
+
     def test_attrs_multi_value_n_rows(self, prepared_db, cat_tree, offers, run_meta):
         """values 有几个插几行——Feature 有 3 个值应该 3 行。"""
         db, slug_to_code, run = prepared_db
