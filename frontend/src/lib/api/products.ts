@@ -17,6 +17,7 @@ export interface ProductPublic {
   brand: string | null;
   certifications: string[] | null;
   is_featured: boolean;
+  supply_mode: string;
   main_image: string | null;
   unit: string | null;
   moq: number | null;
@@ -34,6 +35,7 @@ export interface ProductListParams {
   category_code?: string;
   keyword?: string;
   featured?: boolean;
+  supply_mode?: string;
   sort?: "newest";
   page?: number;
   size?: number;
@@ -99,6 +101,7 @@ export interface ProductPublicDetail {
   moq: number | null;
   moq_unit: string | null;
   is_featured: boolean;
+  supply_mode: string;
   unit: string;
   attribute_groups: AttrGroup[];
   images: ProductImage[];

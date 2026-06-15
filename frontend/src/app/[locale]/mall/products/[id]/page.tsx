@@ -486,6 +486,24 @@ function ProductDetailContent() {
             <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
             <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
 
+            {/* 履约模式标签 */}
+            <div className="mt-1.5 flex gap-1.5">
+              {product.supply_mode === "PLATFORM_STOCK" ? (
+                <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  {t("supplyModePlatformStock")}
+                </span>
+              ) : (
+                <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  {t("supplyModeSupplierDirect")}
+                </span>
+              )}
+              {product.is_featured && (
+                <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  {t("featured")}
+                </span>
+              )}
+            </div>
+
             {/* 认证徽章 */}
             {product.certifications && product.certifications.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">

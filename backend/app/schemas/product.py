@@ -12,6 +12,7 @@ from typing import List, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.constants.sku_unit import SkuUnitCode
+from app.db.models.product import SupplyMode
 
 
 # ---------- 图片 ----------
@@ -249,6 +250,7 @@ class ProductPublic(BaseModel):
     brand: str | None = None
     certifications: list | None = None
     is_featured: bool
+    supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     main_image: str | None = None
     unit: str | None = None
     moq: int | None = None
@@ -271,6 +273,7 @@ class ProductPublicDetail(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool
+    supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: str = "PCS"
     moq: int | None = None
     moq_unit: str | None = None
@@ -292,6 +295,7 @@ class ProductOperator(BaseModel):
     origin: str
     brand: str | None = None
     is_featured: bool
+    supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     main_image: str | None = None
     status: str
     created_by_name: str = ""
@@ -328,6 +332,7 @@ class ProductOperatorDetail(BaseModel):
     selling_points_en: str | None = None
     source_lang: str = "zh"
     is_featured: bool
+    supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: str = "PCS"
     currency: str = "TZS"
     status: str
@@ -353,6 +358,7 @@ class ProductCreate(BaseModel):
     selling_points: str | None = None
     source_lang: str = "zh"
     is_featured: bool = False
+    supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: SkuUnitCode = "PCS"
     currency: str = "TZS"
     attributes: List[ProductAttrCreate] | None = None
@@ -369,6 +375,7 @@ class ProductUpdate(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool | None = None
+    supply_mode: str | None = None
     unit: SkuUnitCode | None = None
     currency: str | None = None
     attributes: List[ProductAttrCreate] | None = None
@@ -436,6 +443,7 @@ class ProductAggregateCreate(BaseModel):
     selling_points: str | None = None
     source_lang: str = "zh"
     is_featured: bool = False
+    supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: SkuUnitCode = "PCS"
     currency: str = "TZS"
     attributes: List[ProductAttrCreate] | None = None
@@ -455,6 +463,7 @@ class ProductAggregateSave(BaseModel):
     certifications: list | None = None
     selling_points: str | None = None
     is_featured: bool | None = None
+    supply_mode: str | None = None
     unit: SkuUnitCode | None = None
     currency: str | None = None
     attributes: List[ProductAttrCreate] | None = None

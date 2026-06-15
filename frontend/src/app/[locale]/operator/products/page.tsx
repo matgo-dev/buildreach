@@ -127,6 +127,7 @@ function ProductListInner() {
   const [keyword, setKeyword] = useState("");
   const [categoryCode, setCategoryCode] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [supplyModeFilter, setSupplyModeFilter] = useState("");
 
   // 排序（后端暂不支持，客户端排序）
   const [sortBy, setSortBy] = useState<string | null>(null);
@@ -144,6 +145,7 @@ function ProductListInner() {
   const [actionLoading, setActionLoading] = useState(false);
   const { success: toastSuccess, error: toastError } = useToast();
   const tError = useTranslations("error");
+  const tDetail = useTranslations("productDetail");
 
   // 将后端 ApiError 的 messageKey 翻译为当前语言，回退到原始 message
   const translateError = useCallback((err: unknown): string => {
@@ -183,6 +185,7 @@ function ProductListInner() {
         if (keyword.trim()) params.keyword = keyword.trim();
         if (categoryCode) params.category_code = categoryCode;
         if (statusFilter) params.status = statusFilter;
+        if (supplyModeFilter) params.supply_mode = supplyModeFilter;
 
         const data = await operatorProductsApi.list(params);
         setItems(data.items);
@@ -195,7 +198,7 @@ function ProductListInner() {
         setLoading(false);
       }
     },
-    [keyword, categoryCode, statusFilter, t]
+    [keyword, categoryCode, statusFilter, supplyModeFilter, t]
   );
 
   // 初始加载 + 筛选变更自动重载（回第 1 页）
@@ -208,7 +211,7 @@ function ProductListInner() {
     }
     void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryCode, statusFilter]);
+  }, [categoryCode, statusFilter, supplyModeFilter]);
 
   // ---------- 客户端排序 ----------
   const handleSort = useCallback((field: string) => {
@@ -386,6 +389,16 @@ function ProductListInner() {
           <option value="INACTIVE">{t("statusInactive")}</option>
         </select>
 
+        <select
+          value={supplyModeFilter}
+          onChange={(e) => setSupplyModeFilter(e.target.value)}
+          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        >
+          <option value="">{t("allSupplyMode")}</option>
+          <option value="PLATFORM_STOCK">{tDetail("supplyModePlatformStock")}</option>
+          <option value="SUPPLIER_DIRECT">{tDetail("supplyModeSupplierDirect")}</option>
+        </select>
+
         <button
           onClick={() => void load(1)}
           className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
@@ -456,6 +469,7 @@ function ProductListInner() {
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colCategory")}</th>
               <SortableHeader label={t("colPrice")} field="price_min" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right" />
               <SortableHeader label={t("colSkuCount")} field="sku_count" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="center" />
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colSupplyMode")}</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colStatus")}</th>
               <SortableHeader label={t("colUpdatedAt")} field="updated_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">{t("colActions")}</th>
@@ -574,6 +588,18 @@ function ProductListInner() {
                         }`}
                       >
                         {item.sku_count}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                        item.supply_mode === "PLATFORM_STOCK"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}>
+                        {item.supply_mode === "PLATFORM_STOCK"
+                          ? tDetail("supplyModePlatformStock")
+                          : tDetail("supplyModeSupplierDirect")}
                       </span>
                     </td>
 

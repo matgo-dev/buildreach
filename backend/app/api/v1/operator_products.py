@@ -178,6 +178,7 @@ def _to_operator(p, creator_name_map: dict | None = None) -> dict:
         origin=get_localized(p, "origin"),
         brand=get_localized(p, "brand") or None,
         is_featured=p.is_featured,
+        supply_mode=p.supply_mode,
         main_image=_get_main_image_url(p),
         status=p.status,
         created_by_name=created_by_name,
@@ -196,6 +197,7 @@ def _to_operator(p, creator_name_map: dict | None = None) -> dict:
 async def list_products(
     category_code: str | None = Query(None),
     status: str | None = Query(None),
+    supply_mode: str | None = Query(None),
     keyword: str | None = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
@@ -204,7 +206,8 @@ async def list_products(
 ):
     items, total = await product_svc.list_products_operator(
         db, category_code=category_code, status=status,
-        keyword=keyword, page=page, size=size,
+        supply_mode=supply_mode, keyword=keyword,
+        page=page, size=size,
     )
 
     # 批量查创建人名称，避免 N+1
@@ -353,6 +356,7 @@ async def get_product(
         selling_points_en=p.selling_points_en,
         source_lang=p.source_lang,
         is_featured=p.is_featured,
+        supply_mode=p.supply_mode,
         unit=p.unit,
         currency=p.currency,
         status=p.status,
