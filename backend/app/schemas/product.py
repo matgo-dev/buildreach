@@ -337,6 +337,9 @@ class ProductOperatorDetail(BaseModel):
     supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: str = "PCS"
     currency: str = "TZS"
+    moq: int | None = None
+    moq_unit: str | None = None
+    ref_price_tiers: list | None = None
     status: str
     created_by_name: str = ""
     skus: List[SkuOperator] = []
