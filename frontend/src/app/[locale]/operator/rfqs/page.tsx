@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { Loader2, FileText, FileEdit } from "lucide-react";
+import { Loader2, FileText, FileEdit, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -78,7 +78,16 @@ function OperatorRfqListContent() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-800">{t("operatorRfqTitle")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">{t("operatorRfqTitle")}</h1>
+        <Link
+          href={`/${locale}/operator/rfqs/create`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4" />
+          {t("createOnBehalf")}
+        </Link>
+      </div>
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
