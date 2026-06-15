@@ -604,5 +604,25 @@ class RfqItemNotFoundError(BusinessError):
         )
 
 
+class RfqNotAssignedToYouError(BusinessError):
+    """40518 — 操作的询价单不是当前运营受理的。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_403_FORBIDDEN, 40518,
+            "This RFQ is not assigned to you",
+            message_key=MessageKey.RFQ_NOT_ASSIGNED_TO_YOU,
+        )
+
+
+class RfqMinOneItemError(BusinessError):
+    """40519 — 询价单至少保留一个行项。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40519,
+            "At least one item is required",
+            message_key=MessageKey.RFQ_MIN_ONE_ITEM,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

@@ -12,7 +12,9 @@ from app.core.exceptions import success
 from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_any_role, require_permission
-from app.schemas.rfq import RfqCancelRequest, RfqCreate, RfqItemUpdate, RfqUpdate
+from app.schemas.rfq import (
+    RfqCancelRequest, RfqCreate, RfqItemEdit, RfqItemInput, RfqItemUpdate, RfqUpdate,
+)
 from app.services import rfq as rfq_svc
 
 router = APIRouter(
@@ -128,16 +130,63 @@ async def withdraw_rfq(
     return success(result.model_dump())
 
 
-@router.patch("/{rfq_id}/items/{item_id}", summary="草稿态编辑行项数量")
+@router.patch("/{rfq_id}/items/{item_id}", summary="编辑行项数量")
 async def update_rfq_item(
     rfq_id: int,
     item_id: int,
     data: RfqItemUpdate,
     request: Request,
-    current: CurrentUser = Depends(require_permission(Permissions.RFQ_UPDATE)),
+    current: CurrentUser = Depends(require_any_role("BUYER", "OPERATOR")),
     db: AsyncSession = Depends(get_db),
 ):
+    """DRAFT 态买方可改，PROCESSING 态受理人可改。权限在 service 层按状态校验。"""
     result = await rfq_svc.update_rfq_item_qty(
         db, current, rfq_id, item_id, data.quantity, request=request,
+    )
+    return success(result.model_dump())
+
+
+# ── 运营行项增删改（PROCESSING 态） ──────────────────────
+
+
+@router.post("/{rfq_id}/items", summary="添加询价行项（运营）")
+async def add_rfq_item(
+    rfq_id: int,
+    data: RfqItemInput,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_CLAIM)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.add_rfq_item(
+        db, current, rfq_id, data, request=request,
+    )
+    return success(result.model_dump())
+
+
+@router.put("/{rfq_id}/items/{item_id}", summary="编辑询价行项（运营）")
+async def edit_rfq_item(
+    rfq_id: int,
+    item_id: int,
+    data: RfqItemEdit,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_CLAIM)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.edit_rfq_item(
+        db, current, rfq_id, item_id, data, request=request,
+    )
+    return success(result.model_dump())
+
+
+@router.delete("/{rfq_id}/items/{item_id}", summary="删除询价行项（运营）")
+async def delete_rfq_item(
+    rfq_id: int,
+    item_id: int,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_CLAIM)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await rfq_svc.delete_rfq_item(
+        db, current, rfq_id, item_id, request=request,
     )
     return success(result.model_dump())

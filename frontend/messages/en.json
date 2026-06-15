@@ -88,7 +88,8 @@
       "sku_not_purchasable": "This SKU is not available for purchase",
       "quantity_invalid": "Invalid quantity",
       "item_not_found": "Cart item not found",
-      "buyer_org_required": "No active buyer organization available"
+      "buyer_org_required": "No active buyer organization available",
+      "product_not_available": "This product is not available or has been delisted"
     },
     "rfq": {
       "no_valid_items": "No valid items for RFQ submission",
@@ -99,7 +100,9 @@
       "source_not_allowed": "Operator can only create RFQ via direct entry",
       "no_generation_failed": "RFQ number generation failed, please retry",
       "already_claimed": "This RFQ has already been claimed by another operator",
-      "item_not_found": "RFQ item not found"
+      "item_not_found": "RFQ item not found",
+      "not_assigned_to_you": "This inquiry is not assigned to you",
+      "min_one_item": "At least one item is required"
     },
     "quote": {
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",
@@ -785,7 +788,25 @@
     "searchPlaceholder": "Search by product name...",
     "alreadyAdded": "Added",
     "add": "Add",
-    "noSearchResult": "No matching products found"
+    "noSearchResult": "No matching products found",
+    "addItem": "Add Item",
+    "editItem": "Edit Item",
+    "deleteItem": "Delete",
+    "deleteItemConfirm": "Delete this item? This action cannot be undone.",
+    "itemAdded": "Item added",
+    "itemUpdated": "Item updated",
+    "itemDeleted": "Item deleted",
+    "noVariant": "No variant",
+    "minOneItem": "At least one item is required",
+    "createOnBehalf": "Create on Behalf",
+    "selectBuyerOrg": "Select Buyer Organization",
+    "searchBuyerOrg": "Search buyer organization...",
+    "saveDraft": "Save as Draft",
+    "submitDirectly": "Submit Directly",
+    "buyerOrgRequired": "Please select a buyer organization",
+    "itemsRequired": "Please add at least one item",
+    "createSuccess": "RFQ created successfully",
+    "draftSaved": "Draft saved"
   },
   "quote": {
     "backfillTitle": "Quote Backfill",

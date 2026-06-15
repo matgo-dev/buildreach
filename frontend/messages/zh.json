@@ -88,7 +88,8 @@
       "sku_not_purchasable": "该商品规格不可购买",
       "quantity_invalid": "数量无效",
       "item_not_found": "询价篮商品不存在",
-      "buyer_org_required": "当前用户无可用买方组织"
+      "buyer_org_required": "当前用户无可用买方组织",
+      "product_not_available": "该商品不可购买或已下架"
     },
     "rfq": {
       "no_valid_items": "提交无有效行项目",
@@ -99,7 +100,9 @@
       "source_not_allowed": "运营仅允许直接录入方式创建询价",
       "no_generation_failed": "询价单号生成失败,请重试",
       "already_claimed": "该询价单已被其他运营受理",
-      "item_not_found": "询价行项不存在"
+      "item_not_found": "询价行项不存在",
+      "not_assigned_to_you": "该询价单不是您受理的",
+      "min_one_item": "询价单至少保留一个行项"
     },
     "quote": {
       "rfq_state_invalid": "当前询价单状态不允许此报价操作",
@@ -785,7 +788,25 @@
     "searchPlaceholder": "输入商品名称搜索...",
     "alreadyAdded": "已添加",
     "add": "添加",
-    "noSearchResult": "未找到匹配商品"
+    "noSearchResult": "未找到匹配商品",
+    "addItem": "添加行项",
+    "editItem": "编辑行项",
+    "deleteItem": "删除",
+    "deleteItemConfirm": "确定删除该行项？删除后不可恢复。",
+    "itemAdded": "行项已添加",
+    "itemUpdated": "行项已更新",
+    "itemDeleted": "行项已删除",
+    "noVariant": "无变体",
+    "minOneItem": "至少保留一个行项",
+    "createOnBehalf": "代录询价",
+    "selectBuyerOrg": "选择买方组织",
+    "searchBuyerOrg": "搜索买方组织...",
+    "saveDraft": "保存草稿",
+    "submitDirectly": "直接提交",
+    "buyerOrgRequired": "请选择买方组织",
+    "itemsRequired": "请添加至少一个商品",
+    "createSuccess": "询价单已创建",
+    "draftSaved": "草稿已保存"
   },
   "quote": {
     "backfillTitle": "报价回填",

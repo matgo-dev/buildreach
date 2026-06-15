@@ -76,6 +76,8 @@ class MessageKey:
     RFQ_NO_GENERATION_FAILED = "error.rfq.no_generation_failed"
     RFQ_ALREADY_CLAIMED = "error.rfq.already_claimed"
     RFQ_ITEM_NOT_FOUND = "error.rfq.item_not_found"
+    RFQ_NOT_ASSIGNED_TO_YOU = "error.rfq.not_assigned_to_you"
+    RFQ_MIN_ONE_ITEM = "error.rfq.min_one_item"
 
     # quote — 报价模块 405xx
     QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"
