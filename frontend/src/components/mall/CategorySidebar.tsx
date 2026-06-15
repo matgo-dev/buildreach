@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
@@ -45,6 +45,9 @@ export function CategorySidebar({
   const { tree: categoryTree, isLoading: loadingCategories } = useCategoryTree();
 
   const [hoveredLevel1, setHoveredLevel1] = useState("");
+  const [flyoutTop, setFlyoutTop] = useState(0);
+  const asideRef = useRef<HTMLElement>(null);
+  const hoveredCategory = categoryTree.find((cat) => cat.code === hoveredLevel1);
 
   const handleCategoryClick = (code: string, closeHover = true) => {
     const next = activeCategoryCode === code ? "" : code;
@@ -57,11 +60,30 @@ export function CategorySidebar({
     setHoveredLevel1("");
   };
 
+  const handleLevel1MouseEnter = (
+    code: string,
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    setHoveredLevel1(code);
+    const asideTop = asideRef.current?.getBoundingClientRect().top ?? 0;
+    const buttonTop = event.currentTarget.getBoundingClientRect().top - asideTop;
+    const maxTop = Math.max(0, window.innerHeight - asideTop - 500);
+    setFlyoutTop(Math.min(Math.max(buttonTop, 0), maxTop));
+  };
+
   return (
-    <aside className="w-[240px] shrink-0 hidden lg:block">
+    <aside
+      ref={asideRef}
+      className="sticky top-[148px] z-30 hidden w-[240px] shrink-0 self-start lg:block"
+      onMouseLeave={() => setHoveredLevel1("")}
+    >
       <div
-        className="sticky top-[148px] z-[100] rounded-xl border border-line bg-white p-4"
-        style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)" }}
+        className="rounded-xl border border-line bg-white p-4"
+        style={{
+          maxHeight: "calc(100vh - 164px)",
+          overflowY: "auto",
+          boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)",
+        }}
       >
         {/* 标题 */}
         <div className="pb-2.5 mb-2.5 border-b-2 border-gold">
@@ -71,10 +93,7 @@ export function CategorySidebar({
         </div>
 
         {/* 品类列表 */}
-        <div
-          className="relative"
-          onMouseLeave={() => setHoveredLevel1("")}
-        >
+        <div className="relative">
           <ul className="space-y-0.5">
             <li>
               <button
@@ -107,7 +126,7 @@ export function CategorySidebar({
                   <li key={cat.code} className="relative">
                     <button
                       onClick={() => handleCategoryClick(cat.code)}
-                      onMouseEnter={() => setHoveredLevel1(cat.code)}
+                      onMouseEnter={(event) => handleLevel1MouseEnter(cat.code, event)}
                       className={`w-full rounded-lg px-2.5 py-2 text-left transition-all grid grid-cols-[30px_1fr_auto] gap-2.5 items-center min-h-[46px] ${
                         isActive || isHovered
                           ? "bg-teal-50 text-teal-900"
@@ -135,48 +154,6 @@ export function CategorySidebar({
                       )}
                     </button>
 
-                    {/* 二级飞出面板 */}
-                    {isHovered && (cat.children?.length || 0) > 0 && (
-                      <div
-                        className="absolute left-full top-0 z-[100] w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-line bg-white p-5"
-                        style={{ boxShadow: "0 8px 20px rgba(16,36,65,.08), 0 28px 60px rgba(16,36,65,.12)" }}
-                      >
-                        <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
-                          {cat.children?.map((level2) => (
-                            <div
-                              key={level2.code}
-                              className="border-b border-dashed border-gray-100 pb-4 last:border-b-0 last:pb-0"
-                            >
-                              <button
-                                onClick={() => handleCategoryClick(level2.code)}
-                                className={`mb-2 block text-left text-sm font-bold leading-6 transition-colors ${
-                                  activeCategoryCode && categoryContainsCode(level2, activeCategoryCode)
-                                    ? "text-teal-900"
-                                    : "text-navy hover:text-teal-900"
-                                }`}
-                              >
-                                {level2.name}
-                              </button>
-                              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                                {(level2.children || []).map((level3) => (
-                                  <button
-                                    key={level3.code}
-                                    onClick={() => handleCategoryClick(level3.code)}
-                                    className={`text-left text-sm leading-6 transition-colors ${
-                                      activeCategoryCode === level3.code
-                                        ? "font-semibold text-teal-900"
-                                        : "text-muted hover:text-teal-900"
-                                    }`}
-                                  >
-                                    {level3.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </li>
                 );
               })
@@ -203,6 +180,52 @@ export function CategorySidebar({
           </MallButton>
         </div>
       </div>
+
+      {/* 二级飞出面板放在滚动卡片外，避免裁剪，同时不影响左侧列表滚动 */}
+      {hoveredCategory && (hoveredCategory.children?.length || 0) > 0 && (
+        <div
+          className="absolute left-full z-40 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-line bg-white p-5"
+          style={{
+            top: flyoutTop,
+            boxShadow: "0 8px 20px rgba(16,36,65,.08), 0 28px 60px rgba(16,36,65,.12)",
+          }}
+        >
+          <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
+            {hoveredCategory.children?.map((level2) => (
+              <div
+                key={level2.code}
+                className="border-b border-dashed border-gray-100 pb-4 last:border-b-0 last:pb-0"
+              >
+                <button
+                  onClick={() => handleCategoryClick(level2.code)}
+                  className={`mb-2 block text-left text-sm font-bold leading-6 transition-colors ${
+                    activeCategoryCode && categoryContainsCode(level2, activeCategoryCode)
+                      ? "text-teal-900"
+                      : "text-navy hover:text-teal-900"
+                  }`}
+                >
+                  {level2.name}
+                </button>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {(level2.children || []).map((level3) => (
+                    <button
+                      key={level3.code}
+                      onClick={() => handleCategoryClick(level3.code)}
+                      className={`text-left text-sm leading-6 transition-colors ${
+                        activeCategoryCode === level3.code
+                          ? "font-semibold text-teal-900"
+                          : "text-muted hover:text-teal-900"
+                      }`}
+                    >
+                      {level3.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
