@@ -750,6 +750,7 @@
     "itemsMissing": "部分商品已不在询价篮，请确认",
     "itemsAllMissing": "商品已不在询价篮，请重新选择",
     "backToCart": "返回询价篮",
+    "goToCart": "前往询价篮",
     "claim": "受理",
     "claimConfirm": "确定受理该询价单？受理后买方将无法修改。",
     "claimSuccess": "询价单已受理",
