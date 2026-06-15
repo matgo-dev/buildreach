@@ -178,7 +178,7 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
     const groupKey = `detail.attrGroup_${group.group}` as Parameters<typeof t>[0];
     let groupLabel: string;
     try { groupLabel = t(groupKey); } catch { groupLabel = group.group; }
-    if (groupLabel === groupKey || groupLabel.startsWith("detail.")) groupLabel = group.group;
+    if (groupLabel === groupKey || groupLabel.includes("attrGroup_")) groupLabel = group.group;
 
     const rows = group.items.map((item) => ({
       label: item.key,
