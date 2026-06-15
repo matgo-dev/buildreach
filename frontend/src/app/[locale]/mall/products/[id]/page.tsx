@@ -369,7 +369,7 @@ function ProductDetailContent() {
   const [specSelection, setSpecSelection] = useState<Record<string, string>>({});
   const [addingToCart, setAddingToCart] = useState(false);
   const toast = useToast();
-  const triggerCartRefresh = useCartStore((s) => s.triggerRefresh);
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
 
   const handleAddToCart = useCallback(async () => {
     if (!product) return;
@@ -378,15 +378,15 @@ function ProductDetailContent() {
       const selectedVariants = Object.entries(specSelection)
         .filter(([, v]) => v)
         .map(([attr_name, value]) => ({ attr_name, value }));
-      await addCartItem(product.id, selectedVariants, 1);
-      triggerCartRefresh();
+      const cart = await addCartItem(product.id, selectedVariants, 1);
+      syncFromCart(cart);
       toast.success(t("detail.addedToCart"));
     } catch {
       toast.error(t("detail.addToCartFailed"));
     } finally {
       setAddingToCart(false);
     }
-  }, [product, specSelection, triggerCartRefresh, toast, t]);
+  }, [product, specSelection, syncFromCart, toast, t]);
 
   // 点选/取消规格值(单选:每个 key 选一个值)
   const handleSpecSelect = useCallback((key: string, value: string) => {

@@ -40,22 +40,22 @@ export function ProductCard({
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
   const [adding, setAdding] = useState(false);
   const toast = useToast();
-  const triggerCartRefresh = useCartStore((s) => s.triggerRefresh);
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
 
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setAdding(true);
     try {
-      await addCartItem(product.id, [], 1);
-      triggerCartRefresh();
+      const cart = await addCartItem(product.id, [], 1);
+      syncFromCart(cart);
       toast.success(t("addedToCart"));
     } catch {
       toast.error(t("addToCartFailed"));
     } finally {
       setAdding(false);
     }
-  }, [product.id, triggerCartRefresh, toast, t]);
+  }, [product.id, syncFromCart, toast, t]);
 
   return (
     <Link
