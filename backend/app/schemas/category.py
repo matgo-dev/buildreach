@@ -17,6 +17,7 @@ class CategoryNode(BaseModel):
     code: str
     name_zh: str
     name_en: str | None = None
+    name_sw: str | None = None
     name: str = ""  # 按请求 locale 填充的本地化名称
     level: int
     parent_code: str | None = None
@@ -30,6 +31,7 @@ class CategoryTreeNode(BaseModel):
     code: str
     name_zh: str
     name_en: str | None = None
+    name_sw: str | None = None
     name: str = ""  # 按请求 locale 填充的本地化名称
     level: int
     children: List["CategoryTreeNode"] = []

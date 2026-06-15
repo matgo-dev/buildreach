@@ -12,6 +12,7 @@ from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, Str
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampUpdateMixin
+from app.db.i18n_mixin import I18nMixin
 
 
 class CategoryLevel:
@@ -23,7 +24,7 @@ class CategoryLevel:
     ALL = (L1, L2, L3)
 
 
-class Category(Base, TimestampUpdateMixin):
+class Category(Base, TimestampUpdateMixin, I18nMixin):
     __tablename__ = "categories"
     __table_args__ = (
         CheckConstraint("level >= 1", name="ck_categories_level"),
