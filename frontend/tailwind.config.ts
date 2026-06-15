@@ -56,7 +56,7 @@ const config: Config = {
         "mall-lg": "0 8px 20px rgba(16,36,65,.08), 0 28px 60px rgba(16,36,65,.12)",
       },
       maxWidth: {
-        mall: "1440px",
+        mall: "100%",
       },
     },
   },
