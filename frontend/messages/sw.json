@@ -297,6 +297,7 @@
     "filterDeliveryAll": "Uwasilishaji Wote",
     "comingSoon": "Inakuja hivi karibuni",
     "totalProducts": "Bidhaa {count}",
+    "filterLabel": "Chuja",
     "filterSearch": "Tafuta",
     "clearFilters": "Futa Vichujio",
     "showing": "Inaonyesha {start}-{end} kati ya {total}",
