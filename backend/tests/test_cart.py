@@ -335,6 +335,59 @@ async def test_write_returns_full_cart_dto(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_different_variants_create_separate_lines(client, db_session):
+    """同 SPU 不同变体产生两行，各自数量独立。"""
+    headers = await _buyer_headers(client)
+    op = await _op_headers(client)
+    product_id = await _create_purchasable_product(client, op, db_session)
+
+    variants_a = [{"attr_name": "material", "value": "red oak"}]
+    variants_b = [{"attr_name": "material", "value": "pine"}]
+
+    await client.post("/api/v1/cart/items", headers=headers, json={
+        "product_id": product_id, "selected_variants": variants_a, "quantity": "3.000",
+    })
+    r = await client.post("/api/v1/cart/items", headers=headers, json={
+        "product_id": product_id, "selected_variants": variants_b, "quantity": "5.000",
+    })
+    assert r.status_code == 200
+    data = r.json()["data"]
+    product_items = [i for i in data["items"] if i["product_id"] == product_id]
+    assert len(product_items) == 2, "同 SPU 不同变体应产生两行"
+    quantities = sorted([Decimal(i["quantity"]) for i in product_items])
+    assert quantities == [Decimal("3.000"), Decimal("5.000")]
+
+
+@pytest.mark.asyncio
+async def test_same_variant_different_order_merges(client, db_session):
+    """同 SPU 同变体（传入顺序不同）累加到同一行，验证 fingerprint 规范化。"""
+    headers = await _buyer_headers(client)
+    op = await _op_headers(client)
+    product_id = await _create_purchasable_product(client, op, db_session)
+
+    variants_a = [
+        {"attr_name": "material", "value": "red oak"},
+        {"attr_name": "thickness", "value": "5mm"},
+    ]
+    variants_b = [
+        {"attr_name": "thickness", "value": "5mm"},
+        {"attr_name": "material", "value": "red oak"},
+    ]
+
+    await client.post("/api/v1/cart/items", headers=headers, json={
+        "product_id": product_id, "selected_variants": variants_a, "quantity": "3.000",
+    })
+    r = await client.post("/api/v1/cart/items", headers=headers, json={
+        "product_id": product_id, "selected_variants": variants_b, "quantity": "2.000",
+    })
+    assert r.status_code == 200
+    data = r.json()["data"]
+    product_items = [i for i in data["items"] if i["product_id"] == product_id]
+    assert len(product_items) == 1, "同变体不同顺序应合并为一行"
+    assert Decimal(product_items[0]["quantity"]) == Decimal("5.000")
+
+
+@pytest.mark.asyncio
 async def test_selected_variants_in_response(client, db_session):
     """加购带变体时,响应包含 selected_variants 和 variant_display。"""
     headers = await _buyer_headers(client)

@@ -3,11 +3,13 @@
 并发安全:cart 与 cart_item 两处 insert-or-get 都走 SAVEPOINT 标准。
 提交点唯一在本 service;route 不自行 commit。
 
-SPU 化改造:cart_items 以 product_id + selected_variants 为核心,
+SPU 化改造:cart_items 以 product_id + selected_variants + variant_fingerprint 为核心,
+行身份 = (cart_id, product_id, variant_fingerprint) 三元组。
 sku_id 保留但可空(历史兼容)。
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from decimal import Decimal
 
@@ -46,9 +48,15 @@ def _normalize_variants(variants: list[dict]) -> list[dict]:
     return sorted(variants, key=lambda x: (x.get("attr_name", ""), x.get("value", "")))
 
 
-def _variants_fingerprint(variants: list[dict]) -> str:
-    """生成规范化 JSON 字符串，用于应用层去重比较。"""
-    return json.dumps(_normalize_variants(variants), sort_keys=True, ensure_ascii=False)
+def _variant_fingerprint(variants: list[dict]) -> str:
+    """规范化排序后的 JSON 取 md5，作为变体行身份标识。
+
+    空变体也产生确定性 hash（md5("[]")），保证所有行 fingerprint 非空。
+    后端唯一来源，前端不传。
+    """
+    normalized = _normalize_variants(variants)
+    payload = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
+    return hashlib.md5(payload.encode("utf-8")).hexdigest()
 
 
 # ── SPU 可用性校验 ─────────────────────────────────────────
@@ -165,10 +173,9 @@ async def add_item(
     quantity: Decimal,
     *, request: Request | None = None,
 ) -> CartPublic:
-    """加购。并发安全:cart + cart_item 两处 SAVEPOINT 保护。"""
+    """加购。行身份 = (cart_id, product_id, variant_fingerprint)。"""
     org = await resolve_active_buyer_org(db, user)
 
-    # 可购校验
     product = await _get_viewable_product(db, product_id)
     if not product:
         raise CartProductNotAvailableError()
@@ -176,37 +183,38 @@ async def add_item(
     if quantity <= 0:
         raise CartQuantityInvalidError()
 
-    # 规范化排序
+    # 规范化 + 指纹（后端唯一来源）
     normalized_variants = _normalize_variants(selected_variants)
-    fingerprint = _variants_fingerprint(normalized_variants)
+    fingerprint = _variant_fingerprint(normalized_variants)
 
     # ① get_or_create_cart (SAVEPOINT)
     cart = await _get_or_create_cart(db, org.id, user.id)
 
-    # ② 同 SPU 去重：查出所有 (cart_id, product_id) 行，逐一比对 fingerprint
-    rows = await db.execute(
+    # ② 按三元组精确定位已有行
+    existing = await db.execute(
         select(CartItem).where(
             CartItem.cart_id == cart.id,
             CartItem.product_id == product_id,
+            CartItem.variant_fingerprint == fingerprint,
         )
     )
-    existing_items = rows.scalars().all()
-    matched = next(
-        (i for i in existing_items
-         if _variants_fingerprint(i.selected_variants or []) == fingerprint),
-        None,
-    )
+    existing_item = existing.scalar_one_or_none()
 
-    if matched:
-        # 累加数量
+    if existing_item:
+        # 原子 UPDATE 累加到正确的变体行，防 lost update
         await db.execute(
             update(CartItem)
-            .where(CartItem.id == matched.id)
+            .where(
+                CartItem.cart_id == cart.id,
+                CartItem.product_id == product_id,
+                CartItem.variant_fingerprint == fingerprint,
+            )
             .values(quantity=CartItem.quantity + quantity)
         )
     else:
-        # 新行 insert-or-get (SAVEPOINT)
-        await _insert_or_merge_item(db, cart.id, product_id, normalized_variants, quantity)
+        await _insert_or_merge_item(
+            db, cart.id, product_id, normalized_variants, fingerprint, quantity,
+        )
 
     await write_audit(
         db,
@@ -216,7 +224,12 @@ async def add_item(
         user_email=user.email,
         resource_id=product_id,
         request=request,
-        extra={"product_id": product_id, "selected_variants": normalized_variants, "quantity": str(quantity)},
+        extra={
+            "product_id": product_id,
+            "selected_variants": normalized_variants,
+            "variant_fingerprint": fingerprint,
+            "quantity": str(quantity),
+        },
         commit=False,
     )
     await db.commit()
@@ -361,37 +374,44 @@ async def _get_or_create_cart(
 
 async def _insert_or_merge_item(
     db: AsyncSession, cart_id: int,
-    product_id: int, selected_variants: list[dict], quantity: Decimal,
+    product_id: int, selected_variants: list[dict],
+    fingerprint: str, quantity: Decimal,
 ) -> None:
-    """SAVEPOINT 保护：防并发同 product_id 首行重复建行。"""
+    """SAVEPOINT 保护：并发同三元组加购，冲突时按三元组精确回查累加。"""
     nested = await db.begin_nested()
     try:
         item = CartItem(
             cart_id=cart_id,
             product_id=product_id,
             selected_variants=selected_variants,
+            variant_fingerprint=fingerprint,
             quantity=quantity,
         )
         db.add(item)
         await db.flush()
     except IntegrityError:
         await nested.rollback()
-        # 冲突说明并发已建了 (cart_id, product_id) 第一行
+        # 冲突 → 三元组唯一约束命中，回查精确行累加（不再错配到第一行）
         row = await db.execute(
             select(CartItem).where(
                 CartItem.cart_id == cart_id,
                 CartItem.product_id == product_id,
-            ).limit(1)
+                CartItem.variant_fingerprint == fingerprint,
+            )
         )
         existing = row.scalar_one_or_none()
         if existing:
             await db.execute(
                 update(CartItem)
-                .where(CartItem.id == existing.id)
+                .where(
+                    CartItem.cart_id == cart_id,
+                    CartItem.product_id == product_id,
+                    CartItem.variant_fingerprint == fingerprint,
+                )
                 .values(quantity=CartItem.quantity + quantity)
             )
         else:
-            raise
+            raise  # 非预期约束冲突，不误吞
     except BaseException:
         await nested.rollback()
         raise

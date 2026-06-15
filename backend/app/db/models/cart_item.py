@@ -1,15 +1,15 @@
 """购物车行项。
 
 硬删除——配置明细，无独立业务身份。
-复合唯一 (cart_id, product_id)：同 SPU 数据库层防重复，
-同 SPU 不同变体的多行由应用层按 selected_variants 指纹去重。
+复合唯一 (cart_id, product_id, variant_fingerprint)：
+行身份 = SPU + 变体指纹，同 SPU 不同变体允许多行。
 """
 from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Integer, Numeric, Text, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampUpdateMixin
@@ -18,7 +18,10 @@ from app.db.base import Base, TimestampUpdateMixin
 class CartItem(Base, TimestampUpdateMixin):
     __tablename__ = "cart_items"
     __table_args__ = (
-        UniqueConstraint("cart_id", "product_id", name="uq_cart_items_cart_product"),
+        UniqueConstraint(
+            "cart_id", "product_id", "variant_fingerprint",
+            name="uq_cart_items_cart_product_variant",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -39,6 +42,9 @@ class CartItem(Base, TimestampUpdateMixin):
     )
     selected_variants: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list, server_default="[]",
+    )
+    variant_fingerprint: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="", server_default="",
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
     remark: Mapped[str | None] = mapped_column(Text, nullable=True)
