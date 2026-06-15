@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Package, ShoppingCart, Loader2 } from "lucide-react";
@@ -11,6 +11,47 @@ import { addCartItem } from "@/lib/api/cart";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { MallButton } from "./MallButton";
+
+/** 飞入购物车动画：从按钮位置飞向右上角购物车图标 */
+function flyToCart(startEl: HTMLElement) {
+  // 找到 header 里的购物车图标
+  const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
+  if (!target) return;
+
+  const startRect = startEl.getBoundingClientRect();
+  const endRect = target.getBoundingClientRect();
+
+  const dot = document.createElement("div");
+  dot.style.cssText = `
+    position: fixed;
+    z-index: 99999;
+    left: ${startRect.left + startRect.width / 2}px;
+    top: ${startRect.top + startRect.height / 2}px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #0D4D4D;
+    pointer-events: none;
+    transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    opacity: 1;
+  `;
+  document.body.appendChild(dot);
+
+  requestAnimationFrame(() => {
+    dot.style.left = `${endRect.left + endRect.width / 2}px`;
+    dot.style.top = `${endRect.top + endRect.height / 2}px`;
+    dot.style.width = "8px";
+    dot.style.height = "8px";
+    dot.style.opacity = "0.3";
+  });
+
+  setTimeout(() => {
+    dot.remove();
+    // 购物车图标弹跳效果
+    target.classList.add("animate-bounce");
+    setTimeout(() => target.classList.remove("animate-bounce"), 500);
+  }, 650);
+}
 
 /** 从品类树中按 code 查找品类名称 */
 function findCategoryLabel(tree: CategoryTreeNode[], code: string): string {
@@ -41,6 +82,7 @@ export function ProductCard({
   const [adding, setAdding] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -49,7 +91,7 @@ export function ProductCard({
     try {
       const cart = await addCartItem(product.id, [], 1);
       syncFromCart(cart);
-      toast.success(t("addedToCart"));
+      if (btnRef.current) flyToCart(btnRef.current);
     } catch {
       toast.error(t("addToCartFailed"));
     } finally {
@@ -137,6 +179,7 @@ export function ProductCard({
             {t("startInquiry")}
           </MallButton>
           <button
+            ref={btnRef}
             type="button"
             onClick={handleAddToCart}
             disabled={adding}

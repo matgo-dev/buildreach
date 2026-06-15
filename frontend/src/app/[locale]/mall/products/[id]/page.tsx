@@ -370,6 +370,7 @@ function ProductDetailContent() {
   const [addingToCart, setAddingToCart] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
 
   const handleAddToCart = useCallback(async () => {
     if (!product) return;
@@ -380,7 +381,25 @@ function ProductDetailContent() {
         .map(([attr_name, value]) => ({ attr_name, value }));
       const cart = await addCartItem(product.id, selectedVariants, 1);
       syncFromCart(cart);
-      toast.success(t("detail.addedToCart"));
+      // 飞入动画
+      if (addBtnRef.current) {
+        const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
+        if (target) {
+          const startRect = addBtnRef.current.getBoundingClientRect();
+          const endRect = target.getBoundingClientRect();
+          const dot = document.createElement("div");
+          dot.style.cssText = `position:fixed;z-index:99999;left:${startRect.left + startRect.width / 2}px;top:${startRect.top + startRect.height / 2}px;width:20px;height:20px;border-radius:50%;background:#0D4D4D;pointer-events:none;transition:all 0.6s cubic-bezier(0.2,0.8,0.2,1);opacity:1;`;
+          document.body.appendChild(dot);
+          requestAnimationFrame(() => {
+            dot.style.left = `${endRect.left + endRect.width / 2}px`;
+            dot.style.top = `${endRect.top + endRect.height / 2}px`;
+            dot.style.width = "8px";
+            dot.style.height = "8px";
+            dot.style.opacity = "0.3";
+          });
+          setTimeout(() => { dot.remove(); target.classList.add("animate-bounce"); setTimeout(() => target.classList.remove("animate-bounce"), 500); }, 650);
+        }
+      }
     } catch {
       toast.error(t("detail.addToCartFailed"));
     } finally {
@@ -590,6 +609,7 @@ function ProductDetailContent() {
             {/* 操作按钮 — 出口仍置灰,选中态仅前端本地,不发请求、不带出 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
               <button
+                ref={addBtnRef}
                 type="button"
                 disabled={addingToCart}
                 onClick={handleAddToCart}

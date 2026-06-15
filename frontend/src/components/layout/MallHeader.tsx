@@ -128,7 +128,7 @@ export function MallHeader() {
             href={user ? "/buyer/cart" : "/login"}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
           >
-            <div className="relative">
+            <div className="relative" data-cart-icon>
               <ShoppingCart className="h-5 w-5" />
               <span
                 className="absolute -right-2.5 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full text-[11px] font-black text-white border-2 border-teal-900"
