@@ -133,13 +133,9 @@ export default function ProductDetailPage() {
     setSkuStatusConfirm(null);
     setSkuStatusLoading(skuId);
     try {
-      const res = await operatorProductsApi.updateSkuStatus(product.id, skuId, { status: newStatus as "ACTIVE" | "INACTIVE" });
+      await operatorProductsApi.updateSkuStatus(product.id, skuId, { status: newStatus as "ACTIVE" | "INACTIVE" });
       await mutate();
-      if (res.product_auto_delisted) {
-        toastSuccess(t("skuDeactivatedAndProductDelisted"));
-      } else {
-        toastSuccess(newStatus === "ACTIVE" ? t("skuActivated") : t("skuDeactivated"));
-      }
+      toastSuccess(newStatus === "ACTIVE" ? t("skuActivated") : t("skuDeactivated"));
     } catch (e) {
       setSaveError(e instanceof ApiError ? e.message : t("actionError"));
     } finally {

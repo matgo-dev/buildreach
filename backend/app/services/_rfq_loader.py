@@ -1,10 +1,11 @@
 """RFQ 公共加载器 — 收敛 id + 软删过滤 + 可选行锁 + 可选 items 加载。
 
 rfq.py / quote.py 共用,避免规则漂移。
-不做角色判断;buyer_org_id 只是可选 WHERE 过滤参数。
-lock_rfq 是带角色 scope 的行锁加载快捷方式,供所有写路径复用。
+角色 scope 通过 resolve_rfq_scope() 统一判断,杜绝散落的 if "BUYER" in。
 """
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,24 @@ from app.core.exceptions import RfqNotFoundError
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrgStatus, BuyerOrganization
 from app.db.models.rfq import Rfq
+
+
+# ── 角色 scope 判定 ──────────────────────────────────────
+
+
+@dataclass(frozen=True, slots=True)
+class RfqScope:
+    """角色作用域：is_operator 决定数据可见范围和序列化 DTO。"""
+    is_buyer: bool
+    is_operator: bool
+
+
+def resolve_rfq_scope(user: CurrentUser) -> RfqScope:
+    """统一角色 → scope 映射，所有 rfq/quote 路径复用。"""
+    return RfqScope(
+        is_buyer="BUYER" in user.roles,
+        is_operator="OPERATOR" in user.roles,
+    )
 
 
 async def load_rfq(
@@ -74,11 +93,10 @@ async def lock_rfq(
 
     所有 RFQ 状态变更路径统一入口,保证行锁串行化。
     """
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     buyer_org_id = None
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         buyer_org_id = await _resolve_buyer_org_id(db, user)
 
     rfq = await load_rfq(

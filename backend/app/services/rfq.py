@@ -42,7 +42,6 @@ from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrgStatus, BuyerOrganization
 from app.db.models.product import Product, ProductStatus
-from app.db.models.product_attr import ProductAttr
 from app.db.models.rfq import Rfq, RfqSource, RfqStatus
 from app.db.models.rfq_item import RfqItem
 from app.schemas.rfq import (
@@ -55,7 +54,8 @@ from app.schemas.rfq import (
     RfqUpdate,
 )
 from app.services import quote as quote_svc
-from app.services._rfq_loader import load_rfq, lock_rfq
+from app.services._rfq_loader import load_rfq, lock_rfq, resolve_rfq_scope
+from app.services._variant_utils import normalize_variants_to_en
 
 logger = logging.getLogger(__name__)
 
@@ -130,53 +130,6 @@ async def _get_viewable_product(db: AsyncSession, product_id: int) -> Product | 
     return row.scalar_one_or_none()
 
 
-# ── 变体值归一化（任意语言 → 英文）────────────────────
-
-async def _normalize_variants_to_en(
-    db: AsyncSession, product_id: int, selected_variants: list[dict],
-) -> list[dict]:
-    """将前端传入的变体选择（可能是任意语言）统一转为英文存储。
-
-    匹配逻辑：用前端传入的 key+value 去 product_attrs 的各语言列匹配，
-    找到就取 attr_key_en + attr_value_en。找不到就原样存入。
-    """
-    if not selected_variants:
-        return []
-
-    rows = await db.execute(
-        select(ProductAttr).where(
-            ProductAttr.product_id == product_id,
-            ProductAttr.selectable.is_(True),
-        )
-    )
-    attrs = rows.scalars().all()
-
-    # 建多语言索引：(key, value) → attr
-    idx: dict[tuple[str, str], ProductAttr] = {}
-    for a in attrs:
-        for k_col, v_col in [
-            (a.attr_key_en, a.attr_value_en),
-            (a.attr_key_zh, a.attr_value_zh),
-            (a.attr_key_sw, a.attr_value_sw),
-        ]:
-            if k_col and v_col:
-                idx[(k_col, v_col)] = a
-
-    result = []
-    for sv in selected_variants:
-        k = sv.get("attr_name") or sv.get("key", "")
-        v = sv.get("value", "")
-        matched = idx.get((k, v))
-        if matched:
-            result.append({
-                "attr_name": matched.attr_key_en or k,
-                "value": matched.attr_value_en or v,
-            })
-        else:
-            result.append({"attr_name": k, "value": v})
-    return result
-
-
 # ── 变体快照动态拼接（序列化时用，不入库）──────────────
 
 def _variant_snapshot_to_display(snapshot: list[dict], locale: str = "zh") -> str | None:
@@ -213,17 +166,16 @@ async def create_rfq(
     *, idempotency_key: str | None = None, request: Request | None = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """单聚合事务创建询价单。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     # ── 角色与来源约束 ──
-    if is_buyer:
+    if scope.is_buyer:
         org = await _resolve_active_buyer_org(db, user)
         buyer_org_id = org.id
         buyer_user_id = user.id
         created_by_user_id = user.id
         source = RfqSource.BUYER_SELF
-    elif is_operator:
+    elif scope.is_operator:
         if not payload.buyer_org_id:
             raise BuyerOrgRequiredError()
         await _validate_buyer_org_by_id(db, payload.buyer_org_id)
@@ -245,7 +197,7 @@ async def create_rfq(
         )
         existing_id = existing.scalar_one_or_none()
         if existing_id is not None:
-            return await _load_and_serialize(db, existing_id, is_operator=is_operator)
+            return await _load_and_serialize(db, existing_id, is_operator=scope.is_operator)
 
     # ── 1. 行项解析 ──
     if not payload.items:
@@ -263,7 +215,7 @@ async def create_rfq(
             row["product_name_snapshot_zh"] = product.name_zh
             row["product_name_snapshot_en"] = product.name_en
             row["uom_snapshot"] = product.unit
-            row["variant_snapshot"] = await _normalize_variants_to_en(
+            row["variant_snapshot"] = await normalize_variants_to_en(
                 db, product.id, row["selected_variants"],
             )
     if offending:
@@ -309,7 +261,7 @@ async def create_rfq(
                 )
                 idem_id = idem_hit.scalar_one_or_none()
                 if idem_id is not None:
-                    return await _load_and_serialize(db, idem_id, is_operator=is_operator)
+                    return await _load_and_serialize(db, idem_id, is_operator=scope.is_operator)
             existing = await db.execute(
                 select(Rfq.id).where(Rfq.rfq_no == rfq_no)
             )
@@ -362,7 +314,7 @@ async def create_rfq(
     )
     await db.commit()
 
-    return await _load_and_serialize(db, rfq.id, is_operator=is_operator)
+    return await _load_and_serialize(db, rfq.id, is_operator=scope.is_operator)
 
 
 # ── 列表 ──────────────────────────────────────────────
@@ -375,13 +327,12 @@ async def list_rfqs(
     mine: bool = False,
 ) -> dict:
     """列表,BUYER 限本组织,OPERATOR 全量。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     q = select(Rfq).where(Rfq.deleted_at.is_(None))
     count_q = select(func.count()).select_from(Rfq).where(Rfq.deleted_at.is_(None))
 
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         org = await _resolve_active_buyer_org(db, user)
         q = q.where(Rfq.buyer_org_id == org.id)
         count_q = count_q.where(Rfq.buyer_org_id == org.id)
@@ -390,7 +341,7 @@ async def list_rfqs(
             count_q = count_q.where(Rfq.buyer_user_id == user.id)
 
     # Operator 不看买方草稿和已取消的询价单
-    if is_operator and not is_buyer:
+    if scope.is_operator and not scope.is_buyer:
         hidden = (RfqStatus.DRAFT, RfqStatus.CANCELLED)
         q = q.where(Rfq.status.notin_(hidden))
         count_q = count_q.where(Rfq.status.notin_(hidden))
@@ -399,7 +350,7 @@ async def list_rfqs(
         q = q.where(Rfq.status == status_filter)
         count_q = count_q.where(Rfq.status == status_filter)
 
-    if buyer_org_id_filter and is_operator:
+    if buyer_org_id_filter and scope.is_operator:
         q = q.where(Rfq.buyer_org_id == buyer_org_id_filter)
         count_q = count_q.where(Rfq.buyer_org_id == buyer_org_id_filter)
 
@@ -413,7 +364,7 @@ async def list_rfqs(
     )
     rows = (await db.execute(q)).scalars().all()
 
-    serialized = [_serialize_rfq(r, is_operator=is_operator) for r in rows]
+    serialized = [_serialize_rfq(r, is_operator=scope.is_operator) for r in rows]
     return {
         "items": [s.model_dump() for s in serialized],
         "total": total,
@@ -428,25 +379,24 @@ async def get_rfq(
     db: AsyncSession, user: CurrentUser, rfq_id: int,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """详情,scope 校验 + 报价层叠。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     rfq = await load_rfq(db, rfq_id, with_items=True)
     if not rfq:
         raise RfqNotFoundError()
 
     # scope 校验
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         org = await _resolve_active_buyer_org(db, user)
         if rfq.buyer_org_id != org.id:
             raise RfqNotFoundError()
 
     # 报价层叠
     quote_data = await quote_svc.load_quote_for_rfq_detail(
-        db, rfq.id, is_operator=is_operator,
+        db, rfq.id, is_operator=scope.is_operator,
     )
 
-    return _serialize_rfq(rfq, is_operator=is_operator, quote_data=quote_data)
+    return _serialize_rfq(rfq, is_operator=scope.is_operator, quote_data=quote_data)
 
 
 # ── 撤销 ──────────────────────────────────────────────
@@ -457,15 +407,14 @@ async def cancel_rfq(
     *, request: Request | None = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """撤销守卫 + 幂等 + 行锁串行化。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
 
     if rfq.status == RfqStatus.CANCELLED:
-        return _serialize_rfq(rfq, is_operator=is_operator)
+        return _serialize_rfq(rfq, is_operator=scope.is_operator)
 
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         if rfq.status not in RfqStatus.BUYER_CANCELLABLE:
             raise RfqStateInvalidError(rfq.status)
 
@@ -488,7 +437,7 @@ async def cancel_rfq(
     )
     await db.commit()
 
-    return await _load_and_serialize(db, rfq.id, is_operator=is_operator)
+    return await _load_and_serialize(db, rfq.id, is_operator=scope.is_operator)
 
 
 # ── 行来源解析 ─────────────────────────────────────────
@@ -673,6 +622,15 @@ async def submit_rfq(
     if not active_items:
         raise RfqNoValidItemsError()
 
+    # 二次校验：草稿保存后商品可能被下架/删除，提交前重新确认
+    offending: list[int] = []
+    for it in active_items:
+        product = await _get_viewable_product(db, it.product_id)
+        if not product:
+            offending.append(it.product_id)
+    if offending:
+        raise RfqProductNotAvailableError(offending)
+
     rfq.status = RfqStatus.SUBMITTED
 
     await write_audit(
@@ -753,7 +711,7 @@ async def update_rfq(
             row["product_name_snapshot_zh"] = product.name_zh
             row["product_name_snapshot_en"] = product.name_en
             row["uom_snapshot"] = product.unit
-            row["variant_snapshot"] = await _normalize_variants_to_en(
+            row["variant_snapshot"] = await normalize_variants_to_en(
                 db, product.id, row["selected_variants"],
             )
     if offending:
@@ -845,7 +803,7 @@ async def update_rfq_item_qty(
     """修改行项数量。DRAFT（买方）或 PROCESSING（受理人）可操作。"""
     rfq = await lock_rfq(db, rfq_id, user=user, with_items=True)
 
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     if rfq.status == RfqStatus.DRAFT:
         pass  # 买方可改
@@ -870,7 +828,7 @@ async def update_rfq_item_qty(
     )
     await db.commit()
 
-    return await _load_and_serialize(db, rfq.id, is_operator=is_operator)
+    return await _load_and_serialize(db, rfq.id, is_operator=scope.is_operator)
 
 
 # ── 运营行项增删改（PROCESSING 态） ──────────────────────
@@ -891,7 +849,7 @@ async def add_rfq_item(
         raise RfqProductNotAvailableError([payload.product_id])
 
     # 变体规范化
-    variant_snapshot = await _normalize_variants_to_en(
+    variant_snapshot = await normalize_variants_to_en(
         db, product.id, payload.selected_variants,
     )
 
@@ -945,7 +903,7 @@ async def edit_rfq_item(
         product = await _get_viewable_product(db, target.product_id)
         if not product:
             raise RfqProductNotAvailableError([target.product_id])
-        target.variant_snapshot = await _normalize_variants_to_en(
+        target.variant_snapshot = await normalize_variants_to_en(
             db, product.id, payload.selected_variants,
         )
         # 快照刷新

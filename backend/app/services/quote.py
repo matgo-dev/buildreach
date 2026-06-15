@@ -35,7 +35,7 @@ from app.db.models.rfq_quote import RfqQuote
 from app.db.models.rfq_quote_item import RfqQuoteItem
 from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
-from app.services._rfq_loader import load_rfq, lock_rfq, _resolve_buyer_org_id
+from app.services._rfq_loader import load_rfq, lock_rfq, resolve_rfq_scope, _resolve_buyer_org_id
 from app.schemas.quote import (
     QuoteCreatePayload,
     QuoteCostView,
@@ -305,9 +305,9 @@ async def accept_rfq(
     rfq.status = RfqStatus.ACCEPTED
     rfq.accepted_quote_id = active_quote.id
 
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
     extra: dict = {"rfq_no": rfq.rfq_no, "accepted_quote_id": active_quote.id}
-    if is_operator:
+    if scope.is_operator:
         extra["acted_by_operator"] = True
         extra["buyer_org_id"] = rfq.buyer_org_id
 
@@ -346,9 +346,9 @@ async def reject_rfq(
 
     rfq.status = RfqStatus.REJECTED
 
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
     extra: dict = {"rfq_no": rfq.rfq_no}
-    if is_operator:
+    if scope.is_operator:
         extra["acted_by_operator"] = True
         extra["buyer_org_id"] = rfq.buyer_org_id
     # 读 ACTIVE quote id 留痕
@@ -421,12 +421,11 @@ async def get_quotes(
     db: AsyncSession, user: CurrentUser, rfq_id: int,
 ) -> list[RfqQuoteBuyerPublic] | list[RfqQuoteOperatorView]:
     """BUYER 仅 ACTIVE(买方 DTO),OPERATOR 全版本(运营 DTO + 成本层)。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
     # scope 校验(不锁,GET 不需要)
     buyer_org_id = None
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         buyer_org_id = await _resolve_buyer_org_id(db, user)
 
     rfq = await load_rfq(
@@ -448,12 +447,12 @@ async def get_quotes(
         )
         .order_by(RfqQuote.version.desc())
     )
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         quote_q = quote_q.where(RfqQuote.quote_status == QuoteStatus.ACTIVE)
 
     quotes = (await db.execute(quote_q)).scalars().all()
 
-    if is_operator:
+    if scope.is_operator:
         return [_serialize_quote_operator(q) for q in quotes]
     return [_serialize_quote_buyer(q) for q in quotes]
 

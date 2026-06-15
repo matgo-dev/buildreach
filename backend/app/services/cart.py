@@ -9,8 +9,6 @@ sku_id 保留但可空(历史兼容)。
 """
 from __future__ import annotations
 
-import hashlib
-import json
 from decimal import Decimal
 
 from sqlalchemy import select, update
@@ -38,25 +36,7 @@ from app.db.models.cart_item import CartItem
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.cart import CartItemPublic, CartPublic
-
-
-# ── selected_variants 工具函数 ─────────────────────────────
-
-
-def _normalize_variants(variants: list[dict]) -> list[dict]:
-    """按 (attr_name, value) 排序，保证比较口径一致。"""
-    return sorted(variants, key=lambda x: (x.get("attr_name", ""), x.get("value", "")))
-
-
-def _variant_fingerprint(variants: list[dict]) -> str:
-    """规范化排序后的 JSON 取 md5，作为变体行身份标识。
-
-    空变体也产生确定性 hash（md5("[]")），保证所有行 fingerprint 非空。
-    后端唯一来源，前端不传。
-    """
-    normalized = _normalize_variants(variants)
-    payload = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
-    return hashlib.md5(payload.encode("utf-8")).hexdigest()
+from app.services._variant_utils import normalize_variants_to_en, variant_fingerprint
 
 
 # ── SPU 可用性校验 ─────────────────────────────────────────
@@ -188,9 +168,9 @@ async def add_item(
     if quantity <= 0:
         raise CartQuantityInvalidError()
 
-    # 规范化 + 指纹（后端唯一来源）
-    normalized_variants = _normalize_variants(selected_variants)
-    fingerprint = _variant_fingerprint(normalized_variants)
+    # 归一化为英文 + 指纹（后端唯一来源，跨语言稳定）
+    normalized_variants = await normalize_variants_to_en(db, product_id, selected_variants)
+    fingerprint = variant_fingerprint(normalized_variants)
 
     # ① get_or_create_cart (SAVEPOINT)
     cart = await _get_or_create_cart(db, org.id, user.id)
