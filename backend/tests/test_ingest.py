@@ -415,6 +415,126 @@ class TestProductImport:
         assert material.attr_value_zh == "PVC"
         assert material.attr_group == "Key attributes"
 
+    def test_attrs_label_zh_fallback_is_persisted(
+        self, prepared_db, cat_tree, offers, run_meta,
+    ):
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        assert offer.data is not None
+        offer.data["attributes"].append({
+            "group": "Key attributes",
+            "key_en": "Noise",
+            "key_zh": "噪音",
+            "selectable": False,
+            "values": [{"label_zh": "36分贝"}],
+        })
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        noise = db.execute(
+            select(ProductAttr).where(
+                ProductAttr.product_id == product.id,
+                ProductAttr.attr_key_en == "Noise",
+            )
+        ).scalar_one()
+        assert noise.attr_value_en == "36分贝"
+        assert noise.attr_value_zh == "36分贝"
+
+    def test_duplicate_attribute_values_are_deduplicated(
+        self, prepared_db, cat_tree, offers, run_meta,
+    ):
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        assert offer.data is not None
+        offer.data["attributes"].append({
+            "group": "Other attributes",
+            "key_en": "Process",
+            "key_zh": "工艺",
+            "selectable": False,
+            "values": [
+                {"label_zh": "锻造"},
+                {"label_zh": "锻造"},
+            ],
+        })
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        process_attrs = db.execute(
+            select(ProductAttr).where(
+                ProductAttr.product_id == product.id,
+                ProductAttr.attr_key_en == "Process",
+                ProductAttr.attr_value_en == "锻造",
+            )
+        ).scalars().all()
+        assert len(process_attrs) == 1
+
+    def test_origin_values_are_collapsed_to_spu_field(
+        self, prepared_db, cat_tree, offers, run_meta,
+    ):
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        assert offer.data is not None
+        offer.data["attributes"] = [
+            a for a in offer.data["attributes"]
+            if "产地" not in (a.get("key_zh") or "")
+            and "origin" not in (a.get("key_en") or "").lower()
+        ]
+        offer.data["attributes"].append({
+            "group": "Other attributes",
+            "key_en": "原产地",
+            "key_zh": "原产地",
+            "selectable": False,
+            "values": [
+                {"label_en": "Guangdong", "label_zh": "Guangdong"},
+                {"label_en": "China", "label_zh": "China"},
+            ],
+        })
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        assert product.origin_en == "Guangdong, China"
+        assert product.origin_zh == "Guangdong, China"
+        origin_attrs = db.execute(
+            select(ProductAttr).where(
+                ProductAttr.product_id == product.id,
+                ProductAttr.attr_key_zh == "原产地",
+            )
+        ).scalars().all()
+        assert origin_attrs == []
+
     def test_color_swatch_image(self, prepared_db, cat_tree, offers, run_meta):
         """色板图:label + swatch_image 同时有 → 属性 text + 图片 spec_value 绑定。"""
         db, slug_to_code, run = prepared_db

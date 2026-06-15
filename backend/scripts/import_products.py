@@ -745,11 +745,15 @@ def import_offer(
 
     # ── 5. product_attrs:values 有几个插几行 ──
     attr_sort = 0
+    seen_attr_values: set[tuple[str, str]] = set()
     for attr_def in data.get("attributes", []):
         group = attr_def.get("group", "")
         key_en = attr_def.get("key_en", "")
         key_zh = attr_def.get("key_zh", "")
         selectable = bool(attr_def.get("selectable", False))
+
+        if _is_origin_attr(attr_def):
+            continue
 
         for val in attr_def.get("values", []):
             label_en = val.get("label_en", "")
@@ -763,12 +767,12 @@ def import_offer(
                 swatch_path = swatch_raw
 
             # 确定 value_type
-            if swatch_path and not label_en:
+            if swatch_path and not (label_en or label_zh):
                 value_type = "image"
                 attr_value = swatch_path
             else:
                 value_type = "text"
-                attr_value = label_en
+                attr_value = label_en or label_zh
 
             if not attr_value:
                 continue
@@ -776,8 +780,12 @@ def import_offer(
             # i18n:导入数据以英文为源,中文列有值标 manual,无值标 pending,sw 全标 pending
             _key_en = key_en[:50] if key_en else (key_zh[:50] if key_zh else "unknown")
             _val_en = attr_value[:200]
-            _key_zh = key_zh[:50] if key_zh else None
-            _val_zh = label_zh[:500] if label_zh else None
+            _key_zh = key_zh[:50] if key_zh else (key_en[:50] if key_en else None)
+            _val_zh = (label_zh or label_en)[:500] if (label_zh or label_en) else None
+            attr_identity = (_key_en, _val_en)
+            if attr_identity in seen_attr_values:
+                continue
+            seen_attr_values.add(attr_identity)
 
             db.add(ProductAttr(
                 product_id=product.id,
@@ -864,6 +872,37 @@ def import_offer(
     )
 
 
+def _first_label(value: dict, *, preferred: str) -> str:
+    """取属性值标签,缺目标语言时用另一语言兜底。"""
+    if preferred == "zh":
+        return (value.get("label_zh") or value.get("label_en") or "").strip()
+    return (value.get("label_en") or value.get("label_zh") or "").strip()
+
+
+def _is_origin_attr(attr: dict) -> bool:
+    """原产地是 SPU 单值字段,不作为普通多值属性落 product_attrs。"""
+    key_en = (attr.get("key_en") or "").lower()
+    key_zh = attr.get("key_zh") or ""
+    return (
+        "place of origin" in key_en
+        or key_en == "origin"
+        or "原产地" in key_zh
+        or key_zh == "产地"
+    )
+
+
+def _join_unique(parts: list[str]) -> str | None:
+    seen: set[str] = set()
+    clean: list[str] = []
+    for part in parts:
+        value = part.strip()
+        if not value or value in seen:
+            continue
+        clean.append(value)
+        seen.add(value)
+    return ", ".join(clean) if clean else None
+
+
 # ── 知名属性 → SPU 字段提取映射 ──
 # 一次遍历 attributes,按映射表提取所有知名字段到 SPU 专用列。
 # 后续新增知名属性只需往 _SPU_EXTRACTORS 加一行,不改逻辑。
@@ -890,7 +929,7 @@ _SPU_EXTRACTORS: list[dict[str, Any]] = [
         "field": "origin",
         "match_en": ["place of origin", "origin"],
         "match_zh": ["产地", "原产地"],
-        "type": "i18n_single",
+        "type": "i18n_location",
     },
 ]
 
@@ -901,6 +940,7 @@ def _extract_spu_fields(attributes: list[dict]) -> dict[str, Any]:
     返回 dict,key 为字段名,value 根据 type 不同:
     - i18n_join  → {"en": "A; B", "zh": "甲; 乙"}
     - i18n_single → {"en": "...", "zh": "..."}
+    - i18n_location → {"en": "Guangdong, China", "zh": "Guangdong, China"}
     - list       → ["CE", "ISO 9001"]
     """
     # 初始化收集器
@@ -910,6 +950,8 @@ def _extract_spu_fields(attributes: list[dict]) -> dict[str, Any]:
             collectors[ext["field"]] = {"en": [], "zh": []}
         elif ext["type"] == "i18n_single":
             collectors[ext["field"]] = {"en": None, "zh": None}
+        elif ext["type"] == "i18n_location":
+            collectors[ext["field"]] = {"en": [], "zh": []}
         elif ext["type"] == "list":
             collectors[ext["field"]] = {"items": [], "seen": set()}
 
@@ -931,23 +973,36 @@ def _extract_spu_fields(attributes: list[dict]) -> dict[str, Any]:
 
             if ext["type"] == "i18n_join":
                 for v in vals:
-                    if v.get("label_en"):
-                        collectors[field]["en"].append(v["label_en"])
-                    if v.get("label_zh"):
-                        collectors[field]["zh"].append(v["label_zh"])
+                    label_en = _first_label(v, preferred="en")
+                    label_zh = _first_label(v, preferred="zh")
+                    if label_en:
+                        collectors[field]["en"].append(label_en)
+                    if label_zh:
+                        collectors[field]["zh"].append(label_zh)
 
             elif ext["type"] == "i18n_single":
                 # 取第一个有值的
                 if not collectors[field]["en"]:
                     for v in vals:
-                        if v.get("label_en"):
-                            collectors[field]["en"] = v["label_en"]
+                        label = _first_label(v, preferred="en")
+                        if label:
+                            collectors[field]["en"] = label
                             break
                 if not collectors[field]["zh"]:
                     for v in vals:
-                        if v.get("label_zh"):
-                            collectors[field]["zh"] = v["label_zh"]
+                        label = _first_label(v, preferred="zh")
+                        if label:
+                            collectors[field]["zh"] = label
                             break
+
+            elif ext["type"] == "i18n_location":
+                for v in vals:
+                    label_en = _first_label(v, preferred="en")
+                    label_zh = _first_label(v, preferred="zh")
+                    if label_en:
+                        collectors[field]["en"].append(label_en)
+                    if label_zh:
+                        collectors[field]["zh"].append(label_zh)
 
             elif ext["type"] == "list":
                 for v in vals:
@@ -966,6 +1021,8 @@ def _extract_spu_fields(attributes: list[dict]) -> dict[str, Any]:
             result[field] = {"en": "; ".join(c["en"]), "zh": "; ".join(c["zh"])}
         elif ext["type"] == "i18n_single":
             result[field] = c  # {"en": ..., "zh": ...}
+        elif ext["type"] == "i18n_location":
+            result[field] = {"en": _join_unique(c["en"]), "zh": _join_unique(c["zh"])}
         elif ext["type"] == "list":
             result[field] = c["items"]
     return result
