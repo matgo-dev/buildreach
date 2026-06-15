@@ -122,6 +122,9 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         nullable=True,
     )
 
+    # 阿里阶梯参考价（SPU 级，运营参考用，不展示给买方）
+    ref_price_tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
     # 商品来源:MANUAL(运营手动) / alibaba / 1688 等爬虫源
     source: Mapped[str] = mapped_column(
         String(50), nullable=False, default="MANUAL", server_default="MANUAL",
