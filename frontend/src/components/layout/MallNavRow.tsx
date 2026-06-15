@@ -28,7 +28,7 @@ export function MallNavRow() {
 
   return (
     <nav
-      className="sticky top-[82px] z-50 bg-white border-b border-line"
+      className="sticky top-[82px] z-[70] bg-white border-b border-line"
       style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05)" }}
     >
       <div className="mx-auto max-w-mall px-6 flex items-center min-h-[50px] gap-0 overflow-x-auto scrollbar-hide">

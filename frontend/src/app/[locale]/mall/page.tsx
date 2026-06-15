@@ -94,7 +94,7 @@ function MallContent() {
   return (
     <PublicLayout>
       {/* 三栏布局:左品类(240) + 中内容(auto) + 右客服/RFQ(300) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px] gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px] gap-5">
         {/* 左侧品类导航 */}
         <CategorySidebar
           activeCategoryCode={urlCat}

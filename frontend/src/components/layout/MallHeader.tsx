@@ -53,7 +53,7 @@ export function MallHeader() {
 
   return (
     <header
-      className="sticky top-0 z-[60] border-b-2 border-gold"
+      className="sticky top-0 z-[80] border-b-2 border-gold"
       style={{
         background: "linear-gradient(180deg, #00505a, #003f46)",
         boxShadow: "0 12px 30px rgba(0,63,70,.22)",
