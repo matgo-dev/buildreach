@@ -8,7 +8,8 @@ import { api } from "../api";
 // ---------- 请求类型 ----------
 
 export interface RfqItemInput {
-  sku_id: number;
+  product_id: number;
+  selected_variants?: Array<{ attr_name: string; value: string }>;
   quantity: number;
   target_unit_price?: number;
   remark?: string;
@@ -53,9 +54,10 @@ export interface RfqListQuery {
 
 export interface RfqItemPublic {
   id: number;
-  sku_id: number;
+  product_id: number;
+  variant_snapshot: Array<{ attr_name: string; value: string }>;
+  variant_display: string | null;
   product_name_snapshot: string | null;
-  sku_spec_snapshot: string | null;
   uom_snapshot: string | null;
   quantity: number;
   target_unit_price: number | null;

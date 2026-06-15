@@ -1,7 +1,7 @@
 """询价单 API 单测。
 
-覆盖:统一 items 入参、代客、目标 org 校验、可购重校验、
-rfq_no 生成、dup sku、scope 越权(404)、撤销守卫+幂等、
+覆盖:统一 items 入参、代客、目标 org 校验、商品可用性校验、
+rfq_no 生成、dup product+variant、scope 越权(404)、撤销守卫+幂等、
 买方 DTO 不漏内部 id、清篮零副作用。
 """
 from __future__ import annotations
@@ -19,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.audit_log import AuditLog
 from app.db.models.cart_item import CartItem
 from app.db.models.category import Category
-from app.db.models.product_sku import ProductSku
 from app.db.models.rfq import Rfq, RfqSource, RfqStatus
 
 
@@ -53,10 +52,10 @@ async def _buyer_info(client: AsyncClient, headers: dict) -> dict:
     return r.json()["data"]
 
 
-async def _create_purchasable_sku(
+async def _create_active_product(
     client: AsyncClient, op: dict, db: AsyncSession,
-) -> int:
-    """创建一个可购 SKU(ACTIVE SPU + ACTIVE SKU),返回 sku_id。"""
+) -> tuple[int, int]:
+    """创建一个 ACTIVE 商品(SPU + SKU),返回 (product_id, sku_id)。"""
     cat = (await db.execute(
         select(Category).where(Category.level == 3).limit(1)
     )).scalar_one_or_none()
@@ -85,7 +84,7 @@ async def _create_purchasable_sku(
         json={"status": "ACTIVE"},
     )
     assert r.status_code == 200, r.text
-    return sku_id
+    return product_id, sku_id
 
 
 async def _add_to_cart(client: AsyncClient, headers: dict, sku_id: int, qty: str = "5.000") -> int:
@@ -105,10 +104,10 @@ async def test_buyer_create(client, db_session):
     """BUYER 创建询价单 → SUBMITTED + BUYER_SELF。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "10.000", "target_unit_price": "50.0000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "10.000", "target_unit_price": "50.0000"}],
         "remark": "test direct",
     })
     assert r.status_code == 200, r.text
@@ -125,13 +124,13 @@ async def test_buyer_create_multiple_items(client, db_session):
     """BUYER 多行创建。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku1 = await _create_purchasable_sku(client, op, db_session)
-    sku2 = await _create_purchasable_sku(client, op, db_session)
+    pid1, _ = await _create_active_product(client, op, db_session)
+    pid2, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
         "items": [
-            {"sku_id": sku1, "quantity": "5.000"},
-            {"sku_id": sku2, "quantity": "3.000"},
+            {"product_id": pid1, "selected_variants": [], "quantity": "5.000"},
+            {"product_id": pid2, "selected_variants": [], "quantity": "3.000"},
         ],
     })
     assert r.status_code == 200, r.text
@@ -146,11 +145,11 @@ async def test_buyer_create_no_cart_side_effect(client, db_session):
     """创建询价单不再自动清篮 — 购物车行保留。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, sku_id = await _create_active_product(client, op, db_session)
     ci_id = await _add_to_cart(client, bh, sku_id)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "5.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "5.000"}],
     })
     assert r.status_code == 200, r.text
     assert len(r.json()["data"]["items"]) == 1
@@ -169,7 +168,7 @@ async def test_buyer_create_no_cart_side_effect(client, db_session):
 async def test_operator_proxy_create(client, db_session):
     """OPERATOR 代客创建(DIRECT + buyer_org_id)→ OPERATOR_PROXY。"""
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     # 取买方组织 id
     bh = await _buyer_headers(client)
@@ -178,7 +177,7 @@ async def test_operator_proxy_create(client, db_session):
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
         "buyer_org_id": buyer_org_id,
-        "items": [{"sku_id": sku_id, "quantity": "20.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "20.000"}],
         "contact_name": "John",
         "contact_phone": "+255123456789",
     })
@@ -193,11 +192,11 @@ async def test_operator_proxy_create(client, db_session):
 async def test_operator_proxy_invalid_org(client, db_session):
     """代客:目标 org 不存在 → 40504。"""
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
         "buyer_org_id": 999999,
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     assert r.status_code == 403
     assert r.json()["code"] == 40504
@@ -222,16 +221,16 @@ async def test_operator_missing_items_rejected(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_direct_duplicate_sku_rejected(client, db_session):
-    """DIRECT 重复 SKU → 40509。"""
+async def test_direct_duplicate_product_variant_rejected(client, db_session):
+    """DIRECT 重复 product_id + selected_variants → 40509。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
         "items": [
-            {"sku_id": sku_id, "quantity": "5.000"},
-            {"sku_id": sku_id, "quantity": "3.000"},
+            {"product_id": product_id, "selected_variants": [], "quantity": "5.000"},
+            {"product_id": product_id, "selected_variants": [], "quantity": "3.000"},
         ],
     })
     assert r.status_code == 422
@@ -251,16 +250,16 @@ async def test_direct_empty_items_rejected(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_direct_not_purchasable_sku(client, db_session):
-    """DIRECT 含不可购 SKU → 40506 + offending_sku_ids。"""
+async def test_direct_not_available_product(client, db_session):
+    """DIRECT 含不可用商品 → 40506 + offending_product_ids。"""
     bh = await _buyer_headers(client)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": 999999, "quantity": "1.000"}],
+        "items": [{"product_id": 999999, "selected_variants": [], "quantity": "1.000"}],
     })
     assert r.status_code == 422
     assert r.json()["code"] == 40506
-    assert 999999 in r.json()["data"]["offending_sku_ids"]
+    assert 999999 in r.json()["data"]["offending_product_ids"]
 
 
 # ── 列表 ────────────────────────────────────────────────
@@ -271,10 +270,10 @@ async def test_buyer_list_scoped(client, db_session):
     """BUYER 列表只看本组织。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
 
     r = await client.get("/api/v1/rfqs", headers=bh)
@@ -289,10 +288,10 @@ async def test_buyer_list_mine_filter(client, db_session):
     """BUYER mine=true 只看本人。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
 
     r = await client.get("/api/v1/rfqs?mine=true", headers=bh)
@@ -316,10 +315,10 @@ async def test_buyer_get_detail(client, db_session):
     """BUYER 查看自己的询价单详情。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
 
@@ -347,10 +346,10 @@ async def test_cancel_submitted(client, db_session):
     """撤销 SUBMITTED → CANCELLED。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
 
@@ -366,10 +365,10 @@ async def test_cancel_idempotent(client, db_session):
     """已 CANCELLED → 幂等返回当前,不改 reason。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
 
@@ -406,10 +405,10 @@ async def test_buyer_dto_no_internal_fields(client, db_session):
     """买方 DTO 不含 created_by_user_id / operator_assignee_id / buyer_org_id。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     data = r.json()["data"]
     assert "created_by_user_id" not in data
@@ -429,11 +428,11 @@ async def test_operator_dto_has_internal_fields(client, db_session):
     bh = await _buyer_headers(client)
     me = await _buyer_info(client, bh)
     buyer_org_id = me["organization"]["id"]
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=op, json={
         "buyer_org_id": buyer_org_id,
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     data = r.json()["data"]
     assert "created_by_user_id" in data
@@ -449,15 +448,17 @@ async def test_item_snapshot_populated(client, db_session):
     """创建后行项目快照字段已填充。"""
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     item = r.json()["data"]["items"][0]
-    # product_name_snapshot 应该有值(创建 SKU 时有 name)
+    # product_name_snapshot 应该有值
     assert item["product_name_snapshot"] is not None
     assert item["uom_snapshot"] is not None
+    # variant_snapshot 应该是 list（即使为空）
+    assert isinstance(item["variant_snapshot"], list)
 
 
 # ── 非 BUYER/OPERATOR 角色拒绝 ─────────────────────────
@@ -480,12 +481,12 @@ async def test_buyer_scope_violation_detail(client, db_session):
     bh = await _buyer_headers(client)
     me = await _buyer_info(client, bh)
     buyer_org_id = me["organization"]["id"]
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     # 运营代客创建(属于同组织,但后面用另一买方测)
     r = await client.post("/api/v1/rfqs", headers=op, json={
         "buyer_org_id": buyer_org_id,
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     rfq_id = r.json()["data"]["id"]
 
@@ -504,10 +505,10 @@ async def test_soft_deleted_rfq_invisible(client, db_session):
 
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "1.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "1.000"}],
     })
     assert r.status_code == 200
     rfq_id = r.json()["data"]["id"]
@@ -541,11 +542,11 @@ async def test_idempotency_same_key_sequential(client: AsyncClient, db_session: 
     """同一 Idempotency-Key 顺序重复提交 → 返回同一 rfq_id；DB 仅一张单。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
     idem_key = str(uuid4())
 
     payload = {
-        "items": [{"sku_id": sku_id, "quantity": 10}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": 10}],
     }
     headers = {**bh, "Idempotency-Key": idem_key}
 
@@ -571,10 +572,10 @@ async def test_idempotency_different_keys(client: AsyncClient, db_session: Async
     """不同 key 提交 → 两张单。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     payload = {
-        "items": [{"sku_id": sku_id, "quantity": 10}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": 10}],
     }
 
     r1 = await client.post(
@@ -593,10 +594,10 @@ async def test_idempotency_no_header(client: AsyncClient, db_session: AsyncSessi
     """无 Idempotency-Key 头 → 每次建新单(维持现状)。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
 
     payload = {
-        "items": [{"sku_id": sku_id, "quantity": 10}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": 10}],
     }
 
     r1 = await client.post("/api/v1/rfqs", headers=bh, json=payload)
@@ -608,14 +609,14 @@ async def test_idempotency_no_header(client: AsyncClient, db_session: AsyncSessi
 
 @pytest.mark.asyncio
 async def test_idempotency_validation_failure_then_retry(client: AsyncClient, db_session: AsyncSession):
-    """校验失败(不可购)后同 key 重试 → 首次报错,key 未占;修正后同 key 成功。"""
+    """校验失败(商品不可用)后同 key 重试 → 首次报错,key 未占;修正后同 key 成功。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
     idem_key = str(uuid4())
 
-    # 不存在的 sku → 校验失败
+    # 不存在的商品 → 校验失败
     payload_bad = {
-        "items": [{"sku_id": 999999, "quantity": 10}],
+        "items": [{"product_id": 999999, "selected_variants": [], "quantity": 10}],
     }
     r1 = await client.post(
         "/api/v1/rfqs", headers={**bh, "Idempotency-Key": idem_key}, json=payload_bad,
@@ -623,9 +624,9 @@ async def test_idempotency_validation_failure_then_retry(client: AsyncClient, db
     assert r1.status_code != 200  # 校验失败
 
     # key 未被占用,同 key 用正确载荷重试
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
     payload_good = {
-        "items": [{"sku_id": sku_id, "quantity": 10}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": 10}],
     }
     r2 = await client.post(
         "/api/v1/rfqs", headers={**bh, "Idempotency-Key": idem_key}, json=payload_good,
@@ -638,11 +639,11 @@ async def test_idempotency_no_duplicate_audit(client: AsyncClient, db_session: A
     """幂等命中不重复写审计。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, _ = await _create_active_product(client, op, db_session)
     idem_key = str(uuid4())
 
     payload = {
-        "items": [{"sku_id": sku_id, "quantity": 10}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": 10}],
     }
     headers = {**bh, "Idempotency-Key": idem_key}
 
@@ -670,12 +671,12 @@ async def test_idempotency_cart_items_untouched(client: AsyncClient, db_session:
     """创建询价不影响购物车行（清篮由前端负责）。"""
     op = await _op_headers(client)
     bh = await _buyer_headers(client)
-    sku_id = await _create_purchasable_sku(client, op, db_session)
+    product_id, sku_id = await _create_active_product(client, op, db_session)
     cart_item_id = await _add_to_cart(client, bh, sku_id)
     idem_key = str(uuid4())
 
     payload = {
-        "items": [{"sku_id": sku_id, "quantity": "5.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "5.000"}],
     }
     headers = {**bh, "Idempotency-Key": idem_key}
 

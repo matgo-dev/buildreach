@@ -84,6 +84,7 @@ class AttrTemplateSchema(BaseModel):
     is_required: bool = False
     sort_order: int = 0
     scope: str = "SKU"
+    selectable: bool = False
 
 
 # ---------- 阶梯价 ----------

@@ -84,6 +84,8 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls(1, 1)
     if name == "RfqItemNotPurchasableError":
         return cls([1])
+    if name == "RfqProductNotAvailableError":
+        return cls([1])
     if name == "RfqStateInvalidError":
         return cls("SUBMITTED")
     return cls()
