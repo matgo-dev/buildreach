@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { MallButton } from "./MallButton";
 
-/** 飞入购物车动画：带尾巴的流星效果，渐出渐入 */
+/** 飞入购物车动画：暖金流星效果 */
 function flyToCart(startEl: HTMLElement) {
   const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
   if (!target) return;
@@ -24,8 +24,6 @@ function flyToCart(startEl: HTMLElement) {
   const sy = startRect.top + startRect.height / 2;
   const ex = endRect.left + endRect.width / 2;
   const ey = endRect.top + endRect.height / 2;
-
-  // 计算角度，让尾巴朝运动反方向
   const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
 
   const meteor = document.createElement("div");
@@ -37,8 +35,8 @@ function flyToCart(startEl: HTMLElement) {
     width: 36px;
     height: 6px;
     border-radius: 3px;
-    background: linear-gradient(90deg, transparent 0%, #0D4D4D 40%, #1A6B6B 100%);
-    box-shadow: 0 0 8px rgba(13, 77, 77, 0.5), 0 0 16px rgba(13, 77, 77, 0.2);
+    background: linear-gradient(90deg, transparent 0%, #e3a615 40%, #f0c040 100%);
+    box-shadow: 0 0 8px rgba(227, 166, 21, 0.6), 0 0 16px rgba(227, 166, 21, 0.3);
     pointer-events: none;
     transform: rotate(${angle}deg);
     transform-origin: right center;
@@ -50,21 +48,18 @@ function flyToCart(startEl: HTMLElement) {
   `;
   document.body.appendChild(meteor);
 
-  // 渐入
   requestAnimationFrame(() => {
     meteor.style.opacity = "1";
     requestAnimationFrame(() => {
       meteor.style.left = `${ex}px`;
       meteor.style.top = `${ey}px`;
       meteor.style.width = "12px";
-      // 飞行后半段渐出
       setTimeout(() => { meteor.style.opacity = "0"; }, 600);
     });
   });
 
   setTimeout(() => {
     meteor.remove();
-    // 购物车图标弹跳
     target.style.transition = "transform 0.3s ease";
     target.style.transform = "scale(1.3)";
     setTimeout(() => { target.style.transform = "scale(1)"; }, 300);
@@ -102,14 +97,24 @@ export function ProductCard({
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const btnRef = useRef<HTMLButtonElement>(null);
 
+  const prevCountRef = useRef(useCartStore.getState().count);
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setAdding(true);
+    prevCountRef.current = useCartStore.getState().count;
     try {
       const cart = await addCartItem(product.id, [], 1);
       syncFromCart(cart);
-      if (btnRef.current) flyToCart(btnRef.current);
+      const newCount = cart.items.filter((i) => i.is_purchasable).length;
+      if (newCount > prevCountRef.current) {
+        // 新增行 → 飞入动画
+        if (btnRef.current) flyToCart(btnRef.current);
+        toast.success(t("addedToCart"));
+      } else {
+        // 累加数量 → toast 提示
+        toast.success(t("alreadyInCart"));
+      }
     } catch {
       toast.error(t("addToCartFailed"));
     } finally {
