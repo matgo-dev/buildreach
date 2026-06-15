@@ -306,13 +306,24 @@ async def _add_attrs(
         if tpl.scope != expected_scope:
             raise AttrScopeMismatchError(attr.attr_key, tpl.scope)
 
+        # 运营录入:attr_key 对应模板英文键,attr_value 为当前语言值
+        # source_lang 取 zh(运营默认中文),attr_key_en 从模板取英文键名
         db.add(ProductAttr(
             product_id=product_id,
             sku_id=sku_id,
-            attr_key=attr.attr_key,
-            attr_value=attr.attr_value,
+            attr_key_en=attr.attr_key,
+            attr_value_en=attr.attr_value,
             attr_unit=tpl.attr_unit,
             sort_order=tpl.sort_order,
+            source_lang="en",
+            trans_meta={
+                "attr_key_en": "src",
+                "attr_key_zh": "pending",
+                "attr_key_sw": "pending",
+                "attr_value_en": "src",
+                "attr_value_zh": "pending",
+                "attr_value_sw": "pending",
+            },
         ))
 
 
@@ -361,14 +372,14 @@ async def update_product_status(
             required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
             required_sku = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SKU"]
 
-            spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
+            spu_attr_keys = {a.attr_key_en for a in product.attrs if a.sku_id is None}
             missing_spu = [k for k in required_spu if k not in spu_attr_keys]
             if missing_spu:
                 errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
 
             if required_sku and active_skus:
                 sku_attrs_q = await db.execute(
-                    select(ProductAttr.sku_id, ProductAttr.attr_key)
+                    select(ProductAttr.sku_id, ProductAttr.attr_key_en)
                     .where(
                         ProductAttr.product_id == product.id,
                         ProductAttr.sku_id.isnot(None),
@@ -376,7 +387,7 @@ async def update_product_status(
                 )
                 sku_attr_map: dict[int, set[str]] = {}
                 for row in sku_attrs_q:
-                    sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key)
+                    sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key_en)
                 for sku in active_skus:
                     sku_keys = sku_attr_map.get(sku.id, set())
                     missing = [k for k in required_sku if k not in sku_keys]

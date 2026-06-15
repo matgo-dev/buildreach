@@ -58,17 +58,18 @@ router = APIRouter(
 # ── 序列化工具 ───────────────────────────────────────────
 
 def _enrich_attrs(attrs, template_map: dict) -> list[dict]:
-    """属性序列化：attr_unit/sort_order/display_name 从模板取。"""
+    """属性序列化：attr_unit/sort_order/display_name 从模板取,key/value 本地化。"""
+    from app.core.i18n import get_localized
     result = []
     for attr in attrs:
-        tpl = template_map.get(attr.attr_key)
+        tpl = template_map.get(attr.attr_key_en)
         result.append({
-            "attr_key": attr.attr_key,
-            "attr_value": attr.attr_value,
+            "attr_key": get_localized(attr, "attr_key"),
+            "attr_value": get_localized(attr, "attr_value"),
             "attr_unit": tpl.attr_unit if tpl else attr.attr_unit,
             "sort_order": tpl.sort_order if tpl else attr.sort_order,
             "sku_id": attr.sku_id,
-            "display_name": tpl.display_name if tpl else attr.attr_key,
+            "display_name": tpl.display_name if tpl else attr.attr_key_en,
         })
     result.sort(key=lambda x: x["sort_order"])
     return result

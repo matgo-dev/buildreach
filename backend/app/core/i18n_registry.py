@@ -53,6 +53,8 @@ def _register_product_domain() -> None:
     """延迟导入避免循环依赖。"""
     from app.db.models.product import Product
     from app.db.models.product_sku import ProductSku
+    from app.db.models.category import Category
+    from app.db.models.product_attr import ProductAttr
 
     register_i18n(Product, I18nSpec(
         fields=("name", "description", "brand", "origin", "selling_points", "detail_description"),
@@ -60,6 +62,14 @@ def _register_product_domain() -> None:
     ))
     register_i18n(ProductSku, I18nSpec(
         fields=("name", "color", "material"),
+        domain="product",
+    ))
+    register_i18n(Category, I18nSpec(
+        fields=("name",),
+        domain="category",
+    ))
+    register_i18n(ProductAttr, I18nSpec(
+        fields=("attr_key", "attr_value"),
         domain="product",
     ))
 

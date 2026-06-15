@@ -262,13 +262,14 @@ async def _add_spu_attr(
     from app.db.models.product_attr import ProductAttr
     attr = ProductAttr(
         product_id=product_id,
-        attr_key=attr_key,
-        attr_value=attr_value,
+        attr_key_en=attr_key,
+        attr_value_en=attr_value,
         attr_group=attr_group,
         attr_key_zh=attr_key_zh,
         attr_value_zh=attr_value_zh,
         value_type=value_type,
         sort_order=sort_order,
+        source_lang="en",
     )
     db_session.add(attr)
     await db_session.flush()
