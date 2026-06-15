@@ -1901,11 +1901,11 @@ async def test_sku_status_toggle_on_active_product(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_deactivate_last_sku_auto_delists_product(client: AsyncClient):
-    """停售 ACTIVE 商品下最后一个在售 SKU → 商品自动下架。"""
+async def test_deactivate_last_sku_does_not_auto_delist_product(client: AsyncClient):
+    """停售最后一个 SKU 不应连带下架 SPU — SPU 状态只走自己的状态机。"""
     headers = await _login_operator(client)
     cat = await _get_first_category_code(client)
-    pid, _ = await _make_active_product_with_image(client, headers, cat, "SKU-LAST-DELIST")
+    pid, _ = await _make_active_product_with_image(client, headers, cat, "SKU-LAST-KEEP")
 
     skus_r = await client.get(f"/api/v1/operator/products/{pid}/skus", headers=headers)
     sku_id = skus_r.json()["data"][0]["id"]
@@ -1916,8 +1916,8 @@ async def test_deactivate_last_sku_auto_delists_product(client: AsyncClient):
         json={"status": "INACTIVE"},
     )
     assert r.status_code == 200
-    assert r.json()["data"]["product_auto_delisted"] is True
+    assert "product_auto_delisted" not in r.json()["data"]
 
-    # 确认商品已自动变为 INACTIVE
+    # SPU 应仍为 ACTIVE
     detail = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
-    assert detail.json()["data"]["status"] == "INACTIVE"
+    assert detail.json()["data"]["status"] == "ACTIVE"
