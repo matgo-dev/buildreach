@@ -144,11 +144,12 @@ function CartContent() {
     }
   }, [checkedIds, syncFromCart, mutate, triggerRefresh, toast, t]);
 
-  // TODO: 询价行粒度(SPU vs SPU+规格)+ 购物车条目结构待定
-  // 提交询价 — 置灰,不接
+  // 提交询价：跳转到询价创建页，带上选中的 item_id
   const handleSubmitInquiry = useCallback(() => {
-    // 功能完善中,暂不实现
-  }, []);
+    const ids = Array.from(checkedIds);
+    if (ids.length === 0) return;
+    router.push(`/${locale}/buyer/rfqs/create?items=${ids.join(",")}`);
+  }, [checkedIds, router, locale]);
 
   // ---- 渲染 ----
 
@@ -302,22 +303,20 @@ function CartContent() {
         </div>
       )}
 
-      {/* 底部操作栏 — 提交询价置灰 */}
+      {/* 底部操作栏 */}
       <div className="sticky bottom-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-6 py-4 shadow-sm">
         <span className="text-sm text-gray-600">
           {t("selected", { count: checkedIds.size })}
         </span>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{t("comingSoon")}</span>
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-6 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed"
-          >
-            {t("submitInquiry")}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={checkedIds.size === 0}
+          onClick={handleSubmitInquiry}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#003d45] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+        >
+          {t("submitInquiry")}
+          <ArrowRight className="h-4 w-4" />
+        </button>
       </div>
 
       {/* 删除单项确认框 */}
