@@ -96,6 +96,34 @@ export default function EditBasicInfo({ product, value, onChange }: EditBasicInf
           <label className="text-xs text-slate-500">{t("isFeatured")}</label>
           <Toggle checked={!!value.is_featured} onChange={() => onChange({ ...value, is_featured: !value.is_featured })} size="md" />
         </div>
+        {/* 履约模式 */}
+        <div className="flex items-center gap-3">
+          <label className="text-xs text-slate-500">{t("supplyMode")}</label>
+          <div className="flex gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="supply_mode"
+                value="SUPPLIER_DIRECT"
+                checked={value.supply_mode !== "PLATFORM_STOCK"}
+                onChange={() => onChange({ ...value, supply_mode: "SUPPLIER_DIRECT" })}
+                className="h-3.5 w-3.5 text-blue-600"
+              />
+              {t("supplyModeSupplierDirect")}
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="supply_mode"
+                value="PLATFORM_STOCK"
+                checked={value.supply_mode === "PLATFORM_STOCK"}
+                onChange={() => onChange({ ...value, supply_mode: "PLATFORM_STOCK" })}
+                className="h-3.5 w-3.5 text-blue-600"
+              />
+              {t("supplyModePlatformStock")}
+            </label>
+          </div>
+        </div>
         {/* 认证 */}
         <div className="sm:col-span-2">
           <label className="text-xs text-slate-500 mb-1 block">{t("certifications")}</label>

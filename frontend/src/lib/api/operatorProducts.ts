@@ -116,6 +116,7 @@ export interface ProductCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
+  supply_mode?: string;
   unit?: SkuUnitCode;
   currency?: string;
   attributes?: ProductAttrInput[] | null;
@@ -224,6 +225,7 @@ export interface ProductOperatorDetail {
   selling_points_en: string | null;
   source_lang: string;
   is_featured: boolean;
+  supply_mode: string;
   unit: string;
   currency: string;
   status: string;
@@ -246,6 +248,7 @@ export interface ProductUpdateInput {
   certifications?: string[] | null;
   selling_points?: string | null;
   is_featured?: boolean | null;
+  supply_mode?: string | null;
   attributes?: ProductAttrInput[] | null;
 }
 
@@ -284,6 +287,7 @@ export interface ProductOperatorItem {
   origin: string;
   brand: string | null;
   is_featured: boolean;
+  supply_mode: string;
   main_image: string | null;
   status: string;
   created_by_name: string;
@@ -298,6 +302,7 @@ export interface ProductOperatorItem {
 export interface ProductListParams {
   category_code?: string;
   status?: string;
+  supply_mode?: string;
   keyword?: string;
   page?: number;
   size?: number;
@@ -354,6 +359,7 @@ export interface ProductAggregateCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
+  supply_mode?: string;
   unit?: SkuUnitCode;
   currency?: string;
   attributes?: ProductAttrInput[] | null;
@@ -370,6 +376,7 @@ export interface ProductAggregateSaveInput {
   certifications?: string[] | null;
   selling_points?: string | null;
   is_featured?: boolean | null;
+  supply_mode?: string | null;
   unit?: SkuUnitCode | null;
   currency?: string | null;
   attributes?: ProductAttrInput[] | null;

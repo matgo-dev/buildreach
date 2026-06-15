@@ -55,11 +55,22 @@ export function ProductCard({
         ) : (
           <Package className="h-12 w-12 text-gray-300" />
         )}
-        {product.is_featured && (
-          <span className="absolute top-2.5 left-2.5 rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-            {t("featured")}
-          </span>
-        )}
+        <div className="absolute top-2.5 left-2.5 flex gap-1">
+          {product.is_featured && (
+            <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+              {t("featured")}
+            </span>
+          )}
+          {product.supply_mode === "PLATFORM_STOCK" ? (
+            <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+              {t("supplyModePlatformStock")}
+            </span>
+          ) : (
+            <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+              {t("supplyModeSupplierDirect")}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 信息区 */}

@@ -160,6 +160,7 @@ export default function ProductDetailPage() {
       certifications: product.certifications || [],
       selling_points: lf(product.selling_points_zh, product.selling_points_en, product.selling_points),
       is_featured: product.is_featured,
+      supply_mode: product.supply_mode,
       attributes: product.attributes.filter((a) => a.sku_id == null).map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
     });
     spuDirtyRef.current = false;
@@ -652,6 +653,7 @@ export default function ProductDetailPage() {
               <div className="flex justify-between"><span className="text-slate-400">{t("priceRange")}</span><span className="text-slate-700 font-medium">{formatPrice(product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity) === Infinity ? null : product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity), product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity) === -Infinity ? null : product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity), product.currency || "TZS")}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("minMoq")}</span><span className="text-slate-700 font-medium">{overview?.minMoq != null ? `${overview.minMoq} pcs` : "—"}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("featured")}</span><span className="text-slate-700 font-medium">{product.is_featured ? "⭐ " + t("yes") : t("no")}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">{t("supplyMode")}</span><span className={`font-medium ${product.supply_mode === "PLATFORM_STOCK" ? "text-blue-700" : "text-emerald-700"}`}>{product.supply_mode === "PLATFORM_STOCK" ? t("supplyModePlatformStock") : t("supplyModeSupplierDirect")}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("createdBy")}</span><span className="text-slate-700 font-medium">{product.created_by_name || "—"}</span></div>
             </div>
           </div>
