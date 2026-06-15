@@ -79,6 +79,12 @@ export function ProductCard({
           {product.name}
         </h3>
 
+        {product.description && (
+          <p className="text-xs text-muted leading-relaxed line-clamp-2">
+            {product.description}
+          </p>
+        )}
+
         <div className="flex flex-wrap gap-1.5">
           {categoryLabel && (
             <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">

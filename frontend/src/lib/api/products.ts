@@ -11,6 +11,7 @@ export interface ProductPublic {
   id: number;
   spu_code: string;
   name: string;
+  description: string | null;
   category_code: string;
   category_name: string;
   origin: string;

@@ -244,6 +244,7 @@ class ProductPublic(BaseModel):
     id: int
     spu_code: str
     name: str
+    description: str | None = None
     category_code: str
     category_name: str = ""
     origin: str
