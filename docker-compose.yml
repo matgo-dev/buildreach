@@ -90,7 +90,7 @@ services:
     volumes:
       - uploads:/app/uploads
     ports:
-      - "8001:8000"
+      - "${BACKEND_HOST_PORT:-8001}:8000"
     logging: *default-logging
 
   frontend:
@@ -104,7 +104,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "3001:3000"
+      - "${FRONTEND_HOST_PORT:-3001}:3000"
     logging: *default-logging
 
 volumes:

@@ -6,6 +6,15 @@ name: Deploy to ECS
 #   - 命令行:gh workflow run "Deploy to ECS"
 on:
   workflow_dispatch:
+    inputs:
+      frontend_host_port:
+        description: "Frontend host port"
+        required: true
+        default: "3001"
+      backend_host_port:
+        description: "Backend host port"
+        required: true
+        default: "8001"
 
 # 同时只允许一个部署在跑,后到的排队等(不取消正在进行的)
 concurrency:
@@ -49,13 +58,21 @@ jobs:
           script_stop: true
           script: |
             cd /opt/overseas-platform
-            bash deploy/deploy.sh
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            DEPLOY_REF=origin/${{ github.ref_name }} \
+            BACKEND_HOST_PORT=${{ inputs.backend_host_port }} \
+            FRONTEND_HOST_PORT=${{ inputs.frontend_host_port }} \
+            DEPLOY_NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ inputs.backend_host_port }} \
+            DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }}:${{ inputs.frontend_host_port }} \
+            DEPLOY_IMAGE_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ inputs.backend_host_port }}/static \
+              bash deploy/deploy.sh
 
       - name: 通知
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ 部署完成 → http://${{ secrets.ECS_HOST }}:3000"
+            echo "✅ 部署完成 → http://${{ secrets.ECS_HOST }}:${{ inputs.frontend_host_port }}"
           else
             echo "❌ 部署失败,登录 ECS 排查:ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}"
           fi
