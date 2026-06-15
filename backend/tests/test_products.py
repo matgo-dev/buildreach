@@ -742,7 +742,8 @@ async def test_price_tier_replace_on_update(client: AsyncClient):
 # ── 上架校验（三条）──────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_publish_no_sku_fails(client: AsyncClient):
+async def test_publish_no_sku_succeeds(client: AsyncClient):
+    """ADR-0006 方案 C：无 SKU 也能上架，只要有图片。"""
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
     pid = await _create_test_product(client, headers, cat_code, "PUB-NOSKU-001")
@@ -752,11 +753,8 @@ async def test_publish_no_sku_fails(client: AsyncClient):
         f"/api/v1/operator/products/{pid}/status",
         headers=headers, json={"status": "ACTIVE"},
     )
-    assert r.status_code == 400
-    assert r.json()["code"] == 40204
-    # errors 结构化：[{key, params}]
-    errors = r.json().get("message_params", {}).get("errors", [])
-    assert any(e.get("key") == "publish_no_active_sku" for e in errors)
+    assert r.status_code == 200
+    assert r.json()["data"]["status"] == "ACTIVE"
 
 
 @pytest.mark.asyncio
@@ -776,7 +774,8 @@ async def test_publish_no_image_fails(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_publish_sku_no_price_fails(client: AsyncClient):
+async def test_publish_sku_no_price_succeeds(client: AsyncClient):
+    """ADR-0006 方案 C：有 SKU 但无价格也能上架，不再阻塞。"""
     headers = await _login_operator(client)
     cat_code = await _get_first_category_code(client)
     pid = await _create_test_product(client, headers, cat_code, "PUB-NOPRICE-001")
@@ -793,9 +792,8 @@ async def test_publish_sku_no_price_fails(client: AsyncClient):
         f"/api/v1/operator/products/{pid}/status",
         headers=headers, json={"status": "ACTIVE"},
     )
-    assert r2.status_code == 400
-    assert r2.json()["code"] == 40204
-    assert "price" in r2.json()["message"].lower()
+    assert r2.status_code == 200
+    assert r2.json()["data"]["status"] == "ACTIVE"
 
 
 @pytest.mark.asyncio

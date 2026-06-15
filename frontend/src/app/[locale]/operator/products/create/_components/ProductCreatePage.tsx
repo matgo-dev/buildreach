@@ -322,16 +322,8 @@ export function ProductCreatePage() {
       const errors: Record<string, string> = {};
       if (!category.level3Code) errors.category = t("validate_category_required");
       if (!spu.name.trim()) errors.name = t("validate_name_required");
-      if (publish && skus.length === 0) errors.skus = t("validate_sku_required");
+      // ADR-0006 方案 C：不强制 SKU，上架只需品类+名称+图片
       if (publish && spuImageFiles.length === 0) errors.images = t("validate_image_required");
-      // SKU 价格：仅上架时校验，草稿由发布完整性门把关
-      if (publish) {
-        for (const sku of skus) {
-          if (!sku.price_min && !sku.price_max) {
-            errors[`sku_price_${sku._clientId}`] = t("validate_sku_price_required");
-          }
-        }
-      }
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         requestAnimationFrame(() => {
