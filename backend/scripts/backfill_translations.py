@@ -33,6 +33,8 @@ from app.core.i18n_write import process_pending_translations  # noqa: E402
 from app.core.locale import SUPPORTED_LOCALES  # noqa: E402
 from app.db.models.product import Product  # noqa: E402
 from app.db.models.product_sku import ProductSku  # noqa: E402
+from app.db.models.category import Category  # noqa: E402
+from app.db.models.product_attr import ProductAttr  # noqa: E402
 
 from scripts._log_setup import setup_logging  # noqa: E402
 setup_logging("backfill_translations")
@@ -42,6 +44,8 @@ log = logging.getLogger("backfill_translations")
 _ENTITY_MAP = {
     "product": Product,
     "sku": ProductSku,
+    "category": Category,
+    "attr": ProductAttr,
 }
 
 
@@ -158,7 +162,7 @@ async def backfill(
 def main() -> None:
     parser = argparse.ArgumentParser(description="i18n 补译 / 扫描重译")
     parser.add_argument(
-        "--entity", choices=["product", "sku", "all"], default="all",
+        "--entity", choices=["product", "sku", "category", "attr", "all"], default="all",
         help="处理哪个实体(默认 all)",
     )
     parser.add_argument(
