@@ -39,7 +39,9 @@ async def add_item(
     current: CurrentUser = Depends(require_permission(Permissions.CART_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    cart = await cart_svc.add_item(db, current, data.sku_id, data.quantity, request=request)
+    cart = await cart_svc.add_item(
+        db, current, data.product_id, data.selected_variants, data.quantity, request=request,
+    )
     return success(cart.model_dump())
 
 

@@ -259,7 +259,7 @@ function OperatorRfqDetailContent() {
                     {item.product_name_snapshot ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-gray-500">
-                    {item.sku_spec_snapshot ?? "—"}
+                    {item.variant_display ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <EditableQuantity
@@ -439,8 +439,8 @@ function OperatorRfqDetailContent() {
                       <tr key={qItem.id} className="border-t border-gray-100 even:bg-slate-50/50">
                         <td className="px-4 py-3 font-medium text-gray-800">
                           {rfqItem?.product_name_snapshot ?? "—"}
-                          {rfqItem?.sku_spec_snapshot && (
-                            <span className="ml-1 text-xs text-gray-400">{rfqItem.sku_spec_snapshot}</span>
+                          {rfqItem?.variant_display && (
+                            <span className="ml-1 text-xs text-gray-400">{rfqItem.variant_display}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-800 font-medium">

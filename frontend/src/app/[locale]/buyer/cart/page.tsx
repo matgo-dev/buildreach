@@ -215,9 +215,7 @@ function CartContent() {
             {items.map((item) => {
               const unavailable = !item.is_purchasable;
               const checked = checkedIds.has(item.item_id);
-              const specParts = item.sku_name
-                ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
-                : [item.sku_code, item.color, item.material, item.manufacturer_model].filter(Boolean).join(" · ");
+              const specParts = item.variant_display ?? "\u2014";
 
               return (
                 <tr
