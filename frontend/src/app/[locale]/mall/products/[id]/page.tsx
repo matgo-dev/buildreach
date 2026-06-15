@@ -383,13 +383,13 @@ function ProductDetailContent() {
     return buildBreadcrumb(categoryTree, product.category_code);
   }, [product, categoryTree]);
 
-  // 多值属性提到右侧面板(颜色/厚度等)
+  // 可选规格轴提到右侧面板(颜色/厚度等)
   const inlineAttrs = useMemo(() => {
     if (!product) return [];
     const items: AttrItem[] = [];
     for (const group of product.attribute_groups) {
       for (const item of group.items) {
-        if (item.values.length > 1 || hasSwatchImages(item)) {
+        if (item.selectable && item.values.length > 0) {
           items.push(item);
         }
       }
@@ -532,7 +532,7 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 属性:颜色色板 / 厚度 chip(多值项);selectable=true 可点选 */}
+            {/* 属性:颜色色板 / 厚度 chip;仅展示 selectable=true 的可选规格轴 */}
             {inlineAttrs.length > 0 && (
               <div className="mt-4">
                 {inlineAttrs.map((item) => (
