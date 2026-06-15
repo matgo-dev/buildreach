@@ -52,6 +52,11 @@ export function CategorySidebar({
     if (closeHover) setHoveredLevel1("");
   };
 
+  const handleAllCategoriesClick = () => {
+    router.push(`/${locale}/mall`, { scroll: false });
+    setHoveredLevel1("");
+  };
+
   return (
     <aside className="w-[240px] shrink-0 hidden lg:block">
       <div
@@ -71,6 +76,24 @@ export function CategorySidebar({
           onMouseLeave={() => setHoveredLevel1("")}
         >
           <ul className="space-y-0.5">
+            <li>
+              <button
+                onClick={handleAllCategoriesClick}
+                onMouseEnter={() => setHoveredLevel1("")}
+                className={`w-full rounded-lg px-2.5 py-2 text-left transition-all grid grid-cols-[30px_1fr_auto] gap-2.5 items-center min-h-[46px] ${
+                  !activeCategoryCode
+                    ? "bg-teal-50 text-teal-900"
+                    : "text-ink-2 hover:bg-teal-50 hover:text-teal-900"
+                }`}
+              >
+                <LetterIcon letter={t("allCategories").slice(0, 1)} active={!activeCategoryCode} />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-extrabold leading-tight truncate">
+                    {t("allCategories")}
+                  </span>
+                </span>
+              </button>
+            </li>
             {loadingCategories ? (
               <li className="px-3 py-2 text-xs text-muted">{t("loadError")}...</li>
             ) : (
