@@ -640,8 +640,8 @@ def import_offer(
     # ── 2. SPU 字段映射 ──
     name_en = data.get("product_name_en") or data.get("listing_title_en", "")
     name_zh = data.get("product_name_zh") or data.get("listing_title_zh", "")
-    desc_en = data.get("description_en") or ""
-    desc_zh = data.get("description_zh") or ""
+    desc_en = data.get("description_en") or data.get("listing_title_en") or ""
+    desc_zh = data.get("description_zh") or data.get("listing_title_zh") or ""
     detail_desc_en = data.get("detail_description_en") or None
     detail_desc_zh = data.get("detail_description_zh") or None
 
