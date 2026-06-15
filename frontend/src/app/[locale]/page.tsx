@@ -121,15 +121,16 @@ export default function HomePage() {
 
             {/* 右侧展示台占位 */}
             <div className="hidden lg:grid place-items-end relative z-10">
-              <div className="w-full max-w-[260px] min-h-[186px] grid grid-cols-2 gap-2.5 rounded-xl p-4"
-                style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.28)", backdropFilter: "blur(8px)" }}>
+              <div className="w-full max-w-[320px] grid grid-cols-3 gap-3 rounded-xl p-4"
+                style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)", backdropFilter: "blur(8px)" }}>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-lg flex items-center justify-center" style={{
-                    background: "rgba(255,255,255,0.86)",
-                    boxShadow: "0 10px 24px rgba(0,0,0,0.13)",
-                    aspectRatio: "1 / 1.18",
+                    background: i === 0 ? "rgba(216,139,0,0.22)" : i === 3 ? "rgba(21,147,95,0.2)" : "rgba(255,255,255,0.1)",
+                    border: i === 0 ? "1px solid rgba(216,139,0,0.3)" : i === 3 ? "1px solid rgba(21,147,95,0.3)" : "1px solid rgba(255,255,255,0.16)",
+                    backdropFilter: "blur(6px)",
+                    aspectRatio: "1",
                   }}>
-                    <Package className="h-6 w-6 text-gray-300" />
+                    <Package className="h-6 w-6 text-white/30" />
                   </div>
                 ))}
               </div>

@@ -60,7 +60,7 @@ export function CategorySidebar({
   return (
     <aside className="w-[240px] shrink-0 hidden lg:block">
       <div
-        className="sticky top-[148px] rounded-xl border border-line bg-white p-4"
+        className="sticky top-[148px] z-[100] rounded-xl border border-line bg-white p-4"
         style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)" }}
       >
         {/* 标题 */}
