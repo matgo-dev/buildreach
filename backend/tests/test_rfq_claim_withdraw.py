@@ -38,10 +38,10 @@ async def _op_headers(client: AsyncClient) -> dict[str, str]:
     return await _login(client, _OPERATOR_EMAIL, _OPERATOR_PASSWORD)
 
 
-async def _create_purchasable_sku(
+async def _create_active_product(
     client: AsyncClient, op: dict, db: AsyncSession,
 ) -> int:
-    """创建一个可购 SKU（ACTIVE SPU + ACTIVE SKU），返回 sku_id。"""
+    """创建一个 ACTIVE 商品（SPU + SKU），返回 product_id。"""
     cat = (await db.execute(
         select(Category).where(Category.level == 3).limit(1)
     )).scalar_one_or_none()
@@ -62,7 +62,6 @@ async def _create_purchasable_sku(
         json={"name": "Claim Test SKU", "moq": 1, "price_min": 100, "price_max": 200},
     )
     assert r.status_code == 200, r.text
-    sku_id = r.json()["data"]["id"]
 
     r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
@@ -70,16 +69,16 @@ async def _create_purchasable_sku(
         json={"status": "ACTIVE"},
     )
     assert r.status_code == 200, r.text
-    return sku_id
+    return product_id
 
 
 async def _create_submitted_rfq(
     client: AsyncClient, bh: dict, op: dict, db: AsyncSession,
 ) -> tuple[int, int]:
     """创建一个 SUBMITTED 态询价单，返回 (rfq_id, item_id)。"""
-    sku_id = await _create_purchasable_sku(client, op, db)
+    product_id = await _create_active_product(client, op, db)
     r = await client.post("/api/v1/rfqs", headers=bh, json={
-        "items": [{"sku_id": sku_id, "quantity": "10.000"}],
+        "items": [{"product_id": product_id, "selected_variants": [], "quantity": "10.000"}],
     })
     assert r.status_code == 200, r.text
     data = r.json()["data"]
