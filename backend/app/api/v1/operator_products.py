@@ -488,12 +488,11 @@ async def update_sku_status(
         db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.STATUS_CHANGE,
         user_id=current.id, user_email=current.email,
         resource_id=sku.id, request=request,
-        extra={"new_status": sku.status, "product_auto_delisted": result["product_auto_delisted"]},
+        extra={"new_status": sku.status},
     )
     return success({
         "id": sku.id,
         "status": sku.status,
-        "product_auto_delisted": result["product_auto_delisted"],
     })
 
 

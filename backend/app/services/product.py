@@ -670,29 +670,20 @@ async def update_sku_status(
     db: AsyncSession, product_id: int, sku_id: int, new_status: str,
 ) -> dict:
     """SKU 状态切换是运营操作，ACTIVE 商品下也允许（如缺货停售）。
-    停售最后一个在售 SKU 时自动下架商品，避免出现"可见但无可购变体"。
-    返回 dict 包含 sku 和可选的 product_status_changed 标记。
+    SPU 状态只通过商品状态机显式变更，SKU 停用不连带下架 SPU。
     """
     if new_status not in SkuStatus.ALL:
         raise InvalidProductStatusError(new_status)
     product = await _get_product_or_404(db, product_id, load_relations=True)
     sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
     if sku.status == new_status:
-        return {"sku": sku, "product_auto_delisted": False}
+        return {"sku": sku}
 
     sku.status = new_status
-    product_auto_delisted = False
-
-    # 停售最后一个在售 SKU → 自动下架商品
-    if new_status == SkuStatus.INACTIVE and product.status == ProductStatus.ACTIVE:
-        active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE and s.id != sku_id]
-        if len(active_skus) == 0:
-            product.status = ProductStatus.INACTIVE
-            product_auto_delisted = True
 
     await db.commit()
     await db.refresh(sku)
-    return {"sku": sku, "product_auto_delisted": product_auto_delisted}
+    return {"sku": sku}
 
 
 async def delete_sku(db: AsyncSession, product_id: int, sku_id: int, *, operator_id: int) -> None:
