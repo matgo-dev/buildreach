@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Package } from "lucide-react";
+import { Loader2, FileText, Package, ShoppingCart } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -20,6 +20,8 @@ import {
 } from "@/lib/api/rfqs";
 import { acceptRfq, rejectRfq } from "@/lib/api/quotes";
 import { formatRelativeTime } from "@/lib/formatters";
+import { useCartStore } from "@/stores/cartStore";
+import Link from "next/link";
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS = [
@@ -46,6 +48,7 @@ function RfqListContent() {
   const tError = useTranslations("error");
   const toast = useToast();
   const { hasPermission } = usePermissions();
+  const cartCount = useCartStore((s) => s.count);
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
@@ -199,7 +202,21 @@ function RfqListContent() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-800">{t("title")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">{t("title")}</h1>
+        <Link
+          href={`/${locale}/buyer/cart`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a] px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
+        >
+          <ShoppingCart className="h-4 w-4" />
+          {t("goToCart")}
+          {cartCount > 0 && (
+            <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00505a] px-1 text-xs text-white group-hover:bg-white group-hover:text-[#00505a]">
+              {cartCount}
+            </span>
+          )}
+        </Link>
+      </div>
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">

@@ -750,6 +750,7 @@
     "itemsMissing": "Some items are no longer in your basket",
     "itemsAllMissing": "Items are no longer in your basket, please reselect",
     "backToCart": "Back to Basket",
+    "goToCart": "Go to Inquiry Basket",
     "claim": "Claim",
     "claimConfirm": "Claim this inquiry? The buyer will not be able to modify it after claiming.",
     "claimSuccess": "Inquiry claimed",
