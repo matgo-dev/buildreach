@@ -126,7 +126,7 @@ function QuoteTierModal({ tiers: initial, moq, onConfirm, onCancel, t }: TierMod
 interface LineState {
   rfq_item_id: number;
   product_name: string;
-  sku_spec: string;
+  variant_display: string;
   quantity: number;
   uom: string;
   skipped: boolean;
@@ -142,7 +142,7 @@ function buildInitialLines(items: RfqItemPublic[]): LineState[] {
   return items.map((item) => ({
     rfq_item_id: item.id,
     product_name: item.product_name_snapshot ?? "—",
-    sku_spec: item.sku_spec_snapshot ?? "—",
+    variant_display: item.variant_display ?? "\u2014",
     quantity: item.quantity,
     uom: item.uom_snapshot ?? "",
     skipped: false,
@@ -475,8 +475,8 @@ function QuoteBackfillContent() {
                     <td className={`px-4 py-3 font-medium max-w-[160px] truncate ${isSkipped ? "text-gray-400 line-through" : "text-gray-800"}`} title={line.product_name}>
                       {line.product_name}
                     </td>
-                    <td className={`px-4 py-3 max-w-[120px] truncate ${isSkipped ? "text-gray-400" : "text-gray-500"}`} title={line.sku_spec}>
-                      {line.sku_spec}
+                    <td className={`px-4 py-3 max-w-[120px] truncate ${isSkipped ? "text-gray-400" : "text-gray-500"}`} title={line.variant_display}>
+                      {line.variant_display}
                     </td>
                     <td className={`px-4 py-3 text-right ${isSkipped ? "text-gray-400" : "text-gray-700"}`}>
                       {line.quantity} {line.uom}

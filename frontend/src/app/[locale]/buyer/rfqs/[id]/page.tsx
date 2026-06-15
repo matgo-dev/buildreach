@@ -634,7 +634,7 @@ function ItemsAndQuoteCard({
                       {item.product_name_snapshot ?? "—"}
                     </td>
                     <td className="px-5 py-3 text-gray-500">
-                      {item.sku_spec_snapshot ?? "—"}
+                      {item.variant_display ?? "—"}
                     </td>
                     <td className="px-5 py-3 text-right font-semibold text-gray-800">
                       {item.quantity} {item.uom_snapshot ?? ""}
@@ -680,7 +680,7 @@ function QuoteLineRow({
           {rfqItem?.product_name_snapshot ?? "—"}
         </td>
         <td className="px-5 py-3 text-gray-400">
-          {rfqItem?.sku_spec_snapshot ?? "—"}
+          {rfqItem?.variant_display ?? "—"}
         </td>
         <td className="px-5 py-3 text-right text-gray-400">
           {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
@@ -704,7 +704,7 @@ function QuoteLineRow({
           {rfqItem?.product_name_snapshot ?? "—"}
         </td>
         <td className="px-5 py-3 text-gray-500">
-          {rfqItem?.sku_spec_snapshot ?? "—"}
+          {rfqItem?.variant_display ?? "—"}
         </td>
         <td className="px-5 py-3 text-right text-gray-800">
           {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}

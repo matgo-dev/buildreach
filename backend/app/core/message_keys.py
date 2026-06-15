@@ -61,6 +61,7 @@ class MessageKey:
 
     # cart — 购物车模块 405xx
     CART_SKU_NOT_PURCHASABLE = "error.cart.sku_not_purchasable"
+    CART_PRODUCT_NOT_AVAILABLE = "error.cart.product_not_available"
     CART_QUANTITY_INVALID = "error.cart.quantity_invalid"
     CART_ITEM_NOT_FOUND = "error.cart.item_not_found"
     BUYER_ORG_REQUIRED = "error.cart.buyer_org_required"

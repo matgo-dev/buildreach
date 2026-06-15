@@ -21,6 +21,9 @@ import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
+import { addCartItem } from "@/lib/api/cart";
+import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/stores/cartStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
 
 // ---- 面包屑 ----
@@ -364,6 +367,50 @@ function ProductDetailContent() {
 
   // 规格选中态:仅前端本地,刷新即重置
   const [specSelection, setSpecSelection] = useState<Record<string, string>>({});
+  const [addingToCart, setAddingToCart] = useState(false);
+  const toast = useToast();
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
+
+  const prevCountRef = useRef(0);
+  const handleAddToCart = useCallback(async () => {
+    if (!product) return;
+    setAddingToCart(true);
+    prevCountRef.current = useCartStore.getState().count;
+    try {
+      const selectedVariants = Object.entries(specSelection)
+        .filter(([, v]) => v)
+        .map(([attr_name, value]) => ({ attr_name, value }));
+      const cart = await addCartItem(product.id, selectedVariants, 1);
+      syncFromCart(cart);
+      const newCount = cart.items.filter((i) => i.is_purchasable).length;
+      if (newCount > prevCountRef.current) {
+        // 新增行 → 飞入动画
+        if (addBtnRef.current) {
+          const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
+          if (target) {
+            const sr = addBtnRef.current.getBoundingClientRect();
+            const er = target.getBoundingClientRect();
+            const sx = sr.left + sr.width / 2, sy = sr.top + sr.height / 2;
+            const ex = er.left + er.width / 2, ey = er.top + er.height / 2;
+            const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
+            const m = document.createElement("div");
+            m.style.cssText = `position:fixed;z-index:99999;left:${sx}px;top:${sy}px;width:36px;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent 0%,#e3a615 40%,#f0c040 100%);box-shadow:0 0 8px rgba(227,166,21,0.6),0 0 16px rgba(227,166,21,0.3);pointer-events:none;transform:rotate(${angle}deg);transform-origin:right center;opacity:0;transition:left 1s cubic-bezier(0.25,0.1,0.25,1),top 1s cubic-bezier(0.25,0.1,0.25,1),opacity 0.3s ease,width 0.8s ease;`;
+            document.body.appendChild(m);
+            requestAnimationFrame(() => { m.style.opacity = "1"; requestAnimationFrame(() => { m.style.left = `${ex}px`; m.style.top = `${ey}px`; m.style.width = "12px"; setTimeout(() => { m.style.opacity = "0"; }, 600); }); });
+            setTimeout(() => { m.remove(); target.style.transition = "transform 0.3s ease"; target.style.transform = "scale(1.3)"; setTimeout(() => { target.style.transform = "scale(1)"; }, 300); }, 1050);
+          }
+        }
+        toast.success(t("detail.addedToCart"));
+      } else {
+        toast.success(t("detail.alreadyInCart"));
+      }
+    } catch {
+      toast.error(t("detail.addToCartFailed"));
+    } finally {
+      setAddingToCart(false);
+    }
+  }, [product, specSelection, syncFromCart, toast, t]);
 
   // 点选/取消规格值(单选:每个 key 选一个值)
   const handleSpecSelect = useCallback((key: string, value: string) => {
@@ -566,15 +613,14 @@ function ProductDetailContent() {
 
             {/* 操作按钮 — 出口仍置灰,选中态仅前端本地,不发请求、不带出 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* TODO: ① 带入询价:询价行粒度(SPU vs Product+selected_specs)定调后(张总/温总),把本地 specSelection 接到询价提交 */}
-              {/* TODO: ② SKU 轴去重汇总:手工建带 SKU 商品的规格轴,后端去重汇总后也纳入可选(需后端增量) */}
               <button
+                ref={addBtnRef}
                 type="button"
-                disabled
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
-                title={t("detail.comingSoon")}
+                disabled={addingToCart}
+                onClick={handleAddToCart}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#003d45] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ShoppingCart className="h-4 w-4" />
+                {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("detail.addToInquiry")}
               </button>
               {/* TODO: WhatsApp 平台运营号/链接配置化 */}

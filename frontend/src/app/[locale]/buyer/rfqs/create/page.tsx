@@ -23,17 +23,26 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
-import { listProducts, getProduct, type ProductPublic, type SkuPublic } from "@/lib/api/products";
+import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 
 const DRAFT_KEY_PREFIX = "rfq_draft_";
 const CURRENCIES = ["USD", "KES", "CNY"];
 
+/** 去重 key：按 product_id + 规范化 variants JSON */
+function makeItemKey(productId: number, variants: Array<{ attr_name: string; value: string }>) {
+  const sorted = [...variants].sort((a, b) =>
+    a.attr_name.localeCompare(b.attr_name) || a.value.localeCompare(b.value),
+  );
+  return `${productId}::${JSON.stringify(sorted)}`;
+}
+
 interface ManualItem {
-  sku_id: number;
+  product_id: number;
+  selected_variants: Array<{ attr_name: string; value: string }>;
   product_name: string;
-  sku_spec: string;
+  variant_display: string;
   unit: string;
   quantity: number;
 }
@@ -130,27 +139,42 @@ function CertificationTagInput({
   );
 }
 
-// ---------- SKU 搜索弹窗 ----------
+// ---------- 变体轴类型 ----------
 
-function SkuSearchModal({
+type VariantAxis = {
+  key: string;           // attr_key_en
+  display: string;       // attr_key 显示名
+  values: Array<{ value: string; display: string }>;
+};
+
+type ProductVariantEntry = {
+  variants: VariantAxis[];  // selectable=true 的属性轴
+  unit: string;
+  loading: boolean;
+};
+
+// ---------- 商品搜索弹窗（SPU + 变体选择器） ----------
+
+function ProductSearchModal({
   open,
   onClose,
   onAdd,
-  existingSkuIds,
+  existingKeys,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (item: ManualItem) => void;
-  existingSkuIds: Set<number>;
+  existingKeys: Set<string>;
 }) {
   const t = useTranslations("rfq");
   const [keyword, setKeyword] = useState("");
   const [products, setProducts] = useState<ProductPublic[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  // 展开的 SPU → 加载其 SKU 列表
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [skuMap, setSkuMap] = useState<Record<number, { skus: SkuPublic[]; unit: string; loading: boolean }>>({});
+  const [productVariantMap, setProductVariantMap] = useState<Record<number, ProductVariantEntry>>({});
+  // 跟踪每个商品的变体选中状态
+  const [variantSelection, setVariantSelection] = useState<Record<number, Record<string, string>>>({});
 
   const handleSearch = useCallback(async () => {
     if (!keyword.trim()) return;
@@ -179,8 +203,8 @@ function SkuSearchModal({
 
   const expandedIdRef = useRef(expandedId);
   expandedIdRef.current = expandedId;
-  const skuMapRef = useRef(skuMap);
-  skuMapRef.current = skuMap;
+  const variantMapRef = useRef(productVariantMap);
+  variantMapRef.current = productVariantMap;
 
   const toggleExpand = useCallback(
     async (productId: number) => {
@@ -189,33 +213,48 @@ function SkuSearchModal({
         return;
       }
       setExpandedId(productId);
-      if (skuMapRef.current[productId]) return;
+      if (variantMapRef.current[productId]) return;
 
-      setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: true } }));
+      setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: true } }));
       try {
         const detail = await getProduct(productId);
-        setSkuMap((prev) => ({
+        const variants: VariantAxis[] = [];
+        for (const group of detail.attribute_groups ?? []) {
+          for (const item of group.items ?? []) {
+            if (item.selectable && item.values.length > 0) {
+              variants.push({
+                key: item.key,
+                display: item.key,
+                values: item.values.map((v) => ({ value: v.value, display: v.value })),
+              });
+            }
+          }
+        }
+        setProductVariantMap((prev) => ({
           ...prev,
-          [productId]: {
-            skus: (detail.skus ?? []).filter((s) => s.status === "ACTIVE"),
-            unit: detail.unit,
-            loading: false,
-          },
+          [productId]: { variants, unit: detail.unit, loading: false },
         }));
       } catch {
-        setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: false } }));
+        setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: false } }));
       }
     },
     [],
   );
 
-  const handleAddSku = useCallback(
-    (product: ProductPublic, sku: SkuPublic, unit: string) => {
-      const spec = [sku.name, sku.color, sku.material].filter(Boolean).join(" / ");
+  const handleAddProduct = useCallback(
+    (product: ProductPublic, selection: Record<string, string>, unit: string) => {
+      const selected_variants = Object.entries(selection).map(([attr_name, value]) => ({
+        attr_name,
+        value,
+      }));
+      const variant_display = selected_variants
+        .map((v) => `${v.attr_name}: ${v.value}`)
+        .join(" / ") || "\u2014";
       onAdd({
-        sku_id: sku.id,
+        product_id: product.id,
+        selected_variants,
         product_name: product.name,
-        sku_spec: spec || sku.sku_code,
+        variant_display,
         unit: unit || product.unit || "PCS",
         quantity: 1,
       });
@@ -230,7 +269,8 @@ function SkuSearchModal({
       setProducts([]);
       setSearched(false);
       setExpandedId(null);
-      setSkuMap({});
+      setProductVariantMap({});
+      setVariantSelection({});
     }
   }, [open]);
 
@@ -295,7 +335,7 @@ function SkuSearchModal({
             <div className="space-y-1">
               {products.map((p) => {
                 const isExpanded = expandedId === p.id;
-                const skuData = skuMap[p.id];
+                const variantData = productVariantMap[p.id];
                 return (
                   <div key={p.id} className="rounded-lg border border-gray-100">
                     {/* SPU 行 */}
@@ -319,57 +359,85 @@ function SkuSearchModal({
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
                         <div className="text-xs text-gray-400">
-                          {p.spu_code} · {p.sku_count} SKU
+                          {p.spu_code}
                         </div>
                       </div>
                     </button>
 
-                    {/* SKU 列表 */}
+                    {/* 变体选择器 */}
                     {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50/50">
-                        {skuData?.loading && (
+                      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 pl-11">
+                        {variantData?.loading && (
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                           </div>
                         )}
-                        {skuData && !skuData.loading && skuData.skus.length === 0 && (
-                          <div className="py-4 text-center text-xs text-gray-400">
-                            {t("noSearchResult")}
-                          </div>
-                        )}
-                        {skuData &&
-                          !skuData.loading &&
-                          skuData.skus.map((sku) => {
-                            const added = existingSkuIds.has(sku.id);
-                            const spec = [sku.name, sku.color, sku.material]
-                              .filter(Boolean)
-                              .join(" / ");
-                            return (
-                              <div
-                                key={sku.id}
-                                className="flex items-center gap-3 px-4 py-2.5 pl-11"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm text-gray-700">
-                                    {spec || sku.sku_code}
-                                  </div>
-                                  <div className="text-xs text-gray-400">{sku.sku_code}</div>
-                                </div>
-                                <button
-                                  type="button"
-                                  disabled={added}
-                                  onClick={() => handleAddSku(p, sku, skuData.unit)}
-                                  className={`shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                                    added
-                                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                      : "bg-[#00505a] text-white hover:bg-[#003f46]"
-                                  }`}
-                                >
-                                  {added ? t("alreadyAdded") : t("add")}
-                                </button>
+                        {variantData && !variantData.loading && (
+                          <>
+                            {variantData.variants.length > 0 ? (
+                              <div className="space-y-3">
+                                {variantData.variants.map((axis) => {
+                                  const selected = variantSelection[p.id]?.[axis.key];
+                                  return (
+                                    <div key={axis.key}>
+                                      <div className="mb-1.5 text-xs font-medium text-gray-500">{axis.display}</div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {axis.values.map((v) => (
+                                          <button
+                                            key={v.value}
+                                            type="button"
+                                            onClick={() => {
+                                              setVariantSelection((prev) => ({
+                                                ...prev,
+                                                [p.id]: {
+                                                  ...(prev[p.id] ?? {}),
+                                                  [axis.key]: prev[p.id]?.[axis.key] === v.value ? "" : v.value,
+                                                },
+                                              }));
+                                            }}
+                                            className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                                              selected === v.value
+                                                ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
+                                                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                                            }`}
+                                          >
+                                            {v.display}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          })}
+                            ) : null}
+                            {/* 加入按钮 */}
+                            <div className="mt-3">
+                              {(() => {
+                                const sel = variantSelection[p.id] ?? {};
+                                // 构建去重 key
+                                const selected_variants = Object.entries(sel)
+                                  .filter(([, v]) => v)
+                                  .map(([attr_name, value]) => ({ attr_name, value }));
+                                const itemKey = makeItemKey(p.id, selected_variants);
+                                const added = existingKeys.has(itemKey);
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={added}
+                                    onClick={() => handleAddProduct(p, sel, variantData.unit)}
+                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                                      added
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        : "bg-[#00505a] text-white hover:bg-[#003f46]"
+                                    }`}
+                                  >
+                                    {added ? t("alreadyAdded") : t("add")}
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -518,31 +586,30 @@ function RfqCreateContent() {
     [],
   );
 
-  const handleRemoveManualItem = useCallback((skuId: number) => {
+  const handleRemoveManualItem = useCallback((idx: number) => {
     setDraft((prev) => ({
       ...prev,
-      manualItems: prev.manualItems.filter((i) => i.sku_id !== skuId),
+      manualItems: prev.manualItems.filter((_, i) => i !== idx),
     }));
     idemRef.current = null;
   }, []);
 
-  const handleManualQtyChange = useCallback((skuId: number, qty: number) => {
+  const handleManualQtyChange = useCallback((idx: number, qty: number) => {
     if (qty <= 0) return;
     setDraft((prev) => ({
       ...prev,
-      manualItems: prev.manualItems.map((i) =>
-        i.sku_id === skuId ? { ...i, quantity: qty } : i,
+      manualItems: prev.manualItems.map((m, i) =>
+        i === idx ? { ...m, quantity: qty } : m,
       ),
     }));
     idemRef.current = null;
   }, []);
 
-  // 已在列表中的所有 sku_id（篮中 + 手动）
-  const existingSkuIds = useMemo(() => {
-    const ids = new Set<number>();
-    cartItems.forEach((i) => ids.add(i.sku_id));
-    manualItems.forEach((i) => ids.add(i.sku_id));
-    return ids;
+  const existingKeys = useMemo(() => {
+    const keys = new Set<string>();
+    cartItems.forEach((i) => keys.add(makeItemKey(i.product_id, i.selected_variants)));
+    manualItems.forEach((i) => keys.add(makeItemKey(i.product_id, i.selected_variants)));
+    return keys;
   }, [cartItems, manualItems]);
 
   // SKU 搜索弹窗
@@ -568,8 +635,16 @@ function RfqCreateContent() {
     if (asDraft) setSavingDraft(true); else setSubmitting(true);
     try {
       const allItems = [
-        ...cartItems.map((c) => ({ sku_id: c.sku_id, quantity: c.quantity })),
-        ...manualItems.map((m) => ({ sku_id: m.sku_id, quantity: m.quantity })),
+        ...cartItems.map((c) => ({
+          product_id: c.product_id,
+          selected_variants: c.selected_variants,
+          quantity: c.quantity,
+        })),
+        ...manualItems.map((m) => ({
+          product_id: m.product_id,
+          selected_variants: m.selected_variants,
+          quantity: m.quantity,
+        })),
       ];
 
       await createRfq(
@@ -695,9 +770,7 @@ function RfqCreateContent() {
                     {item.product_name ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-gray-500">
-                    {item.sku_name
-                      ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
-                      : [item.sku_code, item.color, item.material].filter(Boolean).join(" · ")}
+                    {item.variant_display ?? "\u2014"}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5">
@@ -729,13 +802,13 @@ function RfqCreateContent() {
               ))}
 
               {/* 手动添加的商品 */}
-              {manualItems.map((item) => (
-                <tr key={`manual-${item.sku_id}`} className="border-t border-gray-100 even:bg-slate-50/50">
+              {manualItems.map((item, idx) => (
+                <tr key={`manual-${item.product_id}-${idx}`} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name}
                   </td>
                   <td className="px-5 py-3 text-gray-500">
-                    {item.sku_spec}
+                    {item.variant_display}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5">
@@ -744,7 +817,7 @@ function RfqCreateContent() {
                         value={item.quantity}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value);
-                          if (!isNaN(v) && v > 0) handleManualQtyChange(item.sku_id, v);
+                          if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
                         }}
                         min={1}
                         className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
@@ -757,7 +830,7 @@ function RfqCreateContent() {
                   <td className="px-3 py-3 text-center">
                     <button
                       type="button"
-                      onClick={() => handleRemoveManualItem(item.sku_id)}
+                      onClick={() => handleRemoveManualItem(idx)}
                       className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -951,14 +1024,14 @@ function RfqCreateContent() {
         </button>
       </div>
 
-      {/* SKU 搜索弹窗 */}
-      <SkuSearchModal
+      {/* 商品搜索弹窗 */}
+      <ProductSearchModal
         open={showSearch}
         onClose={() => setShowSearch(false)}
         onAdd={(item) => {
           handleAddManualItem(item);
         }}
-        existingSkuIds={existingSkuIds}
+        existingKeys={existingKeys}
       />
     </div>
   );

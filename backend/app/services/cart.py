@@ -2,9 +2,15 @@
 
 并发安全:cart 与 cart_item 两处 insert-or-get 都走 SAVEPOINT 标准。
 提交点唯一在本 service;route 不自行 commit。
+
+SPU 化改造:cart_items 以 product_id + selected_variants + variant_fingerprint 为核心,
+行身份 = (cart_id, product_id, variant_fingerprint) 三元组。
+sku_id 保留但可空(历史兼容)。
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from decimal import Decimal
 
 from sqlalchemy import select, update
@@ -21,8 +27,8 @@ from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
     BuyerOrgRequiredError,
     CartItemNotFoundError,
+    CartProductNotAvailableError,
     CartQuantityInvalidError,
-    CartSkuNotPurchasableError,
 )
 from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
@@ -31,12 +37,94 @@ from app.db.models.cart import Cart
 from app.db.models.cart_item import CartItem
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_image import ImageType, ProductImage
-from app.db.models.product_sku import ProductSku, SkuStatus
 from app.schemas.cart import CartItemPublic, CartPublic
-from app.services import product as product_svc
+
+
+# ── selected_variants 工具函数 ─────────────────────────────
+
+
+def _normalize_variants(variants: list[dict]) -> list[dict]:
+    """按 (attr_name, value) 排序，保证比较口径一致。"""
+    return sorted(variants, key=lambda x: (x.get("attr_name", ""), x.get("value", "")))
+
+
+def _variant_fingerprint(variants: list[dict]) -> str:
+    """规范化排序后的 JSON 取 md5，作为变体行身份标识。
+
+    空变体也产生确定性 hash（md5("[]")），保证所有行 fingerprint 非空。
+    后端唯一来源，前端不传。
+    """
+    normalized = _normalize_variants(variants)
+    payload = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
+    return hashlib.md5(payload.encode("utf-8")).hexdigest()
+
+
+# ── SPU 可用性校验 ─────────────────────────────────────────
+
+
+async def _get_viewable_product(db: AsyncSession, product_id: int) -> Product | None:
+    """校验 SPU 是否 ACTIVE + 未软删。"""
+    row = await db.execute(
+        select(Product).where(
+            Product.id == product_id,
+            Product.status == ProductStatus.ACTIVE,
+            Product.deleted_at.is_(None),
+        )
+    )
+    return row.scalar_one_or_none()
+
+
+def _check_variant_available(
+    product: Product, selected_variants: list[dict],
+) -> tuple[bool, str | None]:
+    """校验买方选的变体值在当前商品属性中仍然存在。
+
+    若商品属性被运营删改，已入购物车的变体值可能失效。
+    selected_variants 为空时视为对 SPU 整体询价，不校验。
+    匹配时比对所有语言列（zh/en/sw），兼容数据质量不一致的情况。
+    """
+    if not selected_variants:
+        return True, None
+    valid_pairs: set[tuple[str, str]] = set()
+    for a in (product.attrs or []):
+        if a.selectable:
+            for k, v in [
+                (a.attr_key_en, a.attr_value_en),
+                (a.attr_key_zh, a.attr_value_zh),
+                (a.attr_key_sw, a.attr_value_sw),
+            ]:
+                if k and v:
+                    valid_pairs.add((k, v))
+    for sv in selected_variants:
+        pair = (sv.get("attr_name", ""), sv.get("value", ""))
+        if pair not in valid_pairs:
+            return False, "VARIANT_UNAVAILABLE"
+    return True, None
+
+
+def _check_purchasable_product(product) -> tuple[bool, str | None]:
+    """从已加载数据算可购状态,不增查询。"""
+    if product is None:
+        return False, "PRODUCT_DELETED"
+    if product.deleted_at is not None:
+        return False, "PRODUCT_DELETED"
+    if product.status != ProductStatus.ACTIVE:
+        return False, "PRODUCT_INACTIVE"
+    return True, None
+
+
+def _variants_to_display(variants: list[dict]) -> str | None:
+    """将 selected_variants 拼为可读字符串。"""
+    if not variants:
+        return None
+    return " / ".join(
+        f"{sv.get('attr_name', '')}: {sv.get('value', '')}"
+        for sv in variants
+    )
 
 
 # ── 买方组织前置校验 ────────────────────────────────────
+
 
 async def resolve_active_buyer_org(
     db: AsyncSession, user: CurrentUser,
@@ -68,8 +156,12 @@ async def get_cart(db: AsyncSession, user: CurrentUser) -> CartPublic:
         select(Cart)
         .where(Cart.buyer_org_id == org.id, Cart.buyer_user_id == user.id)
         .options(
-            selectinload(Cart.items).selectinload(CartItem.sku).selectinload(ProductSku.product).selectinload(Product.images),
-            selectinload(Cart.items).selectinload(CartItem.sku).selectinload(ProductSku.images),
+            selectinload(Cart.items)
+            .selectinload(CartItem.product)
+            .selectinload(Product.images),
+            selectinload(Cart.items)
+            .selectinload(CartItem.product)
+            .selectinload(Product.attrs),
         )
     )
     cart = row.scalar_one_or_none()
@@ -80,53 +172,69 @@ async def get_cart(db: AsyncSession, user: CurrentUser) -> CartPublic:
 
 
 async def add_item(
-    db: AsyncSession, user: CurrentUser, sku_id: int, quantity: Decimal,
+    db: AsyncSession, user: CurrentUser,
+    product_id: int,
+    selected_variants: list[dict],
+    quantity: Decimal,
     *, request: Request | None = None,
 ) -> CartPublic:
-    """加购。并发安全:cart + cart_item 两处 SAVEPOINT 保护。"""
+    """加购。行身份 = (cart_id, product_id, variant_fingerprint)。"""
     org = await resolve_active_buyer_org(db, user)
 
-    # 可购校验(委托商品域,单一事实源)
-    sku = await product_svc.get_purchasable_sku(db, sku_id)
-    if not sku:
-        raise CartSkuNotPurchasableError()
+    product = await _get_viewable_product(db, product_id)
+    if not product:
+        raise CartProductNotAvailableError()
 
     if quantity <= 0:
         raise CartQuantityInvalidError()
 
+    # 规范化 + 指纹（后端唯一来源）
+    normalized_variants = _normalize_variants(selected_variants)
+    fingerprint = _variant_fingerprint(normalized_variants)
+
     # ① get_or_create_cart (SAVEPOINT)
     cart = await _get_or_create_cart(db, org.id, user.id)
 
-    # ② 检查同 SKU 是否已在车中
+    # ② 按三元组精确定位已有行
     existing = await db.execute(
         select(CartItem).where(
             CartItem.cart_id == cart.id,
-            CartItem.sku_id == sku_id,
+            CartItem.product_id == product_id,
+            CartItem.variant_fingerprint == fingerprint,
         )
     )
     existing_item = existing.scalar_one_or_none()
 
     if existing_item:
-        # 原子 UPDATE 累加,防 lost update
+        # 原子 UPDATE 累加到正确的变体行，防 lost update
         await db.execute(
             update(CartItem)
-            .where(CartItem.cart_id == cart.id, CartItem.sku_id == sku_id)
+            .where(
+                CartItem.cart_id == cart.id,
+                CartItem.product_id == product_id,
+                CartItem.variant_fingerprint == fingerprint,
+            )
             .values(quantity=CartItem.quantity + quantity)
         )
     else:
-        # 新行 insert-or-get (SAVEPOINT)
-        await _insert_or_merge_item(db, cart.id, sku_id, quantity)
+        await _insert_or_merge_item(
+            db, cart.id, product_id, normalized_variants, fingerprint, quantity,
+        )
 
-    # 审计与业务写同事务
     await write_audit(
         db,
         resource_type=AuditResourceType.CART,
         action=AuditAction.ADD_ITEM,
         user_id=user.id,
         user_email=user.email,
-        resource_id=sku_id,
+        resource_id=product_id,
         request=request,
-        extra={"sku_id": sku_id, "quantity": str(quantity)},
+        extra={
+            "product_id": product_id,
+            "selected_variants": normalized_variants,
+            "variant_fingerprint": fingerprint,
+            "quantity": str(quantity),
+        },
         commit=False,
     )
     await db.commit()
@@ -270,33 +378,45 @@ async def _get_or_create_cart(
 
 
 async def _insert_or_merge_item(
-    db: AsyncSession, cart_id: int, sku_id: int, quantity: Decimal,
+    db: AsyncSession, cart_id: int,
+    product_id: int, selected_variants: list[dict],
+    fingerprint: str, quantity: Decimal,
 ) -> None:
-    """SAVEPOINT 保护:并发同 SKU 加购,冲突时原子 UPDATE 累加。"""
+    """SAVEPOINT 保护：并发同三元组加购，冲突时按三元组精确回查累加。"""
     nested = await db.begin_nested()
     try:
-        item = CartItem(cart_id=cart_id, sku_id=sku_id, quantity=quantity)
+        item = CartItem(
+            cart_id=cart_id,
+            product_id=product_id,
+            selected_variants=selected_variants,
+            variant_fingerprint=fingerprint,
+            quantity=quantity,
+        )
         db.add(item)
         await db.flush()
     except IntegrityError:
         await nested.rollback()
-        # 冲突 → 回查确认是 (cart_id, sku_id) 唯一约束
+        # 冲突 → 三元组唯一约束命中，回查精确行累加（不再错配到第一行）
         row = await db.execute(
             select(CartItem).where(
                 CartItem.cart_id == cart_id,
-                CartItem.sku_id == sku_id,
+                CartItem.product_id == product_id,
+                CartItem.variant_fingerprint == fingerprint,
             )
         )
         existing = row.scalar_one_or_none()
         if existing:
-            # 原子 UPDATE 累加
             await db.execute(
                 update(CartItem)
-                .where(CartItem.cart_id == cart_id, CartItem.sku_id == sku_id)
+                .where(
+                    CartItem.cart_id == cart_id,
+                    CartItem.product_id == product_id,
+                    CartItem.variant_fingerprint == fingerprint,
+                )
                 .values(quantity=CartItem.quantity + quantity)
             )
         else:
-            raise  # 非预期约束冲突,不误吞
+            raise  # 非预期约束冲突，不误吞
     except BaseException:
         await nested.rollback()
         raise
@@ -337,8 +457,12 @@ async def _reload_cart(db: AsyncSession, cart_id: int) -> CartPublic:
         select(Cart)
         .where(Cart.id == cart_id)
         .options(
-            selectinload(Cart.items).selectinload(CartItem.sku).selectinload(ProductSku.product).selectinload(Product.images),
-            selectinload(Cart.items).selectinload(CartItem.sku).selectinload(ProductSku.images),
+            selectinload(Cart.items)
+            .selectinload(CartItem.product)
+            .selectinload(Product.images),
+            selectinload(Cart.items)
+            .selectinload(CartItem.product)
+            .selectinload(Product.attrs),
         )
     )
     cart = row.scalar_one_or_none()
@@ -351,31 +475,31 @@ def _serialize_cart(cart: Cart) -> CartPublic:
     """将 ORM Cart 转为 CartPublic DTO。"""
     items = []
     for ci in cart.items:
-        sku = ci.sku
-        if sku is None:
-            continue
+        product = ci.product
 
-        product = sku.product
+        is_purchasable, unavailable_reason = _check_purchasable_product(product)
 
-        # 可购状态
-        is_purchasable, unavailable_reason = _check_purchasable(sku, product)
+        # 变体失效校验（仅在商品本身可购时再查）
+        if is_purchasable and ci.selected_variants:
+            ok, reason = _check_variant_available(product, ci.selected_variants)
+            if not ok:
+                is_purchasable = False
+                unavailable_reason = reason
 
-        # 主图:SKU 主图 → Product 主图 → None
-        main_image = _resolve_main_image(sku, product)
+        main_image = _resolve_main_image_from_product(product)
+
+        variant_display = _variants_to_display(ci.selected_variants or [])
 
         items.append(CartItemPublic(
             item_id=ci.id,
+            product_id=ci.product_id,
             sku_id=ci.sku_id,
-            product_id=sku.product_id,
+            selected_variants=ci.selected_variants or [],
             quantity=ci.quantity,
-            sku_code=sku.sku_code,
-            sku_name=get_localized(sku, "name"),
             product_name=get_localized(product, "name") if product else None,
-            manufacturer_model=sku.manufacturer_model,
-            color=get_localized(sku, "color"),
-            material=get_localized(sku, "material"),
+            variant_display=variant_display,
             unit=product.unit if product else None,
-            moq=sku.moq,
+            moq=product.moq if product else None,
             is_purchasable=is_purchasable,
             unavailable_reason=unavailable_reason,
             main_image=main_image,
@@ -384,38 +508,16 @@ def _serialize_cart(cart: Cart) -> CartPublic:
     return CartPublic(id=cart.id, items=items)
 
 
-def _check_purchasable(sku: ProductSku, product) -> tuple[bool, str | None]:
-    """从已加载数据算可购状态,不增查询。"""
-    if sku.deleted_at is not None:
-        return False, "SKU_DELETED"
-    if sku.status != SkuStatus.ACTIVE:
-        return False, "SKU_INACTIVE"
-    if product is None:
-        return False, "PRODUCT_DELETED"
-    if product.deleted_at is not None:
-        return False, "PRODUCT_DELETED"
-    if product.status != ProductStatus.ACTIVE:
-        return False, "PRODUCT_INACTIVE"
-    return True, None
+def _resolve_main_image_from_product(product) -> str | None:
+    """Product 主图 → None。"""
+    if product is None or not product.images:
+        return None
 
-
-def _resolve_main_image(sku: ProductSku, product) -> str | None:
-    """SKU 主图 → Product 主图 → None。"""
     base = settings.IMAGE_BASE_URL
+    prod_images = [i for i in product.images if not getattr(i, "deleted_at", None)]
+    if not prod_images:
+        return None
 
-    # SKU 级图片
-    sku_images = [i for i in (sku.images or []) if not getattr(i, "deleted_at", None)]
-    if sku_images:
-        main = next((i for i in sku_images if i.image_type == ImageType.MAIN), None)
-        img = main or sorted(sku_images, key=lambda i: i.sort_order)[0]
-        return f"{base}/{img.image_key}"
-
-    # Product 级图片
-    if product and product.images:
-        prod_images = [i for i in product.images if not getattr(i, "deleted_at", None)]
-        if prod_images:
-            main = next((i for i in prod_images if i.image_type == ImageType.MAIN), None)
-            img = main or sorted(prod_images, key=lambda i: i.sort_order)[0]
-            return f"{base}/{img.image_key}"
-
-    return None
+    main = next((i for i in prod_images if i.image_type == ImageType.MAIN), None)
+    img = main or sorted(prod_images, key=lambda i: i.sort_order)[0]
+    return f"{base}/{img.image_key}"

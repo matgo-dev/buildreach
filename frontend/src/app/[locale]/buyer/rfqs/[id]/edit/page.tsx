@@ -21,30 +21,45 @@ import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
-import { listProducts, getProduct, type ProductPublic, type SkuPublic } from "@/lib/api/products";
+import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
 
 const CURRENCIES = ["USD", "KES", "CNY"];
 
 interface EditItem {
-  sku_id: number;
+  product_id: number;
+  selected_variants: Array<{ attr_name: string; value: string }>;
   product_name: string;
-  sku_spec: string;
+  variant_display: string;
   unit: string;
   quantity: number;
 }
 
-// ---------- SKU 搜索弹窗(与创建页共用逻辑) ----------
+// ---------- 变体轴类型 ----------
 
-function SkuSearchModal({
+type VariantAxis = {
+  key: string;
+  display: string;
+  values: Array<{ value: string; display: string }>;
+};
+
+type ProductVariantEntry = {
+  variants: VariantAxis[];
+  unit: string;
+  loading: boolean;
+};
+
+// ---------- 商品搜索弹窗（SPU + 变体选择器） ----------
+
+function ProductSearchModal({
   open,
   onClose,
   onAdd,
-  existingSkuIds,
+  existingKeys,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (item: EditItem) => void;
-  existingSkuIds: Set<number>;
+  existingKeys: Set<string>;
 }) {
   const t = useTranslations("rfq");
   const [keyword, setKeyword] = useState("");
@@ -52,7 +67,8 @@ function SkuSearchModal({
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [skuMap, setSkuMap] = useState<Record<number, { skus: SkuPublic[]; unit: string; loading: boolean }>>({});
+  const [productVariantMap, setProductVariantMap] = useState<Record<number, ProductVariantEntry>>({});
+  const [variantSelection, setVariantSelection] = useState<Record<number, Record<string, string>>>({});
 
   const handleSearch = useCallback(async () => {
     if (!keyword.trim()) return;
@@ -71,32 +87,63 @@ function SkuSearchModal({
 
   const expandedIdRef = useRef(expandedId);
   expandedIdRef.current = expandedId;
-  const skuMapRef = useRef(skuMap);
-  skuMapRef.current = skuMap;
+  const variantMapRef = useRef(productVariantMap);
+  variantMapRef.current = productVariantMap;
 
   const toggleExpand = useCallback(async (productId: number) => {
     if (expandedIdRef.current === productId) { setExpandedId(null); return; }
     setExpandedId(productId);
-    if (skuMapRef.current[productId]) return;
-    setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: true } }));
+    if (variantMapRef.current[productId]) return;
+    setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: true } }));
     try {
       const detail = await getProduct(productId);
-      setSkuMap((prev) => ({
+      const variants: VariantAxis[] = [];
+      for (const group of detail.attribute_groups ?? []) {
+        for (const item of group.items ?? []) {
+          if (item.selectable && item.values.length > 0) {
+            variants.push({
+              key: item.key,
+              display: item.key,
+              values: item.values.map((v) => ({ value: v.value, display: v.value })),
+            });
+          }
+        }
+      }
+      setProductVariantMap((prev) => ({
         ...prev,
-        [productId]: { skus: (detail.skus ?? []).filter((s) => s.status === "ACTIVE"), unit: detail.unit, loading: false },
+        [productId]: { variants, unit: detail.unit, loading: false },
       }));
     } catch {
-      setSkuMap((prev) => ({ ...prev, [productId]: { skus: [], unit: "", loading: false } }));
+      setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: false } }));
     }
   }, []);
 
-  const handleAddSku = useCallback((product: ProductPublic, sku: SkuPublic, unit: string) => {
-    const spec = [sku.name, sku.color, sku.material].filter(Boolean).join(" / ");
-    onAdd({ sku_id: sku.id, product_name: product.name, sku_spec: spec || sku.sku_code, unit: unit || product.unit || "PCS", quantity: 1 });
+  const makeKey = useCallback((productId: number, variants: Array<{ attr_name: string; value: string }>) => {
+    const sorted = [...variants].sort((a, b) =>
+      a.attr_name.localeCompare(b.attr_name) || a.value.localeCompare(b.value),
+    );
+    return `${productId}::${JSON.stringify(sorted)}`;
+  }, []);
+
+  const handleAddProduct = useCallback((product: ProductPublic, selection: Record<string, string>, unit: string) => {
+    const selected_variants = Object.entries(selection)
+      .filter(([, v]) => v)
+      .map(([attr_name, value]) => ({ attr_name, value }));
+    const variant_display = selected_variants
+      .map((v) => `${v.attr_name}: ${v.value}`)
+      .join(" / ") || "\u2014";
+    onAdd({
+      product_id: product.id,
+      selected_variants,
+      product_name: product.name,
+      variant_display,
+      unit: unit || product.unit || "PCS",
+      quantity: 1,
+    });
   }, [onAdd]);
 
   useEffect(() => {
-    if (!open) { setKeyword(""); setProducts([]); setSearched(false); setExpandedId(null); setSkuMap({}); }
+    if (!open) { setKeyword(""); setProducts([]); setSearched(false); setExpandedId(null); setProductVariantMap({}); setVariantSelection({}); }
   }, [open]);
 
   if (!open) return null;
@@ -132,7 +179,7 @@ function SkuSearchModal({
             <div className="space-y-1">
               {products.map((p) => {
                 const isExpanded = expandedId === p.id;
-                const skuData = skuMap[p.id];
+                const variantData = productVariantMap[p.id];
                 return (
                   <div key={p.id} className="rounded-lg border border-gray-100">
                     <button type="button" onClick={() => toggleExpand(p.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50">
@@ -140,29 +187,76 @@ function SkuSearchModal({
                       {p.main_image && <img src={p.main_image} alt={p.name} className="h-10 w-10 shrink-0 rounded border border-gray-100 object-cover" />}
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
-                        <div className="text-xs text-gray-400">{p.spu_code} · {p.sku_count} SKU</div>
+                        <div className="text-xs text-gray-400">{p.spu_code}</div>
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50/50">
-                        {skuData?.loading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>}
-                        {skuData && !skuData.loading && skuData.skus.length === 0 && <div className="py-4 text-center text-xs text-gray-400">{t("noSearchResult")}</div>}
-                        {skuData && !skuData.loading && skuData.skus.map((sku) => {
-                          const added = existingSkuIds.has(sku.id);
-                          const spec = [sku.name, sku.color, sku.material].filter(Boolean).join(" / ");
-                          return (
-                            <div key={sku.id} className="flex items-center gap-3 px-4 py-2.5 pl-11">
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm text-gray-700">{spec || sku.sku_code}</div>
-                                <div className="text-xs text-gray-400">{sku.sku_code}</div>
+                      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 pl-11">
+                        {variantData?.loading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>}
+                        {variantData && !variantData.loading && (
+                          <>
+                            {variantData.variants.length > 0 && (
+                              <div className="space-y-3">
+                                {variantData.variants.map((axis) => {
+                                  const selected = variantSelection[p.id]?.[axis.key];
+                                  return (
+                                    <div key={axis.key}>
+                                      <div className="mb-1.5 text-xs font-medium text-gray-500">{axis.display}</div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {axis.values.map((v) => (
+                                          <button
+                                            key={v.value}
+                                            type="button"
+                                            onClick={() => {
+                                              setVariantSelection((prev) => ({
+                                                ...prev,
+                                                [p.id]: {
+                                                  ...(prev[p.id] ?? {}),
+                                                  [axis.key]: prev[p.id]?.[axis.key] === v.value ? "" : v.value,
+                                                },
+                                              }));
+                                            }}
+                                            className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                                              selected === v.value
+                                                ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
+                                                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                                            }`}
+                                          >
+                                            {v.display}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                              <button type="button" disabled={added} onClick={() => handleAddSku(p, sku, skuData.unit)}
-                                className={`shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors ${added ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#00505a] text-white hover:bg-[#003f46]"}`}>
-                                {added ? t("alreadyAdded") : t("add")}
-                              </button>
+                            )}
+                            <div className="mt-3">
+                              {(() => {
+                                const sel = variantSelection[p.id] ?? {};
+                                const selected_variants = Object.entries(sel)
+                                  .filter(([, v]) => v)
+                                  .map(([attr_name, value]) => ({ attr_name, value }));
+                                const itemKey = makeKey(p.id, selected_variants);
+                                const added = existingKeys.has(itemKey);
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={added}
+                                    onClick={() => handleAddProduct(p, sel, variantData.unit)}
+                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                                      added
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        : "bg-[#00505a] text-white hover:bg-[#003f46]"
+                                    }`}
+                                  >
+                                    {added ? t("alreadyAdded") : t("add")}
+                                  </button>
+                                );
+                              })()}
                             </div>
-                          );
-                        })}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -215,9 +309,10 @@ function RfqEditContent() {
         setRfqNo(rfq.rfq_no);
         setItems(
           rfq.items.map((it) => ({
-            sku_id: it.sku_id,
-            product_name: it.product_name_snapshot ?? "—",
-            sku_spec: it.sku_spec_snapshot ?? "—",
+            product_id: it.product_id,
+            selected_variants: it.variant_snapshot ?? [],
+            product_name: it.product_name_snapshot ?? "\u2014",
+            variant_display: it.variant_display ?? "\u2014",
             unit: it.uom_snapshot ?? "PCS",
             quantity: Number(it.quantity),
           })),
@@ -238,25 +333,32 @@ function RfqEditContent() {
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRemoveItem = useCallback((skuId: number) => {
-    setItems((prev) => prev.filter((i) => i.sku_id !== skuId));
+  const handleRemoveItem = useCallback((idx: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const handleQtyChange = useCallback((skuId: number, qty: number) => {
+  const handleQtyChange = useCallback((idx: number, qty: number) => {
     if (qty <= 0) return;
-    setItems((prev) => prev.map((i) => (i.sku_id === skuId ? { ...i, quantity: qty } : i)));
+    setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, quantity: qty } : item)));
   }, []);
 
   const handleAddItem = useCallback((item: EditItem) => {
     setItems((prev) => [...prev, item]);
   }, []);
 
-  const existingSkuIds = useMemo(() => new Set(items.map((i) => i.sku_id)), [items]);
+  const makeKey = useCallback((productId: number, variants: Array<{ attr_name: string; value: string }>) => {
+    const sorted = [...variants].sort((a, b) =>
+      a.attr_name.localeCompare(b.attr_name) || a.value.localeCompare(b.value),
+    );
+    return `${productId}::${JSON.stringify(sorted)}`;
+  }, []);
+
+  const existingKeys = useMemo(() => new Set(items.map((i) => makeKey(i.product_id, i.selected_variants))), [items, makeKey]);
   const [showSearch, setShowSearch] = useState(false);
 
   // 构建请求体
   const buildPayload = useCallback(() => ({
-    items: items.map((i) => ({ sku_id: i.sku_id, quantity: i.quantity })),
+    items: items.map((i) => ({ product_id: i.product_id, selected_variants: i.selected_variants, quantity: i.quantity })),
     contact_name: contactName || undefined,
     contact_phone: contactPhone || undefined,
     contact_email: contactEmail || undefined,
@@ -341,20 +443,20 @@ function RfqEditContent() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.sku_id} className="border-t border-gray-100 even:bg-slate-50/50">
+              {items.map((item, idx) => (
+                <tr key={`${item.product_id}-${idx}`} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">{item.product_name}</td>
-                  <td className="px-5 py-3 text-gray-500">{item.sku_spec}</td>
+                  <td className="px-5 py-3 text-gray-500">{item.variant_display}</td>
                   <td className="px-5 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5">
                       <input type="number" value={item.quantity}
-                        onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) handleQtyChange(item.sku_id, v); }}
+                        onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) handleQtyChange(idx, v); }}
                         min={1} className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
                       <span className="text-xs text-gray-500">{tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
                     </div>
                   </td>
                   <td className="px-3 py-3 text-center">
-                    <button type="button" onClick={() => handleRemoveItem(item.sku_id)} className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
+                    <button type="button" onClick={() => handleRemoveItem(idx)} className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </td>
@@ -479,7 +581,7 @@ function RfqEditContent() {
         </button>
       </div>
 
-      <SkuSearchModal open={showSearch} onClose={() => setShowSearch(false)} onAdd={handleAddItem} existingSkuIds={existingSkuIds} />
+      <ProductSearchModal open={showSearch} onClose={() => setShowSearch(false)} onAdd={handleAddItem} existingKeys={existingKeys} />
     </div>
   );
 }

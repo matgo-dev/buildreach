@@ -397,6 +397,16 @@ class CartSkuNotPurchasableError(BusinessError):
         )
 
 
+class CartProductNotAvailableError(BusinessError):
+    """40501 — 商品不可购(不存在/未上架/已软删)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40501,
+            "Product is not available for purchase",
+            message_key=MessageKey.CART_PRODUCT_NOT_AVAILABLE,
+        )
+
+
 class CartQuantityInvalidError(BusinessError):
     """40502 — 数量非法(≤0 或缺失)。"""
     def __init__(self):
