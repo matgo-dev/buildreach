@@ -15,8 +15,8 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: "/",            labelKey: "navHome" },
   { href: "/mall",        labelKey: "navMall" },
+  { href: "/buyer/rfqs",  labelKey: "navQuoteRequest" },
   { href: "#",            labelKey: "navHowToBuy",     disabled: true },
-  { href: "#",            labelKey: "navQuoteRequest",  disabled: true },
   { href: "#",            labelKey: "navCompliance",    disabled: true },
   { href: "#",            labelKey: "navContainer",     disabled: true },
   { href: "#",            labelKey: "navOrderTracking", disabled: true },
