@@ -162,6 +162,7 @@ export async function listProducts(
   if (params.category_code) qs.set("category_code", params.category_code);
   if (params.keyword) qs.set("keyword", params.keyword);
   if (params.featured !== undefined) qs.set("featured", String(params.featured));
+  if (params.supply_mode) qs.set("supply_mode", params.supply_mode);
   if (params.sort) qs.set("sort", params.sort);
   if (params.page) qs.set("page", String(params.page));
   if (params.size) qs.set("size", String(params.size));

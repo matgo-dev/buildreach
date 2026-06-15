@@ -297,6 +297,7 @@
     "filterDeliveryAll": "全部交期",
     "comingSoon": "即将上线",
     "totalProducts": "共 {count} 件商品",
+    "filterLabel": "筛选",
     "filterSearch": "筛选",
     "clearFilters": "清除筛选",
     "showing": "显示 {start}-{end} / 共 {total} 件",

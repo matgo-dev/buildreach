@@ -136,62 +136,51 @@ export function FilterBar({
         </div>
       </form>
 
-      {/* chip 行: 精选 + 品类联动 */}
-      <div className="px-6 pb-4 flex flex-wrap gap-2">
-        {/* 精选推荐 */}
+      {/* 筛选标签行：精选 + 履约模式 */}
+      <div className="px-6 pb-2 flex items-center gap-2">
+        <span className="text-xs text-muted mr-1">{t("filterLabel")}:</span>
         <button
           onClick={onFeaturedToggle}
-          className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+          className={`h-7 rounded-md px-2.5 text-[12px] font-semibold transition-all ${
             featured
-              ? "text-white border-transparent"
-              : "bg-white text-ink border border-line hover:border-gold hover:bg-gold-soft"
+              ? "bg-amber-500 text-white shadow-sm"
+              : "bg-gray-100 text-ink hover:bg-amber-50 hover:text-amber-700"
           }`}
-          style={featured ? {
-            background: "linear-gradient(135deg, #f0b734, #e3a615, #c1850b)",
-            boxShadow: "0 4px 12px rgba(193,133,11,.3)",
-          } : undefined}
         >
-          ⭐ {t("featuredOnly")}
+          {t("featuredOnly")}
         </button>
-
-        {/* 履约模式 chips */}
-        <div className="h-8 w-px bg-line self-center" />
+        <div className="h-4 w-px bg-gray-200" />
         <button
           onClick={() => onSupplyModeChange(supplyMode === "PLATFORM_STOCK" ? "" : "PLATFORM_STOCK")}
-          className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+          className={`h-7 rounded-md px-2.5 text-[12px] font-semibold transition-all ${
             supplyMode === "PLATFORM_STOCK"
-              ? "bg-blue-600 text-white border-transparent shadow-sm"
-              : "bg-white text-ink border border-line hover:border-blue-500 hover:bg-blue-50"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-gray-100 text-ink hover:bg-blue-50 hover:text-blue-700"
           }`}
         >
-          📦 {t("supplyModePlatformStock")}
+          {t("supplyModePlatformStock")}
         </button>
         <button
           onClick={() => onSupplyModeChange(supplyMode === "SUPPLIER_DIRECT" ? "" : "SUPPLIER_DIRECT")}
-          className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+          className={`h-7 rounded-md px-2.5 text-[12px] font-semibold transition-all ${
             supplyMode === "SUPPLIER_DIRECT"
-              ? "bg-emerald-600 text-white border-transparent shadow-sm"
-              : "bg-white text-ink border border-line hover:border-emerald-500 hover:bg-emerald-50"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-gray-100 text-ink hover:bg-emerald-50 hover:text-emerald-700"
           }`}
         >
-          🏭 {t("supplyModeSupplierDirect")}
+          {t("supplyModeSupplierDirect")}
         </button>
+      </div>
 
-        {/* 分隔线 */}
-        <div className="h-8 w-px bg-line self-center" />
-
-        {/* 全部品类 */}
+      {/* 品类 chip 行 */}
+      <div className="px-6 pb-4 flex flex-wrap gap-1.5">
         <button
           onClick={() => onCategoryChange("")}
-          className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+          className={`h-7 rounded-md px-2.5 text-[12px] font-semibold transition-all ${
             !activeCategoryCode
-              ? "text-white border-transparent"
-              : "bg-white text-ink border border-line hover:border-teal-700 hover:bg-teal-50"
+              ? "bg-teal-900 text-white shadow-sm"
+              : "bg-gray-100 text-ink hover:bg-teal-50 hover:text-teal-900"
           }`}
-          style={!activeCategoryCode ? {
-            background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
-            boxShadow: "0 4px 12px rgba(0,63,70,.22)",
-          } : undefined}
         >
           {t("chipAll")}
         </button>
@@ -199,15 +188,11 @@ export function FilterBar({
           <button
             key={cat.code}
             onClick={() => onCategoryChange(cat.code === activeCategoryCode ? "" : cat.code)}
-            className={`h-8 rounded-full px-3 text-[12.5px] font-extrabold transition-all ${
+            className={`h-7 rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               activeCategoryCode === cat.code
-                ? "text-white border-transparent"
-                : "bg-white text-ink border border-line hover:border-teal-700 hover:bg-teal-50"
+                ? "bg-teal-900 text-white shadow-sm"
+                : "bg-gray-100 text-ink hover:bg-teal-50 hover:text-teal-900"
             }`}
-            style={activeCategoryCode === cat.code ? {
-              background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
-              boxShadow: "0 4px 12px rgba(0,63,70,.22)",
-            } : undefined}
           >
             {cat.name}
           </button>
