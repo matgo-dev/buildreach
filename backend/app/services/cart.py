@@ -81,15 +81,20 @@ def _check_variant_available(
 
     若商品属性被运营删改，已入购物车的变体值可能失效。
     selected_variants 为空时视为对 SPU 整体询价，不校验。
+    匹配时比对所有语言列（zh/en/sw），兼容数据质量不一致的情况。
     """
     if not selected_variants:
         return True, None
-    # 取该商品所有 selectable=true 的属性值，建 (attr_key_en, attr_value_en) 集合
-    valid_pairs = {
-        (a.attr_key_en, a.attr_value_en)
-        for a in (product.attrs or [])
-        if a.selectable
-    }
+    valid_pairs: set[tuple[str, str]] = set()
+    for a in (product.attrs or []):
+        if a.selectable:
+            for k, v in [
+                (a.attr_key_en, a.attr_value_en),
+                (a.attr_key_zh, a.attr_value_zh),
+                (a.attr_key_sw, a.attr_value_sw),
+            ]:
+                if k and v:
+                    valid_pairs.add((k, v))
     for sv in selected_variants:
         pair = (sv.get("attr_name", ""), sv.get("value", ""))
         if pair not in valid_pairs:

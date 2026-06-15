@@ -697,6 +697,7 @@
     "unavailable_SKU_INACTIVE": "This SKU is inactive",
     "unavailable_PRODUCT_DELETED": "This product has been removed",
     "unavailable_PRODUCT_INACTIVE": "This product is inactive",
+    "unavailable_VARIANT_UNAVAILABLE": "Selected variant is no longer available",
     "selectSkuFirst": "Please select specs first",
     "loginRequired": "Please login first",
     "itemCount": "{count} items",

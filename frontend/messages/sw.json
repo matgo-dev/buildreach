@@ -697,6 +697,7 @@
     "unavailable_SKU_INACTIVE": "SKU hii haifanyi kazi",
     "unavailable_PRODUCT_DELETED": "Bidhaa hii imeondolewa",
     "unavailable_PRODUCT_INACTIVE": "Bidhaa hii haifanyi kazi",
+    "unavailable_VARIANT_UNAVAILABLE": "Anuwai iliyochaguliwa haipatikani tena",
     "selectSkuFirst": "Tafadhali chagua vipimo kwanza",
     "loginRequired": "Tafadhali ingia kwanza",
     "itemCount": "Vipande {count}",
