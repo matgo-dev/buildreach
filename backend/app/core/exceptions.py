@@ -438,12 +438,23 @@ class RfqNoValidItemsError(BusinessError):
 
 
 class RfqItemNotPurchasableError(BusinessError):
-    """40506 — SKU 不可购(data 列 offending sku)。"""
+    """40506 — SKU 不可购(data 列 offending sku)。保留兼容旧调用。"""
     def __init__(self, offending_sku_ids: list[int]):
         super().__init__(
             status.HTTP_422_UNPROCESSABLE_ENTITY, 40506,
             "Some SKUs are not purchasable",
             data={"offending_sku_ids": offending_sku_ids},
+            message_key=MessageKey.RFQ_ITEM_NOT_PURCHASABLE,
+        )
+
+
+class RfqProductNotAvailableError(BusinessError):
+    """40506 — 商品不可用（未上架/已下架/已删除）。"""
+    def __init__(self, offending_product_ids: list[int]):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40506,
+            "Some products are not available",
+            data={"offending_product_ids": offending_product_ids},
             message_key=MessageKey.RFQ_ITEM_NOT_PURCHASABLE,
         )
 
@@ -470,11 +481,21 @@ class RfqStateInvalidError(BusinessError):
 
 
 class RfqDuplicateSkuError(BusinessError):
-    """40509 — DIRECT 重复 SKU。"""
+    """40509 — DIRECT 重复 SKU。保留兼容旧调用。"""
     def __init__(self):
         super().__init__(
             status.HTTP_422_UNPROCESSABLE_ENTITY, 40509,
             "Duplicate SKU in request items",
+            message_key=MessageKey.RFQ_DUPLICATE_SKU,
+        )
+
+
+class RfqDuplicateItemError(BusinessError):
+    """40509 — 询价行重复（同一商品+同一变体组合）。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40509,
+            "Duplicate product+variant combination in request items",
             message_key=MessageKey.RFQ_DUPLICATE_SKU,
         )
 

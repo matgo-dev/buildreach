@@ -316,6 +316,7 @@ async def _add_attrs(
             attr_value_en=attr.attr_value,
             attr_unit=tpl.attr_unit,
             sort_order=tpl.sort_order,
+            selectable=tpl.selectable,
             source_lang="en",
             trans_meta={
                 "attr_key_en": "src",

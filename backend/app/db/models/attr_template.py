@@ -28,3 +28,6 @@ class AttrTemplate(Base):
     is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     scope: Mapped[str] = mapped_column(String(3), nullable=False, server_default="SKU")
+    selectable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false",
+    )

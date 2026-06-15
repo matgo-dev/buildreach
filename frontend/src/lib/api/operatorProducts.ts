@@ -31,6 +31,7 @@ export interface AttrTemplate {
   is_required: boolean;
   sort_order: number;
   scope: "SPU" | "SKU";
+  selectable: boolean;
 }
 
 // ---------- 属性(提交用) ----------
