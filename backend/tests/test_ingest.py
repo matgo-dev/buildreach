@@ -5,7 +5,9 @@
 """
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -187,6 +189,26 @@ class TestValidation:
         vr = validate_batch(TEST_BATCH_DIR, run_meta, cat_tree, offers)
         # TEST00000002 目录 slug (spc-flooring) 和 source_category_path leaf (bamboo-flooring) 不一致
         assert any("spc-flooring" in w and "bamboo-flooring" in w for w in vr.warnings)
+
+    def test_empty_attribute_values_warn_but_do_not_block_offer(self, tmp_path, run_meta):
+        batch_dir = tmp_path / "batch"
+        shutil.copytree(TEST_BATCH_DIR, batch_dir)
+        offer_json = next(batch_dir.rglob("offers/1601220380842/offer.json"))
+        data = json.loads(offer_json.read_text(encoding="utf-8"))
+        data["attributes"][0]["values"] = []
+        offer_json.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+        cat_tree = build_category_tree(read_categories_raw(batch_dir))
+        offers = scan_offers(batch_dir)
+        vr = validate_batch(batch_dir, run_meta, cat_tree, offers)
+
+        assert "1601220380842" not in vr.offer_errors
+        assert any(
+            "[1601220380842]" in warning
+            and "attributes[0]" in warning
+            and "values 为空" in warning
+            for warning in vr.warnings
+        )
 
 
 # ---------- Phase 4: category import ----------

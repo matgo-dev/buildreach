@@ -286,8 +286,15 @@ def validate_batch(
                 offer_errs.append(f"attributes[{i}] 缺少 group")
             if not attr.get("key_en"):
                 offer_errs.append(f"attributes[{i}] 缺少 key_en")
-            if not attr.get("values"):
+            if "values" not in attr:
                 offer_errs.append(f"attributes[{i}] 缺少 values")
+            elif attr.get("values") == []:
+                key = attr.get("key_en") or attr.get("key_zh") or "unknown"
+                selectable = attr.get("selectable")
+                result.warnings.append(
+                    f"[{offer.offer_id}] attributes[{i}] {key} values 为空"
+                    f"(selectable={selectable}),该属性值跳过导入"
+                )
 
         # 图片文件存在性
         for img in data.get("gallery", []):
