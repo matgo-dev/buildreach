@@ -558,16 +558,25 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                 code = _make_code(parent_code, seq, node.level)
 
                 now = _utcnow()
+                _nzh = node.name_zh or node.name_en
+                _nen = node.name_en or None
                 cat = Category(
                     code=code,
-                    name_zh=node.name_zh or node.name_en,
-                    name_en=node.name_en or None,
+                    name_zh=_nzh,
+                    name_en=_nen,
                     level=node.level,
                     parent_code=parent_code,
                     sort_order=0,
                     is_active=True,
                     created_at=now,
                     updated_at=now,
+                    source_lang="zh",
+                    trans_meta={
+                        "name_zh": "src",
+                        "name_en": "manual" if _nen else "pending",
+                        "name_sw": "pending",
+                    },
+                    i18n_pending_at=now,
                 )
                 db.add(cat)
                 db.flush()  # 让后续子节点的 FK 可引用
@@ -757,17 +766,33 @@ def import_offer(
             if not attr_value:
                 continue
 
+            # i18n:导入数据以英文为源,中文列有值标 manual,无值标 pending,sw 全标 pending
+            _key_en = key_en[:50] if key_en else (key_zh[:50] if key_zh else "unknown")
+            _val_en = attr_value[:200]
+            _key_zh = key_zh[:50] if key_zh else None
+            _val_zh = label_zh[:500] if label_zh else None
+
             db.add(ProductAttr(
                 product_id=product.id,
                 sku_id=None,
-                attr_key=key_en[:50] if key_en else (key_zh[:50] if key_zh else "unknown"),
-                attr_value=attr_value[:200],
-                attr_key_zh=key_zh[:50] if key_zh else None,
-                attr_value_zh=label_zh[:500] if label_zh else None,
+                attr_key_en=_key_en,
+                attr_key_zh=_key_zh,
+                attr_value_en=_val_en,
+                attr_value_zh=_val_zh,
                 attr_group=group[:100] if group else None,
                 value_type=value_type,
                 sort_order=attr_sort,
                 selectable=selectable,
+                source_lang="en",
+                trans_meta={
+                    "attr_key_en": "src",
+                    "attr_key_zh": "manual" if _key_zh else "pending",
+                    "attr_key_sw": "pending",
+                    "attr_value_en": "src",
+                    "attr_value_zh": "manual" if _val_zh else "pending",
+                    "attr_value_sw": "pending",
+                },
+                i18n_pending_at=_utcnow(),
             ))
             attr_sort += 1
 

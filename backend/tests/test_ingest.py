@@ -327,12 +327,12 @@ class TestProductImport:
         feature_attrs = db.execute(
             select(ProductAttr).where(
                 ProductAttr.product_id == product.id,
-                ProductAttr.attr_key == "Feature",
+                ProductAttr.attr_key_en == "Feature",
             )
         ).scalars().all()
         # Feature 有 Waterproof, Anti-slip, Wear-resistant = 3 行
         assert len(feature_attrs) == 3
-        values = {a.attr_value for a in feature_attrs}
+        values = {a.attr_value_en for a in feature_attrs}
         assert "Waterproof" in values
         assert "Anti-slip" in values
 
@@ -358,11 +358,11 @@ class TestProductImport:
         material = db.execute(
             select(ProductAttr).where(
                 ProductAttr.product_id == product.id,
-                ProductAttr.attr_key == "Material",
+                ProductAttr.attr_key_en == "Material",
             )
         ).scalar_one()
         assert material.attr_key_zh == "材质"
-        assert material.attr_value == "PVC"
+        assert material.attr_value_en == "PVC"
         assert material.attr_value_zh == "PVC"
         assert material.attr_group == "Key attributes"
 
@@ -389,8 +389,8 @@ class TestProductImport:
         oak_attr = db.execute(
             select(ProductAttr).where(
                 ProductAttr.product_id == product.id,
-                ProductAttr.attr_key == "Color",
-                ProductAttr.attr_value == "Oak",
+                ProductAttr.attr_key_en == "Color",
+                ProductAttr.attr_value_en == "Oak",
             )
         ).scalar_one()
         assert oak_attr.value_type == "text"

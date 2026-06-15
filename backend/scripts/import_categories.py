@@ -294,6 +294,13 @@ def _insert_new(
             is_active=True,
             created_at=now,
             updated_at=now,
+            source_lang="zh",
+            trans_meta={
+                "name_zh": "src",
+                "name_en": "pending",
+                "name_sw": "pending",
+            },
+            i18n_pending_at=now,
         )
     )
 

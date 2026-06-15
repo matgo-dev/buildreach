@@ -81,16 +81,9 @@ def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
 
 
 def _localized_attr(attr, field: str, locale: str) -> str:
-    """属性字段 i18n:attr_key/attr_value 按 locale 选 zh/en。
-
-    优先取 {field}_{locale} 列(如 attr_key_zh),缺则回退到 {field}(英文基准列)。
-    目前模型仅有 _zh 后缀列,en 值存 attr_key/attr_value 主列。
-    """
-    zh_col = f"{field}_zh"
-    if locale == "zh":
-        return getattr(attr, zh_col, None) or getattr(attr, field) or ""
-    # en 或其他 locale:用主列
-    return getattr(attr, field) or getattr(attr, zh_col, None) or ""
+    """属性字段 i18n:统一走 get_localized,列名已规范化为 {field}_{locale}。"""
+    from app.core.i18n import get_localized
+    return get_localized(attr, field)
 
 
 def _img_to_dict(img) -> dict:

@@ -33,8 +33,8 @@ class ProductImageSchema(BaseModel):
 
 class ProductAttrSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    attr_key: str
-    attr_value: str
+    attr_key: str = ""        # 本地化后的 key（由 service 层 get_localized 填充）
+    attr_value: str = ""      # 本地化后的 value
     attr_unit: str | None = None
     sort_order: int = 0
     sku_id: int | None = None
