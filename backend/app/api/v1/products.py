@@ -117,6 +117,7 @@ def _to_public(p) -> dict:
         brand=get_localized(p, "brand") or None,
         certifications=p.certifications,
         is_featured=p.is_featured,
+        supply_mode=p.supply_mode,
         main_image=_get_main_image_url(p),
         unit=p.unit,
         moq=p.moq,
@@ -128,6 +129,7 @@ def _to_public(p) -> dict:
 async def list_products(
     category_code: str | None = Query(None),
     featured: bool | None = Query(None),
+    supply_mode: str | None = Query(None),
     keyword: str | None = Query(None),
     sort: str = Query("newest"),
     page: int = Query(1, ge=1),
@@ -136,8 +138,8 @@ async def list_products(
 ):
     items, total = await product_svc.list_products_public(
         db, category_code=category_code,
-        featured=featured, keyword=keyword,
-        sort=sort, page=page, size=size,
+        featured=featured, supply_mode=supply_mode,
+        keyword=keyword, sort=sort, page=page, size=size,
     )
     return success({
         "items": [_to_public(p) for p in items],
@@ -178,6 +180,7 @@ async def get_product(
         certifications=p.certifications,
         selling_points=get_localized(p, "selling_points"),
         is_featured=p.is_featured,
+        supply_mode=p.supply_mode,
         unit=p.unit,
         moq=p.moq,
         moq_unit=p.moq_unit,

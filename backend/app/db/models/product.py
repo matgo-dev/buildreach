@@ -23,6 +23,13 @@ from app.db.i18n_mixin import I18nMixin
 from app.db.soft_delete_mixin import SoftDeleteMixin
 
 
+class SupplyMode:
+    """履约模式：平台集采 vs 供应商直发。"""
+    PLATFORM_STOCK = "PLATFORM_STOCK"    # 平台集采（自营备货）
+    SUPPLIER_DIRECT = "SUPPLIER_DIRECT"  # 供应商直发
+    ALL = (PLATFORM_STOCK, SUPPLIER_DIRECT)
+
+
 class ProductStatus:
     DRAFT = "DRAFT"
     ACTIVE = "ACTIVE"
@@ -53,6 +60,7 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         Index("ix_products_category_code", "category_code"),
         Index("ix_products_status", "status"),
         Index("ix_products_is_featured", "is_featured"),
+        Index("ix_products_supply_mode", "supply_mode"),
         Index(
             "uq_products_spu_code_active",
             "spu_code",
@@ -103,6 +111,10 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     moq_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    supply_mode: Mapped[str] = mapped_column(
+        String(30), nullable=False, default=SupplyMode.SUPPLIER_DIRECT,
+        server_default=SupplyMode.SUPPLIER_DIRECT,
+    )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
     created_by: Mapped[int | None] = mapped_column(
         Integer,

@@ -41,7 +41,7 @@ from app.core.i18n_registry import get_i18n_fields
 from app.core.locale import SUPPORTED_LOCALES
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
-from app.db.models.product import Product, ProductStatus
+from app.db.models.product import Product, ProductStatus, SupplyMode
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_image import ProductImage, ImageType
 from app.db.models.product_sku import ProductSku, SkuStatus
@@ -194,6 +194,7 @@ async def create_product(
         unit=data.unit,
         currency=data.currency,
         is_featured=data.is_featured,
+        supply_mode=getattr(data, "supply_mode", SupplyMode.SUPPLIER_DIRECT) or SupplyMode.SUPPLIER_DIRECT,
         status=ProductStatus.DRAFT,
         created_by=operator_id,
     )
@@ -461,6 +462,7 @@ async def list_products_operator(
     *,
     category_code: str | None = None,
     status: str | None = None,
+    supply_mode: str | None = None,
     keyword: str | None = None,
     page: int = 1,
     size: int = 20,
@@ -478,6 +480,9 @@ async def list_products_operator(
     if status:
         q = q.where(Product.status == status)
         count_q = count_q.where(Product.status == status)
+    if supply_mode:
+        q = q.where(Product.supply_mode == supply_mode)
+        count_q = count_q.where(Product.supply_mode == supply_mode)
     if keyword:
         kw = f"%{keyword}%"
         # 搜索对各语言列做 OR 匹配
@@ -500,6 +505,7 @@ async def list_products_public(
     *,
     category_code: str | None = None,
     featured: bool | None = None,
+    supply_mode: str | None = None,
     keyword: str | None = None,
     sort: str = "newest",
     page: int = 1,
@@ -518,6 +524,9 @@ async def list_products_public(
     if featured is not None:
         q = q.where(Product.is_featured == featured)
         count_q = count_q.where(Product.is_featured == featured)
+    if supply_mode:
+        q = q.where(Product.supply_mode == supply_mode)
+        count_q = count_q.where(Product.supply_mode == supply_mode)
     if keyword:
         kw = f"%{keyword}%"
         keyword_filter = or_(
@@ -1215,6 +1224,7 @@ async def create_product_aggregate(
         unit=data.unit,
         currency=data.currency,
         is_featured=data.is_featured,
+        supply_mode=getattr(data, "supply_mode", SupplyMode.SUPPLIER_DIRECT) or SupplyMode.SUPPLIER_DIRECT,
         status=ProductStatus.DRAFT,
         created_by=actor_id,
     )
@@ -1299,7 +1309,7 @@ async def save_product_aggregate(
             old_value = getattr(product, f"{field}_{source_lang}", None)
             await apply_i18n_edit(product, field, source_lang, value, old_value, domain="product")
 
-    for field in ("hs_code", "certifications", "is_featured", "unit", "currency"):
+    for field in ("hs_code", "certifications", "is_featured", "supply_mode", "unit", "currency"):
         value = getattr(data, field, None)
         if value is not None:
             setattr(product, field, value)
