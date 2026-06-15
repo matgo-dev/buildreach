@@ -419,7 +419,7 @@
     "customerSupport": "Customer Support",
     "customerSupportHint": "Chat on WhatsApp for fast response",
     "rfqCart": "RFQ Cart",
-    "rfqCartHint": "Selected products auto-form an RFQ. CS will send a quote sheet based on specs, quantity and destination port.",
+    "rfqCartHint": "One-click inquiry. Get a quote within 24 hours.",
     "rfqCartQuoteByCS": "Quote by CS",
     "submitRfq": "Submit RFQ",
     "clearCart": "Clear",

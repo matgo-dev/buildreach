@@ -419,7 +419,7 @@
     "customerSupport": "专属客服 Customer Support",
     "customerSupportHint": "Chat on WhatsApp for fast response / 通过 WhatsApp 快速响应",
     "rfqCart": "询价篮",
-    "rfqCartHint": "选择商品后会自动形成 RFQ，客服会根据规格、数量和目的港发送报价单。",
+    "rfqCartHint": "一键询价，平台 24 小时内回复报价。",
     "rfqCartQuoteByCS": "客服发送",
     "submitRfq": "提交询价 Submit RFQ",
     "clearCart": "清空 Clear",
