@@ -78,7 +78,7 @@ export function FilterBar({
         onSubmit={handleSearchSubmit}
         className="px-6 pb-3"
       >
-        <div className="grid grid-cols-[minmax(180px,1.2fr)_repeat(3,minmax(130px,0.7fr))_auto] gap-2.5 items-center">
+        <div className="grid grid-cols-[1fr_repeat(2,minmax(130px,0.6fr))_auto] gap-2.5 items-center">
           {/* 搜索框 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
@@ -98,18 +98,6 @@ export function FilterBar({
               </button>
             )}
           </div>
-
-          {/* 品类下拉 */}
-          <select
-            value={activeCategoryCode}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="h-[42px] rounded-[7px] border border-line-strong bg-white px-3 text-[14px] text-ink outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14]"
-          >
-            <option value="">{t("filterAllCat")}</option>
-            {categoryTree.map((cat) => (
-              <option key={cat.code} value={cat.code}>{cat.name}</option>
-            ))}
-          </select>
 
           {/* 认证下拉(占位) */}
           <select
