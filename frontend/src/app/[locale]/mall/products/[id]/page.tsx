@@ -570,7 +570,6 @@ function ProductDetailContent() {
                 WhatsApp {t("detail.contactPlatform")}
               </a>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-400">{t("detail.comingSoon")}</p>
           </div>
         </div>
       </div>
