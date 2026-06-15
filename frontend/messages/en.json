@@ -297,6 +297,7 @@
     "filterDeliveryAll": "All Delivery",
     "comingSoon": "Coming soon",
     "totalProducts": "{count} Products",
+    "filterLabel": "Filter",
     "filterSearch": "Search",
     "clearFilters": "Clear Filters",
     "showing": "Showing {start}-{end} of {total}",
