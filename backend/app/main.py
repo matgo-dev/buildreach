@@ -1,4 +1,4 @@
-"""FastAPI 入口:中间件、异常处理、lifespan(同步 RBAC + 种子)。"""
+"""FastAPI 入口:中间件、异常处理、lifespan(同步 RBAC + 种子 + i18n 调度)。"""
 from __future__ import annotations
 
 import logging
@@ -24,17 +24,57 @@ from app.services.glossary_cache import GlossaryCache
 
 logger = logging.getLogger("app.main")
 
+# i18n 调度器(模块级,供 shutdown 引用)
+_i18n_scheduler = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _i18n_scheduler
     setup_logging()
     logger.info("App starting up...")
     async with AsyncSessionLocal() as db:
         await sync_rbac(db)
         await run_all_seeds(db)
         await GlossaryCache.load(db)
+
+    # ── i18n 调度扫描 ──
+    if settings.I18N_AUTO_TRANSLATE_ENABLED:
+        try:
+            from datetime import datetime
+            from apscheduler.schedulers.asyncio import AsyncIOScheduler
+            from apscheduler.triggers.interval import IntervalTrigger
+            from app.services.i18n_sweeper import sweep_pending
+
+            scheduler = AsyncIOScheduler()
+            scheduler.add_job(
+                sweep_pending,
+                trigger=IntervalTrigger(seconds=settings.I18N_SWEEP_INTERVAL_SECONDS),
+                kwargs={"limit": settings.I18N_SWEEP_BATCH_LIMIT},
+                id="i18n_sweep",
+                name="i18n 补译扫描",
+                next_run_time=datetime.now(),  # 启动即扫一遍(崩溃恢复)
+            )
+            scheduler.start()
+            _i18n_scheduler = scheduler
+            logger.info(
+                "i18n 调度扫描已启动, 间隔=%ds, 批量=%d",
+                settings.I18N_SWEEP_INTERVAL_SECONDS,
+                settings.I18N_SWEEP_BATCH_LIMIT,
+            )
+        except Exception:
+            logger.error("i18n 调度扫描启动失败", exc_info=True)
+    else:
+        logger.info("i18n 自动补译已关闭(I18N_AUTO_TRANSLATE_ENABLED=False)")
+
+    # TODO(多实例): 调度单点化/选主
     logger.info("App startup complete.")
     yield
+
+    # ── shutdown ──
+    if _i18n_scheduler is not None:
+        _i18n_scheduler.shutdown(wait=False)
+        logger.info("i18n 调度扫描已停止")
     logger.info("App shutting down.")
 
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select
@@ -231,6 +231,7 @@ async def list_products(
 @router.post("", summary="创建商品(SPU)")
 async def create_product(
     request: Request,
+    background_tasks: BackgroundTasks,
     data: ProductCreate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -241,6 +242,9 @@ async def create_product(
         user_id=current.id, user_email=current.email,
         resource_id=product.id, request=request,
     )
+    from app.db.models.product import Product
+    from app.services.i18n_sweeper import enqueue_translation
+    enqueue_translation(background_tasks, Product, product.id)
     return success({"id": product.id, "spu_code": product.spu_code})
 
 
@@ -248,6 +252,7 @@ async def create_product(
 async def update_product(
     product_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     data: ProductUpdate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -258,6 +263,9 @@ async def update_product(
         user_id=current.id, user_email=current.email,
         resource_id=product.id, request=request,
     )
+    from app.db.models.product import Product
+    from app.services.i18n_sweeper import enqueue_translation
+    enqueue_translation(background_tasks, Product, product.id)
     return success({"id": product.id})
 
 
@@ -378,6 +386,7 @@ async def get_product(
 @router.post("/aggregate", summary="聚合创建商品（SPU+SKU 单事务）")
 async def create_product_aggregate(
     request: Request,
+    background_tasks: BackgroundTasks,
     data: ProductAggregateCreate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -387,6 +396,13 @@ async def create_product_aggregate(
         actor_id=current.id, actor_email=current.email, request=request,
     )
     product = result["product"]
+    # 写后触发 i18n 补译(SPU + 所有新建 SKU)
+    from app.db.models.product import Product
+    from app.db.models.product_sku import ProductSku
+    from app.services.i18n_sweeper import enqueue_translation
+    enqueue_translation(background_tasks, Product, product.id)
+    for m in result["sku_mappings"]:
+        enqueue_translation(background_tasks, ProductSku, m["id"])
     return success({
         "id": product.id,
         "spu_code": product.spu_code,
@@ -398,6 +414,7 @@ async def create_product_aggregate(
 async def save_product_aggregate(
     product_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     data: ProductAggregateSave,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -406,6 +423,10 @@ async def save_product_aggregate(
         db, product_id, data,
         actor_id=current.id, actor_email=current.email, request=request,
     )
+    # 聚合保存后触发 SPU 补译(SKU 由 sweep 兜底)
+    from app.db.models.product import Product
+    from app.services.i18n_sweeper import enqueue_translation
+    enqueue_translation(background_tasks, Product, product.id)
     return success({"id": product.id})
 
 
@@ -425,6 +446,7 @@ async def list_skus(
 async def create_sku(
     product_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     data: SkuCreate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -435,6 +457,9 @@ async def create_sku(
         user_id=current.id, user_email=current.email,
         resource_id=sku.id, request=request,
     )
+    from app.db.models.product_sku import ProductSku as SkuModel
+    from app.services.i18n_sweeper import enqueue_translation
+    enqueue_translation(background_tasks, SkuModel, sku.id)
     return success({"id": sku.id, "sku_code": sku.sku_code})
 
 
@@ -443,6 +468,7 @@ async def update_sku(
     product_id: int,
     sku_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     data: SkuUpdate,
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -453,6 +479,9 @@ async def update_sku(
         user_id=current.id, user_email=current.email,
         resource_id=sku.id, request=request,
     )
+    from app.db.models.product_sku import ProductSku as SkuModel
+    from app.services.i18n_sweeper import enqueue_translation
+    enqueue_translation(background_tasks, SkuModel, sku.id)
     return success({"id": sku.id})
 
 
