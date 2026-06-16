@@ -15,9 +15,9 @@
   "auth": {
     "login": {
       "title": "Ingia",
-      "identifier_label": "Barua pepe / Simu / Jina la mtumiaji",
-      "identifier_placeholder": "Weka barua pepe / simu / jina la mtumiaji",
-      "identifier_required": "Tafadhali weka barua pepe / simu / jina la mtumiaji",
+      "identifier_label": "Akaunti",
+      "identifier_placeholder": "Simu / WhatsApp / Barua pepe",
+      "identifier_required": "Tafadhali weka simu / WhatsApp / barua pepe",
       "password_label": "Nenosiri",
       "password_placeholder": "Weka nenosiri lako",
       "password_required": "Tafadhali weka nenosiri lako",
