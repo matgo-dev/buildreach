@@ -198,6 +198,7 @@ async def register_buyer(
     email: str | None = Form(default=None),
     tin: str | None = Form(default=None),
     brela_no: str | None = Form(default=None),
+    language_preference: str | None = Form(default=None),
     # 文件字段
     storefront_images: list[UploadFile] = File(...),
     license_images: list[UploadFile] | None = File(default=None),
@@ -303,6 +304,7 @@ async def register_buyer(
             tin=tin.strip() if tin else None,
             brela_no=brela_no.strip() if brela_no else None,
             license_images=saved_license if saved_license else None,
+            language_preference=language_preference,
             request=request,
         )
     except Exception:

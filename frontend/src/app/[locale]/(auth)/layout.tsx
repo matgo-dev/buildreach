@@ -1,7 +1,6 @@
 "use client";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, Globe } from "lucide-react";
 
 import { BRAND } from "@/config/brand";
@@ -14,7 +13,6 @@ const LOCALES = [
 
 function AuthLocaleSwitcher() {
   const locale = useLocale();
-  const rawPathname = usePathname();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -50,16 +48,21 @@ function AuthLocaleSwitcher() {
               onClick={() => {
                 setOpen(false);
                 if (l.code !== locale) {
-                  // 去掉当前 locale 前缀，加上目标 locale 前缀
-                  // as-needed 模式：zh 无前缀，en/sw 有前缀
-                  const allLocales = LOCALES.map((x) => x.code);
-                  let bare = rawPathname;
-                  for (const lc of allLocales) {
-                    if (bare.startsWith(`/${lc}/`) || bare === `/${lc}`) {
-                      bare = bare.slice(`/${lc}`.length) || "/";
+                  // 从 window.location.pathname 去掉所有已知 locale 前缀，得到裸路径
+                  const currentPath = window.location.pathname;
+                  const allCodes = LOCALES.map((x) => x.code);
+                  let bare = currentPath;
+                  for (const lc of allCodes) {
+                    if (bare.startsWith(`/${lc}/`)) {
+                      bare = bare.slice(lc.length + 1);
+                      break;
+                    }
+                    if (bare === `/${lc}`) {
+                      bare = "/";
                       break;
                     }
                   }
+                  // as-needed：zh（默认）无前缀，其他加前缀
                   const newPath = l.code === "zh" ? bare : `/${l.code}${bare}`;
                   window.location.href = newPath + window.location.search;
                 }

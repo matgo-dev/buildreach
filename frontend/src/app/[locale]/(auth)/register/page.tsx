@@ -545,6 +545,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         brela_no: brelaNo || undefined,
         storefront_images: storefrontImages,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
+        language_preference: locale,
       });
       onSubmitted(tokens);
     } catch (err) {
