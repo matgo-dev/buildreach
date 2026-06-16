@@ -62,6 +62,7 @@ async def list_users(
             AdminUserOut(
                 id=u.id,
                 email=u.email,
+                phone=getattr(u, "phone", None),
                 username=u.username,
                 name=u.name,
                 status=u.status,
@@ -79,6 +80,7 @@ def _user_to_out(user, roles: list[str]) -> AdminUserOut:
     return AdminUserOut(
         id=user.id,
         email=user.email,
+        phone=getattr(user, "phone", None),
         username=user.username,
         name=user.name,
         status=user.status,

@@ -83,19 +83,35 @@ def _classify_identifier(identifier: str) -> str:
     ident = identifier.strip()
     if "@" in ident:
         return "email"
-    if ident.isdigit() and len(ident) == 11 and ident.startswith("1"):
+    # 中国大陆 11 位 / 坦桑 +255 / 纯数字长号码 → 视为 phone
+    if ident.startswith("+") or (ident.isdigit() and len(ident) >= 9):
         return "phone"
     return "username"
 
 
+def _normalize_phone_for_lookup(raw: str) -> str:
+    """登录时归一化手机号:尝试转为 E.164,查询 DB 存储格式。"""
+    phone = raw.strip().replace("-", "").replace(" ", "")
+    # 坦桑本地格式 → E.164
+    if phone.startswith("0") and len(phone) == 10:
+        phone = "+255" + phone[1:]
+    elif phone.startswith("255") and not phone.startswith("+"):
+        phone = "+" + phone
+    # 中国大陆 11 位(兼容存量)
+    elif phone.isdigit() and len(phone) == 11 and phone.startswith("1"):
+        pass  # 存量中国号码原样查
+    return phone
+
+
 async def _find_user_by_identifier(db: AsyncSession, identifier: str) -> User | None:
-    """三选一识别:邮箱(含 @)/ 11 位手机号 / 用户名。"""
+    """三选一识别:邮箱(含 @)/ 手机号(+前缀或纯数字) / 用户名。"""
     ident = identifier.strip()
     kind = _classify_identifier(ident)
     if kind == "email":
         row = await db.execute(select(User).where(User.email == ident))
     elif kind == "phone":
-        row = await db.execute(select(User).where(User.phone == ident))
+        normalized = _normalize_phone_for_lookup(ident)
+        row = await db.execute(select(User).where(User.phone == normalized))
     else:
         row = await db.execute(select(User).where(User.username == ident))
     return row.scalar_one_or_none()
@@ -104,107 +120,125 @@ async def _find_user_by_identifier(db: AsyncSession, identifier: str) -> User | 
 async def register_buyer(
     db: AsyncSession,
     *,
-    email: str,
-    name: str,
-    phone: str | None,
+    phone: str,
     password: str,
+    name: str,
     company_name: str,
-    unified_social_credit_code: str,
-    username: str | None = None,
+    address: str,
+    business_category_codes: list[str],
+    storefront_images: list[tuple[str, int, int, int]],
+    email: str | None = None,
+    tin: str | None = None,
+    brela_no: str | None = None,
+    license_images: list[tuple[str, int, int, int]] | None = None,
+    language_preference: str | None = None,
     request: Request | None = None,
-) -> User:
-    """采购方自助注册:按 unified_social_credit_code 识别企业。
+) -> tuple[User, dict]:
+    """坦桑尼亚买方自助注册(单事务聚合写 + 自动登录)。
 
-    - 信用代码对应组织不存在 → 创建新 BuyerOrg,该用户成为 owner
-    - 信用代码对应组织已存在 → 加入该组织,is_owner=false;若 company_name 与
-      DB 中已存在的名字不一致,记 warn 日志后采用 DB 中已有名字(不阻断)
+    storefront_images / license_images 每个元素 = (image_key, w, h, file_size),
+    即已由调用方处理落盘后的结果。
+    返回 (user, token_dict)。
     """
+    from app.db.models.buyer_browse_preference import BuyerBrowsePreference
+    from app.db.models.buyer_org_image import BuyerOrgImage
+
     if not validate_password_strength(password):
         raise ValidationFailedError(PASSWORD_RULE_MESSAGE)
-    if await _email_exists(db, email):
-        raise ConflictError("Email 已存在")
-    if username and await _username_exists(db, username):
-        raise ConflictError("用户名已存在")
-    if phone and await _phone_exists(db, phone):
-        raise ConflictError("手机号已存在")
 
-    # 按 USC 查 BuyerOrg
-    org_row = await db.execute(
-        select(BuyerOrganization).where(
-            BuyerOrganization.unified_social_credit_code == unified_social_credit_code
-        )
-    )
-    org = org_row.scalar_one_or_none()
-    org_created = False
+    # 唯一性一次性收集(不短路)
+    errors: list[dict] = []
+    if await _phone_exists(db, phone):
+        errors.append({
+            "field": "phone",
+            "code": 40921,
+            "message": "该手机号已注册",
+        })
+    if email and await _email_exists(db, email):
+        errors.append({
+            "field": "email",
+            "code": 40922,
+            "message": "该邮箱已注册",
+        })
+    if errors:
+        raise MultipleValidationError(errors)
 
-    if org is None:
-        # 新建组织:用户成为 owner;唯一约束兜底竞态
-        org = BuyerOrganization(
-            name=company_name,
-            unified_social_credit_code=unified_social_credit_code,
-            status=BuyerOrgStatus.ACTIVE,
-        )
-        db.add(org)
-        try:
-            await db.flush()
-            org_created = True
-        except IntegrityError:
-            # 同一信用代码并发插入,回滚后回查
-            await db.rollback()
-            org_row = await db.execute(
-                select(BuyerOrganization).where(
-                    BuyerOrganization.unified_social_credit_code
-                    == unified_social_credit_code
-                )
-            )
-            org = org_row.scalar_one()
-            org_created = False
-    else:
-        if org.name != company_name:
-            logger.warning(
-                "register_buyer: company_name mismatch for USC=%s "
-                "(input=%r, db=%r);沿用 DB 已有名字",
-                unified_social_credit_code, company_name, org.name,
-            )
-
-    is_owner = org_created
-
+    # 单事务写入
     user = User(
         email=email,
-        username=username,
         name=name,
         phone=phone,
         password_hash=hash_password(password),
+        language_preference=language_preference or None,
         status=UserStatus.ACTIVE,
         must_change_password=False,
     )
     db.add(user)
     await db.flush()
 
-    db.add(BuyerMember(user_id=user.id, buyer_org_id=org.id, is_owner=is_owner))
+    org = BuyerOrganization(
+        name=company_name,
+        address=address,
+        tin=tin,
+        brela_no=brela_no,
+        business_category_codes=business_category_codes,
+        status=BuyerOrgStatus.ACTIVE,
+    )
+    db.add(org)
+    await db.flush()
+
+    db.add(BuyerMember(user_id=user.id, buyer_org_id=org.id, is_owner=True))
+
     role = await _get_role(db, RoleCode.BUYER)
     db.add(UserRole(user_id=user.id, role_id=role.id))
+
+    # 门店照片
+    for idx, (key, w, h, fsize) in enumerate(storefront_images):
+        db.add(BuyerOrgImage(
+            buyer_org_id=org.id, image_key=key, image_type="STOREFRONT",
+            sort_order=idx, width=w, height=h, file_size=fsize,
+        ))
+
+    # 证照图片
+    for idx, (key, w, h, fsize) in enumerate(license_images or []):
+        db.add(BuyerOrgImage(
+            buyer_org_id=org.id, image_key=key, image_type="LICENSE",
+            sort_order=idx, width=w, height=h, file_size=fsize,
+        ))
+
+    # 浏览偏好初始化 = 经营品类
+    db.add(BuyerBrowsePreference(
+        user_id=user.id,
+        category_codes=business_category_codes,
+    ))
 
     await write_audit(
         db,
         resource_type=AuditResourceType.USER,
         action=AuditAction.REGISTER,
         user_id=user.id,
-        user_email=user.email,
+        user_email=user.email or user.phone,
         resource_id=user.id,
         request=request,
         extra={
             "role": RoleCode.BUYER,
             "buyer_org_id": org.id,
-            "is_owner": is_owner,
-            "org_created": org_created,
-            "unified_social_credit_code": unified_social_credit_code,
         },
         commit=False,
     )
     await db.commit()
     await db.refresh(user)
-    return user
+
+    # 注册即自动登录:签发 token
+    access_token, expires_in = create_access_token(user.id, user.email, user.token_version)
+    refresh_token = create_refresh_token(user.id, user.email, user.token_version)
+
+    return user, {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "Bearer",
+        "expires_in": expires_in,
+    }
 
 
 async def register_supplier(
@@ -448,3 +482,73 @@ async def logout(
         user_email=user_email,
         request=request,
     )
+
+
+# ── 浏览偏好 ──────────────────────────────────────────────
+
+
+async def get_browse_preferences(db: AsyncSession, user_id: int) -> list[str]:
+    """读取买方浏览偏好品类 code 列表(过滤已停用品类)。"""
+    from app.db.models.buyer_browse_preference import BuyerBrowsePreference
+    from app.db.models.category import Category
+
+    row = await db.execute(
+        select(BuyerBrowsePreference).where(BuyerBrowsePreference.user_id == user_id)
+    )
+    pref = row.scalar_one_or_none()
+    if pref is None or not pref.category_codes:
+        return []
+
+    # 过滤已停用品类(读取时过滤,不改存储)
+    result = await db.execute(
+        select(Category.code).where(
+            Category.code.in_(pref.category_codes),
+            Category.level == 1,
+            Category.is_active == True,  # noqa: E712
+        )
+    )
+    return [r[0] for r in result.all()]
+
+
+async def replace_browse_preferences(
+    db: AsyncSession,
+    user_id: int,
+    codes: list[str],
+    request: Request | None = None,
+) -> list[str]:
+    """全量替换浏览偏好(仅允许操作本人)。"""
+    from app.db.models.buyer_browse_preference import BuyerBrowsePreference
+    from app.services._buyer_utils import validate_active_level1_categories
+
+    await validate_active_level1_categories(db, codes)
+
+    # 去重保序
+    seen: set[str] = set()
+    unique_codes = []
+    for c in codes:
+        if c not in seen:
+            seen.add(c)
+            unique_codes.append(c)
+
+    row = await db.execute(
+        select(BuyerBrowsePreference).where(BuyerBrowsePreference.user_id == user_id)
+    )
+    pref = row.scalar_one_or_none()
+    if pref is None:
+        pref = BuyerBrowsePreference(user_id=user_id, category_codes=unique_codes)
+        db.add(pref)
+    else:
+        pref.category_codes = unique_codes
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.UPDATE,
+        user_id=user_id,
+        resource_id=user_id,
+        request=request,
+        extra={"browse_preferences": unique_codes},
+        commit=False,
+    )
+    await db.commit()
+    return unique_codes

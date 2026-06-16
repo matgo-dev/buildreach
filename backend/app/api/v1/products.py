@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -135,10 +135,27 @@ async def list_products(
     sort: str = Query("newest"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
+    all_categories: bool = Query(False, description="跳过浏览偏好过滤,查看全部"),
+    authorization: str | None = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
+    # 如果登录且未指定 category_code 且未跳过过滤 → 按浏览偏好过滤
+    pref_codes: list[str] | None = None
+    if not all_categories and not category_code and authorization:
+        try:
+            from app.core.security import decode_token
+            token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            if user_id:
+                from app.services.auth_service import get_browse_preferences
+                pref_codes = await get_browse_preferences(db, int(user_id)) or None
+        except Exception:
+            pass  # token 无效或过期:不过滤,展示全量
+
     items, total = await product_svc.list_products_public(
         db, category_code=category_code,
+        category_codes=pref_codes,
         featured=featured, supply_mode=supply_mode,
         keyword=keyword, sort=sort, page=page, size=size,
     )

@@ -69,6 +69,10 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("PATCH", "/api/v1/rfqs/{rfq_id}/submit"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/withdraw"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/items/{item_id}"),
+    # rfq — 行项 CRUD（PROCESSING 态增删改）
+    ("POST", "/api/v1/rfqs/{rfq_id}/items"),
+    ("PUT", "/api/v1/rfqs/{rfq_id}/items/{item_id}"),
+    ("DELETE", "/api/v1/rfqs/{rfq_id}/items/{item_id}"),
     # quote — 报价写操作
     ("POST", "/api/v1/rfqs/{rfq_id}/quotes"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/expire"),
@@ -94,6 +98,8 @@ AUDIT_EXEMPT_WRITE_ROUTES: set[tuple[str, str]] = {
     ("DELETE", "/api/v1/credit/search-history/{history_id}"),
     # 语言偏好切换:个人设置,低风险
     ("PATCH", "/api/v1/auth/me/language"),
+    # 浏览偏好:个人设置,低风险
+    ("PUT", "/api/v1/buyer/browse-preferences"),
 }
 
 

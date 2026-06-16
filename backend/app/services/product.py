@@ -6,8 +6,6 @@ SPU CRUD / SKU CRUD(含阶梯价整体替换) / 供货关系(挂 SKU) / 图片(S
 from __future__ import annotations
 
 import os
-import uuid
-from pathlib import Path
 
 from fastapi import UploadFile
 from sqlalchemy import delete as sa_delete, func, or_, select, update
@@ -62,10 +60,14 @@ from app.schemas.product import (
     SupplierRelationUpdate,
 )
 
-UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "products"
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_IMAGES_PER_PRODUCT = 8
+
+# 图片校验常量从公共模块导入
+from app.services._buyer_utils import (
+    ALLOWED_EXTENSIONS,
+    MAX_IMAGE_SIZE,
+    save_uploaded_image,
+)
 
 # i18n 字段声明:从注册表读取(单一来源)
 from app.db.models.product import Product as _Product
@@ -467,6 +469,7 @@ async def list_products_public(
     db: AsyncSession,
     *,
     category_code: str | None = None,
+    category_codes: list[str] | None = None,
     featured: bool | None = None,
     supply_mode: str | None = None,
     keyword: str | None = None,
@@ -484,6 +487,14 @@ async def list_products_public(
         codes = await _descendant_category_codes(db, category_code)
         q = q.where(Product.category_code.in_(codes))
         count_q = count_q.where(Product.category_code.in_(codes))
+    elif category_codes:
+        # 浏览偏好:多个一级品类 → 展开全部后代
+        all_desc: list[str] = []
+        for cc in category_codes:
+            all_desc.extend(await _descendant_category_codes(db, cc))
+        if all_desc:
+            q = q.where(Product.category_code.in_(all_desc))
+            count_q = count_q.where(Product.category_code.in_(all_desc))
     if featured is not None:
         q = q.where(Product.is_featured == featured)
         count_q = count_q.where(Product.is_featured == featured)
@@ -935,33 +946,6 @@ async def list_sku_suppliers(
 
 # ── 图片（SPU + SKU 维度）────────────────────────────────
 
-TARGET_SIZE = (800, 800)
-JPEG_QUALITY = 85
-
-
-def _process_image(content: bytes) -> tuple[bytes, int, int]:
-    from io import BytesIO
-    from PIL import Image
-
-    img = Image.open(BytesIO(content))
-    img = img.convert("RGB")
-
-    w, h = img.size
-    if w < 200 or h < 200:
-        raise ImageTooSmallError()
-
-    img.thumbnail(TARGET_SIZE, Image.LANCZOS)
-
-    w, h = img.size
-    if w != h:
-        side = max(w, h)
-        bg = Image.new("RGB", (side, side), (255, 255, 255))
-        bg.paste(img, ((side - w) // 2, (side - h) // 2))
-        img = bg
-
-    buf = BytesIO()
-    img.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
-    return buf.getvalue(), img.size[0], img.size[1]
 
 
 async def add_product_image(
@@ -985,6 +969,7 @@ async def add_product_image(
     if len(product.images) >= MAX_IMAGES_PER_PRODUCT:
         raise MaxImagesExceededError(MAX_IMAGES_PER_PRODUCT)
 
+    # 前置校验用商品专属错误码,避免公共函数抛买方错误码
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ImageFormatInvalidError(", ".join(ALLOWED_EXTENSIONS))
@@ -993,20 +978,16 @@ async def add_product_image(
     if len(content) > MAX_IMAGE_SIZE:
         raise ImageTooLargeError()
 
-    processed_bytes, img_w, img_h = _process_image(content)
-
-    product_dir = UPLOAD_DIR / str(product_id)
-    product_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}.jpg"
-    filepath = product_dir / filename
-    filepath.write_bytes(processed_bytes)
+    # 使用公共图片处理函数,square=True 保持商品图正方形裁剪行为
+    image_key, img_w, img_h, file_size = save_uploaded_image(
+        content, file.filename or "image.jpg", f"products/{product_id}", square=True,
+    )
 
     actual_type = image_type if image_type in ImageType.ALL else ImageType.GALLERY
     if not product.images:
         actual_type = ImageType.MAIN
 
     next_sort = len(product.images)
-    image_key = f"products/{product_id}/{filename}"
     img = ProductImage(
         product_id=product_id,
         sku_id=sku_id,
@@ -1015,7 +996,7 @@ async def add_product_image(
         sort_order=next_sort,
         width=img_w,
         height=img_h,
-        file_size=len(processed_bytes),
+        file_size=file_size,
     )
     db.add(img)
     await db.commit()

@@ -562,7 +562,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ❌ **不要**在 JWT payload 里塞 permissions —— 权限变更需即时生效
 ❌ **不要**把权限判断写死在业务代码里(`if role == 'BUYER'`)—— 必须走 `require_permission`
 ❌ **不要**让 ADMIN 拥有业务数据权限 —— 严格职责分离
-❌ **不要**让注册接口自动登录 —— 注册和登录是两个独立动作
+✅ 买方注册成功后自动登录（坦桑地推场景需现场即用，减少流失）——返回 TokenOut，与 `/login` 一致
 ❌ **不要**让 `POST /admin/users` 能创建 BUYER/SUPPLIER —— 业务用户走自助注册
 ❌ **不要**引入 NextAuth、Prisma —— 后端是 FastAPI,前端只做轻量 token 管理
 ❌ **不要**做用户头像生成、邮件、短信、OAuth、2FA、找回密码

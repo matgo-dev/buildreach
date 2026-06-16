@@ -292,7 +292,9 @@ const LOCALES = [
 /** Header 内嵌语言切换器 — 深色风格,始终跟随 sticky header 可见 */
 function HeaderLocaleSwitcher() {
   const locale = useLocale();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  // 去掉 locale 前缀，避免 Link locale={x} 产生双 locale 路径
+  const pathname = rawPathname.replace(new RegExp(`^/${locale}`), "") || "/";
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

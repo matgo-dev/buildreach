@@ -151,7 +151,7 @@ class MultipleValidationError(BusinessError):
     """
 
     # 数字优先级:索引小者优先,作为顶层 code 来源
-    _PRIORITY = (40901, 40902, 40903)
+    _PRIORITY = (40901, 40902, 40903, 40921, 40922)
 
     def __init__(self, errors: list[dict]):
         if not errors:

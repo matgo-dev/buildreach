@@ -15,11 +15,11 @@ class User(Base, TimestampUpdateMixin):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     # 用户名:选填,UNIQUE,登录时可作为 email 的替代凭证
     username: Mapped[str | None] = mapped_column(String(50), unique=True, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    # 手机号:选填,UNIQUE,可作为登录凭证(中国大陆 11 位)
+    # 手机号:UNIQUE,买方主登录凭证(坦桑 +255 E.164),其他角色选填
     phone: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=UserStatus.ACTIVE)
