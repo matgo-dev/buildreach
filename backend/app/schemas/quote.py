@@ -34,14 +34,23 @@ class QuoteCostInput(BaseModel):
 
 
 class QuoteLineInput(BaseModel):
-    """报价行输入。skipped=true 时 unit_price 可不填。"""
-    rfq_item_id: int
-    skipped: bool = False
-    skip_reason: str | None = None
+    """报价行输入 — PRODUCT(商品) 或 FEE(费用)。"""
+    source_rfq_item_id: int | None = None
+    line_type: str = "PRODUCT"
+
+    # 商品信息（PRODUCT 行必填 product_id）
+    product_id: int | None = None
+    product_name: str | None = None
+    selected_variants: list[dict[str, str]] | None = None
+    quantity: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
+    uom: str | None = None
+
+    # 报价信息
     unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
-    moq: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
+    moq: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=3)
     cbm_per_unit: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=4)
     gross_weight_per_unit: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=3)
+    remark: str | None = None
     tiers: list[QuoteTierInput] | None = None
     cost: QuoteCostInput | None = None
 
@@ -89,14 +98,24 @@ class QuoteCostView(BaseModel):
 class QuoteItemBuyerPublic(BaseModel):
     """买方可见报价行。无 cost/supplier。"""
     id: int
-    rfq_item_id: int
-    skipped: bool = False
-    skip_reason: str | None = None
+    source_rfq_item_id: int | None = None
+    line_type: str = "PRODUCT"
+
+    # 商品快照
+    product_id: int | None = None
+    product_name_snapshot: str | None = None
+    quoted_variants: list[dict] | None = None
+    variant_display: str | None = None
+    quantity: Decimal | None = None
+    uom: str | None = None
+
+    # 报价信息
     unit_price: Decimal | None = None
     moq: Decimal | None = None
     cbm_per_unit: Decimal | None = None
     gross_weight_per_unit: Decimal | None = None
     line_amount: Decimal | None = None
+    remark: str | None = None
     tiers: list[QuoteTierPublic] = []
 
 

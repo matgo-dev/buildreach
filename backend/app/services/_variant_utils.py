@@ -59,6 +59,30 @@ async def normalize_variants_to_en(
     return sorted(result, key=lambda x: (x.get("attr_name", ""), x.get("value", "")))
 
 
+def variant_snapshot_to_display(snapshot: list[dict], locale: str = "zh") -> str | None:
+    """将 variant_snapshot 拼接为人类可读文本。
+
+    MVP: 直接用英文原值拼接。后续可按 locale 反查 product_attrs 翻译。
+    """
+    if not snapshot:
+        return None
+    parts = [f"{s.get('attr_name', '')}: {s.get('value', '')}" for s in snapshot]
+    return " / ".join(parts)
+
+
+async def get_viewable_product(db: AsyncSession, product_id: int):
+    """校验 SPU 是否 ACTIVE + 未软删，返回 Product 或 None。"""
+    from app.db.models.product import Product, ProductStatus
+    row = await db.execute(
+        select(Product).where(
+            Product.id == product_id,
+            Product.status == ProductStatus.ACTIVE,
+            Product.deleted_at.is_(None),
+        )
+    )
+    return row.scalar_one_or_none()
+
+
 def variant_fingerprint(normalized_variants: list[dict]) -> str:
     """规范化排序后的 JSON 取 md5，作为变体行身份标识。
 

@@ -55,7 +55,11 @@ from app.schemas.rfq import (
 )
 from app.services import quote as quote_svc
 from app.services._rfq_loader import load_rfq, lock_rfq, resolve_rfq_scope
-from app.services._variant_utils import normalize_variants_to_en
+from app.services._variant_utils import (
+    normalize_variants_to_en,
+    variant_snapshot_to_display,
+    get_viewable_product,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,31 +120,10 @@ async def _generate_rfq_no(db: AsyncSession) -> str:
     return f"{prefix}{seq:04d}"
 
 
-# ── SPU 可用性校验 ────────────────────────────────────
+# ── SPU 可用性校验 / 变体显示 — 委托 _variant_utils ────
 
-async def _get_viewable_product(db: AsyncSession, product_id: int) -> Product | None:
-    """校验 SPU 是否 ACTIVE + 未软删。"""
-    row = await db.execute(
-        select(Product).where(
-            Product.id == product_id,
-            Product.status == ProductStatus.ACTIVE,
-            Product.deleted_at.is_(None),
-        )
-    )
-    return row.scalar_one_or_none()
-
-
-# ── 变体快照动态拼接（序列化时用，不入库）──────────────
-
-def _variant_snapshot_to_display(snapshot: list[dict], locale: str = "zh") -> str | None:
-    """将 variant_snapshot 拼接为人类可读文本。
-
-    MVP: 直接用英文原值拼接。后续可按 locale 反查 product_attrs 翻译。
-    """
-    if not snapshot:
-        return None
-    parts = [f"{s.get('attr_name', '')}: {s.get('value', '')}" for s in snapshot]
-    return " / ".join(parts)
+_get_viewable_product = get_viewable_product
+_variant_snapshot_to_display = variant_snapshot_to_display
 
 
 # ── 去重校验 ──────────────────────────────────────────
@@ -345,6 +328,10 @@ async def list_rfqs(
         hidden = (RfqStatus.DRAFT, RfqStatus.CANCELLED)
         q = q.where(Rfq.status.notin_(hidden))
         count_q = count_q.where(Rfq.status.notin_(hidden))
+        # "我代录的"——运营通过代录创建的询价单
+        if mine:
+            q = q.where(Rfq.created_by_user_id == user.id)
+            count_q = count_q.where(Rfq.created_by_user_id == user.id)
 
     if status_filter:
         q = q.where(Rfq.status == status_filter)
