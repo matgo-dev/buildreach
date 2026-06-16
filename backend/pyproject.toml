@@ -30,6 +30,8 @@ dependencies = [
     "aliyun-python-sdk-core>=2.16.0",
     "aliyun-python-sdk-alimt>=3.2.0",
     "phonenumbers>=9.0.32",
+    # i18n 补译自动化:调度扫描
+    "apscheduler>=3.10.0,<4",
 ]
 
 [project.optional-dependencies]

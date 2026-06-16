@@ -22,6 +22,8 @@ os.environ.setdefault(
         "postgresql+asyncpg://liujingjing@localhost:5433/overseas_supply_test",
     ),
 )
+# 测试环境禁用 i18n 调度扫描(避免 apscheduler 事件循环冲突)
+os.environ.setdefault("I18N_AUTO_TRANSLATE_ENABLED", "false")
 os.environ.setdefault("SUPER_ADMIN_EMAIL", "superadmin@platform.local")
 os.environ.setdefault("SUPER_ADMIN_INITIAL_PASSWORD", "ChangeMe123")
 # 测试默认开启 demo seed：大量已有用例依赖中建三局组织和 demo 账号
