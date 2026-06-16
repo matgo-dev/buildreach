@@ -167,7 +167,8 @@ async def create_quote(
 
     is_first = rfq.status == RfqStatus.PROCESSING
     is_requote = rfq.status == RfqStatus.QUOTED
-    if not is_first and not is_requote:
+    is_rejected = rfq.status == RfqStatus.REJECTED  # 买方拒绝后运营可重报
+    if not is_first and not is_requote and not is_rejected:
         raise QuoteRfqStateInvalidError(rfq.status)
 
     # 加载 rfq_items（用于 source 校验 + coverage 检查）
@@ -195,8 +196,8 @@ async def create_quote(
         )
         next_version = (max_ver_result.scalar() or 0) + 1
 
-    # 旧 ACTIVE → SUPERSEDED
-    if is_requote:
+    # 旧 ACTIVE → SUPERSEDED（重报 / 被拒后重报）
+    if is_requote or is_rejected:
         await db.execute(
             update(RfqQuote)
             .where(
@@ -289,8 +290,8 @@ async def create_quote(
 
     quote.total_amount = total_amount
 
-    # 首报:PROCESSING → QUOTED
-    if is_first:
+    # 首报 / 被拒后重报 → QUOTED
+    if is_first or is_rejected:
         if not RfqStatus.can_transition(rfq.status, RfqStatus.QUOTED):
             raise RfqStateInvalidError(rfq.status)
         rfq.status = RfqStatus.QUOTED
