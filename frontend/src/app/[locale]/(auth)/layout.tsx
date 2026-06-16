@@ -1,9 +1,8 @@
 "use client";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, Globe } from "lucide-react";
-import { Link } from "@/i18n/navigation";
 
 import { BRAND } from "@/config/brand";
 
@@ -16,8 +15,9 @@ const LOCALES = [
 function AuthLocaleSwitcher() {
   const locale = useLocale();
   const rawPathname = usePathname();
-  // 去掉 locale 前缀，避免 Link locale={x} 产生 /en/sw/register 双 locale
-  const pathname = rawPathname.replace(new RegExp(`^/${locale}`), "") || "/";
+  const router = useRouter();
+  // 去掉 locale 前缀
+  const pathWithoutLocale = rawPathname.replace(new RegExp(`^/${locale}`), "") || "/";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -47,12 +47,18 @@ function AuthLocaleSwitcher() {
       {open && (
         <div className="absolute right-0 z-[200] mt-1 w-40 rounded-lg border border-white/10 bg-white py-1 shadow-xl">
           {LOCALES.map((l) => (
-            <Link
+            <button
               key={l.code}
-              href={pathname}
-              locale={l.code}
-              onClick={() => setOpen(false)}
-              className={`flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                if (l.code !== locale) {
+                  // 直接替换 URL locale 前缀，不触发 React 状态重置
+                  const newPath = l.code === "zh" ? pathWithoutLocale : `/${l.code}${pathWithoutLocale}`;
+                  router.replace(newPath);
+                }
+              }}
+              className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors ${
                 l.code === locale
                   ? "bg-blue-50 font-medium text-[#003366]"
                   : "text-gray-700 hover:bg-gray-50"
@@ -60,7 +66,7 @@ function AuthLocaleSwitcher() {
             >
               <span>{l.short} · {l.full}</span>
               {l.code === locale && <Check className="h-3.5 w-3.5" />}
-            </Link>
+            </button>
           ))}
         </div>
       )}
