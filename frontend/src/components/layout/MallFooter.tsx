@@ -2,10 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { BRAND } from "@/config/brand";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 
 /** Mall 页脚 — 深青底色四列。参考 HTML footer */
 export function MallFooter() {
   const t = useTranslations("mall");
+  const wa = useWhatsApp();
 
   return (
     <footer className="bg-teal-950 text-[#d6eded] mt-2.5">
@@ -16,9 +18,11 @@ export function MallFooter() {
           <p className="text-[13px] leading-relaxed text-[#d6eded]">
             {BRAND.description}
           </p>
+          {wa.number && (
           <p className="mt-3 text-[13px]">
-            WhatsApp: {BRAND.whatsapp}
+            WhatsApp: {wa.number}
           </p>
+          )}
         </div>
 
         {/* 采购服务 */}
@@ -48,7 +52,7 @@ export function MallFooter() {
           <h4 className="text-white text-sm font-bold mb-2.5">{t("footerContact")}</h4>
           <div className="space-y-2 text-[13px]">
             <p>Dar es Salaam, Tanzania</p>
-            <p>{BRAND.whatsapp}</p>
+            {wa.number && <p>{wa.number}</p>}
             <p>info@buildlink.co.tz</p>
           </div>
         </div>

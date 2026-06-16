@@ -27,9 +27,6 @@ export const BRAND = {
   description:
     "面向坦桑尼亚本地门店、批发商、承包商和项目客户的 B2B 建材采购平台",
 
-  /** WhatsApp 客服号码(东非) */
-  whatsapp: "+255 697 123 456",
-
   /** 默认交付城市 */
   deliverTo: "Dar es Salaam, TZ",
 } as const;
