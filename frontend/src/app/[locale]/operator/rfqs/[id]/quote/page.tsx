@@ -235,7 +235,7 @@ function QuoteBackfillContent() {
   // 初始化
   useEffect(() => {
     if (!rfq || linesInited) return;
-    const canQuote = rfq.status === "PROCESSING" || rfq.status === "QUOTED";
+    const canQuote = rfq.status === "PROCESSING" || rfq.status === "QUOTED" || rfq.status === "REJECTED";
     if (!canQuote) { setLinesInited(true); return; }
 
     // 草稿恢复
@@ -247,7 +247,8 @@ function QuoteBackfillContent() {
       return;
     }
 
-    if (rfq.status === "QUOTED") {
+    // QUOTED / REJECTED 都从上一版报价预填
+    if (rfq.status === "QUOTED" || rfq.status === "REJECTED") {
       listQuotes(rfqId).then((quotes) => {
         const active = quotes.find((q) => q.quote_status === "ACTIVE");
         if (active) {
@@ -367,7 +368,7 @@ function QuoteBackfillContent() {
   }, [rfqId, rfq, header, lines, router, locale, toast, t, tError]);
 
   // ── 拦截 / loading ─────────────────────────────────────
-  if (rfq && rfq.status !== "PROCESSING" && rfq.status !== "QUOTED") {
+  if (rfq && rfq.status !== "PROCESSING" && rfq.status !== "QUOTED" && rfq.status !== "REJECTED") {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
         <AlertCircle className="mb-4 h-12 w-12 text-amber-400" />
