@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     ALIYUN_TRANSLATE_REGION: str = "cn-hangzhou"
     ALIYUN_TRANSLATE_TIMEOUT_SECONDS: float = 10.0
 
+    # ---- i18n 自动补译 ----
+    I18N_AUTO_TRANSLATE_ENABLED: bool = True       # 总开关
+    I18N_SWEEP_INTERVAL_SECONDS: int = 1800        # 调度扫描周期(30 分钟)
+    I18N_SWEEP_BATCH_LIMIT: int = 100              # 单轮每模型最多处理行数
+
     # CORS(逗号分隔,运行时拆为列表)
     CORS_ORIGINS_RAW: str = Field(
         default="http://localhost:3000", alias="CORS_ORIGINS"
