@@ -15,9 +15,9 @@
   "auth": {
     "login": {
       "title": "Login",
-      "identifier_label": "Email / Phone / Username",
-      "identifier_placeholder": "Enter email / phone / username",
-      "identifier_required": "Please enter email / phone / username",
+      "identifier_label": "Account",
+      "identifier_placeholder": "Phone / WhatsApp / Email",
+      "identifier_required": "Please enter phone / WhatsApp / email",
       "password_label": "Password",
       "password_placeholder": "Enter your password",
       "password_required": "Please enter your password",
