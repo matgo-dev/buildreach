@@ -87,20 +87,17 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      {/* 背景视频 */}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a2e2e] via-[#0D4D4D] to-[#1a6b6b] p-4">
+      {/* 背景视频（静音循环，降级到渐变） */}
       <video
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-        poster="/images/home/hero-1.jpg"
+        className="absolute inset-0 h-full w-full object-cover opacity-30"
       >
         <source src="/uploads/hero-video.mp4" type="video/mp4" />
       </video>
-      {/* 深色半透明遮罩（降低视频亮度，让表单突出） */}
-      <div className="absolute inset-0 bg-black/60" />
 
       {/* 语言切换 */}
       <div className="absolute right-4 top-4 z-10">
