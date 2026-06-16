@@ -141,7 +141,7 @@ class SupplierRegisterIn(BaseModel):
 
 class RegisterOut(BaseModel):
     user_id: int
-    email: str
+    email: str | None = None
 
 
 class LoginIn(BaseModel):
@@ -181,7 +181,7 @@ class OrganizationOut(BaseModel):
 
 class MeOut(BaseModel):
     id: int
-    email: str
+    email: str | None = None
     username: str | None = None
     name: str
     phone: str | None = None

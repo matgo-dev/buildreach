@@ -39,6 +39,9 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.ORDER_WRITE,
         # 信用评估 — 仅查看(工单 §3.7)
         Permissions.CREDIT_READ,
+        # 浏览偏好(scope=self)
+        Permissions.BUYER_PREF_READ,
+        Permissions.BUYER_PREF_WRITE,
     ],
     "SUPPLIER": [
         *_AUTH_BASE,

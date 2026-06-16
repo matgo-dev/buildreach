@@ -62,8 +62,8 @@ function AuthLocaleSwitcher() {
                       break;
                     }
                   }
-                  // as-needed：zh（默认）无前缀，其他加前缀
-                  const newPath = l.code === "zh" ? bare : `/${l.code}${bare}`;
+                  // 先显式带上目标 locale，让 next-intl 更新语言偏好；默认语言会再规范化成无前缀路径。
+                  const newPath = `/${l.code}${bare === "/" ? "" : bare}`;
                   window.location.href = newPath + window.location.search;
                 }
               }}

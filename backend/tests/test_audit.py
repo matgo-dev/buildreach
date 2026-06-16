@@ -54,19 +54,40 @@ async def test_login_locked_audit(client, db_session):
     assert n >= 1
 
 
+def _make_test_image(w: int = 300, h: int = 300) -> bytes:
+    """生成最小合法测试图片。"""
+    from io import BytesIO
+    from PIL import Image
+    img = Image.new("RGB", (w, h), (128, 128, 128))
+    buf = BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
 @pytest.mark.asyncio
 async def test_register_audit(client, db_session):
-    await client.post(
+    # 需要先获取一个有效的 L1 品类 code
+    from sqlalchemy import text
+    row = await db_session.execute(text("SELECT code FROM categories WHERE level=1 AND is_active=true LIMIT 1"))
+    cat_code = row.scalar()
+    assert cat_code is not None, "需要至少一个 L1 品类"
+
+    img_bytes = _make_test_image()
+    resp = await client.post(
         "/api/v1/auth/register/buyer",
-        json={
-            "email": "z@cscec3b.com", "name": "Z", "password": "Aa123456789",
-            "company_name": "中建三局",
-            "unified_social_credit_code": "91420100MA4KXXXX01",
+        data={
+            "phone": "+255712345678",
+            "password": "Aa123456789!",
+            "name": "Z",
+            "company_name": "Test Shop",
+            "address": "Dar es Salaam",
+            "business_category_codes": cat_code,
         },
+        files=[("storefront_images", ("shop.jpg", img_bytes, "image/jpeg"))],
     )
     n, rows = await _audit_count(db_session, action="REGISTER")
     assert n >= 1
-    assert any(row.user_email == "z@cscec3b.com" for row in rows)
+    assert any(row.user_email == "+255712345678" for row in rows)
 
 
 @pytest.mark.asyncio
@@ -89,22 +110,12 @@ async def test_create_internal_user_audit(client, superadmin_headers, db_session
 
 @pytest.mark.asyncio
 async def test_password_change_audit(client, db_session):
-    await client.post(
-        "/api/v1/auth/register/buyer",
-        json={
-            "email": "z@cscec3b.com", "name": "Z", "password": "Aa123456789",
-            "company_name": "中建三局",
-            "unified_social_credit_code": "91420100MA4KXXXX01",
-        },
-    )
-    login = await client.post(
-        "/api/v1/auth/login",
-        json={"identifier": "z@cscec3b.com", "password": "Aa123456789"},
-    )
-    token = login.json()["data"]["access_token"]
+    from tests.conftest import register_buyer_tz
+    result = await register_buyer_tz(client)
+    token = result["response"].json()["data"]["access_token"]
     await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": "Aa123456789", "new_password": "NewPass1234"},
+        json={"old_password": result["password"], "new_password": "NewPass1234!"},
         headers={"Authorization": f"Bearer {token}"},
     )
     n, _ = await _audit_count(db_session, action="PASSWORD_CHANGE")
