@@ -15,6 +15,7 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -464,6 +465,7 @@ function RfqCreateContent() {
   const user = useAuthStore((s) => s.user);
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const triggerRefresh = useCartStore((s) => s.triggerRefresh);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // 解析 URL 参数
   const itemIds = useMemo(() => {
@@ -699,6 +701,20 @@ function RfqCreateContent() {
 
   const handleSubmit = useCallback(() => doCreate(false), [doCreate]);
   const handleSaveDraft = useCallback(() => doCreate(true), [doCreate]);
+  const openDatePicker = useCallback(() => {
+    const input = dateInputRef.current;
+    if (!input) return;
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+        return;
+      } catch {
+        // Some browsers only allow showPicker on directly focusable controls.
+      }
+    }
+    input.focus();
+    input.click();
+  }, []);
 
   // 今天日期
   const todayStr = useMemo(() => {
@@ -894,15 +910,29 @@ function RfqCreateContent() {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               {t("deliveryDate")}
             </label>
-            <input
-              type="date"
-              lang={locale}
-              value={draft.expected_delivery_date}
-              onChange={(e) => updateDraft("expected_delivery_date", e.target.value)}
-              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              min={todayStr}
-              className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
-            />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={openDatePicker}
+                className="flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 px-3 text-left text-sm outline-none transition-colors focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              >
+                <span className={draft.expected_delivery_date ? "text-gray-800" : "text-gray-400"}>
+                  {draft.expected_delivery_date || "YYYY-MM-DD"}
+                </span>
+                <Calendar className="h-4 w-4 text-gray-500" />
+              </button>
+              <input
+                ref={dateInputRef}
+                type="date"
+                lang="en"
+                value={draft.expected_delivery_date}
+                onChange={(e) => updateDraft("expected_delivery_date", e.target.value)}
+                min={todayStr}
+                tabIndex={-1}
+                aria-label={t("deliveryDate")}
+                className="sr-only"
+              />
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
