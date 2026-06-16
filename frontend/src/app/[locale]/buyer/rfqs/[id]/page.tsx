@@ -700,10 +700,34 @@ function QuoteLineRow({
         <td className="px-5 py-3 text-right text-gray-800">
           {qty} {uom}
         </td>
-        <td className="px-5 py-3 text-right font-semibold text-gray-800">
-          {qi.unit_price != null
-            ? formatCurrency(Number(qi.unit_price), currency, locale)
-            : "—"}
+        <td className="px-5 py-3 text-right">
+          <div className="font-semibold text-gray-800">
+            {qi.unit_price != null
+              ? formatCurrency(Number(qi.unit_price), currency, locale)
+              : "—"}
+          </div>
+          {qi.tiers.length > 0 && (
+            <div className="mt-1">
+              <button type="button" onClick={() => setShowTiers(!showTiers)}
+                className="text-[10px] font-medium text-[#00505a] hover:underline">
+                {tQ("tiers")} ({qi.tiers.length}) {showTiers ? "▲" : "▼"}
+              </button>
+              {showTiers && (
+                <div className="mt-1 space-y-0.5 text-left">
+                  {[...qi.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, idx, sorted) => {
+                    const next = sorted[idx + 1];
+                    const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                    return (
+                      <div key={idx} className="text-[10px] text-gray-500">
+                        <span className="inline-block w-16">{label}</span>
+                        <span className="font-semibold text-[#00505a]">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </td>
         <td className="px-5 py-3 text-right text-gray-600">
           {qi.moq != null ? Number(qi.moq) : "—"}
@@ -720,43 +744,6 @@ function QuoteLineRow({
             : "—"}
         </td>
       </tr>
-      {/* 阶梯价展开 */}
-      {qi.tiers.length > 0 && (
-        <tr className="border-t border-gray-50">
-          <td colSpan={8} className="px-5 py-2">
-            <button
-              type="button"
-              onClick={() => setShowTiers(!showTiers)}
-              className="text-xs font-medium text-[#00505a] hover:underline"
-            >
-              {tQ("tiers")} ({qi.tiers.length})
-            </button>
-            {showTiers && (
-              <div className="mt-1.5 space-y-0.5">
-                {[...qi.tiers]
-                  .sort((a, b) => a.min_qty - b.min_qty)
-                  .map((tier, idx, sorted) => {
-                    const next = sorted[idx + 1];
-                    const rangeLabel = next
-                      ? `${tier.min_qty} ~ ${next.min_qty - 1}`
-                      : `≥ ${tier.min_qty}`;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-4 rounded px-2 py-1 text-xs text-gray-600"
-                      >
-                        <span className="w-24">{rangeLabel}</span>
-                        <span className="font-semibold text-[#00505a]">
-                          {formatCurrency(Number(tier.unit_price), currency, locale)}
-                        </span>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </td>
-        </tr>
-      )}
     </>
   );
 }
