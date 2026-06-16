@@ -101,7 +101,7 @@ class Settings(BaseSettings):
     TRUST_INBOUND_TRACE_ID: bool = False
 
     # WhatsApp 客服号码(允许带 +、空格、横线,解析时规范化)
-    WHATSAPP_DEFAULT_NUMBER: str = ""
+    WHATSAPP_DEFAULT_NUMBER: str = "+255 697 123 456"
 
     # Refresh token cookie 配置(本机 http 开发用 SECURE=False;生产 https 必须 True)
     REFRESH_COOKIE_NAME: str = "refresh_token"
