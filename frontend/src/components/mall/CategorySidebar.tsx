@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type MouseEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
 
@@ -27,17 +27,27 @@ function getInitialLetter(name: string): string {
 /**
  * 商城左侧品类导航侧栏 — 深青风格 + 首字母圆角图标。
  * 参考 HTML .side-card + .category-list
+ *
+ * prefCodes: 买方的经营品类偏好 codes，有值时默认只显示这些 L1 品类
+ * showAllCategories: 是否展开显示全部品类
+ * onToggleAllCategories: 切换展开/收起
  */
 export function CategorySidebar({
   activeCategoryCode = "",
   showQuickLinks = false,
   showFeatured = false,
   onFeaturedToggle,
+  prefCodes,
+  showAllCategories = false,
+  onToggleAllCategories,
 }: {
   activeCategoryCode?: string;
   showQuickLinks?: boolean;
   showFeatured?: boolean;
   onFeaturedToggle?: () => void;
+  prefCodes?: string[];
+  showAllCategories?: boolean;
+  onToggleAllCategories?: () => void;
 }) {
   const router = useRouter();
   const locale = useLocale();
@@ -48,6 +58,13 @@ export function CategorySidebar({
   const [flyoutTop, setFlyoutTop] = useState(0);
   const asideRef = useRef<HTMLElement>(null);
   const hoveredCategory = categoryTree.find((cat) => cat.code === hoveredLevel1);
+
+  // 当有偏好且未展开全部时，只显示偏好品类
+  const hasPref = !!prefCodes && prefCodes.length > 0;
+  const filteredTree =
+    hasPref && !showAllCategories
+      ? categoryTree.filter((cat) => prefCodes!.includes(cat.code))
+      : categoryTree;
 
   const handleCategoryClick = (code: string, closeHover = true) => {
     const next = activeCategoryCode === code ? "" : code;
@@ -116,11 +133,13 @@ export function CategorySidebar({
             {loadingCategories ? (
               <li className="px-3 py-2 text-xs text-muted">{t("loadError")}...</li>
             ) : (
-              categoryTree.map((cat) => {
+              filteredTree.map((cat) => {
                 const isActive = activeCategoryCode === cat.code ||
                   (activeCategoryCode && categoryContainsCode(cat, activeCategoryCode));
                 const isHovered = hoveredLevel1 === cat.code;
                 const letter = getInitialLetter(cat.name);
+                // 展开全部时，对偏好品类加小圆点标记
+                const isPref = hasPref && showAllCategories && prefCodes!.includes(cat.code);
 
                 return (
                   <li key={cat.code} className="relative">
@@ -137,9 +156,16 @@ export function CategorySidebar({
                       <LetterIcon letter={letter} active={!!isActive} />
 
                       {/* 品类名 */}
-                      <span className="min-w-0">
+                      <span className="min-w-0 relative">
                         <span className="block text-[13px] font-extrabold leading-tight truncate">
                           {cat.name}
+                          {/* 偏好品类小圆点标记 */}
+                          {isPref && (
+                            <span
+                              className="inline-block ml-1.5 w-1.5 h-1.5 rounded-full bg-teal-500 align-middle"
+                              title={t("myCategories")}
+                            />
+                          )}
                         </span>
                         {cat.children && cat.children.length > 0 && (
                           <span className="block text-[11px] text-muted mt-0.5 truncate">
@@ -160,6 +186,36 @@ export function CategorySidebar({
             )}
           </ul>
         </div>
+
+        {/* 偏好品类筛选提示 + 展开/收起切换链接 */}
+        {hasPref && onToggleAllCategories && (
+          <div className="mt-2 px-1">
+            {!showAllCategories ? (
+              // 当前只显示偏好品类 — 提示 + "查看全部品类"链接
+              <div className="text-center">
+                <span className="block text-[11px] text-muted mb-1">
+                  {t("prefFilterActive", { count: prefCodes!.length })}
+                </span>
+                <button
+                  onClick={onToggleAllCategories}
+                  className="text-[12px] text-teal-600 hover:text-teal-800 hover:underline transition-colors"
+                >
+                  {t("viewAllCategories")}
+                </button>
+              </div>
+            ) : (
+              // 当前显示全部 — "仅看我的品类"折叠链接
+              <div className="text-center">
+                <button
+                  onClick={onToggleAllCategories}
+                  className="text-[12px] text-teal-600 hover:text-teal-800 hover:underline transition-colors"
+                >
+                  {t("myCategories")}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 底部 CTA */}
         <div
