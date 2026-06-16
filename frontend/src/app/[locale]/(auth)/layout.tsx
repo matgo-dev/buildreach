@@ -88,16 +88,21 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a2e2e] via-[#0D4D4D] to-[#1a6b6b] p-4">
-      {/* 背景视频（静音循环，降级到渐变） */}
+      {/* 背景视频（静音循环，半透明叠加在渐变上） */}
       <video
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 h-full w-full object-cover opacity-30"
+        className="absolute inset-0 h-full w-full object-cover opacity-20"
       >
         <source src="/uploads/hero-video.mp4" type="video/mp4" />
       </video>
+      {/* 背景图兜底（视频未加载时用静态图） */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-15"
+        style={{ backgroundImage: "url(/uploads/hero-bg.jpg)" }}
+      />
 
       {/* 语言切换 */}
       <div className="absolute right-4 top-4 z-10">
