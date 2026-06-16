@@ -896,6 +896,7 @@ function RfqCreateContent() {
             </label>
             <input
               type="date"
+              lang={locale}
               value={draft.expected_delivery_date}
               onChange={(e) => updateDraft("expected_delivery_date", e.target.value)}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}

@@ -488,7 +488,7 @@ function RfqEditContent() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryDate")}</label>
-            <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} min={todayStr}
+            <input type="date" lang={locale} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} min={todayStr}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
           </div>
