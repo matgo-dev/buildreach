@@ -40,7 +40,9 @@
       "permission_denied": "You do not have permission to perform this action",
       "not_authenticated": "Please login first",
       "account_disabled": "Account has been disabled",
-      "password_change_required": "Please change your password first"
+      "password_change_required": "Please change your password first",
+      "phone_format_invalid": "Invalid phone number format",
+      "phone_region_unsupported": "Phone number region is not supported"
     },
     "validation": {
       "failed": "Validation failed, please check the form",
