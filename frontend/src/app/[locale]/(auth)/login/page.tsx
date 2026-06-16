@@ -21,6 +21,16 @@ function looksLikePhone(v: string): boolean {
   return s.startsWith("+") || (/^\d+$/.test(s) && s.length >= 7);
 }
 
+/** 根据号码自动推断国家码 */
+function guessPhoneRegion(v: string): string {
+  const s = v.trim();
+  if (s.startsWith("+86")) return "CN";
+  if (s.startsWith("+255")) return "TZ";
+  // 纯数字 11 位且 1 开头 → 中国号
+  if (/^1[3-9]\d{9}$/.test(s)) return "CN";
+  return "TZ";
+}
+
 function LoginContent() {
   const t = useTranslations("auth.login");
   const tc = useTranslations("common");
@@ -37,6 +47,11 @@ function LoginContent() {
   const login = useLogin();
 
   const isPhone = looksLikePhone(identifier);
+
+  // identifier 变化时自动推断国家码（含浏览器 autofill）
+  useEffect(() => {
+    if (isPhone) setPhoneRegion(guessPhoneRegion(identifier));
+  }, [identifier, isPhone]);
 
   // 注册成功跳转过来时,自动填充刚才提交的凭证(sessionStorage,一次性消费)
   useEffect(() => {
@@ -126,7 +141,12 @@ function LoginContent() {
               id="identifier"
               type="text"
               value={identifier}
-              onChange={(e) => { setIdentifier(e.target.value); if (idErr) setIdErr(null); }}
+              onChange={(e) => {
+                const v = e.target.value;
+                setIdentifier(v);
+                if (looksLikePhone(v)) setPhoneRegion(guessPhoneRegion(v));
+                if (idErr) setIdErr(null);
+              }}
               onBlur={() => setIdErr(identifier ? null : t("identifier_required"))}
               placeholder={t("identifier_placeholder")}
               autoComplete="username"

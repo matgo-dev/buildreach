@@ -227,10 +227,7 @@ export function CategorySidebar({
           <MallButton
             variant="gold"
             block
-            onClick={() => {
-              if (onFeaturedToggle) onFeaturedToggle();
-              else router.push(`/${locale}/mall?featured=true`);
-            }}
+            onClick={() => router.push(`/${locale}/buyer/cart`)}
           >
             {t("requestQuote")}
           </MallButton>
