@@ -93,6 +93,29 @@ function OperatorRfqListContent() {
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        {/* 范围 toggle */}
+        <div className="flex rounded-lg border border-gray-200">
+          <button
+            type="button"
+            onClick={() => { setMineFilter(false); setPage(1); }}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              !mineFilter ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {t("filterAll")}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMineFilter(true); setPage(1); }}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              mineFilter ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {t("filterMyCreated")}
+          </button>
+        </div>
+
+        {/* 状态筛选 */}
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
@@ -104,15 +127,6 @@ function OperatorRfqListContent() {
             </option>
           ))}
         </select>
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={mineFilter}
-            onChange={(e) => { setMineFilter(e.target.checked); setPage(1); }}
-            className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          {t("filterMyCreated")}
-        </label>
       </div>
 
       {/* 表格 */}
@@ -188,6 +202,15 @@ function OperatorRfqListContent() {
                             {t("quoteBackfill")}
                           </Link>
                         </>
+                      )}
+                      {rfq.status === "REJECTED" && (
+                        <Link
+                          href={`/${locale}/operator/rfqs/${rfq.id}/quote`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          <FileEdit className="h-3.5 w-3.5" />
+                          {t("quoteBackfill")}
+                        </Link>
                       )}
                     </div>
                   </td>

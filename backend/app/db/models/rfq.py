@@ -37,6 +37,7 @@ class RfqStatus:
         SUBMITTED: (PROCESSING, DRAFT, CANCELLED),
         PROCESSING: (QUOTED, CANCELLED),
         QUOTED: (ACCEPTED, REJECTED, EXPIRED, CANCELLED),
+        REJECTED: (QUOTED,),  # 运营可对被拒报价重报
     }
 
     # 买方可撤销的状态（PROCESSING/QUOTED 后买方硬禁撤销）
