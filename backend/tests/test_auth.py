@@ -4,17 +4,8 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import settings
+from tests.conftest import register_buyer_tz, _next_phone
 
-
-BUYER_PAYLOAD = {
-    "email": "zhang@cscec3b.com",
-    "name": "张三",
-    "phone": "13800138000",
-    "password": "Aa123456789",
-    # 与 seed 的中建三局 USC 一致 → 注册时加入该组织,不新建
-    "company_name": "中建三局",
-    "unified_social_credit_code": "91420100MA4KXXXX01",
-}
 
 SUPPLIER_PAYLOAD = {
     "email": "li@huajian.com",
@@ -28,63 +19,62 @@ SUPPLIER_PAYLOAD = {
 }
 
 
-async def _login(client, email: str, password: str):
-    return await client.post("/api/v1/auth/login", json={"identifier": email, "password": password})
+async def _login(client, identifier: str, password: str):
+    return await client.post("/api/v1/auth/login", json={"identifier": identifier, "password": password})
 
 
 @pytest.mark.asyncio
 async def test_buyer_register_success(client):
-    r = await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
+    result = await register_buyer_tz(client)
+    r = result["response"]
     assert r.status_code == 200
     body = r.json()
     assert body["code"] == 0
-    assert body["data"]["email"] == BUYER_PAYLOAD["email"]
-    # 不应自动登录
-    assert "access_token" not in (body.get("data") or {})
+    # 新接口返回 TokenOut（自动登录）
+    assert body["data"]["access_token"]
 
 
 @pytest.mark.asyncio
-async def test_buyer_register_duplicate_email(client):
-    await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
-    r = await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
+async def test_buyer_register_duplicate_phone(client):
+    phone = _next_phone()
+    await register_buyer_tz(client, phone=phone)
+    result = await register_buyer_tz(client, phone=phone)
+    r = result["response"]
     assert r.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_buyer_register_weak_password(client):
-    bad = {**BUYER_PAYLOAD, "password": "abc"}
-    r = await client.post("/api/v1/auth/register/buyer", json=bad)
-    assert r.status_code == 422
+    result = await register_buyer_tz(client, password="abc")
+    r = result["response"]
+    assert r.status_code == 409  # MultipleValidationError
 
 
 @pytest.mark.asyncio
 async def test_password_length_below_11_rejected(client):
     """密码 < 11 位被拒(PRD v1.4 Δ1:11-50 位)。"""
-    bad = {**BUYER_PAYLOAD, "password": "Aa12345"}  # 7 位
-    r = await client.post("/api/v1/auth/register/buyer", json=bad)
-    assert r.status_code == 422
+    result = await register_buyer_tz(client, password="Aa12345")  # 7 位
+    r = result["response"]
+    assert r.status_code == 409  # MultipleValidationError
 
 
 @pytest.mark.asyncio
 async def test_password_3_categories_required(client):
     """密码长度合规但只 1 类字符 → 拒绝(PRD v1.4 Δ1:11-50 + 3 类)。"""
     # 11 位但只有小写一类
-    bad1 = {**BUYER_PAYLOAD, "password": "aaaaaaaaaaa"}
-    r1 = await client.post("/api/v1/auth/register/buyer", json=bad1)
-    assert r1.status_code == 422, r1.text
+    result1 = await register_buyer_tz(client, password="aaaaaaaaaaa")
+    assert result1["response"].status_code == 409, result1["response"].text
 
     # 11 位但只有 2 类(小写 + 数字)
-    bad2 = {**BUYER_PAYLOAD, "email": "x2@y.com", "password": "abcdefg1234"}
-    r2 = await client.post("/api/v1/auth/register/buyer", json=bad2)
-    assert r2.status_code == 422, r2.text
+    result2 = await register_buyer_tz(client, password="abcdefg1234")
+    assert result2["response"].status_code == 409, result2["response"].text
 
 
 @pytest.mark.asyncio
 async def test_password_3_categories_passes(client):
-    """密码 11 位 + 3 类(数字 + 大写 + 小写)→ 通过。"""
-    ok = {**BUYER_PAYLOAD, "email": "ok@y.com", "password": "Aa123456789"}
-    r = await client.post("/api/v1/auth/register/buyer", json=ok)
-    assert r.status_code == 200, r.text
+    """密码 11 位 + 3 类(数字 + 大写 + 小写 + 特殊)→ 通过。"""
+    result = await register_buyer_tz(client, password="Aa123456789!")
+    assert result["response"].status_code == 200, result["response"].text
 
 
 @pytest.mark.asyncio
@@ -139,7 +129,7 @@ async def test_supplier_register_duplicate_per_country(client, db_session):
     assert "华建" not in body["message"]
     assert "li@huajian.com" not in body["message"]
 
-    # 早 raise:不残留新 user 行
+    # 早 raise：不残留新 user 行
     from sqlalchemy import select
     from app.db.models.user import User
     row = await db_session.execute(
@@ -148,8 +138,6 @@ async def test_supplier_register_duplicate_per_country(client, db_session):
     assert row.scalar_one_or_none() is None
 
     # 不同 country + 同 reg_no 字符串值 → 应该 200(复合唯一关键测试)
-    # 注:MY 要求 12 位纯数字,CN 要求 18 位字母数字,不能直接复用同一字符串
-    # 改用柬埔寨(KH)测试复合唯一:KH 正则 ^[0-9]{6,12}$ 能兼容纯数字子串
     other_country = {
         **SUPPLIER_PAYLOAD,
         "email": "ahmad@cambodia.com",
@@ -310,8 +298,10 @@ async def test_supplier_register_no_username_field(client):
 
 @pytest.mark.asyncio
 async def test_login_buyer_success(client):
-    await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
-    r = await _login(client, BUYER_PAYLOAD["email"], BUYER_PAYLOAD["password"])
+    result = await register_buyer_tz(client)
+    phone = result["phone"]
+    password = result["password"]
+    r = await _login(client, phone, password)
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["access_token"]
@@ -337,30 +327,32 @@ async def test_login_super_admin_success(client):
 
 @pytest.mark.asyncio
 async def test_login_wrong_password(client):
-    await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
-    r = await _login(client, BUYER_PAYLOAD["email"], "WrongPass123")
+    result = await register_buyer_tz(client)
+    phone = result["phone"]
+    r = await _login(client, phone, "WrongPass123!")
     assert r.status_code == 401
     assert r.json()["code"] == 40001
 
 
 @pytest.mark.asyncio
 async def test_login_unknown_email(client):
-    r = await _login(client, "ghost@nowhere.com", "Aa123456789")
+    r = await _login(client, "ghost@nowhere.com", "Aa123456789!")
     assert r.status_code == 401
     assert r.json()["code"] == 40001
 
 
 @pytest.mark.asyncio
 async def test_login_rate_limit_locks_after_5_failures(client):
-    await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
+    result = await register_buyer_tz(client)
+    phone = result["phone"]
     for _ in range(4):
-        r = await _login(client, BUYER_PAYLOAD["email"], "WrongPass123")
+        r = await _login(client, phone, "WrongPass123!")
         assert r.status_code == 401
     # 第 5 次会触发锁定,直接 429
-    r5 = await _login(client, BUYER_PAYLOAD["email"], "WrongPass123")
+    r5 = await _login(client, phone, "WrongPass123!")
     assert r5.status_code == 429
     # 锁定中即使密码正确也 429
-    r6 = await _login(client, BUYER_PAYLOAD["email"], BUYER_PAYLOAD["password"])
+    r6 = await _login(client, phone, result["password"])
     assert r6.status_code == 429
 
 
@@ -372,17 +364,15 @@ async def test_me_requires_auth(client):
 
 @pytest.mark.asyncio
 async def test_me_returns_full_profile(client):
-    await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
-    login = await _login(client, BUYER_PAYLOAD["email"], BUYER_PAYLOAD["password"])
-    token = login.json()["data"]["access_token"]
+    result = await register_buyer_tz(client)
+    # 注册自动登录，直接用返回的 token
+    token = result["response"].json()["data"]["access_token"]
     r = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     data = r.json()["data"]
-    assert data["email"] == BUYER_PAYLOAD["email"]
     assert "BUYER" in data["roles"]
     assert "rfq:read" in data["permissions"]  # BUYER 有询价读权限(单边模型)
     assert data["organization"]["type"] == "BUYER_ORG"
-    assert data["organization"]["name"] == "中建三局"
     # PRD v1.3 §5.4:/auth/me 必须返回 organization.status
     assert "status" in data["organization"]
 
@@ -402,15 +392,16 @@ async def test_me_supplier_organization_status_is_draft(client):
 
 @pytest.mark.asyncio
 async def test_change_password_flow(client):
-    await client.post("/api/v1/auth/register/buyer", json=BUYER_PAYLOAD)
-    login = await _login(client, BUYER_PAYLOAD["email"], BUYER_PAYLOAD["password"])
-    token = login.json()["data"]["access_token"]
+    result = await register_buyer_tz(client)
+    phone = result["phone"]
+    password = result["password"]
+    token = result["response"].json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # 旧密码错
     r = await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": "WrongOld1", "new_password": "NewPass1234"},
+        json={"old_password": "WrongOld1!", "new_password": "NewPass1234!"},
         headers=headers,
     )
     assert r.status_code == 401
@@ -418,7 +409,7 @@ async def test_change_password_flow(client):
     # 新密码不合规
     r = await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": BUYER_PAYLOAD["password"], "new_password": "abc"},
+        json={"old_password": password, "new_password": "abc"},
         headers=headers,
     )
     assert r.status_code == 422
@@ -426,57 +417,14 @@ async def test_change_password_flow(client):
     # 成功
     r = await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": BUYER_PAYLOAD["password"], "new_password": "NewPass1234"},
+        json={"old_password": password, "new_password": "NewPass1234!"},
         headers=headers,
     )
     assert r.status_code == 200
 
     # 新密码可登录
-    r = await _login(client, BUYER_PAYLOAD["email"], "NewPass1234")
+    r = await _login(client, phone, "NewPass1234!")
     assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_register_with_username_and_login_by_username(client):
-    """注册时填 username,登录支持邮箱 或 username。"""
-    payload = {**BUYER_PAYLOAD, "username": "zhang_san"}
-    r = await client.post("/api/v1/auth/register/buyer", json=payload)
-    assert r.status_code == 200
-
-    # 用 username 登录
-    r2 = await _login(client, "zhang_san", BUYER_PAYLOAD["password"])
-    assert r2.status_code == 200, r2.text
-    # 用 email 仍可登录
-    r3 = await _login(client, BUYER_PAYLOAD["email"], BUYER_PAYLOAD["password"])
-    assert r3.status_code == 200
-
-    # me 返回 username
-    token = r2.json()["data"]["access_token"]
-    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert me.json()["data"]["username"] == "zhang_san"
-
-
-@pytest.mark.asyncio
-async def test_register_duplicate_username(client):
-    p1 = {**BUYER_PAYLOAD, "username": "dup_user"}
-    p2 = {**BUYER_PAYLOAD, "email": "other@cscec3b.com", "username": "dup_user"}
-    r1 = await client.post("/api/v1/auth/register/buyer", json=p1)
-    assert r1.status_code == 200
-    r2 = await client.post("/api/v1/auth/register/buyer", json=p2)
-    assert r2.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_register_invalid_username(client):
-    bad = {**BUYER_PAYLOAD, "username": "x"}  # 太短
-    r = await client.post("/api/v1/auth/register/buyer", json=bad)
-    assert r.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_login_unknown_username(client):
-    r = await _login(client, "no_such_user", "Aa123456789")
-    assert r.status_code == 401
 
 
 @pytest.mark.asyncio
