@@ -34,6 +34,7 @@ import {
 } from "@/lib/validators";
 import type { CountryCode, LanguageCode } from "@/config/country-registration-rules";
 import { Link } from "@/i18n/navigation";
+import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 
 import { StepIndicator } from "./_components/StepIndicator";
 import { StepCountry } from "./_components/StepCountry";
@@ -61,8 +62,8 @@ function buyerInputCls(error: string | null, extra = ""): string {
 
 // 手机号前端轻量校验(最终以后端 E.164 归一化为准)
 const PHONE_REGION_CONFIG = {
-  TZ: { dialCode: "+255", flag: "🇹🇿", label: "Tanzania", re: /^\d{9}$/ },
-  CN: { dialCode: "+86", flag: "🇨🇳", label: "China", re: /^1[3-9]\d{9}$/ },
+  TZ: { dialCode: "+255", flag: "🇹🇿", label: "Tanzania", re: /^\d{9}$/, maxLen: 9, phKey: "ph_phone_tz", errKey: "err_phone_format_tz" },
+  CN: { dialCode: "+86", flag: "🇨🇳", label: "China", re: /^1[3-9]\d{9}$/, maxLen: 11, phKey: "ph_phone_cn", errKey: "err_phone_format_cn" },
 } as const;
 type PhoneRegion = keyof typeof PHONE_REGION_CONFIG;
 // 允许的上传格式
@@ -234,10 +235,12 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <div className="mt-3 text-center">
+      <div className="mt-3 flex items-center justify-center gap-3">
         <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
           {tc("back_to_home")}
         </Link>
+        <span className="text-xs text-gray-300">|</span>
+        <LocaleSwitcher variant="full" />
       </div>
     </>
   );
@@ -340,8 +343,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const t = useTranslations("buyerRegister");
   const locale = useLocale();
 
-  // 表单字段
-  const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>("TZ");
+  // 表单字段 — 中文环境默认 CN，其他默认 TZ
+  const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>(locale === "zh" ? "CN" : "TZ");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -378,6 +381,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   // 缩略图预览 URL 管理
   const [sfPreviews, setSfPreviews] = useState<string[]>([]);
   const [licPreviews, setLicPreviews] = useState<string[]>([]);
+  // 图片放大预览
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const sfInputRef = useRef<HTMLInputElement>(null);
   const licInputRef = useRef<HTMLInputElement>(null);
 
@@ -399,7 +404,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     switch (field) {
       case "phone":
         if (!phone) return t("err_phone_required");
-        if (!PHONE_REGION_CONFIG[phoneRegion].re.test(phone)) return t("err_phone_format");
+        if (!PHONE_REGION_CONFIG[phoneRegion].re.test(phone)) return t(PHONE_REGION_CONFIG[phoneRegion].errKey);
         return null;
       case "password":
         return validatePassword(password);
@@ -596,7 +601,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate autoComplete="off">
+        {/* 隐藏陷阱：吸收浏览器 autofill，防止覆盖手机号 */}
+        <input type="text" name="hidden_username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
+        <input type="password" name="hidden_password" autoComplete="new-password" className="hidden" tabIndex={-1} aria-hidden="true" />
         {/* 1. Phone / WhatsApp */}
         <div className="space-y-1.5" id="field-phone">
           <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
@@ -606,8 +614,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             <select
               value={phoneRegion}
               onChange={(e) => {
-                setPhoneRegion(e.target.value as PhoneRegion);
-                setPhone("");
+                const newRegion = e.target.value as PhoneRegion;
+                setPhoneRegion(newRegion);
+                // 截断到新国家的最大长度，不清空已输入的号码
+                setPhone((prev) => prev.slice(0, PHONE_REGION_CONFIG[newRegion].maxLen));
                 if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
               }}
               className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
@@ -622,15 +632,14 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               id="phone" name="phone" type="tel"
               value={phone}
               onChange={(e) => {
-                const maxLen = phoneRegion === "CN" ? 11 : 9;
-                const v = e.target.value.replace(/\D/g, "").slice(0, maxLen);
+                const v = e.target.value.replace(/\D/g, "").slice(0, PHONE_REGION_CONFIG[phoneRegion].maxLen);
                 setPhone(v);
                 if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
               }}
               onBlur={() => touch("phone")}
-              placeholder={t("ph_phone")}
+              placeholder={t(PHONE_REGION_CONFIG[phoneRegion].phKey)}
               inputMode="numeric"
-              autoComplete="tel"
+              autoComplete="off"
               className={buyerInputCls(errOf("phone"), "rounded-l-none")}
             />
           </div>
@@ -844,7 +853,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           <div className="flex flex-wrap gap-2">
             {sfPreviews.map((url, idx) => (
               <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
-                <img src={url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                  onClick={() => setPreviewUrl(url)}
+                />
                 <button
                   type="button"
                   onClick={() => removeStorefrontImage(idx)}
@@ -913,7 +925,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           <div className="flex flex-wrap gap-2">
             {licPreviews.map((url, idx) => (
               <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
-                <img src={url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                  onClick={() => setPreviewUrl(url)}
+                />
                 <button
                   type="button"
                   onClick={() => removeLicenseImage(idx)}
@@ -964,6 +979,25 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {t("terms_agree")}
         </p>
       </form>
+
+      {/* 图片放大预览弹窗 */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div className="relative max-h-[85vh] max-w-[85vw]">
+            <img src={previewUrl} alt="" className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain" />
+            <button
+              type="button"
+              onClick={() => setPreviewUrl(null)}
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
