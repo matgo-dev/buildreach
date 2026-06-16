@@ -202,6 +202,10 @@ async def get_product(
         unit=p.unit,
         moq=p.moq,
         moq_unit=p.moq_unit,
+        lead_time_min=p.lead_time_min,
+        lead_time_max=p.lead_time_max,
+        gross_weight_kg=p.gross_weight_kg,
+        volume_cbm=p.volume_cbm,
         attribute_groups=_build_attribute_groups(spu_attrs, alive_imgs, locale),
         images=all_images,
     ).model_dump()

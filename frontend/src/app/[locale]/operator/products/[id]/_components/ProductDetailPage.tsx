@@ -157,6 +157,14 @@ export default function ProductDetailPage() {
       selling_points: lf(product.selling_points_zh, product.selling_points_en, product.selling_points),
       is_featured: product.is_featured,
       supply_mode: product.supply_mode,
+      // 物流参数（SPU 级）
+      lead_time_min: product.lead_time_min,
+      lead_time_max: product.lead_time_max,
+      packing_quantity: product.packing_quantity,
+      gross_weight_kg: product.gross_weight_kg,
+      volume_cbm: product.volume_cbm,
+      can_consolidate: product.can_consolidate,
+      cargo_type: product.cargo_type,
       attributes: product.attributes.filter((a) => a.sku_id == null).map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
     });
     spuDirtyRef.current = false;

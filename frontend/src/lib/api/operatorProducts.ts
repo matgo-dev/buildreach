@@ -120,6 +120,14 @@ export interface ProductCreateInput {
   supply_mode?: string;
   unit?: SkuUnitCode;
   currency?: string;
+  // 物流参数（SPU 级）
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  packing_quantity?: number | null;
+  gross_weight_kg?: number | null;
+  volume_cbm?: number | null;
+  can_consolidate?: boolean;
+  cargo_type?: string | null;
   attributes?: ProductAttrInput[] | null;
 }
 
@@ -229,6 +237,17 @@ export interface ProductOperatorDetail {
   supply_mode: string;
   unit: string;
   currency: string;
+  moq: number | null;
+  moq_unit: string | null;
+  ref_price_tiers: unknown[] | null;
+  // 物流参数（SPU 级）
+  lead_time_min: number | null;
+  lead_time_max: number | null;
+  packing_quantity: number | null;
+  gross_weight_kg: number | null;
+  volume_cbm: number | null;
+  can_consolidate: boolean;
+  cargo_type: string | null;
   status: string;
   created_by_name: string;
   skus: SkuOperatorDetail[];
@@ -250,6 +269,14 @@ export interface ProductUpdateInput {
   selling_points?: string | null;
   is_featured?: boolean | null;
   supply_mode?: string | null;
+  // 物流参数（SPU 级）
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  packing_quantity?: number | null;
+  gross_weight_kg?: number | null;
+  volume_cbm?: number | null;
+  can_consolidate?: boolean | null;
+  cargo_type?: string | null;
   attributes?: ProductAttrInput[] | null;
 }
 
@@ -363,6 +390,14 @@ export interface ProductAggregateCreateInput {
   supply_mode?: string;
   unit?: SkuUnitCode;
   currency?: string;
+  // 物流参数（SPU 级）
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  packing_quantity?: number | null;
+  gross_weight_kg?: number | null;
+  volume_cbm?: number | null;
+  can_consolidate?: boolean;
+  cargo_type?: string | null;
   attributes?: ProductAttrInput[] | null;
   skus: AggregateSkuInput[];
   images?: ImageRefInput[] | null;
@@ -380,6 +415,14 @@ export interface ProductAggregateSaveInput {
   supply_mode?: string | null;
   unit?: SkuUnitCode | null;
   currency?: string | null;
+  // 物流参数（SPU 级）
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  packing_quantity?: number | null;
+  gross_weight_kg?: number | null;
+  volume_cbm?: number | null;
+  can_consolidate?: boolean | null;
+  cargo_type?: string | null;
   attributes?: ProductAttrInput[] | null;
   skus?: AggregateSkuInput[] | null;
   images?: ImageRefInput[] | null;

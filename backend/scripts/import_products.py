@@ -679,6 +679,11 @@ def import_offer(
         except (TypeError, ValueError):
             moq_value = None
 
+    # 物流参数:offer.json 里的 packing 对象
+    packing_obj = data.get("packing") or {}
+    gross_weight_kg = _parse_decimal(packing_obj.get("gross_weight_kg"))
+    volume_cbm = _parse_package_size_to_cbm(packing_obj.get("package_size"))
+
     # ── 3. 幂等 upsert by spu_code ──
     existing = db.execute(
         select(Product).where(Product.spu_code == spu_code)
@@ -713,6 +718,10 @@ def import_offer(
             product.moq_unit = moq_unit
         if ref_price_tiers:
             product.ref_price_tiers = ref_price_tiers
+        if gross_weight_kg is not None:
+            product.gross_weight_kg = gross_weight_kg
+        if volume_cbm is not None:
+            product.volume_cbm = volume_cbm
         product.source = run_meta.source
         product.last_ingest_run_id = run.id
         product.updated_at = _utcnow()
@@ -750,6 +759,8 @@ def import_offer(
             moq=moq_value,
             moq_unit=moq_unit,
             ref_price_tiers=ref_price_tiers or None,
+            gross_weight_kg=gross_weight_kg,
+            volume_cbm=volume_cbm,
             source=run_meta.source,
             last_ingest_run_id=run.id,
             status=ProductStatus.DRAFT,
@@ -903,6 +914,45 @@ def import_offer(
             "offer_id": offer_id,
         },
     )
+
+
+def _parse_decimal(raw: str | None) -> float | None:
+    """安全解析数值字符串,无效返回 None。"""
+    if not raw:
+        return None
+    try:
+        val = float(raw)
+        return val if val > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_package_size_to_cbm(raw: str | None) -> float | None:
+    """从 "116X76X16厘米" 格式解析体积,返回 CBM。
+
+    支持格式:
+    - "116X76X16厘米" / "116x76x16cm" → 长×宽×高(厘米) → CBM
+    - 数值间可有空格, 单位可有可无(默认厘米)
+    """
+    if not raw:
+        return None
+    import re
+    # 去掉中文/英文单位后缀
+    cleaned = re.sub(r"(厘米|cm|CM|毫米|mm|MM)\s*$", "", raw.strip(), flags=re.IGNORECASE)
+    is_mm = bool(re.search(r"(毫米|mm)", raw, re.IGNORECASE))
+    parts = re.split(r"[xX×*]\s*", cleaned.strip())
+    if len(parts) != 3:
+        return None
+    try:
+        dims = [float(p.strip()) for p in parts]
+    except (TypeError, ValueError):
+        return None
+    if any(d <= 0 for d in dims):
+        return None
+    # 厘米 → 米: ÷100; 毫米 → 米: ÷1000
+    divisor = 1000.0 if is_mm else 100.0
+    cbm = (dims[0] / divisor) * (dims[1] / divisor) * (dims[2] / divisor)
+    return round(cbm, 4) if cbm > 0 else None
 
 
 def _first_label(value: dict, *, preferred: str) -> str:
