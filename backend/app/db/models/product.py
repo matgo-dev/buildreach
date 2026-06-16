@@ -10,7 +10,7 @@ SKU 变体(颜色/材质/型号)在 product_skus 表。
 from __future__ import annotations
 
 from sqlalchemy import (
-    JSON, Boolean, ForeignKey, Index, Integer, String, Text,
+    JSON, Boolean, DECIMAL, ForeignKey, Index, Integer, String, Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -109,6 +109,19 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     # 最低起订量(SPU 级,抓数导入或运营手填)
     moq: Mapped[int | None] = mapped_column(Integer, nullable=True)
     moq_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    # 交期（天）
+    lead_time_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lead_time_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # 物流参数（单件维度，拼柜时 × 数量）
+    packing_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gross_weight_kg: Mapped[float | None] = mapped_column(DECIMAL(8, 2), nullable=True)
+    volume_cbm: Mapped[float | None] = mapped_column(DECIMAL(8, 4), nullable=True)
+    can_consolidate: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true",
+    )
+    cargo_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     supply_mode: Mapped[str] = mapped_column(
