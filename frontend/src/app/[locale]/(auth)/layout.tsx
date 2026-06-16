@@ -15,9 +15,6 @@ const LOCALES = [
 function AuthLocaleSwitcher() {
   const locale = useLocale();
   const rawPathname = usePathname();
-  const router = useRouter();
-  // 去掉 locale 前缀
-  const pathWithoutLocale = rawPathname.replace(new RegExp(`^/${locale}`), "") || "/";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -53,10 +50,18 @@ function AuthLocaleSwitcher() {
               onClick={() => {
                 setOpen(false);
                 if (l.code !== locale) {
-                  // 保留当前 search params（含 role 等状态），切 locale 前缀
-                  const search = window.location.search;
-                  const newPath = l.code === "zh" ? pathWithoutLocale : `/${l.code}${pathWithoutLocale}`;
-                  window.location.href = newPath + search;
+                  // 去掉当前 locale 前缀，加上目标 locale 前缀
+                  // as-needed 模式：zh 无前缀，en/sw 有前缀
+                  const allLocales = LOCALES.map((x) => x.code);
+                  let bare = rawPathname;
+                  for (const lc of allLocales) {
+                    if (bare.startsWith(`/${lc}/`) || bare === `/${lc}`) {
+                      bare = bare.slice(`/${lc}`.length) || "/";
+                      break;
+                    }
+                  }
+                  const newPath = l.code === "zh" ? bare : `/${l.code}${bare}`;
+                  window.location.href = newPath + window.location.search;
                 }
               }}
               className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors ${
