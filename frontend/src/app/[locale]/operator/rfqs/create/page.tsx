@@ -608,6 +608,7 @@ function CreateOnBehalfContent() {
             <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("deliveryDate")}</label>
             <input
               type="date"
+              lang={locale}
               value={deliveryDate}
               onChange={(e) => setDeliveryDate(e.target.value)}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"

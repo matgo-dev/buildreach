@@ -429,7 +429,7 @@ function QuoteBackfillContent() {
           </div>
           <div>
             <label className="mb-1 block text-xs text-gray-500">{t("validUntil")}</label>
-            <input type="date" value={header.valid_until} onChange={(e) => setHeader((h) => ({ ...h, valid_until: e.target.value }))}
+            <input type="date" lang={locale} value={header.valid_until} onChange={(e) => setHeader((h) => ({ ...h, valid_until: e.target.value }))}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()} min={new Date().toISOString().split("T")[0]}
               className="h-9 w-full cursor-pointer rounded-md border border-gray-200 px-2 text-sm text-gray-700 outline-none focus:border-blue-500" />
           </div>
