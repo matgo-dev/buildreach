@@ -16,7 +16,10 @@ from pydantic import BaseModel, Field
 
 class RfqItemInput(BaseModel):
     """创建询价单行项。"""
-    sku_id: int
+    product_id: int
+    selected_variants: list[dict[str, str]] = Field(default_factory=list)
+    # 前端传当前 locale 的 key+value，后端转为英文后存入 variant_snapshot
+    # 示例: [{"attr_name": "material_type", "value": "normal_white_with_film"}]
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
     target_unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
     remark: str | None = None
@@ -68,6 +71,14 @@ class RfqItemUpdate(BaseModel):
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
 
 
+class RfqItemEdit(BaseModel):
+    """运营编辑行项：可改变体、数量、备注。None = 不改该字段。"""
+    selected_variants: list[dict[str, str]] | None = None
+    quantity: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
+    target_unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
+    remark: str | None = None
+
+
 class RfqListQuery(BaseModel):
     """列表查询参数。"""
     page: int = Field(default=1, ge=1)
@@ -82,9 +93,10 @@ class RfqListQuery(BaseModel):
 class RfqItemPublic(BaseModel):
     """询价行项目(快照)。"""
     id: int
-    sku_id: int
+    product_id: int
+    variant_snapshot: list[dict] = []
+    variant_display: str | None = None  # 序列化时动态拼接，非数据库列
     product_name_snapshot: str | None = None
-    sku_spec_snapshot: str | None = None
     uom_snapshot: str | None = None
     quantity: Decimal
     target_unit_price: Decimal | None = None

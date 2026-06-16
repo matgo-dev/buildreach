@@ -1,7 +1,7 @@
 // 认证相关类型与 API 调用。
 
 import type { CountryCode, LanguageCode } from "@/config/country-registration-rules";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 
 export type RoleCode = "BUYER" | "SUPPLIER" | "OPERATOR" | "ADMIN";
 
@@ -55,24 +55,74 @@ export const authApi = {
       { noAuth: true }
     ),
 
-  registerBuyer: (payload: {
-    email: string;
-    username?: string;
-    name: string;
-    phone?: string;
+  registerBuyer: async (payload: {
+    phone: string;
+    phone_region?: string;
     password: string;
+    name: string;
     company_name: string;
-    unified_social_credit_code: string;
-  }) =>
-    api.post<{ user_id: number; email: string }>(
-      "/api/v1/auth/register/buyer",
-      payload,
-      { noAuth: true }
-    ),
+    address: string;
+    business_category_codes: string[];
+    email?: string;
+    tin?: string;
+    brela_no?: string;
+    storefront_images: File[];
+    license_images?: File[];
+    language_preference?: string;
+  }): Promise<LoginResult> => {
+    const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    const fd = new FormData();
+    fd.append("phone", payload.phone);
+    fd.append("phone_region", payload.phone_region || "TZ");
+    fd.append("password", payload.password);
+    fd.append("name", payload.name);
+    fd.append("company_name", payload.company_name);
+    fd.append("address", payload.address);
+    for (const code of payload.business_category_codes) {
+      fd.append("business_category_codes", code);
+    }
+    if (payload.email) fd.append("email", payload.email);
+    if (payload.tin) fd.append("tin", payload.tin);
+    if (payload.brela_no) fd.append("brela_no", payload.brela_no);
+    if (payload.language_preference) fd.append("language_preference", payload.language_preference);
+    for (const file of payload.storefront_images) {
+      fd.append("storefront_images", file);
+    }
+    if (payload.license_images) {
+      for (const file of payload.license_images) {
+        fd.append("license_images", file);
+      }
+    }
+    // multipart/form-data: 不设 Content-Type,让浏览器自动加 boundary
+    const lang = typeof document !== "undefined" ? document.documentElement.lang || "zh" : "zh";
+    const res = await fetch(`${BASE}/api/v1/auth/register/buyer`, {
+      method: "POST",
+      headers: { "Accept-Language": lang },
+      credentials: "include",
+      body: fd,
+    });
+    const json = await res.json();
+    if (!res.ok || json.code !== 0) {
+      throw new ApiError({
+        code: json?.code ?? res.status * 100,
+        message: json?.message ?? res.statusText ?? "Registration failed",
+        status: res.status,
+        traceId: json?.trace_id,
+        data: json?.data,
+        messageKey: json?.message_key,
+        messageParams: json?.message_params,
+      });
+    }
+    return json.data as LoginResult;
+  },
 
-  /** identifier 可为邮箱或用户名 */
-  login: (identifier: string, password: string) =>
-    api.post<LoginResult>("/api/v1/auth/login", { identifier, password }, { noAuth: true }),
+  /** identifier 可为邮箱、手机号或用户名 */
+  login: (identifier: string, password: string, phoneRegion?: string) =>
+    api.post<LoginResult>(
+      "/api/v1/auth/login",
+      { identifier, password, phone_region: phoneRegion || undefined },
+      { noAuth: true },
+    ),
 
   me: () => api.get<MeData>("/api/v1/auth/me"),
 

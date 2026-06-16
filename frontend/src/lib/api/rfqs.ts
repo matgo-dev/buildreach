@@ -8,7 +8,8 @@ import { api } from "../api";
 // ---------- 请求类型 ----------
 
 export interface RfqItemInput {
-  sku_id: number;
+  product_id: number;
+  selected_variants?: Array<{ attr_name: string; value: string }>;
   quantity: number;
   target_unit_price?: number;
   remark?: string;
@@ -53,9 +54,10 @@ export interface RfqListQuery {
 
 export interface RfqItemPublic {
   id: number;
-  sku_id: number;
+  product_id: number;
+  variant_snapshot: Array<{ attr_name: string; value: string }>;
+  variant_display: string | null;
   product_name_snapshot: string | null;
-  sku_spec_snapshot: string | null;
   uom_snapshot: string | null;
   quantity: number;
   target_unit_price: number | null;
@@ -158,11 +160,43 @@ export async function updateRfq(
   return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}`, data);
 }
 
-/** 草稿态编辑行项数量 */
+/** 编辑行项数量（DRAFT 买方 / PROCESSING 运营） */
 export async function updateRfqItemQty(
   rfqId: number,
   itemId: number,
   quantity: number,
 ): Promise<RfqBuyerPublic> {
   return api.patch<RfqBuyerPublic>(`/api/v1/rfqs/${rfqId}/items/${itemId}`, { quantity });
+}
+
+// ── 运营行项增删改（PROCESSING 态） ──────────────────────
+
+/** 添加询价行项（运营） */
+export async function addRfqItem(
+  rfqId: number,
+  payload: RfqItemInput,
+): Promise<RfqOperatorView> {
+  return api.post<RfqOperatorView>(`/api/v1/rfqs/${rfqId}/items`, payload);
+}
+
+/** 编辑询价行项（运营） */
+export async function editRfqItem(
+  rfqId: number,
+  itemId: number,
+  payload: {
+    selected_variants?: Array<{ attr_name: string; value: string }>;
+    quantity?: number;
+    target_unit_price?: number;
+    remark?: string;
+  },
+): Promise<RfqOperatorView> {
+  return api.put<RfqOperatorView>(`/api/v1/rfqs/${rfqId}/items/${itemId}`, payload);
+}
+
+/** 删除询价行项（运营） */
+export async function deleteRfqItem(
+  rfqId: number,
+  itemId: number,
+): Promise<RfqOperatorView> {
+  return api.delete<RfqOperatorView>(`/api/v1/rfqs/${rfqId}/items/${itemId}`);
 }

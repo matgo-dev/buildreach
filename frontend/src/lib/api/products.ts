@@ -11,30 +11,36 @@ export interface ProductPublic {
   id: number;
   spu_code: string;
   name: string;
+  description: string | null;
   category_code: string;
   category_name: string;
   origin: string;
   brand: string | null;
   certifications: string[] | null;
   is_featured: boolean;
+  supply_mode: string;
   main_image: string | null;
-  price_min: number | null;
-  price_max: number | null;
-  currency: string | null;
-  moq: number | null;
   unit: string | null;
-  lead_time_min: number | null;
-  lead_time_max: number | null;
-  sku_count: number;
+  moq: number | null;
+  moq_unit: string | null;
+  // 兼容字段:买方 API 已不返回,RFQ 模块仍引用
+  price_min?: number | null;
+  price_max?: number | null;
+  currency?: string | null;
+  lead_time_min?: number | null;
+  lead_time_max?: number | null;
+  sku_count?: number;
 }
 
 export interface ProductListParams {
   category_code?: string;
   keyword?: string;
   featured?: boolean;
-  sort?: "newest" | "price_asc" | "price_desc";
+  supply_mode?: string;
+  sort?: "newest";
   page?: number;
   size?: number;
+  all_categories?: boolean;
 }
 
 export interface ProductListResponse {
@@ -47,15 +53,6 @@ export interface ProductListResponse {
 
 // ---------- 详情 ----------
 
-export interface PriceTier {
-  id: number;
-  min_qty: number;
-  max_qty: number | null;
-  unit_price: number;
-  currency: string;
-  label: string | null;
-}
-
 export interface ProductImage {
   id: number;
   image_key: string;
@@ -66,6 +63,67 @@ export interface ProductImage {
   width: number | null;
   height: number | null;
   file_size: number | null;
+}
+
+/** 属性值 — 支持文本和色板图片 */
+export interface AttrValue {
+  value: string;
+  value_type: string;
+  swatch_image: string | null;
+}
+
+/** 属性项 — 同 key 多值聚合 */
+export interface AttrItem {
+  key: string;
+  unit: string | null;
+  values: AttrValue[];
+  /** 后端标记:true=可选规格轴(颜色/厚度),false=纯展示(特性等) */
+  selectable: boolean;
+}
+
+/** 属性分组 — 按 attr_group 归类 */
+export interface AttrGroup {
+  group: string;
+  items: AttrItem[];
+}
+
+export interface ProductPublicDetail {
+  id: number;
+  spu_code: string;
+  name: string;
+  description: string | null;
+  detail_description: string | null;
+  category_code: string;
+  category_name: string;
+  origin: string;
+  brand: string | null;
+  hs_code: string | null;
+  certifications: string[] | null;
+  selling_points: string | null;
+  moq: number | null;
+  moq_unit: string | null;
+  is_featured: boolean;
+  supply_mode: string;
+  unit: string;
+  attribute_groups: AttrGroup[];
+  images: ProductImage[];
+  // 兼容字段:买方 API 已不返回,RFQ 模块仍引用(后续迁移到运营 API)
+  skus?: SkuPublic[];
+  attributes?: ProductAttr[];
+  currency?: string;
+  price_min?: number | null;
+  price_max?: number | null;
+}
+
+// ---------- 兼容类型(RFQ 等模块仍引用,后续随 SKU 维度定调后清理) ----------
+
+export interface PriceTier {
+  id: number;
+  min_qty: number;
+  max_qty: number | null;
+  unit_price: number;
+  currency: string;
+  label: string | null;
 }
 
 export interface ProductAttr {
@@ -96,28 +154,6 @@ export interface SkuPublic {
   attributes: ProductAttr[];
 }
 
-export interface ProductPublicDetail {
-  id: number;
-  spu_code: string;
-  name: string;
-  description: string | null;
-  category_code: string;
-  category_name: string;
-  origin: string;
-  brand: string | null;
-  hs_code: string | null;
-  certifications: string[] | null;
-  selling_points: string | null;
-  is_featured: boolean;
-  unit: string;
-  currency: string;
-  price_min: number | null;
-  price_max: number | null;
-  skus: SkuPublic[];
-  images: ProductImage[];
-  attributes: ProductAttr[];
-}
-
 // ---------- API 函数 ----------
 
 export async function listProducts(
@@ -127,9 +163,11 @@ export async function listProducts(
   if (params.category_code) qs.set("category_code", params.category_code);
   if (params.keyword) qs.set("keyword", params.keyword);
   if (params.featured !== undefined) qs.set("featured", String(params.featured));
+  if (params.supply_mode) qs.set("supply_mode", params.supply_mode);
   if (params.sort) qs.set("sort", params.sort);
   if (params.page) qs.set("page", String(params.page));
   if (params.size) qs.set("size", String(params.size));
+  if (params.all_categories) qs.set("all_categories", "true");
   const q = qs.toString();
   return api.get<ProductListResponse>(`/api/v1/products${q ? `?${q}` : ""}`);
 }

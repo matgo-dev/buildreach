@@ -58,17 +58,18 @@ router = APIRouter(
 # ── 序列化工具 ───────────────────────────────────────────
 
 def _enrich_attrs(attrs, template_map: dict) -> list[dict]:
-    """属性序列化：attr_unit/sort_order/display_name 从模板取。"""
+    """属性序列化：attr_unit/sort_order/display_name 从模板取,key/value 本地化。"""
+    from app.core.i18n import get_localized
     result = []
     for attr in attrs:
-        tpl = template_map.get(attr.attr_key)
+        tpl = template_map.get(attr.attr_key_en)
         result.append({
-            "attr_key": attr.attr_key,
-            "attr_value": attr.attr_value,
+            "attr_key": get_localized(attr, "attr_key"),
+            "attr_value": get_localized(attr, "attr_value"),
             "attr_unit": tpl.attr_unit if tpl else attr.attr_unit,
             "sort_order": tpl.sort_order if tpl else attr.sort_order,
             "sku_id": attr.sku_id,
-            "display_name": tpl.display_name if tpl else attr.attr_key,
+            "display_name": tpl.display_name if tpl else attr.attr_key_en,
         })
     result.sort(key=lambda x: x["sort_order"])
     return result
@@ -177,6 +178,7 @@ def _to_operator(p, creator_name_map: dict | None = None) -> dict:
         origin=get_localized(p, "origin"),
         brand=get_localized(p, "brand") or None,
         is_featured=p.is_featured,
+        supply_mode=p.supply_mode,
         main_image=_get_main_image_url(p),
         status=p.status,
         created_by_name=created_by_name,
@@ -195,6 +197,7 @@ def _to_operator(p, creator_name_map: dict | None = None) -> dict:
 async def list_products(
     category_code: str | None = Query(None),
     status: str | None = Query(None),
+    supply_mode: str | None = Query(None),
     keyword: str | None = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
@@ -203,7 +206,8 @@ async def list_products(
 ):
     items, total = await product_svc.list_products_operator(
         db, category_code=category_code, status=status,
-        keyword=keyword, page=page, size=size,
+        supply_mode=supply_mode, keyword=keyword,
+        page=page, size=size,
     )
 
     # 批量查创建人名称，避免 N+1
@@ -352,8 +356,12 @@ async def get_product(
         selling_points_en=p.selling_points_en,
         source_lang=p.source_lang,
         is_featured=p.is_featured,
+        supply_mode=p.supply_mode,
         unit=p.unit,
         currency=p.currency,
+        moq=p.moq,
+        moq_unit=p.moq_unit,
+        ref_price_tiers=p.ref_price_tiers,
         status=p.status,
         created_by_name=created_by_name,
         skus=skus_data,
@@ -480,12 +488,11 @@ async def update_sku_status(
         db, resource_type=AuditResourceType.PRODUCT_SKU, action=AuditAction.STATUS_CHANGE,
         user_id=current.id, user_email=current.email,
         resource_id=sku.id, request=request,
-        extra={"new_status": sku.status, "product_auto_delisted": result["product_auto_delisted"]},
+        extra={"new_status": sku.status},
     )
     return success({
         "id": sku.id,
         "status": sku.status,
-        "product_auto_delisted": result["product_auto_delisted"],
     })
 
 

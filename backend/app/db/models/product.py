@@ -14,9 +14,20 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.db.models.ingest_run import IngestRun
+
 from app.db.base import Base, TimestampUpdateMixin
 from app.db.i18n_mixin import I18nMixin
 from app.db.soft_delete_mixin import SoftDeleteMixin
+
+
+class SupplyMode:
+    """履约模式：平台集采 vs 供应商直发。"""
+    PLATFORM_STOCK = "PLATFORM_STOCK"    # 平台集采（自营备货）
+    SUPPLIER_DIRECT = "SUPPLIER_DIRECT"  # 供应商直发
+    ALL = (PLATFORM_STOCK, SUPPLIER_DIRECT)
 
 
 class ProductStatus:
@@ -49,6 +60,7 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         Index("ix_products_category_code", "category_code"),
         Index("ix_products_status", "status"),
         Index("ix_products_is_featured", "is_featured"),
+        Index("ix_products_supply_mode", "supply_mode"),
         Index(
             "uq_products_spu_code_active",
             "spu_code",
@@ -76,6 +88,16 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     origin_en: Mapped[str | None] = mapped_column(String(100), nullable=True, default="China")
     selling_points_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
     selling_points_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    name_sw: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    origin_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    selling_points_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # 详情区长文产品介绍(与短描述 description 区分)
+    detail_description_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detail_description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detail_description_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certifications: Mapped[list | None] = mapped_column(JSON, default=list)
@@ -84,11 +106,32 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     unit: Mapped[str] = mapped_column(String(20), nullable=False, default="PCS")
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="TZS")
 
+    # 最低起订量(SPU 级,抓数导入或运营手填)
+    moq: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    moq_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    supply_mode: Mapped[str] = mapped_column(
+        String(30), nullable=False, default=SupplyMode.SUPPLIER_DIRECT,
+        server_default=SupplyMode.SUPPLIER_DIRECT,
+    )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
     created_by: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", name="fk_products_created_by"),
+        nullable=True,
+    )
+
+    # 阿里阶梯参考价（SPU 级，运营参考用，不展示给买方）
+    ref_price_tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    # 商品来源:MANUAL(运营手动) / alibaba / 1688 等爬虫源
+    source: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="MANUAL", server_default="MANUAL",
+    )
+    last_ingest_run_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("ingest_runs.id", name="fk_products_last_ingest_run_id"),
         nullable=True,
     )
 

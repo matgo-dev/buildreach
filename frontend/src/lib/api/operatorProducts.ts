@@ -31,6 +31,7 @@ export interface AttrTemplate {
   is_required: boolean;
   sort_order: number;
   scope: "SPU" | "SKU";
+  selectable: boolean;
 }
 
 // ---------- 属性(提交用) ----------
@@ -116,6 +117,7 @@ export interface ProductCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
+  supply_mode?: string;
   unit?: SkuUnitCode;
   currency?: string;
   attributes?: ProductAttrInput[] | null;
@@ -224,6 +226,7 @@ export interface ProductOperatorDetail {
   selling_points_en: string | null;
   source_lang: string;
   is_featured: boolean;
+  supply_mode: string;
   unit: string;
   currency: string;
   status: string;
@@ -246,6 +249,7 @@ export interface ProductUpdateInput {
   certifications?: string[] | null;
   selling_points?: string | null;
   is_featured?: boolean | null;
+  supply_mode?: string | null;
   attributes?: ProductAttrInput[] | null;
 }
 
@@ -284,6 +288,7 @@ export interface ProductOperatorItem {
   origin: string;
   brand: string | null;
   is_featured: boolean;
+  supply_mode: string;
   main_image: string | null;
   status: string;
   created_by_name: string;
@@ -298,6 +303,7 @@ export interface ProductOperatorItem {
 export interface ProductListParams {
   category_code?: string;
   status?: string;
+  supply_mode?: string;
   keyword?: string;
   page?: number;
   size?: number;
@@ -354,6 +360,7 @@ export interface ProductAggregateCreateInput {
   selling_points?: string | null;
   source_lang?: string;
   is_featured?: boolean;
+  supply_mode?: string;
   unit?: SkuUnitCode;
   currency?: string;
   attributes?: ProductAttrInput[] | null;
@@ -370,6 +377,7 @@ export interface ProductAggregateSaveInput {
   certifications?: string[] | null;
   selling_points?: string | null;
   is_featured?: boolean | null;
+  supply_mode?: string | null;
   unit?: SkuUnitCode | null;
   currency?: string | null;
   attributes?: ProductAttrInput[] | null;
@@ -470,9 +478,9 @@ export const operatorProductsApi = {
       `${PREFIX}/${productId}/status${force ? "?force=true" : ""}`, data,
     ),
 
-  /** 改 SKU 状态（启用/停用）；停售最后在售 SKU 时后端会自动下架商品 */
+  /** 改 SKU 状态（启用/停用） */
   updateSkuStatus: (productId: number, skuId: number, data: { status: "ACTIVE" | "INACTIVE" }) =>
-    api.patch<{ id: number; status: string; product_auto_delisted: boolean }>(
+    api.patch<{ id: number; status: string }>(
       `${PREFIX}/${productId}/skus/${skuId}/status`, data,
     ),
 

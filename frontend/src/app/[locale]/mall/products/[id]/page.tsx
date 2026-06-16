@@ -20,33 +20,19 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { getProduct, type ProductPublicDetail, type SkuPublic } from "@/lib/api/products";
-import { formatCurrency } from "@/lib/formatters";
+import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
 import { addCartItem } from "@/lib/api/cart";
-import { useCartStore } from "@/stores/cartStore";
-import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "@/components/ui/Toast";
-import { ApiError } from "@/lib/api";
-
+import { useCartStore } from "@/stores/cartStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
-import {
-  SkuSelector,
-  extractDimensions,
-  getDefaultSelection,
-  locateSku,
-  type DimensionSelection,
-} from "@/components/mall/SkuSelector";
-import { PriceTiers, matchTier } from "@/components/mall/PriceTiers";
-import { QuantityInput } from "@/components/mall/QuantityInput";
 
-// ---- 面包屑:从品类树解析路径 ----
+// ---- 面包屑 ----
 
 function buildBreadcrumb(
   tree: CategoryTreeNode[],
   categoryCode: string
 ): { code: string; name: string }[] {
   const path: { code: string; name: string }[] = [];
-
   function dfs(nodes: CategoryTreeNode[]): boolean {
     for (const node of nodes) {
       path.push({ code: node.code, name: node.name });
@@ -56,140 +42,271 @@ function buildBreadcrumb(
     }
     return false;
   }
-
   dfs(tree);
   return path;
 }
 
-// ---- Tab 区 ----
+// ---- 色板缩略图 ----
 
-type TabKey = "specifications" | "description" | "gallery";
+function SwatchThumb({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
 
-function SpecificationsTab({
-  product,
-  selectedSku,
+  if (failed) {
+    return (
+      <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-500">
+        {alt || "—"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        onError={() => setFailed(true)}
+        className="h-[54px] w-[54px] rounded-md border border-gray-300 object-cover"
+        loading="lazy"
+      />
+      {alt && (
+        <span className="mt-0.5 block text-center text-[10px] text-gray-500 leading-tight">
+          {alt}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---- 右侧面板属性(色板/chip) ----
+
+function hasSwatchImages(item: AttrItem): boolean {
+  return item.values.some((v) => v.value_type === "image" && v.swatch_image);
+}
+
+function InlineAttrItem({
+  item,
+  selectedValue,
+  onSelect,
 }: {
-  product: ProductPublicDetail;
-  selectedSku: SkuPublic | null;
+  item: AttrItem;
+  selectedValue?: string;
+  onSelect?: (key: string, value: string) => void;
 }) {
+  const isSwatch = hasSwatchImages(item);
+  const canSelect = item.selectable && !!onSelect;
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1.5 text-xs font-semibold text-gray-600">{item.key}</div>
+      {isSwatch ? (
+        <div className="flex flex-wrap gap-2">
+          {item.values.map((v, i) => {
+            const isSelected = canSelect && selectedValue === v.value;
+            const swatchOk = v.value_type === "image" && v.swatch_image;
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={!canSelect}
+                onClick={() => canSelect && onSelect(item.key, v.value)}
+                className={`relative rounded-md border-2 transition-colors ${
+                  isSelected
+                    ? "border-[#00505a] ring-1 ring-[#00505a]/30"
+                    : "border-transparent hover:border-gray-300"
+                } ${canSelect ? "cursor-pointer" : "cursor-default"}`}
+              >
+                {swatchOk ? (
+                  <SwatchThumb src={v.swatch_image!} alt={v.value} />
+                ) : (
+                  <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-600">
+                    {v.value}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {item.values.map((v, i) => {
+            const isSelected = canSelect && selectedValue === v.value;
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={!canSelect}
+                onClick={() => canSelect && onSelect(item.key, v.value)}
+                className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
+                  isSelected
+                    ? "border-[#00505a] bg-[#e6f3f3] text-[#00505a] font-medium"
+                    : "border-gray-200 bg-white text-gray-600"
+                } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
+              >
+                {v.value}
+                {item.unit ? ` ${item.unit}` : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Tab: 产品规格 ----
+
+type TabKey = "specifications" | "description";
+
+function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
 
-  // SPU 级属性
-  const spuAttrs = product.attributes.filter((a) => !a.sku_id);
-  // 选中 SKU 的属性(非差异维度的,即所有 SKU 都一样的)
-  const skuAttrs = selectedSku?.attributes ?? [];
-
-  // 合并:SPU 属性 + SKU 属性(去重)
-  const allAttrs = [...spuAttrs];
-  for (const attr of skuAttrs) {
-    if (!allAttrs.some((a) => a.attr_key === attr.attr_key)) {
-      allAttrs.push(attr);
-    }
-  }
-  allAttrs.sort((a, b) => a.sort_order - b.sort_order);
-
-  // 基础信息行
   const baseRows: { label: string; value: string }[] = [];
   if (product.origin) baseRows.push({ label: t("detail.origin"), value: product.origin });
   if (product.brand) baseRows.push({ label: t("detail.brand"), value: product.brand });
   if (product.hs_code) baseRows.push({ label: t("detail.hsCode"), value: product.hs_code });
 
+  const groups = product.attribute_groups;
+
+  // 把属性组的 items 打平成 { label, value } 列表,按组分段
+  type SpecSection = { groupLabel: string; rows: { label: string; value: string }[] };
+  const sections: SpecSection[] = [];
+
+  // 基础属性作为第一段(无分组标题)
+  if (baseRows.length > 0) {
+    sections.push({ groupLabel: "", rows: baseRows });
+  }
+
+  for (const group of groups) {
+    const groupKey = `detail.attrGroup_${group.group}` as Parameters<typeof t>[0];
+    let groupLabel: string;
+    try { groupLabel = t(groupKey); } catch { groupLabel = group.group; }
+    if (groupLabel === groupKey || groupLabel.includes("attrGroup_")) groupLabel = group.group;
+
+    const rows = group.items.map((item) => ({
+      label: item.key,
+      value: item.values.map((v) => v.value).join(", ") + (item.unit ? ` ${item.unit}` : ""),
+    }));
+    if (rows.length > 0) {
+      sections.push({ groupLabel, rows });
+    }
+  }
+
+  // 每行放两组 key-value（4 列布局）
+  const renderPairedRows = (rows: { label: string; value: string }[]) => {
+    const paired: React.ReactNode[] = [];
+    for (let i = 0; i < rows.length; i += 2) {
+      const left = rows[i];
+      const right = rows[i + 1];
+      paired.push(
+        <tr key={i} className={i % 4 === 0 ? "bg-white" : "bg-gray-50/40"}>
+          <td className="border border-gray-200 px-4 py-2.5 text-gray-500 whitespace-nowrap">{left.label}</td>
+          <td className="border border-gray-200 px-4 py-2.5 text-gray-800">{left.value}</td>
+          {right ? (
+            <>
+              <td className="border border-gray-200 px-4 py-2.5 text-gray-500 whitespace-nowrap">{right.label}</td>
+              <td className="border border-gray-200 px-4 py-2.5 text-gray-800">{right.value}</td>
+            </>
+          ) : (
+            <>
+              <td className="border border-gray-200 px-4 py-2.5" />
+              <td className="border border-gray-200 px-4 py-2.5" />
+            </>
+          )}
+        </tr>
+      );
+    }
+    return paired;
+  };
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th className="w-1/3 border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-              {t("detail.specName")}
-            </th>
-            <th className="border border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold text-gray-700">
-              {t("detail.specValue")}
-            </th>
-          </tr>
-        </thead>
+      <table className="w-full table-fixed text-sm">
+        <colgroup>
+          <col className="w-[18%]" />
+          <col className="w-[32%]" />
+          <col className="w-[18%]" />
+          <col className="w-[32%]" />
+        </colgroup>
         <tbody>
-          {baseRows.map((row) => (
-            <tr key={row.label}>
-              <td className="border border-gray-200 px-3 py-2 text-gray-600">{row.label}</td>
-              <td className="border border-gray-200 px-3 py-2">{row.value}</td>
-            </tr>
-          ))}
-          {allAttrs.map((attr) => (
-            <tr key={attr.attr_key}>
-              <td className="border border-gray-200 px-3 py-2 text-gray-600">
-                {attr.display_name || attr.attr_key}
-              </td>
-              <td className="border border-gray-200 px-3 py-2">
-                {attr.attr_value}
-                {attr.attr_unit ? ` ${attr.attr_unit}` : ""}
-              </td>
-            </tr>
+          {sections.map((section, si) => (
+            <React.Fragment key={si}>
+              {section.groupLabel && (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-bold text-gray-700"
+                  >
+                    {section.groupLabel}
+                  </td>
+                </tr>
+              )}
+              {renderPairedRows(section.rows)}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
-      {baseRows.length === 0 && allAttrs.length === 0 && (
+      {sections.length === 0 && (
         <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>
       )}
     </div>
   );
 }
 
+// ---- Tab: 产品描述 ----
+
 function DescriptionTab({ product }: { product: ProductPublicDetail }) {
   const t = useTranslations("mall");
 
+  // 所有 SPU 级图片平铺在描述区
+  const detailImages = product.images
+    .filter((img) => img.sku_id == null)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  // detail_description 存在时,卖点/短描述已在顶部面板展示过,Tab 里不再重复
+  const hasDetailDesc = !!product.detail_description;
+  const hasText = !!(product.description || product.selling_points || product.detail_description);
+
   return (
-    <div className="space-y-4">
-      {product.selling_points && (
+    <div className="space-y-6">
+      {!hasDetailDesc && product.selling_points && (
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">
-            {t("detail.sellingPoints")}
-          </h4>
+          <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.sellingPoints")}</h4>
           <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
             {product.selling_points}
           </div>
         </div>
       )}
-      {product.description && (
-        <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">
-            {t("detail.description")}
-          </h4>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-            {product.description}
-          </div>
+      {!hasDetailDesc && product.description && (
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+          {product.description}
         </div>
       )}
-      {!product.description && !product.selling_points && (
+      {/* 产品介绍长文:在详情图之前 */}
+      {product.detail_description && (
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+          {product.detail_description}
+        </div>
+      )}
+      {/* DETAIL 描述长图 */}
+      {detailImages.length > 0 && (
+        <div className="mx-auto max-w-3xl space-y-4">
+          {detailImages.map((img) => (
+            <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.full_url}
+                alt=""
+                className="mx-auto w-full object-contain"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {!hasText && detailImages.length === 0 && (
         <p className="py-8 text-center text-sm text-gray-400">{t("detail.noDescription")}</p>
       )}
-    </div>
-  );
-}
-
-function GalleryTab({ product }: { product: ProductPublicDetail }) {
-  const t = useTranslations("mall");
-  const images = product.images.filter((img) => img.sku_id == null).sort((a, b) => a.sort_order - b.sort_order);
-
-  if (images.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-400">{t("detail.noImages")}</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-      {images.map((img) => (
-        <div
-          key={img.id}
-          className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={img.full_url}
-            alt=""
-            className="h-full w-full object-contain"
-            loading="lazy"
-          />
-        </div>
-      ))}
     </div>
   );
 }
@@ -203,194 +320,129 @@ function ProductDetailContent() {
   const t = useTranslations("mall");
   const id = Number(params.id);
 
-  // 品类树
   const { tree: categoryTree } = useCategoryTree();
 
-  // SWR 取详情
   const { data: product, error, isLoading } = useSWR(
     id ? `/api/v1/products/${id}?locale=${locale}` : null,
     () => getProduct(id),
     { revalidateOnFocus: false }
   );
 
-  // SKU 选择器状态
-  const activeSkus = useMemo(
-    () => (product?.skus ?? []).filter((s) => s.status === "ACTIVE"),
-    [product]
-  );
+  // 锚点导航:Tab 点击滚动到对应区域,滚动时高亮联动
+  const [activeTab, setActiveTab] = useState<TabKey>("specifications");
+  const sectionRefs = useRef<Record<TabKey, HTMLDivElement | null>>({
+    specifications: null,
+    description: null,
+  });
 
-  const dimensions = useMemo(() => extractDimensions(activeSkus), [activeSkus]);
-
-  const [selection, setSelection] = useState<DimensionSelection>({});
-
-  // 产品加载完成后初始化默认选中
-  useEffect(() => {
-    if (activeSkus.length > 0 && dimensions.length >= 0) {
-      setSelection(getDefaultSelection(activeSkus, dimensions));
+  const scrollToSection = useCallback((key: TabKey) => {
+    const el = sectionRefs.current[key];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [activeSkus, dimensions]);
+    // 立即更新 Tab 高亮,不等滚动监听
+    setActiveTab(key);
+  }, []);
 
-  const selectedSku = useMemo(
-    () => locateSku(activeSkus, dimensions, selection),
-    [activeSkus, dimensions, selection]
-  );
-
-  // 部分选择匹配到 SKU 时，自动补全剩余维度的选中状态
+  // 滚动监听:距离视口顶部最近的 section 高亮
   useEffect(() => {
-    if (!selectedSku || dimensions.length === 0) return;
-    const fullSel = { ...selection };
-    let changed = false;
-    for (const dim of dimensions) {
-      if (!fullSel[dim.key]) {
-        const val = selectedSku.color && dim.key === "color"
-          ? selectedSku.color
-          : selectedSku.material && dim.key === "material"
-            ? selectedSku.material
-            : selectedSku.attributes.find((a) => a.attr_key === dim.key)?.attr_value ?? null;
-        if (val) {
-          fullSel[dim.key] = val;
-          changed = true;
+    const handleScroll = () => {
+      const keys: TabKey[] = ["specifications", "description"];
+      let closest: TabKey = "specifications";
+      let minDist = Infinity;
+      for (const key of keys) {
+        const el = sectionRefs.current[key];
+        if (!el) continue;
+        const dist = Math.abs(el.getBoundingClientRect().top - 80);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = key;
         }
       }
-    }
-    if (changed) setSelection(fullSel);
-  }, [selectedSku?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+      setActiveTab(closest);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // 数量
-  const [quantity, setQuantity] = useState<number>(0);
-
-  // 选中 SKU 变化时重置数量为 MOQ
-  useEffect(() => {
-    if (selectedSku) {
-      setQuantity(selectedSku.moq);
-    }
-  }, [selectedSku?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 价格计算
-  const priceDisplay = useMemo(() => {
-    if (!product) return null;
-
-    // 未选 SKU → SPU 级区间
-    if (!selectedSku) {
-      if (product.price_min !== null && product.price_max !== null) {
-        return {
-          type: "range" as const,
-          min: product.price_min,
-          max: product.price_max,
-          currency: product.currency ?? "USD",
-        };
-      }
-      return null;
-    }
-
-    const sku = selectedSku;
-
-    // 已选 SKU + 有数量 → 匹配阶梯价
-    if (quantity > 0 && sku.price_tiers.length > 0) {
-      const tier = matchTier(sku.price_tiers, quantity);
-      if (tier) {
-        return {
-          type: "exact" as const,
-          price: tier.unit_price,
-          currency: tier.currency,
-          tierLabel: tier.label,
-        };
-      }
-    }
-
-    // 已选 SKU,无阶梯价匹配 → SKU 级区间或 price_min
-    if (sku.price_min !== null) {
-      if (sku.price_max !== null && sku.price_max !== sku.price_min) {
-        return {
-          type: "range" as const,
-          min: sku.price_min,
-          max: sku.price_max,
-          currency: product.currency ?? "USD",
-        };
-      }
-      return {
-        type: "exact" as const,
-        price: sku.price_min,
-        currency: product.currency ?? "USD",
-      };
-    }
-
-    return null;
-  }, [product, selectedSku, quantity, activeSkus]);
-
-  // 小计
-  const subtotal = useMemo(() => {
-    if (!selectedSku || quantity <= 0) return null;
-    if (priceDisplay?.type === "exact") {
-      return {
-        amount: quantity * priceDisplay.price,
-        currency: priceDisplay.currency,
-      };
-    }
-    return null;
-  }, [selectedSku, quantity, priceDisplay]);
-
-  // 加购
-  const user = useAuthStore((s) => s.user);
-  const isBuyer = user?.roles.includes("BUYER") ?? false;
-  const syncFromCart = useCartStore((s) => s.syncFromCart);
-  const triggerRefresh = useCartStore((s) => s.triggerRefresh);
-  const toast = useToast();
-  const tError = useTranslations("error");
-  const tCart = useTranslations("cart");
+  // 规格选中态:仅前端本地,刷新即重置
+  const [specSelection, setSpecSelection] = useState<Record<string, string>>({});
   const [addingToCart, setAddingToCart] = useState(false);
+  const toast = useToast();
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
 
-  const canAddToCart = !!selectedSku && quantity > 0;
-
+  const prevCountRef = useRef(0);
   const handleAddToCart = useCallback(async () => {
-    // 未登录 → 跳登录
-    if (!user) {
-      router.push(`/${locale}/login`);
-      return;
-    }
-    if (!selectedSku || quantity <= 0) return;
-
+    if (!product) return;
     setAddingToCart(true);
+    prevCountRef.current = useCartStore.getState().count;
     try {
-      const cart = await addCartItem(selectedSku.id, quantity);
+      const selectedVariants = Object.entries(specSelection)
+        .filter(([, v]) => v)
+        .map(([attr_name, value]) => ({ attr_name, value }));
+      const cart = await addCartItem(product.id, selectedVariants, 1);
       syncFromCart(cart);
-      triggerRefresh();
-      toast.success(tCart("addSuccess"));
-    } catch (err) {
-      if (err instanceof ApiError && err.messageKey) {
-        const key = err.messageKey.replace(/^error\./, "");
-        try {
-          toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>));
-        } catch {
-          toast.error(err.message);
+      const newCount = cart.items.filter((i) => i.is_purchasable).length;
+      if (newCount > prevCountRef.current) {
+        // 新增行 → 飞入动画
+        if (addBtnRef.current) {
+          const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
+          if (target) {
+            const sr = addBtnRef.current.getBoundingClientRect();
+            const er = target.getBoundingClientRect();
+            const sx = sr.left + sr.width / 2, sy = sr.top + sr.height / 2;
+            const ex = er.left + er.width / 2, ey = er.top + er.height / 2;
+            const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
+            const m = document.createElement("div");
+            m.style.cssText = `position:fixed;z-index:99999;left:${sx}px;top:${sy}px;width:36px;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent 0%,#e3a615 40%,#f0c040 100%);box-shadow:0 0 8px rgba(227,166,21,0.6),0 0 16px rgba(227,166,21,0.3);pointer-events:none;transform:rotate(${angle}deg);transform-origin:right center;opacity:0;transition:left 1s cubic-bezier(0.25,0.1,0.25,1),top 1s cubic-bezier(0.25,0.1,0.25,1),opacity 0.3s ease,width 0.8s ease;`;
+            document.body.appendChild(m);
+            requestAnimationFrame(() => { m.style.opacity = "1"; requestAnimationFrame(() => { m.style.left = `${ex}px`; m.style.top = `${ey}px`; m.style.width = "12px"; setTimeout(() => { m.style.opacity = "0"; }, 600); }); });
+            setTimeout(() => { m.remove(); target.style.transition = "transform 0.3s ease"; target.style.transform = "scale(1.3)"; setTimeout(() => { target.style.transform = "scale(1)"; }, 300); }, 1050);
+          }
         }
+        toast.success(t("detail.addedToCart"));
       } else {
-        toast.error(err instanceof Error ? err.message : String(err));
+        toast.success(t("detail.alreadyInCart"));
       }
+    } catch {
+      toast.error(t("detail.addToCartFailed"));
     } finally {
       setAddingToCart(false);
     }
-  }, [user, selectedSku, quantity, router, locale, syncFromCart, triggerRefresh, toast, tCart, tError]);
+  }, [product, specSelection, syncFromCart, toast, t]);
 
-  // Tab 状态
-  const [activeTab, setActiveTab] = useState<TabKey>("specifications");
+  // 点选/取消规格值(单选:每个 key 选一个值)
+  const handleSpecSelect = useCallback((key: string, value: string) => {
+    setSpecSelection((prev) => {
+      if (prev[key] === value) {
+        // 取消选中
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: value };
+    });
+  }, []);
 
-  // 面包屑
   const breadcrumb = useMemo(() => {
     if (!product || !categoryTree.length) return [];
     return buildBreadcrumb(categoryTree, product.category_code);
   }, [product, categoryTree]);
 
-  // SKU 专属图
-  const skuImages = useMemo(
-    () => (selectedSku?.images.length ? selectedSku.images : undefined),
-    [selectedSku]
-  );
-
-  // 单位标签
-  const unitLabel = selectedSku
-    ? t(`unit_${product?.unit ?? "PCS"}` as Parameters<typeof t>[0])
-    : "";
+  // 可选规格轴提到右侧面板(颜色/厚度等)
+  const inlineAttrs = useMemo(() => {
+    if (!product) return [];
+    const items: AttrItem[] = [];
+    for (const group of product.attribute_groups) {
+      for (const item of group.items) {
+        if (item.selectable && item.values.length > 0) {
+          items.push(item);
+        }
+      }
+    }
+    return items;
+  }, [product]);
 
   // ---- 加载/错误态 ----
   if (isLoading) {
@@ -399,7 +451,7 @@ function ProductDetailContent() {
         <div className="flex flex-col lg:flex-row gap-5">
           <CategorySidebar />
           <div className="flex flex-1 min-h-[400px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
           </div>
         </div>
       </PublicLayout>
@@ -418,7 +470,7 @@ function ProductDetailContent() {
               <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
               <button
                 onClick={() => router.push(`/${locale}/mall`)}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0D4D4D] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00505a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
               >
                 <ArrowLeft className="h-4 w-4" />
                 {t("detail.backToList")}
@@ -435,7 +487,6 @@ function ProductDetailContent() {
   const tabItems: { key: TabKey; label: string }[] = [
     { key: "specifications", label: t("detail.tabSpecs") },
     { key: "description", label: t("detail.tabDescription") },
-    { key: "gallery", label: t("detail.tabGallery") },
   ];
 
   return (
@@ -443,11 +494,12 @@ function ProductDetailContent() {
       <div className="flex flex-col lg:flex-row gap-5">
         <CategorySidebar activeCategoryCode={product.category_code} />
         <div className="flex-1 min-w-0">
+
       {/* 面包屑 */}
       <nav className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
         <Link
           href={`/${locale}/mall`}
-          className="flex items-center gap-1 text-[#0D4D4D] transition-colors hover:underline"
+          className="flex items-center gap-1 text-[#00505a] transition-colors hover:underline"
         >
           <Home className="h-3 w-3" />
           Home
@@ -457,7 +509,7 @@ function ProductDetailContent() {
             <ChevronRight className="h-3 w-3" />
             <Link
               href={`/${locale}/mall?cat=${crumb.code}`}
-              className="text-[#0D4D4D] transition-colors hover:underline"
+              className="text-[#00505a] transition-colors hover:underline"
             >
               {crumb.name}
             </Link>
@@ -467,21 +519,37 @@ function ProductDetailContent() {
         <span className="font-medium text-gray-700">{product.name}</span>
       </nav>
 
-      {/* 主体:左图 + 右信息 */}
+      {/* ===== 主体:左图 + 右信息(与旧版一致) ===== */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex flex-col gap-6 lg:flex-row">
-          {/* 左:图片轮播 */}
+          {/* 左:图片轮播(排除 DETAIL 类型) */}
           <ProductGallery
-            images={product.images.filter((img) => img.sku_id == null)}
-            skuImages={skuImages}
+            images={product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL")}
             isFeatured={product.is_featured}
           />
 
           {/* 右:信息面板 */}
           <div className="min-w-0 flex-1">
-            {/* SPU 编码 + 商品名 */}
             <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
             <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
+
+            {/* 履约模式标签 */}
+            <div className="mt-1.5 flex gap-1.5">
+              {product.supply_mode === "PLATFORM_STOCK" ? (
+                <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  {t("supplyModePlatformStock")}
+                </span>
+              ) : (
+                <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  {t("supplyModeSupplierDirect")}
+                </span>
+              )}
+              {product.is_featured && (
+                <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  {t("featured")}
+                </span>
+              )}
+            </div>
 
             {/* 认证徽章 */}
             {product.certifications && product.certifications.length > 0 && (
@@ -497,150 +565,65 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 价格区 */}
-            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-              {priceDisplay ? (
-                <>
-                  <div>
-                    {priceDisplay.type === "range" ? (
-                      <>
-                        <span className="text-2xl font-bold text-[#0D4D4D]">
-                          {formatCurrency(priceDisplay.min, priceDisplay.currency, locale, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        <span className="mx-1 text-lg text-gray-400">~</span>
-                        <span className="text-2xl font-bold text-[#0D4D4D]">
-                          {formatCurrency(priceDisplay.max, priceDisplay.currency, locale, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        {selectedSku && (
-                          <span className="ml-2 text-sm text-gray-500">/ {unitLabel}</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-[28px] font-bold text-[#0D4D4D]">
-                          {formatCurrency(priceDisplay.price, priceDisplay.currency, locale, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                        <span className="ml-1 text-sm text-gray-500">/ {unitLabel}</span>
-                      </>
-                    )}
+            {/* 商品描述/卖点 — 醒目展示 */}
+            {(product.selling_points || product.description) && (
+              <div className="mt-3 rounded-lg border border-[#00505a]/10 bg-[#00505a]/[0.03] px-4 py-3">
+                {product.selling_points && (
+                  <div className="text-sm leading-relaxed text-gray-800">
+                    <span className="mr-1.5 text-xs font-semibold text-[#00505a]">✦ {t("detail.sellingPoints")}</span>
+                    {product.selling_points}
                   </div>
-                  {selectedSku && priceDisplay.type === "exact" && quantity > 0 && (
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      {t("detail.volumePriceHint", { qty: quantity, unit: unitLabel })}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <span className="text-lg text-gray-400">{t("noPrice")}</span>
-              )}
-            </div>
+                )}
+                {product.description && (
+                  <div className={`text-sm leading-relaxed text-gray-600 ${product.selling_points ? "mt-2" : ""}`}>
+                    {product.description}
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* SKU 属性选择器 */}
-            {activeSkus.length > 0 && (
+            {/* 基础信息(产地/品牌/MOQ) */}
+            {(product.origin || product.brand || product.moq != null) && (
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+                {product.moq != null && (
+                  <span>{t("detail.moq")}: <span className="font-medium text-gray-700">{product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}</span></span>
+                )}
+                {product.origin && (
+                  <span>{t("detail.origin")}: <span className="font-medium text-gray-700">{product.origin}</span></span>
+                )}
+                {product.brand && (
+                  <span>{t("detail.brand")}: <span className="font-medium text-gray-700">{product.brand}</span></span>
+                )}
+              </div>
+            )}
+
+            {/* 属性:颜色色板 / 厚度 chip;仅展示 selectable=true 的可选规格轴 */}
+            {inlineAttrs.length > 0 && (
               <div className="mt-4">
-                <SkuSelector
-                  skus={activeSkus}
-                  selection={selection}
-                  onSelectionChange={setSelection}
-                />
+                {inlineAttrs.map((item) => (
+                  <InlineAttrItem
+                    key={item.key}
+                    item={item}
+                    selectedValue={specSelection[item.key]}
+                    onSelect={handleSpecSelect}
+                  />
+                ))}
               </div>
             )}
 
-            {/* 选中 SKU 摘要 */}
-            {selectedSku && (
-              <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
-                <div>
-                  <div className="text-[10px] text-gray-400">{t("detail.skuCode")}</div>
-                  <div className="font-semibold text-gray-800">
-                    {selectedSku.sku_code}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-gray-400">{t("detail.moq")}</div>
-                  <div className="font-semibold text-gray-800">
-                    {selectedSku.moq} {unitLabel}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-gray-400">{t("detail.leadTime")}</div>
-                  <div className="font-semibold text-gray-800">
-                    {selectedSku.lead_time_min && selectedSku.lead_time_max
-                      ? selectedSku.lead_time_min === selectedSku.lead_time_max
-                        ? t("leadTimeDaysSingle", { days: selectedSku.lead_time_min })
-                        : t("leadTimeDays", {
-                            min: selectedSku.lead_time_min,
-                            max: selectedSku.lead_time_max,
-                          })
-                      : "-"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 阶梯价表 */}
-            {selectedSku && selectedSku.price_tiers.length > 0 && (
-              <PriceTiers
-                tiers={selectedSku.price_tiers}
-                unit={product.unit}
-                quantity={quantity}
-              />
-            )}
-
-            {/* 数量输入 */}
-            {selectedSku && (
-              <div className="mt-4">
-                <QuantityInput
-                  value={quantity}
-                  onChange={setQuantity}
-                  moq={selectedSku.moq}
-                  unit={product.unit}
-                />
-              </div>
-            )}
-
-            {/* 小计 */}
-            {subtotal && quantity >= (selectedSku?.moq ?? 0) && (
-              <div className="mt-2 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-2.5">
-                <span className="text-sm font-medium text-green-700">
-                  {t("detail.subtotal")}
-                </span>
-                <span className="text-xl font-bold text-green-700">
-                  {formatCurrency(subtotal.amount, subtotal.currency, locale, {
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            )}
-
-            {/* 操作按钮 */}
+            {/* 操作按钮 — 出口仍置灰,选中态仅前端本地,不发请求、不带出 */}
             <div className="mt-4 flex flex-wrap gap-2.5">
-              {/* 加入询价篮：未登录显示（点击跳登录），已登录非 BUYER 隐藏 */}
-              {(!user || isBuyer) && (
-                <button
-                  type="button"
-                  disabled={addingToCart || (!!user && !canAddToCart)}
-                  onClick={handleAddToCart}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-6 py-3 text-sm font-semibold transition-colors ${
-                    addingToCart || (!!user && !canAddToCart)
-                      ? "bg-gray-300 text-white cursor-not-allowed"
-                      : "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
-                  }`}
-                  title={user && !selectedSku ? tCart("selectSkuFirst") : undefined}
-                >
-                  {addingToCart ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ShoppingCart className="h-4 w-4" />
-                  )}
-                  {t("detail.addToBasket")}
-                </button>
-              )}
+              <button
+                ref={addBtnRef}
+                type="button"
+                disabled={addingToCart}
+                onClick={handleAddToCart}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#003d45] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                {t("detail.addToInquiry")}
+              </button>
+              {/* TODO: WhatsApp 平台运营号/链接配置化 */}
               <a
                 href="https://wa.me/255697123456"
                 target="_blank"
@@ -648,25 +631,24 @@ function ProductDetailContent() {
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
-                WhatsApp {t("detail.requestQuoteNow")}
+                WhatsApp {t("detail.contactPlatform")}
               </a>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tab 区 */}
-      <div className="mt-4 rounded-xl border border-gray-200 bg-white">
-        {/* Tab 头 */}
+      {/* ===== Tab 锚点导航(阿里风格:点击滚动,滚动联动高亮) ===== */}
+      <div className="sticky top-0 z-20 mt-4 rounded-t-xl border border-gray-200 bg-white">
         <div className="flex border-b border-gray-200">
           {tabItems.map((tab) => (
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "border-b-2 border-[#0D4D4D] text-[#0D4D4D]"
+                  ? "border-b-2 border-[#00505a] text-[#00505a]"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -674,16 +656,25 @@ function ProductDetailContent() {
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Tab 内容 */}
-        <div className="p-5">
-          {activeTab === "specifications" && (
-            <SpecificationsTab product={product} selectedSku={selectedSku} />
-          )}
-          {activeTab === "description" && <DescriptionTab product={product} />}
-          {activeTab === "gallery" && <GalleryTab product={product} />}
+      {/* ===== 内容平铺(所有 section 展开) ===== */}
+      <div className="rounded-b-xl border border-t-0 border-gray-200 bg-white">
+        {/* 产品规格 */}
+        <div ref={(el) => { sectionRefs.current.specifications = el; }} className="scroll-mt-14 p-5">
+          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabSpecs")}</h3>
+          <SpecificationsTab product={product} />
+        </div>
+
+        <hr className="border-gray-100" />
+
+        {/* 产品描述(文字 + DETAIL 描述长图合并) */}
+        <div ref={(el) => { sectionRefs.current.description = el; }} className="scroll-mt-14 p-5">
+          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabDescription")}</h3>
+          <DescriptionTab product={product} />
         </div>
       </div>
+
         </div>
       </div>
     </PublicLayout>

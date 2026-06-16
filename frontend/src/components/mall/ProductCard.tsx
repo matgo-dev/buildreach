@@ -1,23 +1,73 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Package } from "lucide-react";
+import { Package, ShoppingCart, Loader2 } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { formatCurrency } from "@/lib/formatters";
+import { addCartItem } from "@/lib/api/cart";
+import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/stores/cartStore";
+import { MallButton } from "./MallButton";
 
-interface Props {
-  product: ProductPublic;
-  categoryTree: CategoryTreeNode[];
+/** 飞入购物车动画：暖金流星效果 */
+function flyToCart(startEl: HTMLElement) {
+  const target = document.querySelector("[data-cart-icon]") as HTMLElement | null;
+  if (!target) return;
+
+  const startRect = startEl.getBoundingClientRect();
+  const endRect = target.getBoundingClientRect();
+
+  const sx = startRect.left + startRect.width / 2;
+  const sy = startRect.top + startRect.height / 2;
+  const ex = endRect.left + endRect.width / 2;
+  const ey = endRect.top + endRect.height / 2;
+  const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
+
+  const meteor = document.createElement("div");
+  meteor.style.cssText = `
+    position: fixed;
+    z-index: 99999;
+    left: ${sx}px;
+    top: ${sy}px;
+    width: 36px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, transparent 0%, #e3a615 40%, #f0c040 100%);
+    box-shadow: 0 0 8px rgba(227, 166, 21, 0.6), 0 0 16px rgba(227, 166, 21, 0.3);
+    pointer-events: none;
+    transform: rotate(${angle}deg);
+    transform-origin: right center;
+    opacity: 0;
+    transition: left 1s cubic-bezier(0.25, 0.1, 0.25, 1),
+                top 1s cubic-bezier(0.25, 0.1, 0.25, 1),
+                opacity 0.3s ease,
+                width 0.8s ease;
+  `;
+  document.body.appendChild(meteor);
+
+  requestAnimationFrame(() => {
+    meteor.style.opacity = "1";
+    requestAnimationFrame(() => {
+      meteor.style.left = `${ex}px`;
+      meteor.style.top = `${ey}px`;
+      meteor.style.width = "12px";
+      setTimeout(() => { meteor.style.opacity = "0"; }, 600);
+    });
+  });
+
+  setTimeout(() => {
+    meteor.remove();
+    target.style.transition = "transform 0.3s ease";
+    target.style.transform = "scale(1.3)";
+    setTimeout(() => { target.style.transform = "scale(1)"; }, 300);
+  }, 1050);
 }
 
-/** 从品类树中按 code 查找品类名称（遍历到 L2 即可） */
-function findCategoryLabel(
-  tree: CategoryTreeNode[],
-  code: string
-): string {
+/** 从品类树中按 code 查找品类名称 */
+function findCategoryLabel(tree: CategoryTreeNode[], code: string): string {
   for (const l1 of tree) {
     if (l1.code === code) return l1.name;
     for (const l2 of l1.children || []) {
@@ -30,115 +80,138 @@ function findCategoryLabel(
   return "";
 }
 
-/** 格式化交期 */
-function formatLeadTime(min: number | null, max: number | null): string {
-  if (min == null && max == null) return "";
-  if (min != null && max != null && min !== max) return `${min}-${max}d`;
-  const val = min ?? max;
-  return `${val}d`;
-}
-
-export function ProductCard({ product, categoryTree }: Props) {
-  const locale = useLocale();
+/**
+ * 商品卡片 — 深青信任风格。
+ */
+export function ProductCard({
+  product,
+  categoryTree,
+}: {
+  product: ProductPublic;
+  categoryTree: CategoryTreeNode[];
+}) {
   const t = useTranslations("mall");
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
+  const [adding, setAdding] = useState(false);
+  const toast = useToast();
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
-  const priceDisplay = (() => {
-    if (product.price_min == null) return t("noPrice");
-    const currency = product.currency || "TZS";
-    const min = formatCurrency(product.price_min, currency, locale, { maximumFractionDigits: 0 });
-    if (product.price_max != null && product.price_max !== product.price_min) {
-      const max = formatCurrency(product.price_max, currency, locale, { maximumFractionDigits: 0 });
-      return `${min} ~ ${max}`;
+  const prevCountRef = useRef(useCartStore.getState().count);
+  const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setAdding(true);
+    prevCountRef.current = useCartStore.getState().count;
+    try {
+      const cart = await addCartItem(product.id, [], 1);
+      syncFromCart(cart);
+      const newCount = cart.items.filter((i) => i.is_purchasable).length;
+      if (newCount > prevCountRef.current) {
+        // 新增行 → 飞入动画
+        if (btnRef.current) flyToCart(btnRef.current);
+        toast.success(t("addedToCart"));
+      } else {
+        // 累加数量 → toast 提示
+        toast.success(t("alreadyInCart"));
+      }
+    } catch {
+      toast.error(t("addToCartFailed"));
+    } finally {
+      setAdding(false);
     }
-    return min;
-  })();
-
-  // mall namespace 有 unit_PCS / unit_SET 等 key
-  const unitKey = product.unit ? `unit_${product.unit}` : null;
-  let unitLabel = "";
-  if (unitKey) {
-    try { unitLabel = t(unitKey as any); } catch { unitLabel = product.unit || ""; }
-  }
-  const leadTime = formatLeadTime(product.lead_time_min, product.lead_time_max);
+  }, [product.id, syncFromCart, toast, t]);
 
   return (
     <Link
       href={`/mall/products/${product.id}`}
-      className="group block rounded-lg border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-md"
+      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
     >
       {/* 图片区 */}
-      <div className="relative aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden">
+      <div
+        className="relative min-h-[152px] flex items-center justify-center overflow-hidden border-b border-[#edf2f5]"
+        style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
+      >
         {product.main_image ? (
           <img
             src={product.main_image}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-[142px] w-[142px] object-contain mix-blend-multiply"
             loading="lazy"
           />
         ) : (
           <Package className="h-12 w-12 text-gray-300" />
         )}
-        {product.is_featured && (
-          <span className="absolute top-2 right-2 rounded bg-[#FF6B35] px-2 py-0.5 text-[10px] font-semibold text-white">
-            {t("featured")}
-          </span>
-        )}
+        <div className="absolute top-2.5 left-2.5 flex gap-1">
+          {product.is_featured && (
+            <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+              {t("featured")}
+            </span>
+          )}
+          {product.supply_mode === "PLATFORM_STOCK" ? (
+            <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+              {t("supplyModePlatformStock")}
+            </span>
+          ) : (
+            <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+              {t("supplyModeSupplierDirect")}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 信息区 */}
-      <div className="p-3">
-        {/* 品类 */}
-        {categoryLabel && (
-          <p className="mb-1 truncate text-[11px] font-medium text-[#0D4D4D]">
-            {categoryLabel}
-          </p>
-        )}
-
-        {/* 商品名 */}
-        <h3 className="mb-1.5 line-clamp-2 text-sm font-semibold leading-snug text-gray-900 group-hover:text-[#0D4D4D]">
+      <div className="p-3.5 space-y-2">
+        <h3 className="min-h-[46px] text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
           {product.name}
         </h3>
 
-        {/* 认证 */}
-        {product.certifications && product.certifications.length > 0 && (
-          <div className="mb-1.5 flex flex-wrap gap-1">
-            {product.certifications.map((cert) => (
-              <span
-                key={cert}
-                className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-700"
-              >
-                {cert}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* 价格 */}
-        <p className="text-base font-bold text-[#0D4D4D]">
-          {priceDisplay}
-          {unitLabel && (
-            <span className="ml-0.5 text-xs font-normal text-gray-400">
-              / {unitLabel}
-            </span>
-          )}
-        </p>
-
-        {/* MOQ + 交期 */}
-        <p className="mt-1 text-[11px] text-gray-400">
-          {product.moq != null && (
-            <span>MOQ: {product.moq} {unitLabel}</span>
-          )}
-          {product.moq != null && leadTime && <span> · </span>}
-          {leadTime && <span>{leadTime}</span>}
-        </p>
-
-        {/* 多 SKU 提示 */}
-        {product.sku_count > 1 && (
-          <p className="mt-1 text-[11px] font-medium text-[#0D4D4D]">
-            {t("variants", { count: product.sku_count })}
+        {product.description && (
+          <p className="text-xs text-muted leading-relaxed line-clamp-2">
+            {product.description}
           </p>
         )}
+
+        <div className="flex flex-wrap gap-1.5">
+          {categoryLabel && (
+            <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">
+              {categoryLabel}
+            </span>
+          )}
+          {product.certifications?.map((cert) => (
+            <span
+              key={cert}
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap"
+              style={{ color: "#15935f", background: "#e5f7ee" }}
+            >
+              {cert}
+            </span>
+          ))}
+        </div>
+
+        {product.moq != null && (
+          <p className="text-xs text-muted">
+            <span className="font-extrabold text-navy">MOQ:</span>{" "}
+            {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
+          </p>
+        )}
+
+        {/* 底部操作 */}
+        <div className="grid grid-cols-[1fr_40px] gap-2 pt-1">
+          <MallButton variant="teal" size="md" className="text-[13px]">
+            {t("startInquiry")}
+          </MallButton>
+          <button
+            ref={btnRef}
+            type="button"
+            onClick={handleAddToCart}
+            disabled={adding}
+            className="h-10 w-10 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t("addToInquiryCart")}
+          >
+            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
     </Link>
   );

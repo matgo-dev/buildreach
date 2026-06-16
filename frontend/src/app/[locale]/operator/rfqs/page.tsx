@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { Loader2, FileText, FileEdit } from "lucide-react";
+import { Loader2, FileText, FileEdit, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -32,8 +32,9 @@ function OperatorRfqListContent() {
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
+  const [mineFilter, setMineFilter] = useState(false);
 
-  const swrKey = `operator-rfqs-${page}-${statusFilter}`;
+  const swrKey = `operator-rfqs-${page}-${statusFilter}-${mineFilter}`;
   const { data, isLoading, mutate } = useSWR<RfqListResponse>(
     swrKey,
     () =>
@@ -41,6 +42,7 @@ function OperatorRfqListContent() {
         page,
         page_size: PAGE_SIZE,
         status: statusFilter || undefined,
+        mine: mineFilter || undefined,
       }),
     { revalidateOnFocus: false },
   );
@@ -78,10 +80,42 @@ function OperatorRfqListContent() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-800">{t("operatorRfqTitle")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">{t("operatorRfqTitle")}</h1>
+        <Link
+          href={`/${locale}/operator/rfqs/create`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4" />
+          {t("createOnBehalf")}
+        </Link>
+      </div>
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        {/* 范围 toggle */}
+        <div className="flex rounded-lg border border-gray-200">
+          <button
+            type="button"
+            onClick={() => { setMineFilter(false); setPage(1); }}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              !mineFilter ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {t("filterAll")}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMineFilter(true); setPage(1); }}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              mineFilter ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {t("filterMyCreated")}
+          </button>
+        </div>
+
+        {/* 状态筛选 */}
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
@@ -153,6 +187,23 @@ function OperatorRfqListContent() {
                         </button>
                       )}
                       {rfq.status === "PROCESSING" && (
+                        <>
+                          <Link
+                            href={`/${locale}/operator/rfqs/${rfq.id}`}
+                            className="text-xs font-medium text-gray-600 hover:underline"
+                          >
+                            {t("editRfqItems")}
+                          </Link>
+                          <Link
+                            href={`/${locale}/operator/rfqs/${rfq.id}/quote`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                          >
+                            <FileEdit className="h-3.5 w-3.5" />
+                            {t("quoteBackfill")}
+                          </Link>
+                        </>
+                      )}
+                      {rfq.status === "REJECTED" && (
                         <Link
                           href={`/${locale}/operator/rfqs/${rfq.id}/quote`}
                           className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"

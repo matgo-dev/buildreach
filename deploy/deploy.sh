@@ -18,6 +18,9 @@ APP_DIR="${APP_DIR:-/opt/overseas-platform}"
 BACKUP_DIR="${BACKUP_DIR:-$APP_DIR/backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-60}"
+DEPLOY_REF="${DEPLOY_REF:-origin/main}"
+BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-8001}"
+FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-3001}"
 
 cd "$APP_DIR"
 
@@ -39,6 +42,18 @@ set -a
 source .env.production
 set +a
 
+# 允许 CI / 手动部署在不改 ECS .env.production 的情况下覆盖本次发布参数。
+if [ -n "${DEPLOY_NEXT_PUBLIC_API_BASE_URL:-}" ]; then
+    export NEXT_PUBLIC_API_BASE_URL="$DEPLOY_NEXT_PUBLIC_API_BASE_URL"
+fi
+if [ -n "${DEPLOY_CORS_ORIGINS:-}" ]; then
+    export CORS_ORIGINS="$DEPLOY_CORS_ORIGINS"
+fi
+if [ -n "${DEPLOY_IMAGE_BASE_URL:-}" ]; then
+    export IMAGE_BASE_URL="$DEPLOY_IMAGE_BASE_URL"
+fi
+export BACKEND_HOST_PORT FRONTEND_HOST_PORT
+
 # ---- 1. 备份数据库(只在 DB 容器已运行时备份)----
 mkdir -p "$BACKUP_DIR"
 if docker compose ps db --status running 2>/dev/null | grep -q db; then
@@ -57,7 +72,7 @@ fi
 echo "[deploy] [2/5] 拉取最新代码"
 git fetch origin
 PREV_SHA=$(git rev-parse HEAD)
-git reset --hard origin/main
+git reset --hard "$DEPLOY_REF"
 NEW_SHA=$(git rev-parse HEAD)
 if [ "$PREV_SHA" = "$NEW_SHA" ]; then
     echo "[deploy]       无更新($NEW_SHA)"
@@ -74,7 +89,7 @@ docker compose --env-file .env.production up -d --build --remove-orphans
 echo "[deploy] [4/5] 等待 backend 健康(最多 ${HEALTH_TIMEOUT_SECONDS}s)..."
 HEALTHY=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
-    if curl -fsS http://localhost:8001/healthz > /dev/null 2>&1; then
+    if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
         echo "[deploy]       ✅ backend healthy(第 ${i} 次,$((i * 2))s)"
         HEALTHY=1
         break
@@ -91,7 +106,7 @@ fi
 echo "[deploy] 等待 frontend 健康..."
 HEALTHY=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
-    if curl -fsS http://localhost:3001 > /dev/null 2>&1; then
+    if curl -fsS "http://localhost:${FRONTEND_HOST_PORT}" > /dev/null 2>&1; then
         echo "[deploy]       ✅ frontend healthy(第 ${i} 次,$((i * 2))s)"
         HEALTHY=1
         break
@@ -112,6 +127,7 @@ docker image prune -f --filter "dangling=true" 2>&1 | tail -3 | sed 's/^/       
 
 echo "[deploy] =================================================="
 echo "[deploy] ✅ 部署成功 $(date -Iseconds)"
-echo "[deploy]    backend  → http://localhost:8001/healthz"
-echo "[deploy]    frontend → http://localhost:3001"
+echo "[deploy]    ref      → $DEPLOY_REF"
+echo "[deploy]    backend  → http://localhost:${BACKEND_HOST_PORT}/healthz"
+echo "[deploy]    frontend → http://localhost:${FRONTEND_HOST_PORT}"
 echo "[deploy] =================================================="

@@ -13,6 +13,7 @@ import Toggle from "@/components/ui/Toggle";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Permissions } from "@/lib/permissions";
+import { localizedField } from "@/lib/formatters";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { ApiError } from "@/lib/api";
 import {
@@ -132,13 +133,9 @@ export default function ProductDetailPage() {
     setSkuStatusConfirm(null);
     setSkuStatusLoading(skuId);
     try {
-      const res = await operatorProductsApi.updateSkuStatus(product.id, skuId, { status: newStatus as "ACTIVE" | "INACTIVE" });
+      await operatorProductsApi.updateSkuStatus(product.id, skuId, { status: newStatus as "ACTIVE" | "INACTIVE" });
       await mutate();
-      if (res.product_auto_delisted) {
-        toastSuccess(t("skuDeactivatedAndProductDelisted"));
-      } else {
-        toastSuccess(newStatus === "ACTIVE" ? t("skuActivated") : t("skuDeactivated"));
-      }
+      toastSuccess(newStatus === "ACTIVE" ? t("skuActivated") : t("skuDeactivated"));
     } catch (e) {
       setSaveError(e instanceof ApiError ? e.message : t("actionError"));
     } finally {
@@ -149,15 +146,17 @@ export default function ProductDetailPage() {
   // 进入编辑态
   const enterEditMode = useCallback(() => {
     if (!product) return;
+    const lf = (zh: string | null, en: string | null, fb?: string | null) => localizedField(locale, zh, en, fb);
     setSpuForm({
-      name: locale === "en" ? product.name_en : product.name_zh || product.name,
-      description: locale === "en" ? product.description_en : product.description_zh || product.description,
-      brand: locale === "en" ? product.brand_en : product.brand_zh || product.brand,
-      origin: locale === "en" ? product.origin_en : product.origin_zh || product.origin,
+      name: lf(product.name_zh, product.name_en, product.name),
+      description: lf(product.description_zh, product.description_en, product.description),
+      brand: lf(product.brand_zh, product.brand_en, product.brand),
+      origin: lf(product.origin_zh, product.origin_en, product.origin),
       hs_code: product.hs_code,
       certifications: product.certifications || [],
-      selling_points: locale === "en" ? product.selling_points_en : product.selling_points_zh || product.selling_points,
+      selling_points: lf(product.selling_points_zh, product.selling_points_en, product.selling_points),
       is_featured: product.is_featured,
+      supply_mode: product.supply_mode,
       attributes: product.attributes.filter((a) => a.sku_id == null).map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })),
     });
     spuDirtyRef.current = false;
@@ -179,12 +178,11 @@ export default function ProductDetailPage() {
     }
   }, [startInEdit, product, hasPermission, enterEditMode]);
 
-  // i18n 字段取值
+  // i18n 字段取值:统一用公共工具函数
   const localized = useCallback(
-    (zhVal: string | null, enVal: string | null, fallback?: string | null) => {
-      if (locale === "en") return enVal || zhVal || fallback || "";
-      return zhVal || enVal || fallback || "";
-    }, [locale]
+    (zhVal: string | null, enVal: string | null, fallback?: string | null) =>
+      localizedField(locale, zhVal, enVal, fallback),
+    [locale]
   );
 
   // 品类名解析
@@ -651,6 +649,7 @@ export default function ProductDetailPage() {
               <div className="flex justify-between"><span className="text-slate-400">{t("priceRange")}</span><span className="text-slate-700 font-medium">{formatPrice(product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity) === Infinity ? null : product.skus.reduce((min, s) => s.price_min != null ? Math.min(min, Number(s.price_min)) : min, Infinity), product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity) === -Infinity ? null : product.skus.reduce((max, s) => s.price_max != null ? Math.max(max, Number(s.price_max)) : max, -Infinity), product.currency || "TZS")}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("minMoq")}</span><span className="text-slate-700 font-medium">{overview?.minMoq != null ? `${overview.minMoq} pcs` : "—"}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("featured")}</span><span className="text-slate-700 font-medium">{product.is_featured ? "⭐ " + t("yes") : t("no")}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">{t("supplyMode")}</span><span className={`font-medium ${product.supply_mode === "PLATFORM_STOCK" ? "text-blue-700" : "text-emerald-700"}`}>{product.supply_mode === "PLATFORM_STOCK" ? t("supplyModePlatformStock") : t("supplyModeSupplierDirect")}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">{t("createdBy")}</span><span className="text-slate-700 font-medium">{product.created_by_name || "—"}</span></div>
             </div>
           </div>
@@ -777,7 +776,7 @@ export default function ProductDetailPage() {
       {/* SKU Modal */}
       <SkuEditModal
         open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates} currency={product.currency}
-        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: locale === "en" ? skuModalData.sku.name_en : skuModalData.sku.name_zh || skuModalData.sku.name, color: locale === "en" ? skuModalData.sku.color_en : skuModalData.sku.color_zh || skuModalData.sku.color, material: locale === "en" ? skuModalData.sku.material_en : skuModalData.sku.material_zh || skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
+        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: localized(skuModalData.sku.name_zh, skuModalData.sku.name_en, skuModalData.sku.name), color: localized(skuModalData.sku.color_zh, skuModalData.sku.color_en, skuModalData.sku.color), material: localized(skuModalData.sku.material_zh, skuModalData.sku.material_en, skuModalData.sku.material), price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
       />
 
       {/* Lightbox 图片预览 */}
@@ -864,7 +863,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
 }
 
 function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { sku: SkuOperatorDetail; locale: string; t: ReturnType<typeof useTranslations>; onImageClick?: (images: { url: string }[], index: number) => void; unit: string; currency: string }) {
-  const loc = (zh: string | null, en: string | null, fb?: string | null) => locale === "en" ? (en || zh || fb || "") : (zh || en || fb || "");
+  const loc = (zh: string | null, en: string | null, fb?: string | null) => localizedField(locale, zh, en, fb);
   const Val = ({ v }: { v: string | number | null | undefined }) => <span className="text-slate-800">{v != null && v !== "" ? String(v) : "—"}</span>;
 
   return (

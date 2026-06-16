@@ -1,10 +1,9 @@
 "use client";
 
-import React, { Suspense, useCallback, useMemo } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { Sparkles } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -15,6 +14,8 @@ import { FilterBar } from "@/components/mall/FilterBar";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { Pagination } from "@/components/mall/Pagination";
 import { RightSidebar } from "@/components/mall/RightSidebar";
+import { useAuthStore } from "@/stores/authStore";
+import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
 
 const PAGE_SIZE = 20;
 
@@ -26,11 +27,23 @@ function MallContent() {
 
   const { tree: categoryTree } = useCategoryTree();
 
+  // 买方浏览偏好：仅 BUYER 角色才拉取，登录态变化时自动失效
+  const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
+  const { data: prefCodes } = useSWR<string[]>(
+    isBuyer ? "buyer-browse-prefs" : null,
+    () => getBrowsePreferences(),
+    { revalidateOnFocus: false },
+  );
+
+  // 品类侧栏展开状态：用户点"查看全部品类"后展开，不落 URL
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
   // URL 参数读取
   const urlCat = searchParams.get("cat") || "";
   const urlKeyword = searchParams.get("keyword") || "";
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
+  const urlSupplyMode = searchParams.get("supply_mode") || "";
   const urlPage = Number(searchParams.get("page")) || 1;
 
   // 更新 URL 参数的统一方法
@@ -41,7 +54,6 @@ function MallContent() {
         if (value) params.set(key, value);
         else params.delete(key);
       }
-      // 非翻页操作时重置到第 1 页
       if (!("page" in updates)) params.delete("page");
       const qs = params.toString();
       router.replace(`/${locale}/mall${qs ? `?${qs}` : ""}`, { scroll: false });
@@ -50,16 +62,24 @@ function MallContent() {
   );
 
   // SWR 请求商品列表
+  // 当用户有偏好品类且未展开全部、且没有指定品类时，传 all_categories=false 让后端按偏好过滤
+  // 当用户展开全部品类或指定了具体品类时，传 all_categories=true 跳过偏好过滤
   const apiParams: ProductListParams = useMemo(
     () => ({
       category_code: urlCat || undefined,
       keyword: urlKeyword || undefined,
       sort: urlSort as ProductListParams["sort"],
       featured: urlFeatured || undefined,
+      supply_mode: urlSupplyMode || undefined,
       page: urlPage,
       size: PAGE_SIZE,
+      // 有偏好 + 未展开全部 + 未指定具体品类 → 让后端按偏好过滤（不传 all_categories）
+      // 展开全部或指定了品类 → 传 true 让后端返回全量
+      ...(prefCodes && prefCodes.length > 0 && !urlCat
+        ? { all_categories: showAllCategories || undefined }
+        : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlPage]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -81,14 +101,11 @@ function MallContent() {
   const total = data?.total ?? 0;
   const pages = data?.pages ?? 0;
 
-  // 品类选择
-  // 筛选
-  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSort !== "newest");
+  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };
 
-  // 翻页滚动到顶
   const handlePageChange = (page: number) => {
     updateParams({ page: page > 1 ? String(page) : undefined });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -96,25 +113,35 @@ function MallContent() {
 
   return (
     <PublicLayout>
-      <div className="flex flex-col lg:flex-row gap-5">
-        {/* ===== 左侧品类导航 ===== */}
+      {/* 三栏布局:左品类(240) + 中内容(auto) + 右客服/RFQ(300) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px] gap-5">
+        {/* 左侧品类导航 */}
         <CategorySidebar
           activeCategoryCode={urlCat}
           showQuickLinks
           showFeatured={urlFeatured}
           onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+          // 买方偏好品类过滤：指定了具体品类时不做偏好过滤（用户已主动选择）
+          prefCodes={urlCat ? undefined : prefCodes}
+          showAllCategories={showAllCategories || !!urlCat}
+          onToggleAllCategories={() => setShowAllCategories((v) => !v)}
         />
 
-        {/* ===== 主内容区 ===== */}
-        <div className="flex-1 min-w-0 space-y-3">
+        {/* 主内容区 */}
+        <div className="min-w-0 space-y-4">
           <FilterBar
             keyword={urlKeyword}
             sort={urlSort}
             featured={urlFeatured}
+            supplyMode={urlSupplyMode}
             total={total}
+            activeCategoryCode={urlCat}
+            categoryTree={categoryTree}
             onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
             onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
             onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+            onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
+            onCategoryChange={(code) => updateParams({ cat: code || undefined })}
             onClearAll={clearAll}
             hasActiveFilters={hasActiveFilters}
           />
@@ -139,10 +166,8 @@ function MallContent() {
           )}
         </div>
 
-        {/* ===== 右侧栏 ===== */}
-        <aside className="hidden xl:block xl:w-48 shrink-0">
-          <RightSidebar />
-        </aside>
+        {/* 右侧栏 */}
+        <RightSidebar />
       </div>
     </PublicLayout>
   );

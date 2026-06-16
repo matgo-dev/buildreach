@@ -6,6 +6,15 @@ name: Deploy to ECS
 #   - 命令行:gh workflow run "Deploy to ECS"
 on:
   workflow_dispatch:
+    inputs:
+      frontend_host_port:
+        description: "Frontend host port"
+        required: true
+        default: "3001"
+      backend_host_port:
+        description: "Backend host port"
+        required: true
+        default: "8001"
 
 # 同时只允许一个部署在跑,后到的排队等(不取消正在进行的)
 concurrency:
@@ -38,6 +47,24 @@ jobs:
     needs: check-migration
     runs-on: ubuntu-latest
     steps:
+      # dev 分支自动用 3003/8003，main 用 3001/8001，手动填的优先
+      - name: 解析端口
+        id: ports
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          INPUT_FE="${{ inputs.frontend_host_port }}"
+          INPUT_BE="${{ inputs.backend_host_port }}"
+          if [ "$BRANCH" = "dev" ]; then
+            FE="${INPUT_FE:-3003}"; [ "$INPUT_FE" = "3001" ] && FE="3003"
+            BE="${INPUT_BE:-8003}"; [ "$INPUT_BE" = "8001" ] && BE="8003"
+          else
+            FE="${INPUT_FE:-3001}"
+            BE="${INPUT_BE:-8001}"
+          fi
+          echo "frontend_port=$FE" >> "$GITHUB_OUTPUT"
+          echo "backend_port=$BE" >> "$GITHUB_OUTPUT"
+          echo "📦 Branch=$BRANCH → frontend=$FE, backend=$BE"
+
       - name: SSH 触发 deploy.sh
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -49,13 +76,21 @@ jobs:
           script_stop: true
           script: |
             cd /opt/overseas-platform
-            bash deploy/deploy.sh
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            DEPLOY_REF=origin/${{ github.ref_name }} \
+            BACKEND_HOST_PORT=${{ steps.ports.outputs.backend_port }} \
+            FRONTEND_HOST_PORT=${{ steps.ports.outputs.frontend_port }} \
+            DEPLOY_NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.backend_port }} \
+            DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }} \
+            DEPLOY_IMAGE_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.backend_port }}/static \
+              bash deploy/deploy.sh
 
       - name: 通知
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ 部署完成 → http://${{ secrets.ECS_HOST }}:3000"
+            echo "✅ 部署完成 → http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }}"
           else
             echo "❌ 部署失败,登录 ECS 排查:ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}"
           fi

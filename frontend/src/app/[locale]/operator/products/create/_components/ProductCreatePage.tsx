@@ -78,6 +78,7 @@ interface SpuFormState {
   certifications: string[];
   selling_points: string;
   is_featured: boolean;
+  supply_mode: string;
   unit: SkuUnitCode;
   currency: string;
   spuAttributes: Record<string, string>;  // scope=SPU 属性
@@ -93,6 +94,7 @@ const INITIAL_SPU: SpuFormState = {
   certifications: [],
   selling_points: "",
   is_featured: false,
+  supply_mode: "SUPPLIER_DIRECT",
   unit: "PCS",
   currency: "TZS",
   spuAttributes: {},
@@ -320,16 +322,8 @@ export function ProductCreatePage() {
       const errors: Record<string, string> = {};
       if (!category.level3Code) errors.category = t("validate_category_required");
       if (!spu.name.trim()) errors.name = t("validate_name_required");
-      if (publish && skus.length === 0) errors.skus = t("validate_sku_required");
+      // ADR-0006 方案 C：不强制 SKU，上架只需品类+名称+图片
       if (publish && spuImageFiles.length === 0) errors.images = t("validate_image_required");
-      // SKU 价格：仅上架时校验，草稿由发布完整性门把关
-      if (publish) {
-        for (const sku of skus) {
-          if (!sku.price_min && !sku.price_max) {
-            errors[`sku_price_${sku._clientId}`] = t("validate_sku_price_required");
-          }
-        }
-      }
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         requestAnimationFrame(() => {
@@ -390,6 +384,7 @@ export function ProductCreatePage() {
             selling_points: spu.selling_points || undefined,
             source_lang: locale,
             is_featured: spu.is_featured,
+            supply_mode: spu.supply_mode,
             unit: spu.unit,
             currency: spu.currency,
             attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
@@ -411,6 +406,7 @@ export function ProductCreatePage() {
             selling_points: spu.selling_points || undefined,
             source_lang: locale,
             is_featured: spu.is_featured,
+            supply_mode: spu.supply_mode,
             unit: spu.unit,
             currency: spu.currency,
             attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
@@ -686,6 +682,35 @@ export function ProductCreatePage() {
                       className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${spu.is_featured ? "translate-x-5" : "translate-x-0.5"}`}
                     />
                   </button>
+                </div>
+              </div>
+
+              {/* 履约模式 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_supply_mode")}</label>
+                <div className="mt-2 flex gap-4">
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="supply_mode"
+                      value="SUPPLIER_DIRECT"
+                      checked={spu.supply_mode === "SUPPLIER_DIRECT"}
+                      onChange={() => updateSpu("supply_mode", "SUPPLIER_DIRECT")}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    {t("field_supply_mode_supplier_direct")}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="supply_mode"
+                      value="PLATFORM_STOCK"
+                      checked={spu.supply_mode === "PLATFORM_STOCK"}
+                      onChange={() => updateSpu("supply_mode", "PLATFORM_STOCK")}
+                      className="h-4 w-4 text-blue-600"
+                    />
+                    {t("field_supply_mode_platform_stock")}
+                  </label>
                 </div>
               </div>
 

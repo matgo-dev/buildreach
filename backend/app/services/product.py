@@ -6,8 +6,6 @@ SPU CRUD / SKU CRUD(含阶梯价整体替换) / 供货关系(挂 SKU) / 图片(S
 from __future__ import annotations
 
 import os
-import uuid
-from pathlib import Path
 
 from fastapi import UploadFile
 from sqlalchemy import delete as sa_delete, func, or_, select, update
@@ -37,10 +35,11 @@ from app.core.exceptions import (
 )
 from app.core.message_keys import MessageKey
 from app.core.i18n_write import apply_i18n_create, apply_i18n_edit
+from app.core.i18n_registry import get_i18n_fields
 from app.core.locale import SUPPORTED_LOCALES
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
-from app.db.models.product import Product, ProductStatus
+from app.db.models.product import Product, ProductStatus, SupplyMode
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_image import ProductImage, ImageType
 from app.db.models.product_sku import ProductSku, SkuStatus
@@ -61,14 +60,20 @@ from app.schemas.product import (
     SupplierRelationUpdate,
 )
 
-UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "products"
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_IMAGES_PER_PRODUCT = 8
 
-# i18n 字段声明
-_PRODUCT_I18N_FIELDS = ("name", "description", "brand", "origin", "selling_points")
-_SKU_I18N_FIELDS = ("name", "color", "material")
+# 图片校验常量从公共模块导入
+from app.services._buyer_utils import (
+    ALLOWED_EXTENSIONS,
+    MAX_IMAGE_SIZE,
+    save_uploaded_image,
+)
+
+# i18n 字段声明:从注册表读取(单一来源)
+from app.db.models.product import Product as _Product
+from app.db.models.product_sku import ProductSku as _ProductSku
+_PRODUCT_I18N_FIELDS = get_i18n_fields(_Product)
+_SKU_I18N_FIELDS = get_i18n_fields(_ProductSku)
 
 
 # ── 软删除工具 ──────────────────────────────────────────
@@ -163,14 +168,14 @@ async def _generate_sku_code(
 async def create_product(
     db: AsyncSession, data: ProductCreate, operator_id: int,
 ) -> Product:
-    # 品类存在 + 叶子校验
+    # 品类存在 + 叶子校验(叶子 = DB 中无子节点,不硬编码层级)
     cat = await db.execute(
         select(Category).where(Category.code == data.category_code)
     )
     category = cat.scalar_one_or_none()
     if not category:
         raise NotFoundError("Category not found")
-    if category.level != 3:
+    if await _has_children(db, data.category_code):
         raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
@@ -191,6 +196,7 @@ async def create_product(
         unit=data.unit,
         currency=data.currency,
         is_featured=data.is_featured,
+        supply_mode=getattr(data, "supply_mode", SupplyMode.SUPPLIER_DIRECT) or SupplyMode.SUPPLIER_DIRECT,
         status=ProductStatus.DRAFT,
         created_by=operator_id,
     )
@@ -303,13 +309,25 @@ async def _add_attrs(
         if tpl.scope != expected_scope:
             raise AttrScopeMismatchError(attr.attr_key, tpl.scope)
 
+        # 运营录入:attr_key 对应模板英文键,attr_value 为当前语言值
+        # source_lang 取 zh(运营默认中文),attr_key_en 从模板取英文键名
         db.add(ProductAttr(
             product_id=product_id,
             sku_id=sku_id,
-            attr_key=attr.attr_key,
-            attr_value=attr.attr_value,
+            attr_key_en=attr.attr_key,
+            attr_value_en=attr.attr_value,
             attr_unit=tpl.attr_unit,
             sort_order=tpl.sort_order,
+            selectable=tpl.selectable,
+            source_lang="en",
+            trans_meta={
+                "attr_key_en": "src",
+                "attr_key_zh": "pending",
+                "attr_key_sw": "pending",
+                "attr_value_en": "src",
+                "attr_value_zh": "pending",
+                "attr_value_sw": "pending",
+            },
         ))
 
 
@@ -330,56 +348,24 @@ async def update_product_status(
     # errors 结构化：[{key, params}]，前端按 key 翻译
     if new_status == ProductStatus.ACTIVE and not skip_validation:
         errors: list[dict[str, object]] = []
-        active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE]
-        if not active_skus:
-            errors.append({"key": "publish_no_active_sku"})
-        else:
-            for sku in active_skus:
-                if sku.price_min is None or sku.price_max is None:
-                    errors.append({"key": "publish_sku_price_missing", "params": {"sku_code": sku.sku_code}})
-                elif sku.price_min > sku.price_max:
-                    errors.append({"key": "publish_sku_price_invalid", "params": {"sku_code": sku.sku_code}})
-                if (
-                    sku.lead_time_min is not None
-                    and sku.lead_time_max is not None
-                    and sku.lead_time_min > sku.lead_time_max
-                ):
-                    errors.append({"key": "publish_sku_leadtime_invalid", "params": {"sku_code": sku.sku_code}})
+
+        # ADR-0006 方案 C：不强制 SKU。上架只校验图片 + SPU 必填属性。
+        # SKU 相关校验（价格/交期/SKU 必填属性）全部移除。
+        # 如有 SKU 且数据不一致（如 price_min > price_max），由运营自行管理，不阻塞上架。
+
+        # SPU 必填属性校验（仅 MANUAL 来源，爬虫数据不走模板）
+        is_manual = (getattr(product, "source", "MANUAL") or "MANUAL") == "MANUAL"
+        if is_manual:
+            tpl_map = await _load_template_map(db, product.category_code)
+            required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
+            spu_attr_keys = {a.attr_key_en for a in product.attrs if a.sku_id is None}
+            missing_spu = [k for k in required_spu if k not in spu_attr_keys]
+            if missing_spu:
+                errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
+
+        # ── 通用校验:所有来源都必须有图片 ──
         if not product.images:
             errors.append({"key": "publish_no_image"})
-
-        # 必填属性校验
-        tpl_map = await _load_template_map(db, product.category_code)
-        required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
-        required_sku = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SKU"]
-
-        # SPU 级必填
-        spu_attr_keys = {a.attr_key for a in product.attrs if a.sku_id is None}
-        missing_spu = [k for k in required_spu if k not in spu_attr_keys]
-        if missing_spu:
-            errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
-
-        # SKU 级必填：每个 active SKU 都需有值
-        if required_sku and active_skus:
-            sku_attrs_q = await db.execute(
-                select(ProductAttr.sku_id, ProductAttr.attr_key)
-                .where(
-                    ProductAttr.product_id == product.id,
-                    ProductAttr.sku_id.isnot(None),
-                )
-            )
-            sku_attr_map: dict[int, set[str]] = {}
-            for row in sku_attrs_q:
-                sku_attr_map.setdefault(row.sku_id, set()).add(row.attr_key)
-            for sku in active_skus:
-                sku_keys = sku_attr_map.get(sku.id, set())
-                missing = [k for k in required_sku if k not in sku_keys]
-                if missing:
-                    errors.append({"key": "publish_sku_missing_attrs", "params": {"sku_code": sku.sku_code, "attrs": ", ".join(missing)}})
-
-        # TODO: 设计未覆盖,采用最简实现 — 当前允许无供货关系上架。
-        # 后续需决策：是否强制每个 active SKU 至少绑定一个供应商才能上架。
-        # 如需强制,在此处检查 product_suppliers 表,缺失则 append error。
 
         if errors:
             raise PublishValidationFailedError(errors)
@@ -441,6 +427,7 @@ async def list_products_operator(
     *,
     category_code: str | None = None,
     status: str | None = None,
+    supply_mode: str | None = None,
     keyword: str | None = None,
     page: int = 1,
     size: int = 20,
@@ -458,6 +445,9 @@ async def list_products_operator(
     if status:
         q = q.where(Product.status == status)
         count_q = count_q.where(Product.status == status)
+    if supply_mode:
+        q = q.where(Product.supply_mode == supply_mode)
+        count_q = count_q.where(Product.supply_mode == supply_mode)
     if keyword:
         kw = f"%{keyword}%"
         # 搜索对各语言列做 OR 匹配
@@ -479,7 +469,9 @@ async def list_products_public(
     db: AsyncSession,
     *,
     category_code: str | None = None,
+    category_codes: list[str] | None = None,
     featured: bool | None = None,
+    supply_mode: str | None = None,
     keyword: str | None = None,
     sort: str = "newest",
     page: int = 1,
@@ -495,9 +487,20 @@ async def list_products_public(
         codes = await _descendant_category_codes(db, category_code)
         q = q.where(Product.category_code.in_(codes))
         count_q = count_q.where(Product.category_code.in_(codes))
+    elif category_codes:
+        # 浏览偏好:多个一级品类 → 展开全部后代
+        all_desc: list[str] = []
+        for cc in category_codes:
+            all_desc.extend(await _descendant_category_codes(db, cc))
+        if all_desc:
+            q = q.where(Product.category_code.in_(all_desc))
+            count_q = count_q.where(Product.category_code.in_(all_desc))
     if featured is not None:
         q = q.where(Product.is_featured == featured)
         count_q = count_q.where(Product.is_featured == featured)
+    if supply_mode:
+        q = q.where(Product.supply_mode == supply_mode)
+        count_q = count_q.where(Product.supply_mode == supply_mode)
     if keyword:
         kw = f"%{keyword}%"
         keyword_filter = or_(
@@ -678,29 +681,20 @@ async def update_sku_status(
     db: AsyncSession, product_id: int, sku_id: int, new_status: str,
 ) -> dict:
     """SKU 状态切换是运营操作，ACTIVE 商品下也允许（如缺货停售）。
-    停售最后一个在售 SKU 时自动下架商品，避免出现"可见但无可购变体"。
-    返回 dict 包含 sku 和可选的 product_status_changed 标记。
+    SPU 状态只通过商品状态机显式变更，SKU 停用不连带下架 SPU。
     """
     if new_status not in SkuStatus.ALL:
         raise InvalidProductStatusError(new_status)
     product = await _get_product_or_404(db, product_id, load_relations=True)
     sku = await _get_sku_under_product_or_404(db, product_id, sku_id)
     if sku.status == new_status:
-        return {"sku": sku, "product_auto_delisted": False}
+        return {"sku": sku}
 
     sku.status = new_status
-    product_auto_delisted = False
-
-    # 停售最后一个在售 SKU → 自动下架商品
-    if new_status == SkuStatus.INACTIVE and product.status == ProductStatus.ACTIVE:
-        active_skus = [s for s in product.skus if s.status == SkuStatus.ACTIVE and s.id != sku_id]
-        if len(active_skus) == 0:
-            product.status = ProductStatus.INACTIVE
-            product_auto_delisted = True
 
     await db.commit()
     await db.refresh(sku)
-    return {"sku": sku, "product_auto_delisted": product_auto_delisted}
+    return {"sku": sku}
 
 
 async def delete_sku(db: AsyncSession, product_id: int, sku_id: int, *, operator_id: int) -> None:
@@ -952,33 +946,6 @@ async def list_sku_suppliers(
 
 # ── 图片（SPU + SKU 维度）────────────────────────────────
 
-TARGET_SIZE = (800, 800)
-JPEG_QUALITY = 85
-
-
-def _process_image(content: bytes) -> tuple[bytes, int, int]:
-    from io import BytesIO
-    from PIL import Image
-
-    img = Image.open(BytesIO(content))
-    img = img.convert("RGB")
-
-    w, h = img.size
-    if w < 200 or h < 200:
-        raise ImageTooSmallError()
-
-    img.thumbnail(TARGET_SIZE, Image.LANCZOS)
-
-    w, h = img.size
-    if w != h:
-        side = max(w, h)
-        bg = Image.new("RGB", (side, side), (255, 255, 255))
-        bg.paste(img, ((side - w) // 2, (side - h) // 2))
-        img = bg
-
-    buf = BytesIO()
-    img.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
-    return buf.getvalue(), img.size[0], img.size[1]
 
 
 async def add_product_image(
@@ -1002,6 +969,7 @@ async def add_product_image(
     if len(product.images) >= MAX_IMAGES_PER_PRODUCT:
         raise MaxImagesExceededError(MAX_IMAGES_PER_PRODUCT)
 
+    # 前置校验用商品专属错误码,避免公共函数抛买方错误码
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ImageFormatInvalidError(", ".join(ALLOWED_EXTENSIONS))
@@ -1010,20 +978,16 @@ async def add_product_image(
     if len(content) > MAX_IMAGE_SIZE:
         raise ImageTooLargeError()
 
-    processed_bytes, img_w, img_h = _process_image(content)
-
-    product_dir = UPLOAD_DIR / str(product_id)
-    product_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}.jpg"
-    filepath = product_dir / filename
-    filepath.write_bytes(processed_bytes)
+    # 使用公共图片处理函数,square=True 保持商品图正方形裁剪行为
+    image_key, img_w, img_h, file_size = save_uploaded_image(
+        content, file.filename or "image.jpg", f"products/{product_id}", square=True,
+    )
 
     actual_type = image_type if image_type in ImageType.ALL else ImageType.GALLERY
     if not product.images:
         actual_type = ImageType.MAIN
 
     next_sort = len(product.images)
-    image_key = f"products/{product_id}/{filename}"
     img = ProductImage(
         product_id=product_id,
         sku_id=sku_id,
@@ -1032,7 +996,7 @@ async def add_product_image(
         sort_order=next_sort,
         width=img_w,
         height=img_h,
-        file_size=len(processed_bytes),
+        file_size=file_size,
     )
     db.add(img)
     await db.commit()
@@ -1169,13 +1133,13 @@ async def create_product_aggregate(
 
     service 持 commit；审计以 commit=False 写入，与业务写共用同一次 commit。
     """
-    # 品类校验
+    # 品类校验(叶子 = DB 中无子节点,不硬编码层级)
     cat = (await db.execute(
         select(Category).where(Category.code == data.category_code)
     )).scalar_one_or_none()
     if not cat:
         raise NotFoundError("Category not found")
-    if cat.level != 3:
+    if await _has_children(db, data.category_code):
         raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
@@ -1195,6 +1159,7 @@ async def create_product_aggregate(
         unit=data.unit,
         currency=data.currency,
         is_featured=data.is_featured,
+        supply_mode=getattr(data, "supply_mode", SupplyMode.SUPPLIER_DIRECT) or SupplyMode.SUPPLIER_DIRECT,
         status=ProductStatus.DRAFT,
         created_by=actor_id,
     )
@@ -1279,7 +1244,7 @@ async def save_product_aggregate(
             old_value = getattr(product, f"{field}_{source_lang}", None)
             await apply_i18n_edit(product, field, source_lang, value, old_value, domain="product")
 
-    for field in ("hs_code", "certifications", "is_featured", "unit", "currency"):
+    for field in ("hs_code", "certifications", "is_featured", "supply_mode", "unit", "currency"):
         value = getattr(data, field, None)
         if value is not None:
             setattr(product, field, value)
@@ -1607,6 +1572,17 @@ async def get_purchasable_sku(
 
 
 # ── 内部工具 ─────────────────────────────────────────────
+
+async def _has_children(db: AsyncSession, category_code: str) -> bool:
+    """判断分类是否有子节点(叶子 = 无子节点,不硬编码层级)。"""
+    child = (await db.execute(
+        select(Category.code).where(
+            Category.parent_code == category_code,
+            Category.is_active.is_(True),
+        ).limit(1)
+    )).scalar_one_or_none()
+    return child is not None
+
 
 async def _get_product_or_404(
     db: AsyncSession, product_id: int, *, load_relations: bool = False,

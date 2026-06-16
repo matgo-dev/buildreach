@@ -94,7 +94,7 @@ export const WORKSPACES: Workspace[] = [
     code: "BUYER",
     label: "采购方工作台",
     pathPrefix: "/buyer",
-    themeColor: "#003366",
+    themeColor: "#006773",
     groups: [
       {
         label: "BUYER 工作台",
@@ -189,7 +189,7 @@ export function defaultDashboardOf(roles: RoleCode[]): string {
   if (roles.includes("ADMIN")) return "/admin/users";
   if (roles.includes("OPERATOR")) return "/operator/products";
   if (roles.includes("SUPPLIER")) return "/supplier/dashboard";
-  if (roles.includes("BUYER")) return "/buyer/rfqs";
+  if (roles.includes("BUYER")) return "/mall";
   return "/";
 }
 

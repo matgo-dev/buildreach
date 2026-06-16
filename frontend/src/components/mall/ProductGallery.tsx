@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ProductImage } from "@/lib/api/products";
@@ -40,6 +40,19 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
 
   const activeImage = displayImages[activeIndex] ?? null;
 
+  // 悬浮放大：鼠标在主图上移动时原地显示放大局部
+  const [zooming, setZooming] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 }); // 0~1 比例
+  const mainRef = useRef<HTMLDivElement>(null);
+  const ZOOM_SCALE = 2.5;
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    setZoomPos({ x, y });
+  }, []);
+
   const openLightbox = useCallback(() => {
     if (activeImage) setLightboxOpen(true);
   }, [activeImage]);
@@ -66,25 +79,43 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
 
   return (
     <div className="shrink-0">
-      {/* 主图 */}
+      {/* 主图 — 悬浮原地放大 */}
       <div
-        className="relative w-[320px] h-[260px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-pointer"
+        ref={mainRef}
+        className="relative w-[400px] h-[360px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-crosshair"
         onClick={openLightbox}
+        onMouseEnter={() => setZooming(true)}
+        onMouseLeave={() => setZooming(false)}
+        onMouseMove={handleMouseMove}
       >
         {activeImage ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={activeImage.full_url}
-            alt=""
-            className="h-full w-full object-contain"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activeImage.full_url}
+              alt=""
+              className={`h-full w-full object-contain transition-opacity duration-150 ${zooming ? "opacity-0" : "opacity-100"}`}
+            />
+            {/* 放大层：用 background-image 实现局部放大 */}
+            {zooming && (
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${activeImage.full_url})`,
+                  backgroundSize: `${ZOOM_SCALE * 100}%`,
+                  backgroundPosition: `${zoomPos.x * 100}% ${zoomPos.y * 100}%`,
+                  backgroundRepeat: "no-repeat",
+                }}
+              />
+            )}
+          </>
         ) : (
           <div className="flex h-full items-center justify-center text-6xl text-gray-300">
             📷
           </div>
         )}
         {isFeatured && (
-          <span className="absolute left-2 top-2 rounded bg-[#FF6B35] px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="absolute left-2 top-2 rounded bg-[#15935f] px-2 py-0.5 text-[10px] font-semibold text-white">
             {t("featured")}
           </span>
         )}
@@ -97,10 +128,10 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
             <button
               key={img.id}
               type="button"
-              onClick={() => setActiveIndex(idx)}
+              onMouseEnter={() => setActiveIndex(idx)}
               className={`relative h-14 w-14 shrink-0 rounded-md border-2 overflow-hidden transition-colors ${
                 idx === activeIndex
-                  ? "border-[#0D4D4D]"
+                  ? "border-[#00505a]"
                   : "border-gray-200 hover:border-gray-400"
               }`}
             >
@@ -144,12 +175,12 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
             </button>
           )}
 
-          {/* 大图 */}
+          {/* 大图 — 小图也撑到合理尺寸 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={activeImage.full_url}
             alt=""
-            className="max-h-[85vh] max-w-[90vw] object-contain"
+            className="max-h-[85vh] max-w-[90vw] min-h-[50vh] min-w-[40vw] object-contain"
             onClick={(e) => e.stopPropagation()}
           />
 

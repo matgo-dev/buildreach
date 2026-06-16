@@ -1,27 +1,41 @@
 "use client";
 
 import { useEffect } from "react";
-import { AppShell } from "@/components/layout/AppShell";
+import { TopStrip } from "@/components/layout/TopStrip";
+import { MallHeader } from "@/components/layout/MallHeader";
+import { MallFooter } from "@/components/layout/MallFooter";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 import { getCart } from "@/lib/api/cart";
 
+/**
+ * Buyer 工作台 Layout — 顶部沿用 Mall 深青 Header,左侧保留工作台侧边栏。
+ *
+ * 结构:TopStrip → MallHeader → MallNavRow → (Sidebar + Content) → MallFooter
+ */
 export default function BuyerLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const syncFromCart = useCartStore((s) => s.syncFromCart);
 
-  // 登录后初始化询价篮角标
   useEffect(() => {
     if (!user) return;
     getCart().then(syncFromCart).catch(() => {});
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <AppShell>
-      <RouteGuard allowRoles={["BUYER"]}>
-        {children}
-      </RouteGuard>
-    </AppShell>
+    <RouteGuard allowRoles={["BUYER"]}>
+      <div className="flex h-screen flex-col overflow-hidden bg-bg">
+        <TopStrip />
+        <MallHeader />
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar />
+          <main className="flex-1 overflow-y-auto">
+            <div className="p-6">{children}</div>
+          </main>
+        </div>
+      </div>
+    </RouteGuard>
   );
 }

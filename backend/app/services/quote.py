@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.core.datetime import to_naive_utc
+from app.core.i18n import get_localized
 
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +21,7 @@ from fastapi import Request
 
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
+from app.constants.quote_line_type import QuoteLineType
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
     QuoteItemMismatchError,
@@ -35,9 +37,15 @@ from app.db.models.rfq_quote import RfqQuote
 from app.db.models.rfq_quote_item import RfqQuoteItem
 from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
-from app.services._rfq_loader import load_rfq, lock_rfq, _resolve_buyer_org_id
+from app.services._rfq_loader import load_rfq, lock_rfq, resolve_rfq_scope, _resolve_buyer_org_id
+from app.services._variant_utils import (
+    normalize_variants_to_en,
+    variant_snapshot_to_display,
+    get_viewable_product,
+)
 from app.schemas.quote import (
     QuoteCreatePayload,
+    QuoteLineInput,
     QuoteCostView,
     QuoteItemBuyerPublic,
     QuoteItemOperatorView,
@@ -48,11 +56,7 @@ from app.schemas.quote import (
 
 logger = logging.getLogger(__name__)
 
-# quote_no 并发重试上限
 _QUOTE_NO_MAX_RETRIES = 5
-
-
-# ── 组织解析 ───────────────────────────────────────────
 
 
 # ── quote_no 生成 ────────────────────────────────────────
@@ -71,6 +75,85 @@ async def _generate_quote_no(db: AsyncSession) -> str:
     return f"{prefix}{seq:04d}"
 
 
+# ── 覆盖校验 ──────────────────────────────────────────
+
+
+def _validate_quote_lines(
+    rfq_item_map: dict[int, RfqItem],
+    quote_lines: list[QuoteLineInput],
+) -> None:
+    """校验报价行：至少一行、source 存在、PRODUCT 行必须有 product_id、必须有 unit_price。"""
+    if not quote_lines:
+        raise QuoteLinesIncompleteError()
+
+    for line in quote_lines:
+        if line.line_type not in QuoteLineType.ALL:
+            raise QuoteItemMismatchError()
+        if line.source_rfq_item_id is not None and line.source_rfq_item_id not in rfq_item_map:
+            raise QuoteItemMismatchError()
+        if line.line_type == QuoteLineType.PRODUCT and line.product_id is None:
+            raise QuoteItemMismatchError()
+        if line.unit_price is None:
+            raise QuoteLineNoPriceError()
+
+
+# ── 构建报价行 ────────────────────────────────────────
+
+
+async def _build_quote_item(
+    db: AsyncSession, quote_id: int, line: QuoteLineInput,
+) -> RfqQuoteItem:
+    """从输入构建报价行，自动快照商品信息。"""
+
+    if line.line_type == QuoteLineType.PRODUCT:
+        product = await get_viewable_product(db, line.product_id) if line.product_id else None
+        product_name = get_localized(product, "name") if product else line.product_name
+
+        variants = line.selected_variants or []
+        if product and variants:
+            variants = await normalize_variants_to_en(db, product.id, variants)
+        variant_display = variant_snapshot_to_display(variants) if variants else None
+
+        qty = line.quantity
+        unit_price = line.unit_price
+        line_amount = (qty * unit_price) if (qty and unit_price) else None
+
+        return RfqQuoteItem(
+            quote_id=quote_id,
+            source_rfq_item_id=line.source_rfq_item_id,
+            line_type=QuoteLineType.PRODUCT,
+            product_id=line.product_id,
+            product_name_snapshot=product_name,
+            quoted_variants=variants or None,
+            variant_display=variant_display,
+            quantity=qty,
+            uom=line.uom or (product.unit if product else None),
+            unit_price=unit_price,
+            moq=line.moq,
+            cbm_per_unit=line.cbm_per_unit,
+            gross_weight_per_unit=line.gross_weight_per_unit,
+            line_amount=line_amount,
+            remark=line.remark,
+        )
+
+    # FEE：自定义名称费用行
+    qty = line.quantity or Decimal(1)
+    unit_price = line.unit_price
+    line_amount = (qty * unit_price) if (qty and unit_price) else None
+
+    return RfqQuoteItem(
+        quote_id=quote_id,
+        source_rfq_item_id=None,
+        line_type=QuoteLineType.FEE,
+        product_name_snapshot=line.product_name,
+        quantity=qty,
+        uom=line.uom,
+        unit_price=unit_price,
+        line_amount=line_amount,
+        remark=line.remark,
+    )
+
+
 # ── 创建/重报 ───────────────────────────────────────────
 
 
@@ -79,16 +162,16 @@ async def create_quote(
     payload: QuoteCreatePayload,
     *, request: Request | None = None,
 ) -> RfqQuoteOperatorView:
-    """回填(首报)或重报。运营专用。"""
+    """回填(首报)或重报。运营专用。报价行独立，松关联询价行。"""
     rfq = await lock_rfq(db, rfq_id, user=user)
 
-    # 状态守卫:首报 PROCESSING（运营需先受理）,重报 QUOTED
     is_first = rfq.status == RfqStatus.PROCESSING
     is_requote = rfq.status == RfqStatus.QUOTED
-    if not is_first and not is_requote:
+    is_rejected = rfq.status == RfqStatus.REJECTED  # 买方拒绝后运营可重报
+    if not is_first and not is_requote and not is_rejected:
         raise QuoteRfqStateInvalidError(rfq.status)
 
-    # 一次性加载 rfq_items
+    # 加载 rfq_items（用于 source 校验 + coverage 检查）
     items_result = await db.execute(
         select(RfqItem).where(
             RfqItem.rfq_id == rfq.id,
@@ -98,37 +181,8 @@ async def create_quote(
     rfq_items = items_result.scalars().all()
     rfq_item_map = {it.id: it for it in rfq_items}
 
-    # 校验 lines
-    seen_ids: set[int] = set()
-    for line in payload.lines:
-        if line.rfq_item_id not in rfq_item_map:
-            raise QuoteItemMismatchError()
-        if line.rfq_item_id in seen_ids:
-            raise QuoteItemMismatchError()
-        seen_ids.add(line.rfq_item_id)
-        # 非跳过行必须有 unit_price
-        if not line.skipped and line.unit_price is None:
-            raise QuoteLineNoPriceError()
-
-    # 必须覆盖全部未删 rfq_items（包括 skipped 行）
-    if seen_ids != set(rfq_item_map.keys()):
-        raise QuoteLinesIncompleteError()
-
-    # 不能全部跳过
-    if all(line.skipped for line in payload.lines):
-        raise QuoteLinesIncompleteError()
-
-    # 计算金额——只汇总非 skipped 行
-    total_amount = Decimal(0)
-    line_amounts: dict[int, Decimal | None] = {}
-    for line in payload.lines:
-        if line.skipped:
-            line_amounts[line.rfq_item_id] = None
-            continue
-        rfq_item = rfq_item_map[line.rfq_item_id]
-        amt = line.unit_price * rfq_item.quantity  # type: ignore[operator]
-        line_amounts[line.rfq_item_id] = amt
-        total_amount += amt
+    # 校验
+    _validate_quote_lines(rfq_item_map, payload.lines)
 
     # 版本号
     if is_first:
@@ -142,8 +196,8 @@ async def create_quote(
         )
         next_version = (max_ver_result.scalar() or 0) + 1
 
-    # 旧 ACTIVE → SUPERSEDED
-    if is_requote:
+    # 旧 ACTIVE → SUPERSEDED（重报 / 被拒后重报）
+    if is_requote or is_rejected:
         await db.execute(
             update(RfqQuote)
             .where(
@@ -154,9 +208,8 @@ async def create_quote(
         )
         await db.flush()
 
-    # 币种:header 缺省继承 RFQ 目标币种
+    # 币种
     currency = payload.header.currency or rfq.target_currency or "USD"
-
     valid_until = to_naive_utc(payload.header.valid_until)
 
     # quote_no 生成 + SAVEPOINT 插入
@@ -177,7 +230,7 @@ async def create_quote(
                 valid_until=valid_until,
                 lead_time_days=payload.header.lead_time_days,
                 eta_days=payload.header.eta_days,
-                total_amount=total_amount,
+                total_amount=Decimal(0),  # 后面计算
                 quoted_by_user_id=user.id,
                 quoted_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
@@ -185,12 +238,11 @@ async def create_quote(
             await db.flush()
         except IntegrityError:
             await nested.rollback()
-            # 回查确认是 quote_no 冲突
             existing = await db.execute(
                 select(RfqQuote.id).where(RfqQuote.quote_no == quote_no)
             )
             if existing.scalar_one_or_none() is None:
-                raise  # 非 quote_no 冲突,不误吞
+                raise
             quote_no = await _generate_quote_no(db)
             quote = None
             continue
@@ -202,48 +254,44 @@ async def create_quote(
             break
 
     if quote is None:
-        raise QuoteRfqStateInvalidError()  # 极端:重试耗尽
+        raise QuoteRfqStateInvalidError()
 
-    # 插入报价行 + tiers + costs
-    for line in payload.lines:
-        qi = RfqQuoteItem(
-            quote_id=quote.id,
-            rfq_item_id=line.rfq_item_id,
-            skipped=line.skipped,
-            skip_reason=line.skip_reason if line.skipped else None,
-            unit_price=None if line.skipped else line.unit_price,
-            moq=None if line.skipped else line.moq,
-            cbm_per_unit=None if line.skipped else line.cbm_per_unit,
-            gross_weight_per_unit=None if line.skipped else line.gross_weight_per_unit,
-            line_amount=line_amounts[line.rfq_item_id],
-        )
+    # 插入报价行
+    total_amount = Decimal(0)
+    for line_input in payload.lines:
+        qi = await _build_quote_item(db, quote.id, line_input)
         db.add(qi)
-        await db.flush()  # 获取 qi.id
+        await db.flush()
+
+        if qi.line_amount:
+            total_amount += qi.line_amount
 
         # tiers
-        if line.tiers:
-            for tier in line.tiers:
+        if line_input.tiers and not qi.skipped:
+            for tier in line_input.tiers:
                 db.add(RfqQuoteItemTier(
                     quote_item_id=qi.id,
                     min_qty=tier.min_qty,
                     unit_price=tier.unit_price,
                 ))
 
-        # cost(运营内部)
-        if line.cost:
+        # cost（运营内部）
+        if line_input.cost and not qi.skipped:
             db.add(RfqQuoteItemCost(
                 quote_item_id=qi.id,
-                supplier_org_id=line.cost.supplier_org_id,
-                supplier_unit_price=line.cost.supplier_unit_price,
-                freight_cost_alloc=line.cost.freight_cost_alloc,
-                insurance_cost=line.cost.insurance_cost,
-                export_clearance_cost=line.cost.export_clearance_cost,
-                consolidation_cost=line.cost.consolidation_cost,
-                gross_margin=line.cost.gross_margin,
+                supplier_org_id=line_input.cost.supplier_org_id,
+                supplier_unit_price=line_input.cost.supplier_unit_price,
+                freight_cost_alloc=line_input.cost.freight_cost_alloc,
+                insurance_cost=line_input.cost.insurance_cost,
+                export_clearance_cost=line_input.cost.export_clearance_cost,
+                consolidation_cost=line_input.cost.consolidation_cost,
+                gross_margin=line_input.cost.gross_margin,
             ))
 
-    # 首报:SUBMITTED → QUOTED
-    if is_first:
+    quote.total_amount = total_amount
+
+    # 首报 / 被拒后重报 → QUOTED
+    if is_first or is_rejected:
         if not RfqStatus.can_transition(rfq.status, RfqStatus.QUOTED):
             raise RfqStateInvalidError(rfq.status)
         rfq.status = RfqStatus.QUOTED
@@ -282,15 +330,12 @@ async def accept_rfq(
     """QUOTED→ACCEPTED,钉 accepted_quote_id。"""
     rfq = await lock_rfq(db, rfq_id, user=user)
 
-    # 幂等:已 ACCEPTED 且 accepted_quote_id 有值
     if rfq.status == RfqStatus.ACCEPTED and rfq.accepted_quote_id is not None:
         return {"rfq_id": rfq.id, "status": rfq.status, "accepted_quote_id": rfq.accepted_quote_id}
 
-    # 守卫
     if not RfqStatus.can_transition(rfq.status, RfqStatus.ACCEPTED):
         raise RfqStateInvalidError(rfq.status)
 
-    # 锁内读当前 ACTIVE quote
     active_result = await db.execute(
         select(RfqQuote).where(
             RfqQuote.rfq_id == rfq.id,
@@ -305,9 +350,9 @@ async def accept_rfq(
     rfq.status = RfqStatus.ACCEPTED
     rfq.accepted_quote_id = active_quote.id
 
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
     extra: dict = {"rfq_no": rfq.rfq_no, "accepted_quote_id": active_quote.id}
-    if is_operator:
+    if scope.is_operator:
         extra["acted_by_operator"] = True
         extra["buyer_org_id"] = rfq.buyer_org_id
 
@@ -337,7 +382,6 @@ async def reject_rfq(
     """QUOTED→REJECTED。"""
     rfq = await lock_rfq(db, rfq_id, user=user)
 
-    # 幂等
     if rfq.status == RfqStatus.REJECTED:
         return {"rfq_id": rfq.id, "status": rfq.status}
 
@@ -346,12 +390,11 @@ async def reject_rfq(
 
     rfq.status = RfqStatus.REJECTED
 
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
     extra: dict = {"rfq_no": rfq.rfq_no}
-    if is_operator:
+    if scope.is_operator:
         extra["acted_by_operator"] = True
         extra["buyer_org_id"] = rfq.buyer_org_id
-    # 读 ACTIVE quote id 留痕
     active_result = await db.execute(
         select(RfqQuote.id).where(
             RfqQuote.rfq_id == rfq.id,
@@ -389,7 +432,6 @@ async def expire_rfq(
     """QUOTED→EXPIRED。"""
     rfq = await lock_rfq(db, rfq_id, user=user)
 
-    # 幂等
     if rfq.status == RfqStatus.EXPIRED:
         return {"rfq_id": rfq.id, "status": rfq.status}
 
@@ -421,12 +463,10 @@ async def get_quotes(
     db: AsyncSession, user: CurrentUser, rfq_id: int,
 ) -> list[RfqQuoteBuyerPublic] | list[RfqQuoteOperatorView]:
     """BUYER 仅 ACTIVE(买方 DTO),OPERATOR 全版本(运营 DTO + 成本层)。"""
-    is_buyer = "BUYER" in user.roles
-    is_operator = "OPERATOR" in user.roles
+    scope = resolve_rfq_scope(user)
 
-    # scope 校验(不锁,GET 不需要)
     buyer_org_id = None
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         buyer_org_id = await _resolve_buyer_org_id(db, user)
 
     rfq = await load_rfq(
@@ -438,7 +478,6 @@ async def get_quotes(
     if not rfq:
         raise RfqNotFoundError()
 
-    # 加载报价
     quote_q = (
         select(RfqQuote)
         .where(RfqQuote.rfq_id == rfq_id, RfqQuote.deleted_at.is_(None))
@@ -448,12 +487,12 @@ async def get_quotes(
         )
         .order_by(RfqQuote.version.desc())
     )
-    if is_buyer and not is_operator:
+    if scope.is_buyer and not scope.is_operator:
         quote_q = quote_q.where(RfqQuote.quote_status == QuoteStatus.ACTIVE)
 
     quotes = (await db.execute(quote_q)).scalars().all()
 
-    if is_operator:
+    if scope.is_operator:
         return [_serialize_quote_operator(q) for q in quotes]
     return [_serialize_quote_buyer(q) for q in quotes]
 
@@ -480,24 +519,34 @@ async def _load_and_serialize_quote(
 # ── 序列化 ──────────────────────────────────────────────
 
 
+def _serialize_quote_item_buyer(qi: RfqQuoteItem) -> QuoteItemBuyerPublic:
+    return QuoteItemBuyerPublic(
+        id=qi.id,
+        source_rfq_item_id=qi.source_rfq_item_id,
+        line_type=qi.line_type,
+        product_id=qi.product_id,
+        product_name_snapshot=qi.product_name_snapshot,
+        quoted_variants=qi.quoted_variants,
+        variant_display=qi.variant_display,
+        quantity=qi.quantity,
+        uom=qi.uom,
+        unit_price=qi.unit_price,
+        moq=qi.moq,
+        cbm_per_unit=qi.cbm_per_unit,
+        gross_weight_per_unit=qi.gross_weight_per_unit,
+        line_amount=qi.line_amount,
+        remark=qi.remark,
+        tiers=[
+            QuoteTierPublic(min_qty=t.min_qty, unit_price=t.unit_price)
+            for t in (qi.tiers or [])
+        ],
+    )
+
+
 def _serialize_quote_buyer(quote: RfqQuote) -> RfqQuoteBuyerPublic:
     """买方 DTO:无 cost/supplier/quoted_by/版本。"""
     items = [
-        QuoteItemBuyerPublic(
-            id=qi.id,
-            rfq_item_id=qi.rfq_item_id,
-            skipped=qi.skipped,
-            skip_reason=qi.skip_reason,
-            unit_price=qi.unit_price,
-            moq=qi.moq,
-            cbm_per_unit=qi.cbm_per_unit,
-            gross_weight_per_unit=qi.gross_weight_per_unit,
-            line_amount=qi.line_amount,
-            tiers=[
-                QuoteTierPublic(min_qty=t.min_qty, unit_price=t.unit_price)
-                for t in (qi.tiers or [])
-            ],
-        )
+        _serialize_quote_item_buyer(qi)
         for qi in quote.items
         if getattr(qi, "deleted_at", None) is None
     ]
@@ -532,20 +581,9 @@ def _serialize_quote_operator(quote: RfqQuote) -> RfqQuoteOperatorView:
                 consolidation_cost=qi.cost.consolidation_cost,
                 gross_margin=qi.cost.gross_margin,
             )
+        buyer_view = _serialize_quote_item_buyer(qi)
         items.append(QuoteItemOperatorView(
-            id=qi.id,
-            rfq_item_id=qi.rfq_item_id,
-            skipped=qi.skipped,
-            skip_reason=qi.skip_reason,
-            unit_price=qi.unit_price,
-            moq=qi.moq,
-            cbm_per_unit=qi.cbm_per_unit,
-            gross_weight_per_unit=qi.gross_weight_per_unit,
-            line_amount=qi.line_amount,
-            tiers=[
-                QuoteTierPublic(min_qty=t.min_qty, unit_price=t.unit_price)
-                for t in (qi.tiers or [])
-            ],
+            **buyer_view.model_dump(),
             cost=cost_view,
         ))
     return RfqQuoteOperatorView(
@@ -591,7 +629,6 @@ async def load_quote_for_rfq_detail(
     if is_operator:
         return [_serialize_quote_operator(q) for q in quotes] if quotes else []
 
-    # 买方:仅 ACTIVE 单条
     if quotes:
         return _serialize_quote_buyer(quotes[0])
     return None

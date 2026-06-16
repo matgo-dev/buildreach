@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-SUPPORTED_LOCALES = {"zh", "en"}
+SUPPORTED_LOCALES = {"zh", "en", "sw"}
 DEFAULT_LOCALE = "zh"
 
 _current_locale: ContextVar[str] = ContextVar("current_locale", default=DEFAULT_LOCALE)
@@ -22,6 +22,9 @@ _LOCALE_MAP: dict[str, str] = {
     "en-us": "en",
     "en-gb": "en",
     "en-au": "en",
+    "sw": "sw",
+    "sw-tz": "sw",
+    "sw-ke": "sw",
 }
 
 

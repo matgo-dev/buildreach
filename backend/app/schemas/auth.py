@@ -87,8 +87,8 @@ class BuyerRegisterIn(BaseModel):
 class SupplierRegisterIn(BaseModel):
     """供应商自助注册入参(PRD v1.3 §2.2)。
 
-    相对 BUYER:去掉 username,加 country_code / language_preference / registration_no,
-    phone 必填且走宽松占位正则(TODO(I18N-PHONE) 各国规则待补)。
+    相对 BUYER:去掉 username,加 country_code / language_preference / registration_no。
+    phone 已由路由层归一化为 E.164,schema 只做基本长度校验。
     """
 
     # `extra='forbid'` 让多带 `username` 等未声明字段直接 422,确认入参契约
@@ -97,6 +97,7 @@ class SupplierRegisterIn(BaseModel):
     email: EmailStr
     name: str = Field(..., min_length=1, max_length=100)
     phone: str = Field(..., min_length=6, max_length=20)
+    phone_region: str | None = Field(default=None, max_length=2)
     password: str
     company_name: str = Field(..., min_length=1, max_length=200)
     country_code: str = Field(..., min_length=2, max_length=2)
@@ -107,14 +108,6 @@ class SupplierRegisterIn(BaseModel):
     @classmethod
     def _check_pwd(cls, v: str) -> str:
         return _validate_password(v)
-
-    @field_validator("phone")
-    @classmethod
-    def _check_phone(cls, v: str) -> str:
-        # TODO(I18N-PHONE):各国 phone 精确校验待补,本轮用占位正则
-        if not SUPPLIER_PHONE_REGEX.match(v):
-            raise ValueError("联系电话格式不正确(占位规则:6-20 位,允许 +、数字、空格、短横)")
-        return v
 
     @field_validator("country_code")
     @classmethod
@@ -141,13 +134,15 @@ class SupplierRegisterIn(BaseModel):
 
 class RegisterOut(BaseModel):
     user_id: int
-    email: str
+    email: str | None = None
 
 
 class LoginIn(BaseModel):
-    # identifier:用户名 或 邮箱(含 `@` 走 email 查找,否则走 username 查找)
+    # identifier:邮箱(含 @) / 手机号(纯数字或 + 前缀) / 用户名
     identifier: str = Field(..., min_length=3, max_length=255)
     password: str
+    # 手机号登录时的国家码(TZ / CN),与注册对称
+    phone_region: str | None = Field(default=None, max_length=2)
 
 
 class TokenOut(BaseModel):
@@ -181,7 +176,7 @@ class OrganizationOut(BaseModel):
 
 class MeOut(BaseModel):
     id: int
-    email: str
+    email: str | None = None
     username: str | None = None
     name: str
     phone: str | None = None

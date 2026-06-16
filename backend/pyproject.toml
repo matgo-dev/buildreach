@@ -24,6 +24,12 @@ dependencies = [
     # Δ7 v0.3:柬埔寨域名白名单 YAML 配置加载
     "pyyaml>=6.0",
     "Pillow>=10.0.0",
+    # i18n 翻译:Google Cloud Translation v3
+    "google-cloud-translate>=3.15.0",
+    # i18n 翻译:阿里云机器翻译通用版
+    "aliyun-python-sdk-core>=2.16.0",
+    "aliyun-python-sdk-alimt>=3.2.0",
+    "phonenumbers>=9.0.32",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +43,10 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

@@ -16,59 +16,14 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import { QuantityInput } from "@/components/mall/QuantityInput";
 import { ApiError } from "@/lib/api";
 import {
   getCart,
-  updateCartItem,
   removeCartItem,
   type CartItemPublic,
   type CartPublic,
 } from "@/lib/api/cart";
-import { getProduct, type ProductPublicDetail, type PriceTier } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
-import { formatCurrency } from "@/lib/formatters";
-
-// ---------- 参考价：按 product_id 批量拉商品详情拿阶梯价 ----------
-
-function useProductDetails(productIds: number[]) {
-  // 用稳定的 key（排序后的 id 列表）做单次 SWR 请求
-  const sortedIds = useMemo(
-    () => [...productIds].sort((a, b) => a - b),
-    [productIds],
-  );
-  const swrKey = sortedIds.length > 0 ? `cart-products-${sortedIds.join(",")}` : null;
-
-  const { data } = useSWR<Map<number, ProductPublicDetail>>(
-    swrKey,
-    async () => {
-      const results = new Map<number, ProductPublicDetail>();
-      // 并行请求，失败的跳过
-      const settled = await Promise.allSettled(
-        sortedIds.map((pid) => getProduct(pid)),
-      );
-      for (let i = 0; i < settled.length; i++) {
-        const r = settled[i];
-        if (r.status === "fulfilled") results.set(sortedIds[i], r.value);
-      }
-      return results;
-    },
-    { revalidateOnFocus: false, dedupingInterval: 60000 },
-  );
-
-  return data ?? new Map<number, ProductPublicDetail>();
-}
-
-function getSkuTiers(
-  productMap: Map<number, ProductPublicDetail>,
-  productId: number,
-  skuId: number,
-): PriceTier[] {
-  const product = productMap.get(productId);
-  if (!product) return [];
-  const sku = product.skus.find((s) => s.id === skuId);
-  return sku?.price_tiers ?? [];
-}
 
 // ---------- 主页面 ----------
 
@@ -134,59 +89,6 @@ function CartContent() {
     });
   }, []);
 
-  // 参考价：拉商品详情
-  const productIds = useMemo(() => {
-    const ids = new Set<number>();
-    (cart?.items ?? []).forEach((i) => { if (i.is_purchasable) ids.add(i.product_id); });
-    return Array.from(ids);
-  }, [cart]);
-
-  const productMap = useProductDetails(productIds);
-
-  // 修改数量（debounce）
-  const debounceRef = useMemo(() => new Map<number, NodeJS.Timeout>(), []);
-
-  const handleQuantityChange = useCallback(
-    (itemId: number, qty: number) => {
-      // 乐观更新本地
-      mutate(
-        (prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            items: prev.items.map((i) =>
-              i.item_id === itemId ? { ...i, quantity: qty } : i
-            ),
-          };
-        },
-        { revalidate: false },
-      );
-
-      // debounce 调后端
-      const existing = debounceRef.get(itemId);
-      if (existing) clearTimeout(existing);
-      debounceRef.set(
-        itemId,
-        setTimeout(async () => {
-          debounceRef.delete(itemId);
-          try {
-            const updated = await updateCartItem(itemId, qty);
-            syncFromCart(updated);
-            mutate(updated, { revalidate: false });
-          } catch (err) {
-            // 回滚：重新拉取
-            mutate();
-            if (err instanceof ApiError && err.messageKey) {
-              const key = err.messageKey.replace(/^error\./, "");
-              try { toast.error(tError(key)); } catch { toast.error(err.message); }
-            }
-          }
-        }, 500),
-      );
-    },
-    [mutate, syncFromCart, debounceRef, toast, tError],
-  );
-
   // 删除单项
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -242,11 +144,11 @@ function CartContent() {
     }
   }, [checkedIds, syncFromCart, mutate, triggerRefresh, toast, t]);
 
-  // 提交询价
+  // 提交询价：跳转到询价创建页，带上选中的 item_id
   const handleSubmitInquiry = useCallback(() => {
     const ids = Array.from(checkedIds);
     if (ids.length === 0) return;
-    router.push(`/${locale}/buyer/rfqs/create?source=cart&items=${ids.join(",")}`);
+    router.push(`/${locale}/buyer/rfqs/create?items=${ids.join(",")}`);
   }, [checkedIds, router, locale]);
 
   // ---- 渲染 ----
@@ -254,7 +156,7 @@ function CartContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
       </div>
     );
   }
@@ -270,7 +172,7 @@ function CartContent() {
         <button
           type="button"
           onClick={() => router.push(`/${locale}/mall`)}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#0D4D4D] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
         >
           {t("goToMall")}
           <ArrowRight className="h-4 w-4" />
@@ -302,26 +204,19 @@ function CartContent() {
                   checked={allChecked}
                   onChange={handleToggleAll}
                   disabled={purchasableItems.length === 0}
-                  className="h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D]"
+                  className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
                 />
               </th>
               <th className="px-4 py-3 font-medium">{t("productInfo")}</th>
-              <th className="px-4 py-3 font-medium">{t("referencePrice")}</th>
               <th className="px-4 py-3 font-medium">{t("quantity")}</th>
               <th className="w-14 px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {items.map((item) => {
-              const tiers = getSkuTiers(productMap, item.product_id, item.sku_id);
-              const product = productMap.get(item.product_id);
-              const unit = product?.unit ?? "PCS";
               const unavailable = !item.is_purchasable;
               const checked = checkedIds.has(item.item_id);
-              const specParts = item.sku_name
-                ? [item.sku_name, item.sku_code].filter(Boolean).join(" · ")
-                : [item.sku_code, item.color, item.material, item.manufacturer_model].filter(Boolean).join(" · ");
-              const sortedTiers = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
+              const specParts = item.variant_display ?? "\u2014";
 
               return (
                 <tr
@@ -337,7 +232,7 @@ function CartContent() {
                       checked={checked}
                       disabled={unavailable}
                       onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[#0D4D4D] focus:ring-[#0D4D4D] disabled:opacity-40"
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
                     />
                   </td>
 
@@ -359,11 +254,6 @@ function CartContent() {
                           {item.product_name ?? "—"}
                         </p>
                         <p className="mt-0.5 truncate text-xs text-gray-500">{specParts}</p>
-                        {item.moq != null && (
-                          <p className="mt-1 text-[11px] text-gray-400">
-                            MOQ: {item.moq}
-                          </p>
-                        )}
                         {unavailable && item.unavailable_reason && (
                           <span className="mt-1 inline-block rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
                             {t(`unavailable_${item.unavailable_reason}` as Parameters<typeof t>[0])}
@@ -373,40 +263,10 @@ function CartContent() {
                     </div>
                   </td>
 
-                  {/* 参考价 */}
-                  <td className="px-4 py-3 align-top">
-                    {!unavailable && sortedTiers.length > 0 ? (
-                      <div className="space-y-0.5 text-xs text-gray-500">
-                        {sortedTiers.map((tier) => {
-                          const range = tier.max_qty
-                            ? `${tier.min_qty}-${tier.max_qty}`
-                            : `${tier.min_qty}+`;
-                          return (
-                            <div key={tier.id}>
-                              <span className="text-gray-400">{range}</span>{" "}
-                              <span className="font-semibold text-[#0D4D4D]">
-                                {formatCurrency(tier.unit_price, tier.currency, locale, {
-                                  maximumFractionDigits: 2,
-                                })}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
-                  </td>
-
-                  {/* 数量 */}
+                  {/* 数量（只读展示） */}
                   <td className="px-4 py-3 align-top">
                     {!unavailable ? (
-                      <QuantityInput
-                        value={item.quantity}
-                        onChange={(qty) => handleQuantityChange(item.item_id, qty)}
-                        moq={item.moq ?? 1}
-                        unit={unit}
-                      />
+                      <span className="text-sm font-semibold text-gray-700">{item.quantity}</span>
                     ) : (
                       <span className="text-sm text-gray-400">—</span>
                     )}
@@ -452,11 +312,7 @@ function CartContent() {
           type="button"
           disabled={checkedIds.size === 0}
           onClick={handleSubmitInquiry}
-          className={`inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold transition-colors ${
-            checkedIds.size > 0
-              ? "bg-[#0D4D4D] text-white hover:bg-[#0a3d3d]"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed"
-          }`}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#003d45] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
         >
           {t("submitInquiry")}
           <ArrowRight className="h-4 w-4" />

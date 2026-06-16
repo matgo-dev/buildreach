@@ -62,6 +62,19 @@ class Settings(BaseSettings):
     CREDIT_HARVEST_EVIDENCE_FUZZY_THRESHOLD: float = 0.3  # quote 与来源 content 匹配度下限
     CREDIT_HARVEST_WHITELIST_FALLBACK_THRESHOLD: int = 3  # 白名单结果少于此值触发全网兜底
 
+    # ---- 翻译(i18n)----
+    # aliyun / google / mock / none;缺凭据时自动降级为 none
+    TRANSLATION_PROVIDER: str = "mock"
+    # Google Cloud Translation
+    GOOGLE_TRANSLATE_PROJECT_ID: str = ""
+    GOOGLE_TRANSLATE_LOCATION: str = "global"
+    GOOGLE_TRANSLATE_TIMEOUT_SECONDS: float = 10.0
+    # 阿里云机器翻译
+    ALIYUN_TRANSLATE_ACCESS_KEY_ID: str = ""
+    ALIYUN_TRANSLATE_ACCESS_KEY_SECRET: str = ""
+    ALIYUN_TRANSLATE_REGION: str = "cn-hangzhou"
+    ALIYUN_TRANSLATE_TIMEOUT_SECONDS: float = 10.0
+
     # CORS(逗号分隔,运行时拆为列表)
     CORS_ORIGINS_RAW: str = Field(
         default="http://localhost:3000", alias="CORS_ORIGINS"

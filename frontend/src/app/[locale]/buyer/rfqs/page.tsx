@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Package } from "lucide-react";
+import { Loader2, FileText, Package, ShoppingCart } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -20,6 +20,8 @@ import {
 } from "@/lib/api/rfqs";
 import { acceptRfq, rejectRfq } from "@/lib/api/quotes";
 import { formatRelativeTime } from "@/lib/formatters";
+import { useCartStore } from "@/stores/cartStore";
+import Link from "next/link";
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS = [
@@ -46,6 +48,7 @@ function RfqListContent() {
   const tError = useTranslations("error");
   const toast = useToast();
   const { hasPermission } = usePermissions();
+  const cartCount = useCartStore((s) => s.count);
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
@@ -133,7 +136,7 @@ function RfqListContent() {
             openConfirm(t("submitDraft"), t("submitDraftConfirm"), "primary", t("submitDraft"),
               () => execAction(() => submitRfq(rfq.id), t("submitDraftSuccess")));
           }}
-          className="text-xs font-medium text-[#0D4D4D] hover:underline"
+          className="text-xs font-medium text-[#00505a] hover:underline"
         >
           {t("submitDraft")}
         </button>,
@@ -175,7 +178,7 @@ function RfqListContent() {
             openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "primary", tQ("accept"),
               () => execAction(() => acceptRfq(rfq.id), tQ("acceptSuccess")));
           }}
-          className="text-xs font-medium text-[#0D4D4D] hover:underline"
+          className="text-xs font-medium text-[#00505a] hover:underline"
         >
           {tQ("accept")}
         </button>,
@@ -199,7 +202,21 @@ function RfqListContent() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-800">{t("title")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">{t("title")}</h1>
+        <Link
+          href={`/${locale}/buyer/cart`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a] px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
+        >
+          <ShoppingCart className="h-4 w-4" />
+          {t("goToCart")}
+          {cartCount > 0 && (
+            <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00505a] px-1 text-xs text-white group-hover:bg-white group-hover:text-[#00505a]">
+              {cartCount}
+            </span>
+          )}
+        </Link>
+      </div>
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
@@ -209,7 +226,7 @@ function RfqListContent() {
             type="button"
             onClick={() => { setMineOnly(false); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              !mineOnly ? "bg-[#0D4D4D] text-white" : "text-gray-600 hover:bg-gray-50"
+              !mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             {t("filterAll")}
@@ -218,7 +235,7 @@ function RfqListContent() {
             type="button"
             onClick={() => { setMineOnly(true); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              mineOnly ? "bg-[#0D4D4D] text-white" : "text-gray-600 hover:bg-gray-50"
+              mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             {t("filterMine")}
@@ -229,7 +246,7 @@ function RfqListContent() {
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#0D4D4D]"
+          className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#00505a]"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
@@ -243,7 +260,7 @@ function RfqListContent() {
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#00505a]" />
           </div>
         ) : !data || data.items.length === 0 ? (
           <div className="flex h-60 flex-col items-center justify-center text-gray-400">
@@ -272,7 +289,7 @@ function RfqListContent() {
                     onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
                     className="cursor-pointer border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
                   >
-                    <td className="px-5 py-3 font-medium text-[#0D4D4D]">
+                    <td className="px-5 py-3 font-medium text-[#00505a]">
                       {rfq.rfq_no}
                     </td>
                     <td className="max-w-[280px] px-5 py-3">

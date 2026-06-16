@@ -9,7 +9,9 @@ from pydantic import BaseModel, Field
 # ── 请求体 ──────────────────────────────────────────────
 
 class CartItemAdd(BaseModel):
-    sku_id: int
+    product_id: int
+    selected_variants: list[dict[str, str]] = Field(default_factory=list)
+    # 示例: [{"attr_name": "material_type", "value": "normal_white_with_film"}]
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
 
 
@@ -21,25 +23,21 @@ class CartItemUpdate(BaseModel):
 
 class CartItemPublic(BaseModel):
     item_id: int
-    sku_id: int
     product_id: int
+    sku_id: int | None = None           # 保留，历史数据兼容
+    selected_variants: list[dict] = []
     quantity: Decimal
 
-    # SKU 信息
-    sku_code: str
-    sku_name: str | None = None
+    # 商品信息
     product_name: str | None = None
-    manufacturer_model: str | None = None
-    color: str | None = None
-    material: str | None = None
-
-    # SPU 级
+    variant_display: str | None = None  # 动态拼接，同 RFQ
     unit: str | None = None
     moq: int | None = None
 
     # 可购状态
     is_purchasable: bool = True
     unavailable_reason: str | None = None
+    # 可能的值: PRODUCT_DELETED | PRODUCT_INACTIVE | VARIANT_UNAVAILABLE
 
     # 主图
     main_image: str | None = None

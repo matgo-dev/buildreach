@@ -34,6 +34,21 @@ class MessageKey:
     EMAIL_ALREADY_REGISTERED = "error.business.email_already_registered"
     PHONE_ALREADY_REGISTERED = "error.business.phone_already_registered"
 
+    # buyer registration — 买方注册 4092x / 4220x
+    PHONE_FORMAT_INVALID = "error.auth.phone_format_invalid"
+    PHONE_REGION_UNSUPPORTED = "error.auth.phone_region_unsupported"
+    BUYER_PHONE_FORMAT = "buyer.register.phone_format"
+    BUYER_PASSWORD_RULE = "buyer.register.password_rule"
+    BUYER_CATEGORY_REQUIRED = "buyer.register.category_required"
+    BUYER_CATEGORY_INVALID = "buyer.register.category_invalid"
+    BUYER_IMAGE_COUNT = "buyer.register.image_count"
+    BUYER_IMAGE_FORMAT = "buyer.register.image_format"
+    BUYER_IMAGE_SIZE = "buyer.register.image_size"
+    BUYER_ADDRESS_REQUIRED = "buyer.register.address_required"
+    BUYER_STOREFRONT_REQUIRED = "buyer.register.storefront_required"
+    BUYER_LICENSE_IMAGE_INVALID = "buyer.register.license_image_invalid"
+    BUYER_PREF_CATEGORY_INVALID = "buyer.pref.category_invalid"
+
     # product — 商品模块 402xx
     PRODUCT_INVALID_STATUS = "error.product.invalid_status"
     PRODUCT_SPU_CODE_EXISTS = "error.product.spu_code_exists"
@@ -61,6 +76,7 @@ class MessageKey:
 
     # cart — 购物车模块 405xx
     CART_SKU_NOT_PURCHASABLE = "error.cart.sku_not_purchasable"
+    CART_PRODUCT_NOT_AVAILABLE = "error.cart.product_not_available"
     CART_QUANTITY_INVALID = "error.cart.quantity_invalid"
     CART_ITEM_NOT_FOUND = "error.cart.item_not_found"
     BUYER_ORG_REQUIRED = "error.cart.buyer_org_required"
@@ -75,6 +91,8 @@ class MessageKey:
     RFQ_NO_GENERATION_FAILED = "error.rfq.no_generation_failed"
     RFQ_ALREADY_CLAIMED = "error.rfq.already_claimed"
     RFQ_ITEM_NOT_FOUND = "error.rfq.item_not_found"
+    RFQ_NOT_ASSIGNED_TO_YOU = "error.rfq.not_assigned_to_you"
+    RFQ_MIN_ONE_ITEM = "error.rfq.min_one_item"
 
     # quote — 报价模块 405xx
     QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"

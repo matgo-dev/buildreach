@@ -1,8 +1,11 @@
 """集中导入所有模型,供 Alembic autogenerate 识别。"""
 from app.db.models.audit_log import AuditLog
+from app.db.models.buyer_browse_preference import BuyerBrowsePreference
 from app.db.models.buyer_member import BuyerMember
+from app.db.models.buyer_org_image import BuyerOrgImage, BuyerOrgImageType
 from app.db.models.buyer_organization import BuyerOrganization
 from app.db.models.category import Category, CategoryLevel
+from app.db.models.ingest_run import IngestRun, IngestRunStatus
 from app.db.models.credit_ai_conversation import CreditAiConversation
 from app.db.models.credit_ai_message import CreditAiMessage, MessageRole
 from app.db.models.credit_company import CreditCompany
@@ -68,6 +71,9 @@ __all__ = [
     "UserRole",
     "RolePermission",
     "BuyerOrganization",
+    "BuyerBrowsePreference",
+    "BuyerOrgImage",
+    "BuyerOrgImageType",
     "SupplierOrganization",
     "BuyerMember",
     "SupplierMember",
@@ -133,4 +139,7 @@ __all__ = [
     "RfqQuoteItemTier",
     "RfqQuoteItemCost",
     "QuoteStatus",
+    # ingest
+    "IngestRun",
+    "IngestRunStatus",
 ]

@@ -32,7 +32,9 @@ trans_meta 结构:
 """
 from __future__ import annotations
 
-from sqlalchemy import JSON, String
+from datetime import datetime
+
+from sqlalchemy import JSON, DateTime, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -47,4 +49,9 @@ class I18nMixin:
     # 翻译状态元数据,key 格式 "{field}_{locale}",value 为状态字符串
     trans_meta: Mapped[dict] = mapped_column(
         JSON, nullable=False, default=dict, server_default="{}",
+    )
+
+    # 有 pending/failed 翻译时非空,后台任务/CLI 扫描用
+    i18n_pending_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, default=None, index=True,
     )

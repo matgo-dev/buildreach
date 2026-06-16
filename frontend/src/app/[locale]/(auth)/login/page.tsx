@@ -10,12 +10,34 @@ import { ApiError } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 
+const PHONE_REGIONS = [
+  { code: "TZ" as const, dialCode: "+255", flag: "🇹🇿" },
+  { code: "CN" as const, dialCode: "+86", flag: "🇨🇳" },
+];
+
+/** identifier 是否看起来像手机号(纯数字 ≥7 位或以 + 开头) */
+function looksLikePhone(v: string): boolean {
+  const s = v.trim();
+  return s.startsWith("+") || (/^\d+$/.test(s) && s.length >= 7);
+}
+
+/** 根据号码自动推断国家码 */
+function guessPhoneRegion(v: string): string {
+  const s = v.trim();
+  if (s.startsWith("+86")) return "CN";
+  if (s.startsWith("+255")) return "TZ";
+  // 纯数字 11 位且 1 开头 → 中国号
+  if (/^1[3-9]\d{9}$/.test(s)) return "CN";
+  return "TZ";
+}
+
 function LoginContent() {
   const t = useTranslations("auth.login");
   const tc = useTranslations("common");
   const params = useSearchParams();
   const justRegistered = params.get("registered") === "1";
   const [identifier, setIdentifier] = useState("");
+  const [phoneRegion, setPhoneRegion] = useState("TZ");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +45,13 @@ function LoginContent() {
   const [idErr, setIdErr] = useState<string | null>(null);
   const [pwdErr, setPwdErr] = useState<string | null>(null);
   const login = useLogin();
+
+  const isPhone = looksLikePhone(identifier);
+
+  // identifier 变化时自动推断国家码（含浏览器 autofill）
+  useEffect(() => {
+    if (isPhone) setPhoneRegion(guessPhoneRegion(identifier));
+  }, [identifier, isPhone]);
 
   // 注册成功跳转过来时,自动填充刚才提交的凭证(sessionStorage,一次性消费)
   useEffect(() => {
@@ -51,7 +80,7 @@ function LoginContent() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(identifier, password);
+      await login(identifier, password, isPhone ? phoneRegion : undefined);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 429) {
@@ -94,21 +123,42 @@ function LoginContent() {
           <Label htmlFor="identifier" className="text-sm font-semibold text-gray-700">
             {t("identifier_label")}
           </Label>
-          <input
-            id="identifier"
-            type="text"
-            value={identifier}
-            onChange={(e) => { setIdentifier(e.target.value); if (idErr) setIdErr(null); }}
-            onBlur={() => setIdErr(identifier ? null : t("identifier_required"))}
-            placeholder={t("identifier_placeholder")}
-            autoComplete="username"
-            className={
-              "w-full h-12 px-4 rounded-lg border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
-              (idErr
-                ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15")
-            }
-          />
+          <div className="flex">
+            {isPhone && (
+              <select
+                value={phoneRegion}
+                onChange={(e) => setPhoneRegion(e.target.value)}
+                className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
+              >
+                {PHONE_REGIONS.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.flag} {r.dialCode}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              id="identifier"
+              type="text"
+              value={identifier}
+              onChange={(e) => {
+                const v = e.target.value;
+                setIdentifier(v);
+                if (looksLikePhone(v)) setPhoneRegion(guessPhoneRegion(v));
+                if (idErr) setIdErr(null);
+              }}
+              onBlur={() => setIdErr(identifier ? null : t("identifier_required"))}
+              placeholder={t("identifier_placeholder")}
+              autoComplete="username"
+              className={
+                "w-full h-12 px-4 border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
+                (isPhone ? "rounded-r-lg rounded-l-none " : "rounded-lg ") +
+                (idErr
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
+                  : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15")
+              }
+            />
+          </div>
           {idErr && <p className="text-xs text-red-500">{idErr}</p>}
         </div>
 
@@ -147,7 +197,7 @@ function LoginContent() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#003366] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#002244] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitting ? (
             <>
@@ -185,7 +235,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-[#003366]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
         </div>
       }
     >

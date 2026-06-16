@@ -98,6 +98,24 @@ class ConflictError(BusinessError):
         super().__init__(status.HTTP_409_CONFLICT, 40009, message, message_key=MessageKey.CONFLICT)
 
 
+class PhoneFormatError(BusinessError):
+    """42221 — 手机号格式非法。"""
+    def __init__(self, message: str = "Invalid phone number format"):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 42221, message,
+            message_key=MessageKey.PHONE_FORMAT_INVALID,
+        )
+
+
+class PhoneUnsupportedRegionError(BusinessError):
+    """42222 — 手机号所属国家不在支持范围。"""
+    def __init__(self, message: str = "Phone number region not supported"):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 42222, message,
+            message_key=MessageKey.PHONE_REGION_UNSUPPORTED,
+        )
+
+
 class SupplierAlreadyRegisteredError(BusinessError):
     """供应商重复入驻(PRD v1.4 Δ9)。
 
@@ -151,7 +169,7 @@ class MultipleValidationError(BusinessError):
     """
 
     # 数字优先级:索引小者优先,作为顶层 code 来源
-    _PRIORITY = (40901, 40902, 40903)
+    _PRIORITY = (40901, 40902, 40903, 40921, 40922)
 
     def __init__(self, errors: list[dict]):
         if not errors:
@@ -397,6 +415,16 @@ class CartSkuNotPurchasableError(BusinessError):
         )
 
 
+class CartProductNotAvailableError(BusinessError):
+    """40501 — 商品不可购(不存在/未上架/已软删)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40501,
+            "Product is not available for purchase",
+            message_key=MessageKey.CART_PRODUCT_NOT_AVAILABLE,
+        )
+
+
 class CartQuantityInvalidError(BusinessError):
     """40502 — 数量非法(≤0 或缺失)。"""
     def __init__(self):
@@ -438,12 +466,23 @@ class RfqNoValidItemsError(BusinessError):
 
 
 class RfqItemNotPurchasableError(BusinessError):
-    """40506 — SKU 不可购(data 列 offending sku)。"""
+    """40506 — SKU 不可购(data 列 offending sku)。保留兼容旧调用。"""
     def __init__(self, offending_sku_ids: list[int]):
         super().__init__(
             status.HTTP_422_UNPROCESSABLE_ENTITY, 40506,
             "Some SKUs are not purchasable",
             data={"offending_sku_ids": offending_sku_ids},
+            message_key=MessageKey.RFQ_ITEM_NOT_PURCHASABLE,
+        )
+
+
+class RfqProductNotAvailableError(BusinessError):
+    """40506 — 商品不可用（未上架/已下架/已删除）。"""
+    def __init__(self, offending_product_ids: list[int]):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40506,
+            "Some products are not available",
+            data={"offending_product_ids": offending_product_ids},
             message_key=MessageKey.RFQ_ITEM_NOT_PURCHASABLE,
         )
 
@@ -470,11 +509,21 @@ class RfqStateInvalidError(BusinessError):
 
 
 class RfqDuplicateSkuError(BusinessError):
-    """40509 — DIRECT 重复 SKU。"""
+    """40509 — DIRECT 重复 SKU。保留兼容旧调用。"""
     def __init__(self):
         super().__init__(
             status.HTTP_422_UNPROCESSABLE_ENTITY, 40509,
             "Duplicate SKU in request items",
+            message_key=MessageKey.RFQ_DUPLICATE_SKU,
+        )
+
+
+class RfqDuplicateItemError(BusinessError):
+    """40509 — 询价行重复（同一商品+同一变体组合）。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40509,
+            "Duplicate product+variant combination in request items",
             message_key=MessageKey.RFQ_DUPLICATE_SKU,
         )
 
@@ -570,6 +619,26 @@ class RfqItemNotFoundError(BusinessError):
             status.HTTP_404_NOT_FOUND, 40517,
             "RFQ item not found",
             message_key=MessageKey.RFQ_ITEM_NOT_FOUND,
+        )
+
+
+class RfqNotAssignedToYouError(BusinessError):
+    """40518 — 操作的询价单不是当前运营受理的。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_403_FORBIDDEN, 40518,
+            "This RFQ is not assigned to you",
+            message_key=MessageKey.RFQ_NOT_ASSIGNED_TO_YOU,
+        )
+
+
+class RfqMinOneItemError(BusinessError):
+    """40519 — 询价单至少保留一个行项。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40519,
+            "At least one item is required",
+            message_key=MessageKey.RFQ_MIN_ONE_ITEM,
         )
 
 

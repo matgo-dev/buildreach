@@ -1,0 +1,41 @@
+{
+  "source": { "offer_id": "1601293553746",
+    "offer_url": "https://www.alibaba.com/product-detail/_1601293553746.html",
+    "crawled_at": "2026-06-12T08:30:00Z" },
+  "source_category_path": [
+    { "name_en": "Home & Garden", "name_zh": "家居及园艺" },
+    { "name_en": "Kitchen Fixtures", "name_zh": "厨房五金" },
+    { "name_en": "Kitchen Faucets", "name_zh": "厨房水龙头" }
+  ],
+  "product_name_en": "SUS304 Kitchen Faucet", "product_name_zh": null,
+  "listing_title_en": "SUS304 Stainless Steel Matte Black Pull Out Kitchen Faucet", "listing_title_zh": null,
+  "description_en": "Deck mounted pull-out kitchen mixer tap.", "description_zh": null,
+  "moq": { "value": 50, "unit": "pcs" },
+  "attributes": [
+    { "group": "Key attributes", "key_en": "Brand", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "Gicasa" }] },
+    { "group": "Key attributes", "key_en": "Place of Origin", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "Guangdong, China" }] },
+    { "group": "Key attributes", "key_en": "Material", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "Stainless Steel" }] },
+    { "group": "Key attributes", "key_en": "Body Material", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "SUS304" }] },
+    { "group": "Key attributes", "key_en": "Finish", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "Matte Black" }] },
+    { "group": "Key attributes", "key_en": "Certification", "key_zh": null,
+      "selectable": false, "values": [
+        { "label_en": "ISO 14001" }, { "label_en": "cUPC" } ] },
+    { "group": "Packaging", "key_en": "Single package size", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "45X25X30 cm" }] },
+    { "group": "Packaging", "key_en": "Single gross weight", "key_zh": null,
+      "selectable": false, "values": [{ "label_en": "1.300 kg" }] }
+  ],
+  "gallery": [ { "path": "images/main_01.png", "source_url": "https://x/f1.jpg" } ],
+  "description_images": [],
+  "packing": { "sale_unit": "Single item", "package_size": "45X25X30 cm", "gross_weight_kg": 1.300 },
+  "video_url": null,
+  "price_tiers": [
+    { "min_qty": 2, "max_qty": 149, "price": 488, "currency": "USD", "unit": "piece" },
+    { "min_qty": 150, "max_qty": null, "price": 470, "currency": "USD", "unit": "piece" }
+  ]
+}

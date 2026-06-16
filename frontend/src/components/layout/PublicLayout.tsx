@@ -1,12 +1,17 @@
 "use client";
-import { ReactNode, useEffect } from "react";
-import { usePathname } from "@/i18n/navigation";
+import { ReactNode } from "react";
 
-import { AppHeader } from "./AppHeader";
-import { AppSidebar } from "./AppSidebar";
-import { useSidebarStore } from "@/stores/uiStore";
+import { TopStrip } from "./TopStrip";
+import { MallHeader } from "./MallHeader";
+import { MallNavRow } from "./MallNavRow";
+import { MallFooter } from "./MallFooter";
 
-/** 公开区 Layout(顶部 nav,Logo 点击展开/收起左侧导航栏,内容区自适应)。 */
+/**
+ * 买方前台 Layout — 深青信任风格。
+ *
+ * 结构:TopStrip → MallHeader → MallNavRow → 内容 → MallFooter
+ * 三栏布局由各页面自行组织(mall 页 = 左品类 + 中内容 + 右客服/RFQ)。
+ */
 export function PublicLayout({
   children,
   noContainer = false,
@@ -14,28 +19,19 @@ export function PublicLayout({
   children: ReactNode;
   noContainer?: boolean;
 }) {
-  const open = useSidebarStore((s) => s.open);
-  const close = useSidebarStore((s) => s.close);
-  const pathname = usePathname();
-
-  // 路由切换时自动收起
-  useEffect(() => {
-    close();
-  }, [pathname, close]);
-
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
-      <AppHeader showSearch showCart />
-      <div className="flex flex-1 overflow-hidden">
-        {open && (
-          <div className="shrink-0">
-            <AppSidebar />
+    <div className="flex min-h-screen flex-col bg-bg">
+      <TopStrip />
+      <MallHeader />
+      <MallNavRow />
+      <main className="flex-1">
+        {noContainer ? children : (
+          <div className="mx-auto max-w-mall px-6 py-6">
+            {children}
           </div>
         )}
-        <main className="flex-1 overflow-y-auto">
-          {noContainer ? children : <div className="px-6 py-8">{children}</div>}
-        </main>
-      </div>
+      </main>
+      <MallFooter />
     </div>
   );
 }

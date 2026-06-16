@@ -64,6 +64,10 @@ class Permissions:
     MEMBERSHIP_READ = "membership:read"
     MEMBERSHIP_WRITE = "membership:write"
 
+    # ----- 业务-买方:buyer_pref -----
+    BUYER_PREF_READ = "buyer_pref:read"
+    BUYER_PREF_WRITE = "buyer_pref:write"
+
     # ----- 业务-运营:risk -----
     RISK_READ = "risk:read"
 
@@ -137,6 +141,9 @@ PERMISSION_META: dict[str, dict[str, str]] = {
 
     Permissions.MEMBERSHIP_READ: {"name": "查看会员", "module": ModuleLabel.BIZ_SUPPLIER},
     Permissions.MEMBERSHIP_WRITE: {"name": "管理会员", "module": ModuleLabel.BIZ_SUPPLIER},
+
+    Permissions.BUYER_PREF_READ: {"name": "查看浏览偏好", "module": ModuleLabel.BIZ_TRADE},
+    Permissions.BUYER_PREF_WRITE: {"name": "管理浏览偏好", "module": ModuleLabel.BIZ_TRADE},
 
     Permissions.RISK_READ: {"name": "风控驾驶舱", "module": ModuleLabel.BIZ_OPERATION},
 

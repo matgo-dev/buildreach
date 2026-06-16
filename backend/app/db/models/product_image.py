@@ -45,6 +45,8 @@ class ProductImage(Base, TimestampMixin, SoftDeleteMixin):
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 色板等规格图绑定到具体规格值,如 "颜色:Red"
+    spec_value: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     product: Mapped["Product"] = relationship("Product", back_populates="images")
     sku: Mapped["ProductSku | None"] = relationship("ProductSku", back_populates="images")

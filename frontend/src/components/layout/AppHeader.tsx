@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 import { useDebugMode } from "@/stores/uiStore";
@@ -49,6 +49,7 @@ export function AppHeader({
   const cartCount = useCartStore((s) => s.count);
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("mall");
   const [searchValue, setSearchValue] = useState("");
   const [debugMode, setDebugMode] = useDebugMode();
   const toggleSidebar = useSidebarStore((s) => s.toggle);
@@ -69,23 +70,23 @@ export function AppHeader({
         {/* 左:品牌 — 已登录切换侧边栏,未登录跳首页 */}
         {user ? (
           <button onClick={toggleSidebar} className="group flex shrink-0 items-center gap-3 cursor-pointer" aria-label={`${BRAND.name} 菜单`}>
-            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-[#003366] transition-transform duration-300 group-hover:scale-105">
+            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-teal-900 transition-transform duration-300 group-hover:scale-105">
               <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#FF6B35]" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-gold" />
             </span>
             <span className="leading-none text-left">
-              <span className="block text-xl font-black tracking-tight text-[#003366]">{BRAND.name}</span>
+              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name}</span>
               <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
             </span>
           </button>
         ) : (
           <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
-            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-[#003366] transition-transform duration-300 group-hover:scale-105">
+            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-teal-900 transition-transform duration-300 group-hover:scale-105">
               <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#FF6B35]" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-gold" />
             </span>
             <span className="leading-none">
-              <span className="block text-xl font-black tracking-tight text-[#003366]">{BRAND.name}</span>
+              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name}</span>
               <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
             </span>
           </Link>
@@ -100,12 +101,12 @@ export function AppHeader({
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search products / 搜索商品..."
-                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-12 text-sm text-gray-700 placeholder-gray-400 transition-colors hover:border-slate-300 focus:border-[#003366] focus:outline-none focus:ring-1 focus:ring-[#003366]/20"
+                placeholder={t("searchPlaceholder")}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-12 text-sm text-gray-700 placeholder-gray-400 transition-colors hover:border-slate-300 focus:border-teal-900 focus:outline-none focus:ring-1 focus:ring-teal-900/20"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-[#003366] px-2.5 text-xs font-medium text-white transition-colors hover:bg-[#002244]"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-teal-900 px-2.5 text-xs font-medium text-white transition-colors hover:bg-teal-950"
               >
                 <Search className="h-3.5 w-3.5" />
               </button>
@@ -120,12 +121,12 @@ export function AppHeader({
           {showCart && (
             <Link
               href={user ? "/buyer/cart" : "/login"}
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#003366]"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-teal-900"
               title="询价篮"
             >
               <ShoppingCart className="h-5 w-5" />
               {user && cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#FF6B35] px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-white">
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
@@ -139,7 +140,7 @@ export function AppHeader({
               className={
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors " +
                 (debugMode
-                  ? "border-[#FF6B35]/40 bg-[#FF6B35]/10 text-[#FF6B35]"
+                  ? "border-gold/40 bg-gold/10 text-gold"
                   : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50")
               }
             >
@@ -155,7 +156,7 @@ export function AppHeader({
           ) : (
             <Link
               href="/login"
-              className="rounded-lg bg-[#003366] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#002244]"
+              className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-950"
             >
               登录
             </Link>
@@ -214,11 +215,11 @@ function UserMenu() {
         className={
           "flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 transition-colors " +
           (open
-            ? "border-[#003366]/30 bg-slate-50"
-            : "border-slate-200 hover:border-[#003366]/30 hover:bg-slate-50")
+            ? "border-teal-900/30 bg-slate-50"
+            : "border-slate-200 hover:border-teal-900/30 hover:bg-slate-50")
         }
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#003366] to-[#0F4C81] text-xs font-bold text-white shadow-sm">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-teal-900 to-teal-800 text-xs font-bold text-white shadow-sm">
           {initial}
         </span>
         <span className="max-w-[120px] truncate text-sm font-medium text-slate-700">
@@ -235,12 +236,12 @@ function UserMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[999] mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute right-0 top-full z-[200] mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
         >
           {/* 用户信息卡 */}
           <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-4 py-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#003366] to-[#0F4C81] text-sm font-bold text-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-teal-900 to-teal-800 text-sm font-bold text-white">
                 {initial}
               </span>
               <div className="min-w-0">
@@ -273,7 +274,7 @@ function UserMenu() {
               <Link
                 href={dashboardHref}
                 role="menuitem"
-                className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#003366]"
+                className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-teal-900"
               >
                 <LayoutDashboard className="h-4 w-4 text-slate-400" />
                 工作台

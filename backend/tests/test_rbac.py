@@ -22,17 +22,11 @@ async def _login(client, email: str, password: str) -> str:
 
 
 async def _register_buyer(client, email="buyer1@cscec3b.com"):
-    payload = {
-        "email": email,
-        "name": "Buyer 1",
-        "phone": "13800138000",
-        "password": "Aa123456789",
-        "company_name": "中建三局",
-        "unified_social_credit_code": "91420100MA4KXXXX01",
-    }
-    r = await client.post("/api/v1/auth/register/buyer", json=payload)
-    assert r.status_code == 200, r.text
-    return email, "Aa123456789"
+    from tests.conftest import register_buyer_tz
+    result = await register_buyer_tz(client, email=email)
+    assert result["response"].status_code == 200, result["response"].text
+    # 返回 phone 作为 identifier（用于登录）
+    return result["phone"], result["password"]
 
 
 async def _register_supplier(client, email="supplier1@huajian.com", license_no="91110000LIC0000001"):

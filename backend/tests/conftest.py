@@ -143,6 +143,62 @@ async def client(_connection) -> AsyncGenerator[AsyncClient, None]:
     login_rate_limiter.clear_all()
 
 
+def _make_test_image(w: int = 300, h: int = 300) -> bytes:
+    """生成最小合法测试图片(300x300 JPEG)。"""
+    from io import BytesIO
+    from PIL import Image
+    img = Image.new("RGB", (w, h), (128, 128, 128))
+    buf = BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+_TEST_PHONE_COUNTER = 700000000
+
+
+def _next_phone() -> str:
+    """每次调用生成唯一的坦桑手机号。"""
+    global _TEST_PHONE_COUNTER
+    _TEST_PHONE_COUNTER += 1
+    return f"+255{_TEST_PHONE_COUNTER}"
+
+
+async def register_buyer_tz(
+    client,
+    *,
+    phone: str | None = None,
+    password: str = "Aa123456789!",
+    name: str = "Test User",
+    company_name: str = "Test Shop",
+    address: str = "Dar es Salaam",
+    email: str | None = None,
+    cat_code: str = "01",
+) -> dict:
+    """注册坦桑买方,返回 response JSON。
+
+    默认使用 L1 品类 code "01",conftest 中 seed_categories 保证存在。
+    """
+    if phone is None:
+        phone = _next_phone()
+    img = _make_test_image()
+    data = {
+        "phone": phone,
+        "password": password,
+        "name": name,
+        "company_name": company_name,
+        "address": address,
+        "business_category_codes": cat_code,
+    }
+    if email:
+        data["email"] = email
+    r = await client.post(
+        "/api/v1/auth/register/buyer",
+        data=data,
+        files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
+    )
+    return {"response": r, "phone": phone, "password": password, "email": email}
+
+
 @pytest_asyncio.fixture
 async def superadmin_headers(client) -> dict[str, str]:
     """引导管理员：登录 → 改密（清 must_change_password）→ 重登，返回可用 headers。

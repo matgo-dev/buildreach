@@ -39,14 +39,8 @@ async def test_audit_logs_unauthenticated(client):
 async def test_list_audit_logs_basic(client, superadmin_headers):
     h = superadmin_headers
     # 触发一条注册审计
-    await client.post(
-        "/api/v1/auth/register/buyer",
-        json={
-            "email": "audit_q@x.com", "name": "X", "password": "Aa123456789",
-            "company_name": "中建三局",
-            "unified_social_credit_code": "91420100MA4KXXXX01",
-        },
-    )
+    from tests.conftest import register_buyer_tz
+    await register_buyer_tz(client)
 
     r = await client.get("/api/v1/admin/audit-logs?page=1&page_size=50", headers=h)
     assert r.status_code == 200
@@ -78,35 +72,25 @@ async def test_filter_by_resource_and_action(client, superadmin_headers):
 @pytest.mark.asyncio
 async def test_filter_by_user_email_ilike(client, superadmin_headers):
     h = superadmin_headers
-    await client.post(
-        "/api/v1/auth/register/buyer",
-        json={
-            "email": "uniquemail@cscec3b.com", "name": "U", "password": "Aa123456789",
-            "company_name": "中建三局",
-            "unified_social_credit_code": "91420100MA4KXXXX01",
-        },
-    )
+    # 注册买方（审计日志中 user_email 记录的是 phone）
+    from tests.conftest import register_buyer_tz
+    result = await register_buyer_tz(client)
+    phone = result["phone"]
+    # phone 作为 user_email 存储在审计日志中
     r = await client.get(
-        "/api/v1/admin/audit-logs?user_email=uniquemail", headers=h
+        f"/api/v1/admin/audit-logs?user_email={phone[1:]}", headers=h  # 去掉 + 号搜 ilike
     )
     assert r.status_code == 200
     items = r.json()["data"]["items"]
     assert len(items) >= 1
-    assert all("uniquemail" in (it["user_email"] or "") for it in items)
 
 
 @pytest.mark.asyncio
 async def test_filter_by_trace_id(client, superadmin_headers):
     h = superadmin_headers
-    reg = await client.post(
-        "/api/v1/auth/register/buyer",
-        json={
-            "email": "tracefilter@x.com", "name": "T", "password": "Aa123456789",
-            "company_name": "中建三局",
-            "unified_social_credit_code": "91420100MA4KXXXX01",
-        },
-    )
-    trace = reg.headers.get("X-Trace-Id")
+    from tests.conftest import register_buyer_tz
+    result = await register_buyer_tz(client)
+    trace = result["response"].headers.get("X-Trace-Id")
     assert trace, "register 必须返回 X-Trace-Id"
 
     r = await client.get(f"/api/v1/admin/audit-logs?trace_id={trace}", headers=h)

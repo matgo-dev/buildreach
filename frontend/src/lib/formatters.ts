@@ -112,3 +112,25 @@ export function formatRelativeTime(
     "second"
   );
 }
+
+/**
+ * 按 locale 选取多语言字段值。
+ *
+ * 后端返回 _zh/_en 分列 + get_localized() 合成的本地化字段(含 sw 等)。
+ * zh → 优先 zhVal; en → 优先 enVal; 其他语言 → 优先 fallback(后端已本地化的值)。
+ *
+ * @param locale  当前 locale ("zh" | "en" | "sw" | ...)
+ * @param zhVal   _zh 列值
+ * @param enVal   _en 列值
+ * @param fallback 后端 get_localized() 返回的已本地化值
+ */
+export function localizedField(
+  locale: string,
+  zhVal: string | null | undefined,
+  enVal: string | null | undefined,
+  fallback?: string | null | undefined,
+): string {
+  if (locale === "zh") return zhVal || fallback || enVal || "";
+  if (locale === "en") return enVal || fallback || zhVal || "";
+  return fallback || enVal || zhVal || "";
+}

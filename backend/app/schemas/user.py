@@ -28,7 +28,8 @@ class AdminUserCreateIn(BaseModel):
 
 class AdminUserOut(BaseModel):
     id: int
-    email: str
+    email: str | None = None
+    phone: str | None = None
     username: str | None = None
     name: str
     status: str

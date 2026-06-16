@@ -1,35 +1,40 @@
 "use client";
 // /register 入口:角色选择后:
-// - BUYER → 原单页表单(不动)
+// - BUYER → 坦桑尼亚场景单页表单(multipart/form-data,注册即登录)
 // - SUPPLIER → 3 步向导(Step 1 国家 / Step 2 语言 / Step 3 表单)
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import {
   AlertCircle,
   Building2,
+  Check,
   CheckCircle2,
   ChevronRight,
   Eye,
   EyeOff,
+  ImagePlus,
   Loader2,
   ShoppingCart,
+  X,
 } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
-import { authApi } from "@/lib/auth";
+import { authApi, type LoginResult } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { categoriesApi, type CategoryNode } from "@/lib/api/categories";
 import {
   validateEmail,
   validatePassword,
   validatePasswordConfirm,
-  validatePhoneOptional,
   validateRequired,
-  validateUsc,
-  validateUsernameOptional,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH,
 } from "@/lib/validators";
 import type { CountryCode, LanguageCode } from "@/config/country-registration-rules";
+import { Link } from "@/i18n/navigation";
+import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 
 import { StepIndicator } from "./_components/StepIndicator";
 import { StepCountry } from "./_components/StepCountry";
@@ -39,45 +44,15 @@ import { useRegisterDraft } from "./_components/useRegisterDraft";
 import { useBeforeUnload } from "./_components/useBeforeUnload";
 import { useAuthStore } from "@/stores/authStore";
 import { defaultDashboardOf } from "@/config/navigation";
+import { preferenceToLocale } from "@/i18n/locale-utils";
+import { routing } from "@/i18n/routing";
 
 type Role = "BUYER" | "SUPPLIER" | "";
-
-type BuyerFieldName =
-  | "name"
-  | "email"
-  | "username"
-  | "phone"
-  | "password"
-  | "confirmPassword"
-  | "companyName"
-  | "unifiedSocialCreditCode";
-
-interface BuyerFormState {
-  name: string;
-  email: string;
-  username: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  companyName: string;
-  unifiedSocialCreditCode: string;
-}
-
-const initialBuyerForm: BuyerFormState = {
-  name: "",
-  email: "",
-  username: "",
-  phone: "",
-  password: "",
-  confirmPassword: "",
-  companyName: "",
-  unifiedSocialCreditCode: "",
-};
 
 const INPUT_BASE =
   "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK_BUYER =
-  "border-gray-200 focus:border-[#003366] focus:ring-[#003366]/15";
+  "border-gray-200 focus:border-[#0D4D4D] focus:ring-[#0D4D4D]/15";
 const INPUT_ERR =
   "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 
@@ -85,9 +60,34 @@ function buyerInputCls(error: string | null, extra = ""): string {
   return `${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK_BUYER} ${extra}`;
 }
 
+// 手机号前端轻量校验(最终以后端 E.164 归一化为准)
+const PHONE_REGION_CONFIG = {
+  TZ: { dialCode: "+255", flag: "🇹🇿", label: "Tanzania", re: /^\d{9}$/, maxLen: 9, phKey: "ph_phone_tz", errKey: "err_phone_format_tz" },
+  CN: { dialCode: "+86", flag: "🇨🇳", label: "China", re: /^1[3-9]\d{9}$/, maxLen: 11, phKey: "ph_phone_cn", errKey: "err_phone_format_cn" },
+} as const;
+type PhoneRegion = keyof typeof PHONE_REGION_CONFIG;
+// 允许的上传格式
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
 export default function RegisterPage() {
   const router = useRouter();
-  const [role, setRole] = useState<Role>("");
+  const locale = useLocale();
+  const t = useTranslations("buyerRegister");
+  const tc = useTranslations("common");
+
+  // 从 URL ?role=BUYER 恢复角色（切语言后保持状态）
+  const searchParams = useSearchParams();
+  const urlRole = searchParams.get("role") || "";
+  const [role, setRole] = useState<Role>(
+    (urlRole === "BUYER" || urlRole === "SUPPLIER") ? urlRole as Role : "",
+  );
+  // URL 参数变化时同步（切语言刷新后）
+  useEffect(() => {
+    if (urlRole === "BUYER" || urlRole === "SUPPLIER") {
+      setRole(urlRole as Role);
+    }
+  }, [urlRole]);
 
   // SUPPLIER 草稿(sessionStorage)
   const { draft, hydrated, update, clearDraft, clearRegistrationNo, clearLanguagePreference } =
@@ -102,10 +102,15 @@ export default function RegisterPage() {
     }
   }, [authLoaded, me, router]);
 
-  // 切换角色时清掉 SUPPLIER 草稿(PRD §2.3:跨角色切换清掉草稿)
+  // 切换角色时清掉 SUPPLIER 草稿 + 同步到 URL（切语言后可恢复）
   const handleSwitchRole = (next: Role) => {
     if (role === "SUPPLIER" && next !== "SUPPLIER") clearDraft();
     setRole(next);
+    // 同步到 URL query，不触发导航
+    const url = new URL(window.location.href);
+    if (next) url.searchParams.set("role", next);
+    else url.searchParams.delete("role");
+    window.history.replaceState({}, "", url.toString());
   };
 
   // SUPPLIER hydrate 完后,如果 draft.currentStep > 1,自动锁角色为 SUPPLIER
@@ -128,35 +133,57 @@ export default function RegisterPage() {
     role === "SUPPLIER" && draft.currentStep >= 2 && hasAnyNonEmptyDraftField;
   useBeforeUnload(shouldWarnOnUnload);
 
+  // 注册成功后:存 token → 拉 me → 跳转 buyer 首页
+  const handleBuyerRegistered = useCallback(async (tokens: LoginResult) => {
+    const { setAccessToken, setUser, setLoaded } = useAuthStore.getState();
+    setAccessToken(tokens.access_token);
+    try {
+      const me = await authApi.me();
+      setUser(me);
+      setLoaded(true);
+      const targetLocale = preferenceToLocale(me.language_preference);
+      const targetPath = defaultDashboardOf(me.roles);
+      if (targetLocale !== locale && targetLocale !== routing.defaultLocale) {
+        window.location.href = `/${targetLocale}${targetPath}`;
+      } else if (locale !== routing.defaultLocale) {
+        window.location.href = `/${locale}${targetPath}`;
+      } else {
+        router.replace(targetPath);
+      }
+    } catch {
+      // me 失败:降级跳商城首页
+      router.replace("/mall");
+    }
+  }, [locale, router]);
+
   return (
     <>
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold text-gray-900">创建账户</h2>
+        <h2 className="text-xl font-bold text-gray-900">{t("pageTitle")}</h2>
         {!role && (
-          <p className="mt-1 text-sm text-gray-400">选择您的角色开始注册</p>
+          <p className="mt-1 text-sm text-gray-400">{t("selectRole")}</p>
         )}
       </div>
 
       {/* 角色选择 */}
       {!role && (
         <div className="mb-6">
-          <p className="mb-4 text-center text-sm text-gray-500">请选择您的角色</p>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => handleSwitchRole("BUYER")}
-              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#003366] hover:bg-[#003366]/5"
+              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#0D4D4D] hover:bg-[#0D4D4D]/5"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 transition-colors group-hover:bg-[#003366]/10">
-                <ShoppingCart className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#003366]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 transition-colors group-hover:bg-[#0D4D4D]/10">
+                <ShoppingCart className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#0D4D4D]" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#003366]">
-                  我是采购方
+                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#0D4D4D]">
+                  {t("roleBuyer")}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">央企项目部</p>
+                <p className="mt-0.5 text-xs text-gray-400">{t("roleBuyerHint")}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#003366]" />
+              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0D4D4D]" />
             </button>
             <button
               type="button"
@@ -168,9 +195,9 @@ export default function RegisterPage() {
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#FF6B35]">
-                  我是供应商
+                  {t("roleSupplier")}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">海外材料供货方</p>
+                <p className="mt-0.5 text-xs text-gray-400">{t("roleSupplierHint")}</p>
               </div>
               <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#FF6B35]" />
             </button>
@@ -180,46 +207,8 @@ export default function RegisterPage() {
 
       {role && (
         <>
-          {/* 已选角色徽标 */}
-          <div
-            className={
-              "mb-5 flex items-center gap-3 rounded-xl p-3 " +
-              (role === "BUYER" ? "bg-[#003366]/10" : "bg-[#FF6B35]/10")
-            }
-          >
-            <div
-              className={
-                "flex h-8 w-8 items-center justify-center rounded-lg " +
-                (role === "BUYER" ? "bg-[#003366]/20" : "bg-[#FF6B35]/20")
-              }
-            >
-              {role === "BUYER" ? (
-                <ShoppingCart className="h-4 w-4 text-[#003366]" />
-              ) : (
-                <Building2 className="h-4 w-4 text-[#FF6B35]" />
-              )}
-            </div>
-            <span
-              className={
-                "text-sm font-semibold " +
-                (role === "BUYER" ? "text-[#003366]" : "text-[#FF6B35]")
-              }
-            >
-              {role === "BUYER" ? "采购方注册" : "供应商入驻"}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleSwitchRole("")}
-              className="ml-auto text-xs text-gray-400 underline hover:text-gray-600"
-            >
-              更改角色
-            </button>
-          </div>
 
-          {role === "BUYER" && <BuyerForm onSubmitted={(prefill) => {
-            try { sessionStorage.setItem("prefill_login", JSON.stringify(prefill)); } catch { /* ignore */ }
-            router.replace("/login?registered=1");
-          }} />}
+          {role === "BUYER" && <BuyerForm onSubmitted={handleBuyerRegistered} />}
 
           {role === "SUPPLIER" && (
             <SupplierWizard
@@ -239,17 +228,19 @@ export default function RegisterPage() {
 
       <div className="mt-5 text-center">
         <p className="text-sm text-gray-500">
-          已有账户?{" "}
+          {t("hasAccount")}{" "}
           <Link href="/login" className="font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]">
-            立即登录
+            {t("goLogin")}
           </Link>
         </p>
       </div>
 
-      <div className="mt-3 text-center">
+      <div className="mt-3 flex items-center justify-center gap-3">
         <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
-          返回首页
+          {tc("back_to_home")}
         </Link>
+        <span className="text-xs text-gray-300">|</span>
+        <LocaleSwitcher variant="full" />
       </div>
     </>
   );
@@ -277,7 +268,7 @@ function SupplierWizard({
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-[#003366]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
       </div>
     );
   }
@@ -342,76 +333,205 @@ function SupplierWizard({
   );
 }
 
-// ===== BUYER 单页表单(原逻辑保留,SUPPLIER 分支已下沉到 3 步向导) =====
+// ===== BUYER 坦桑尼亚注册表单(multipart/form-data,注册即自动登录) =====
 
 interface BuyerFormProps {
-  onSubmitted: (prefill: { identifier: string; password: string }) => void;
+  onSubmitted: (tokens: LoginResult) => void;
 }
 
 function BuyerForm({ onSubmitted }: BuyerFormProps) {
-  const [form, setForm] = useState<BuyerFormState>(initialBuyerForm);
+  const t = useTranslations("buyerRegister");
+  const locale = useLocale();
+
+  // 表单字段 — 中文环境默认 CN，其他默认 TZ
+  const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>(locale === "zh" ? "CN" : "TZ");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [address, setAddress] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [email, setEmail] = useState("");
+  const [tin, setTin] = useState("");
+  const [brelaNo, setBrelaNo] = useState("");
+  const [storefrontImages, setStorefrontImages] = useState<File[]>([]);
+  const [licenseImages, setLicenseImages] = useState<File[]>([]);
+
+  // UI 状态
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const [submitError, setSubmitError] = useState<React.ReactNode>("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<BuyerFieldName, string | null>>>({});
-  const [touched, setTouched] = useState<Partial<Record<BuyerFieldName, boolean>>>({});
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const validateField = (field: BuyerFieldName, value: string, pwd?: string): string | null => {
+  // L1 品类数据
+  const [categories, setCategories] = useState<CategoryNode[]>([]);
+  const [catLoading, setCatLoading] = useState(true);
+
+  // 加载 L1 品类
+  useEffect(() => {
+    categoriesApi.list({ level: 1 }).then((data) => {
+      setCategories(data);
+      setCatLoading(false);
+    }).catch(() => setCatLoading(false));
+  }, []);
+
+  // 缩略图预览 URL 管理
+  const [sfPreviews, setSfPreviews] = useState<string[]>([]);
+  const [licPreviews, setLicPreviews] = useState<string[]>([]);
+  // 图片放大预览
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const sfInputRef = useRef<HTMLInputElement>(null);
+  const licInputRef = useRef<HTMLInputElement>(null);
+
+  // storefrontImages 变化时更新预览
+  useEffect(() => {
+    const urls = storefrontImages.map((f) => URL.createObjectURL(f));
+    setSfPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [storefrontImages]);
+
+  useEffect(() => {
+    const urls = licenseImages.map((f) => URL.createObjectURL(f));
+    setLicPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [licenseImages]);
+
+  // 校验单个字段
+  const validateField = (field: string): string | null => {
     switch (field) {
-      case "name":
-        return validateRequired(value, "姓名");
-      case "email":
-        return validateEmail(value);
-      case "username":
-        return validateUsernameOptional(value);
       case "phone":
-        return validatePhoneOptional(value);
+        if (!phone) return t("err_phone_required");
+        if (!PHONE_REGION_CONFIG[phoneRegion].re.test(phone)) return t(PHONE_REGION_CONFIG[phoneRegion].errKey);
+        return null;
       case "password":
-        return validatePassword(value);
+        return validatePassword(password);
       case "confirmPassword":
-        return validatePasswordConfirm(pwd ?? form.password, value);
+        return validatePasswordConfirm(password, confirmPassword);
+      case "name":
+        return validateRequired(name, t("label_name"));
       case "companyName":
-        return validateRequired(value, "公司名称");
-      case "unifiedSocialCreditCode":
-        return validateUsc(value);
+        return validateRequired(companyName, t("label_company"));
+      case "address":
+        return validateRequired(address, t("label_address"));
+      case "categories":
+        if (selectedCategories.length === 0) return t("err_category_required");
+        return null;
+      case "email":
+        if (email && validateEmail(email)) return validateEmail(email);
+        return null;
+      case "storefrontImages":
+        if (storefrontImages.length === 0) return t("err_storefront_required");
+        return null;
+      default:
+        return null;
     }
   };
 
-  const setField = (field: BuyerFieldName, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
-    if (field === "password" && errors.confirmPassword) {
-      setErrors((e) => ({ ...e, confirmPassword: null }));
-    }
-  };
-
-  const handleBlur = (field: BuyerFieldName) => {
+  const touch = (field: string) => {
     setTouched((t) => ({ ...t, [field]: true }));
-    setErrors((e) => ({ ...e, [field]: validateField(field, form[field]) }));
+    setErrors((e) => ({ ...e, [field]: validateField(field) }));
   };
 
-  const errOf = (field: BuyerFieldName): string | null =>
+  const errOf = (field: string): string | null =>
     touched[field] ? errors[field] ?? null : null;
 
-  const validateAll = (): string => {
-    const fields: BuyerFieldName[] = [
-      "name", "email", "username", "phone", "password", "confirmPassword",
-      "companyName", "unifiedSocialCreditCode",
-    ];
-    const newErrors: Partial<Record<BuyerFieldName, string | null>> = {};
-    const newTouched: Partial<Record<BuyerFieldName, boolean>> = {};
-    let firstError = "";
+  // 全字段校验
+  const validateAll = (): string | null => {
+    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages"];
+    const newErrors: Record<string, string | null> = {};
+    const newTouched: Record<string, boolean> = {};
+    let firstError: string | null = null;
+    let firstErrorField: string | null = null;
     for (const f of fields) {
-      const err = validateField(f, form[f]);
       newTouched[f] = true;
+      const err = validateField(f);
       newErrors[f] = err;
-      if (err && !firstError) firstError = err;
+      if (err && !firstError) {
+        firstError = err;
+        firstErrorField = f;
+      }
     }
     setTouched((t) => ({ ...t, ...newTouched }));
     setErrors((e) => ({ ...e, ...newErrors }));
+    // 滚动到第一个错误字段
+    if (firstErrorField) {
+      const el = document.getElementById(`field-${firstErrorField}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
     return firstError;
   };
+
+  // 文件校验
+  const validateImageFile = (file: File): string | null => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return t("err_image_format");
+    if (file.size > MAX_IMAGE_SIZE) return t("err_image_size");
+    return null;
+  };
+
+  // 添加店面照片
+  const handleStorefrontAdd = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const err = validateImageFile(files[i]);
+      if (err) {
+        setErrors((e) => ({ ...e, storefrontImages: err }));
+        setTouched((t) => ({ ...t, storefrontImages: true }));
+        return;
+      }
+      newFiles.push(files[i]);
+    }
+    const combined = [...storefrontImages, ...newFiles].slice(0, 10);
+    setStorefrontImages(combined);
+    if (combined.length > 0) {
+      setErrors((e) => ({ ...e, storefrontImages: null }));
+    }
+  };
+
+  const removeStorefrontImage = (idx: number) => {
+    setStorefrontImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // 添加执照照片
+  const handleLicenseAdd = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const err = validateImageFile(files[i]);
+      if (err) {
+        setErrors((e) => ({ ...e, licenseImages: err }));
+        setTouched((t) => ({ ...t, licenseImages: true }));
+        return;
+      }
+      newFiles.push(files[i]);
+    }
+    setLicenseImages((prev) => [...prev, ...newFiles]);
+  };
+
+  const removeLicenseImage = (idx: number) => {
+    setLicenseImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // 切换品类选择
+  const toggleCategory = (code: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+    // 清除品类错误
+    if (errors.categories) {
+      setErrors((e) => ({ ...e, categories: null }));
+    }
+  };
+
+  // 密码强度指示器
+  const pwdHasDigit = /\d/.test(password);
+  const pwdHasUpper = /[A-Z]/.test(password);
+  const pwdHasLower = /[a-z]/.test(password);
+  const pwdHasSpecial = /[^A-Za-z0-9]/.test(password);
+  const pwdLenOk = password.length >= PASSWORD_MIN_LENGTH && password.length <= PASSWORD_MAX_LENGTH;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -423,21 +543,50 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setSubmitError("");
     setLoading(true);
     try {
-      await authApi.registerBuyer({
-        email: form.email,
-        username: form.username || undefined,
-        name: form.name,
-        phone: form.phone || undefined,
-        password: form.password,
-        company_name: form.companyName,
-        unified_social_credit_code: form.unifiedSocialCreditCode,
+      const tokens = await authApi.registerBuyer({
+        phone,
+        phone_region: phoneRegion,
+        password,
+        name,
+        company_name: companyName,
+        address,
+        business_category_codes: selectedCategories,
+        email: email || undefined,
+        tin: tin || undefined,
+        brela_no: brelaNo || undefined,
+        storefront_images: storefrontImages,
+        license_images: licenseImages.length > 0 ? licenseImages : undefined,
+        language_preference: locale,
       });
-      onSubmitted({
-        identifier: form.username || form.phone || form.email,
-        password: form.password,
-      });
+      onSubmitted(tokens);
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "注册失败,请稍后重试");
+      if (err instanceof ApiError) {
+        // 手机号已注册
+        if (err.code === 40921) {
+          setErrors((e) => ({ ...e, phone: err.message }));
+          setTouched((t) => ({ ...t, phone: true }));
+          setSubmitError(
+            <span>
+              {err.message}{" "}
+              <Link href="/login" className="font-semibold text-[#FF6B35] underline">{t("goLogin")}</Link>
+            </span>
+          );
+        } else if (err.code === 40922) {
+          // 邮箱已注册
+          setErrors((e) => ({ ...e, email: err.message }));
+          setTouched((t) => ({ ...t, email: true }));
+          setSubmitError(
+            <span>
+              {err.message}{" "}
+              <Link href="/login" className="font-semibold text-[#FF6B35] underline">{t("goLogin")}</Link>
+            </span>
+          );
+        } else {
+          setSubmitError(err.message);
+        }
+      } else {
+        setSubmitError(t("err_generic"));
+      }
     } finally {
       setLoading(false);
     }
@@ -452,82 +601,68 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <BuyerField
-          id="companyName" label="公司名称" required
-          value={form.companyName}
-          onChange={(v) => setField("companyName", v)}
-          onBlur={() => handleBlur("companyName")}
-          error={errOf("companyName")}
-          placeholder="请填写完整公司名称"
-        />
-        <BuyerField
-          id="unifiedSocialCreditCode" label="统一社会信用代码" required
-          hint="(18 位大写字母与数字)"
-          value={form.unifiedSocialCreditCode}
-          onChange={(v) => setField("unifiedSocialCreditCode", v.toUpperCase().slice(0, 18))}
-          onBlur={() => handleBlur("unifiedSocialCreditCode")}
-          error={errOf("unifiedSocialCreditCode")}
-          placeholder="如 91110000XXXXXXXXX1"
-          maxLength={18}
-          extraInputClass="uppercase"
-          footnote="系统按信用代码识别企业:首次填写将创建新组织,与已有组织信用代码相同则自动加入。"
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          <BuyerField
-            id="name" label="姓名" required
-            value={form.name}
-            onChange={(v) => setField("name", v)}
-            onBlur={() => handleBlur("name")}
-            error={errOf("name")}
-            placeholder="您的姓名"
-          />
-          <BuyerField
-            id="phone" label="手机号"
-            hint="(选填,可作登录凭证)"
-            value={form.phone}
-            onChange={(v) => setField("phone", v.replace(/\D/g, "").slice(0, 11))}
-            onBlur={() => handleBlur("phone")}
-            error={errOf("phone")}
-            placeholder="11 位"
-            inputMode="numeric"
-          />
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate autoComplete="off">
+        {/* 隐藏陷阱：吸收浏览器 autofill，防止覆盖手机号 */}
+        <input type="text" name="hidden_username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
+        <input type="password" name="hidden_password" autoComplete="new-password" className="hidden" tabIndex={-1} aria-hidden="true" />
+        {/* 1. Phone / WhatsApp */}
+        <div className="space-y-1.5" id="field-phone">
+          <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
+            {t("label_phone")} <span className="text-red-500">*</span>
+          </Label>
+          <div className="flex">
+            <select
+              value={phoneRegion}
+              onChange={(e) => {
+                const newRegion = e.target.value as PhoneRegion;
+                setPhoneRegion(newRegion);
+                // 截断到新国家的最大长度，不清空已输入的号码
+                setPhone((prev) => prev.slice(0, PHONE_REGION_CONFIG[newRegion].maxLen));
+                if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
+              }}
+              className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
+            >
+              {(Object.keys(PHONE_REGION_CONFIG) as PhoneRegion[]).map((r) => (
+                <option key={r} value={r}>
+                  {PHONE_REGION_CONFIG[r].flag} {PHONE_REGION_CONFIG[r].dialCode}
+                </option>
+              ))}
+            </select>
+            <input
+              id="phone" name="phone" type="tel"
+              value={phone}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, PHONE_REGION_CONFIG[phoneRegion].maxLen);
+                setPhone(v);
+                if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
+              }}
+              onBlur={() => touch("phone")}
+              placeholder={t(PHONE_REGION_CONFIG[phoneRegion].phKey)}
+              inputMode="numeric"
+              autoComplete="off"
+              className={buyerInputCls(errOf("phone"), "rounded-l-none")}
+            />
+          </div>
+          {errOf("phone") && <p className="text-xs text-red-500">{errOf("phone")}</p>}
         </div>
 
-        <BuyerField
-          id="email" label="邮箱地址" required type="email"
-          value={form.email}
-          onChange={(v) => setField("email", v)}
-          onBlur={() => handleBlur("email")}
-          error={errOf("email")}
-          placeholder="your@email.com"
-          autoComplete="email"
-        />
-
-        <BuyerField
-          id="username" label="用户名"
-          hint="(选填,3-50 位字母/数字/下划线/短横;用于代替邮箱登录)"
-          value={form.username}
-          onChange={(v) => setField("username", v)}
-          onBlur={() => handleBlur("username")}
-          error={errOf("username")}
-          placeholder="如 zhang_san"
-          autoComplete="username"
-        />
-
-        <div className="space-y-1.5">
+        {/* 2. Password */}
+        <div className="space-y-1.5" id="field-password">
           <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
-            密码 * <span className="font-normal text-gray-400">(11-50 位,需 3 类字符)</span>
+            {t("label_password")} <span className="text-red-500">*</span>
           </Label>
           <div className="relative">
             <input
               id="password" name="password"
               type={showPassword ? "text" : "password"}
-              value={form.password}
-              onChange={(e) => setField("password", e.target.value)}
-              onBlur={() => handleBlur("password")}
-              placeholder="请输入密码"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors((err) => ({ ...err, password: null }));
+                if (errors.confirmPassword) setErrors((err) => ({ ...err, confirmPassword: null }));
+              }}
+              onBlur={() => touch("password")}
+              placeholder={t("ph_password")}
               autoComplete="new-password"
               className={buyerInputCls(errOf("password"), "pr-12")}
             />
@@ -541,20 +676,43 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             </button>
           </div>
           {errOf("password") && <p className="text-xs text-red-500">{errOf("password")}</p>}
+          {/* 密码强度提示：一行紧凑展示 */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px]">
+            <span className={pwdLenOk ? "text-green-600" : "text-gray-400"}>
+              {pwdLenOk && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_length")}
+            </span>
+            <span className="text-gray-300">|</span>
+            <span className={pwdHasDigit ? "text-green-600" : "text-gray-400"}>
+              {pwdHasDigit && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_digit")}
+            </span>
+            <span className={pwdHasUpper ? "text-green-600" : "text-gray-400"}>
+              {pwdHasUpper && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_upper")}
+            </span>
+            <span className={pwdHasLower ? "text-green-600" : "text-gray-400"}>
+              {pwdHasLower && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_lower")}
+            </span>
+            <span className={pwdHasSpecial ? "text-green-600" : "text-gray-400"}>
+              {pwdHasSpecial && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_special")}
+            </span>
+          </div>
         </div>
 
-        <div className="space-y-1.5">
+        {/* 3. Confirm Password */}
+        <div className="space-y-1.5" id="field-confirmPassword">
           <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
-            确认密码 *
+            {t("label_confirm_password")} <span className="text-red-500">*</span>
           </Label>
           <div className="relative">
             <input
               id="confirmPassword" name="confirmPassword"
               type={showConfirm ? "text" : "password"}
-              value={form.confirmPassword}
-              onChange={(e) => setField("confirmPassword", e.target.value)}
-              onBlur={() => handleBlur("confirmPassword")}
-              placeholder="再次输入密码"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (errors.confirmPassword) setErrors((err) => ({ ...err, confirmPassword: null }));
+              }}
+              onBlur={() => touch("confirmPassword")}
+              placeholder={t("ph_confirm_password")}
               autoComplete="new-password"
               className={buyerInputCls(errOf("confirmPassword"), "pr-12")}
             />
@@ -572,78 +730,274 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               <AlertCircle className="h-3 w-3" /> {errOf("confirmPassword")}
             </p>
           ) : (
-            form.confirmPassword &&
-            form.password &&
-            form.password === form.confirmPassword && (
+            confirmPassword && password && password === confirmPassword && (
               <p className="mt-1 flex items-center gap-1 text-xs text-[#10B981]">
-                <CheckCircle2 className="h-3 w-3" /> 密码匹配
+                <CheckCircle2 className="h-3 w-3" /> {t("password_match")}
               </p>
             )
           )}
         </div>
 
+        {/* 4. Contact Name */}
+        <div className="space-y-1.5" id="field-name">
+          <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
+            {t("label_name")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="name" name="name" type="text"
+            value={name}
+            onChange={(e) => { setName(e.target.value); if (errors.name) setErrors((err) => ({ ...err, name: null })); }}
+            onBlur={() => touch("name")}
+            placeholder={t("ph_name")}
+            className={buyerInputCls(errOf("name"))}
+          />
+          {errOf("name") && <p className="text-xs text-red-500">{errOf("name")}</p>}
+        </div>
+
+        {/* 5. Shop / Company Name */}
+        <div className="space-y-1.5" id="field-companyName">
+          <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+            {t("label_company")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="companyName" name="companyName" type="text"
+            value={companyName}
+            onChange={(e) => { setCompanyName(e.target.value); if (errors.companyName) setErrors((err) => ({ ...err, companyName: null })); }}
+            onBlur={() => touch("companyName")}
+            placeholder={t("ph_company")}
+            className={buyerInputCls(errOf("companyName"))}
+          />
+          {errOf("companyName") && <p className="text-xs text-red-500">{errOf("companyName")}</p>}
+        </div>
+
+        {/* 6. Address */}
+        <div className="space-y-1.5" id="field-address">
+          <Label htmlFor="address" className="text-sm font-semibold text-gray-700">
+            {t("label_address")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="address" name="address" type="text"
+            value={address}
+            onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors((err) => ({ ...err, address: null })); }}
+            onBlur={() => touch("address")}
+            placeholder={t("ph_address")}
+            className={buyerInputCls(errOf("address"))}
+          />
+          {errOf("address") && <p className="text-xs text-red-500">{errOf("address")}</p>}
+        </div>
+
+        {/* 7. Business Categories (L1 multi-select) */}
+        <div className="space-y-1.5" id="field-categories">
+          <Label className="text-sm font-semibold text-gray-700">
+            {t("label_categories")} <span className="text-red-500">*</span>
+          </Label>
+          {catLoading ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {categories.map((cat) => {
+                const selected = selectedCategories.includes(cat.code);
+                const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
+                return (
+                  <button
+                    key={cat.code}
+                    type="button"
+                    onClick={() => toggleCategory(cat.code)}
+                    className={
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
+                      (selected
+                        ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
+                        : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
+                    }
+                  >
+                    <div className={
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+                      (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
+                    }>
+                      {selected && <Check className="h-3 w-3" />}
+                    </div>
+                    <span className="truncate">{displayName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {errOf("categories") && <p className="text-xs text-red-500">{errOf("categories")}</p>}
+        </div>
+
+        {/* 8. Email (optional) */}
+        <div className="space-y-1.5" id="field-email">
+          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+            {t("label_email")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <input
+            id="email" name="email" type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
+            onBlur={() => touch("email")}
+            placeholder={t("ph_email")}
+            autoComplete="email"
+            className={buyerInputCls(errOf("email"))}
+          />
+          {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
+        </div>
+
+        {/* 9. Storefront Photos (required, 1-3) */}
+        <div className="space-y-1.5" id="field-storefrontImages">
+          <Label className="text-sm font-semibold text-gray-700">
+            {t("label_storefront")} <span className="text-red-500">*</span>
+          </Label>
+          <p className="text-xs text-gray-400">{t("storefront_hint")}</p>
+          <div className="flex flex-wrap gap-2">
+            {sfPreviews.map((url, idx) => (
+              <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                <img
+                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                  onClick={() => setPreviewUrl(url)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeStorefrontImage(idx)}
+                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            {storefrontImages.length < 10 && (
+              <button
+                type="button"
+                onClick={() => sfInputRef.current?.click()}
+                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+              >
+                <ImagePlus className="h-5 w-5" />
+                <span className="text-[10px]">{t("upload")}</span>
+              </button>
+            )}
+          </div>
+          <input
+            ref={sfInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => { handleStorefrontAdd(e.target.files); e.target.value = ""; }}
+          />
+          {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
+        </div>
+
+        {/* 10. TIN Number (optional) */}
+        <div className="space-y-1.5" id="field-tin">
+          <Label htmlFor="tin" className="text-sm font-semibold text-gray-700">
+            {t("label_tin")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <input
+            id="tin" name="tin" type="text"
+            value={tin}
+            onChange={(e) => setTin(e.target.value)}
+            placeholder={t("ph_tin")}
+            className={buyerInputCls(null)}
+          />
+        </div>
+
+        {/* 11. BRELA Registration No (optional) */}
+        <div className="space-y-1.5" id="field-brela">
+          <Label htmlFor="brela" className="text-sm font-semibold text-gray-700">
+            {t("label_brela")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <input
+            id="brela" name="brela" type="text"
+            value={brelaNo}
+            onChange={(e) => setBrelaNo(e.target.value)}
+            placeholder={t("ph_brela")}
+            className={buyerInputCls(null)}
+          />
+        </div>
+
+        {/* 12. License Images (optional) */}
+        <div className="space-y-1.5" id="field-licenseImages">
+          <Label className="text-sm font-semibold text-gray-700">
+            {t("label_license")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <p className="text-xs text-gray-400">{t("license_hint")}</p>
+          <div className="flex flex-wrap gap-2">
+            {licPreviews.map((url, idx) => (
+              <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                <img
+                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                  onClick={() => setPreviewUrl(url)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLicenseImage(idx)}
+                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => licInputRef.current?.click()}
+              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+            >
+              <ImagePlus className="h-5 w-5" />
+              <span className="text-[10px]">{t("upload")}</span>
+            </button>
+          </div>
+          <input
+            ref={licInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => { handleLicenseAdd(e.target.files); e.target.value = ""; }}
+          />
+          {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
+        </div>
+
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#003366] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#002244] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              注册中...
+              {t("submitting")}
             </>
           ) : (
-            "注册采购方账户"
+            t("submit")
           )}
         </button>
+
+        {/* 服务条款 */}
+        <p className="text-center text-xs text-gray-400">
+          {t("terms_agree")}
+        </p>
       </form>
-    </>
-  );
-}
 
-interface BuyerFieldProps {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  onBlur: () => void;
-  error: string | null;
-  required?: boolean;
-  hint?: string;
-  footnote?: string;
-  placeholder?: string;
-  type?: string;
-  autoComplete?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-  maxLength?: number;
-  extraInputClass?: string;
-}
-
-function BuyerField({
-  id, label, value, onChange, onBlur, error, required, hint, footnote,
-  placeholder, type = "text", autoComplete, inputMode, maxLength, extraInputClass = "",
-}: BuyerFieldProps) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm font-semibold text-gray-700">
-        {label}{required && " *"}
-        {hint && <span className="ml-1 font-normal text-gray-400">{hint}</span>}
-      </Label>
-      <input
-        id={id} name={id} type={type} value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        maxLength={maxLength}
-        className={buyerInputCls(error, extraInputClass)}
-      />
-      {error ? (
-        <p className="text-xs text-red-500">{error}</p>
-      ) : (
-        footnote && <p className="text-xs text-gray-400">{footnote}</p>
+      {/* 图片放大预览弹窗 */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div className="relative max-h-[85vh] max-w-[85vw]">
+            <img src={previewUrl} alt="" className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain" />
+            <button
+              type="button"
+              onClick={() => setPreviewUrl(null)}
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }

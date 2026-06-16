@@ -166,7 +166,7 @@ function RfqDetailContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0D4D4D]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
       </div>
     );
   }
@@ -179,7 +179,7 @@ function RfqDetailContent() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="mt-4 text-sm text-[#0D4D4D] hover:underline"
+          className="mt-4 text-sm text-[#00505a] hover:underline"
         >
           返回
         </button>
@@ -226,7 +226,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setSubmitOpen(true)}
-              className="rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0D4D4D]/90"
+              className="rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#00505a]/90"
             >
               {t("submitDraft")}
             </button>
@@ -243,7 +243,7 @@ function RfqDetailContent() {
               <button
                 type="button"
                 onClick={() => setAcceptOpen(true)}
-                className="rounded-lg bg-[#0D4D4D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0D4D4D]/90"
+                className="rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#00505a]/90"
               >
                 {tQ("accept")}
               </button>
@@ -349,7 +349,7 @@ function RfqDetailContent() {
                 {rfq.required_certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-[#0D4D4D]/10 px-2 py-0.5 text-xs font-medium text-[#0D4D4D]"
+                    className="rounded bg-[#00505a]/10 px-2 py-0.5 text-xs font-medium text-[#00505a]"
                   >
                     {cert}
                   </span>
@@ -409,7 +409,7 @@ function RfqDetailContent() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0D4D4D] focus:ring-1 focus:ring-[#0D4D4D]/20"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
                 placeholder={t("cancelReason")}
               />
             </div>
@@ -565,7 +565,7 @@ function ItemsAndQuoteCard({
           {quote.total_amount != null && (
             <div>
               <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
-              <p className="text-base font-bold text-[#0D4D4D]">
+              <p className="text-base font-bold text-[#00505a]">
                 {formatCurrency(Number(quote.total_amount), currency, locale)}
               </p>
             </div>
@@ -589,7 +589,7 @@ function ItemsAndQuoteCard({
                   </th>
                   <th
                     colSpan={5}
-                    className="border-b border-gray-100 border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-5 py-1.5 text-left font-semibold text-[#0D4D4D]/60"
+                    className="border-b border-gray-100 border-l border-l-gray-200 bg-[#00505a]/[0.04] px-5 py-1.5 text-left font-semibold text-[#00505a]/60"
                   >
                     {tQ("groupResponse")}
                   </th>
@@ -599,11 +599,11 @@ function ItemsAndQuoteCard({
                   <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("product")}</th>
                   <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("spec")}</th>
                   <th className="bg-gray-50 px-4 py-2 font-medium text-right">{tQ("quantity")}</th>
-                  <th className="border-l border-l-gray-200 bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("unitPrice")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("moq")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("cbm")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("grossWeight")}</th>
-                  <th className="bg-[#0D4D4D]/[0.04] px-4 py-2 font-medium text-right text-[#0D4D4D]/60">{tQ("totalAmount")}</th>
+                  <th className="border-l border-l-gray-200 bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("unitPrice")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("moq")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("cbm")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("grossWeight")}</th>
+                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("totalAmount")}</th>
                 </tr>
               </>
             ) : (
@@ -617,7 +617,7 @@ function ItemsAndQuoteCard({
           <tbody>
             {hasQuote
               ? quote.items.map((qi) => {
-                  const rfqItem = rfqItemMap.get(qi.rfq_item_id);
+                  const rfqItem = qi.source_rfq_item_id ? rfqItemMap.get(qi.source_rfq_item_id) : undefined;
                   return (
                     <QuoteLineRow
                       key={qi.id}
@@ -634,7 +634,7 @@ function ItemsAndQuoteCard({
                       {item.product_name_snapshot ?? "—"}
                     </td>
                     <td className="px-5 py-3 text-gray-500">
-                      {item.sku_spec_snapshot ?? "—"}
+                      {item.variant_display ?? "—"}
                     </td>
                     <td className="px-5 py-3 text-right font-semibold text-gray-800">
                       {item.quantity} {item.uom_snapshot ?? ""}
@@ -672,47 +672,62 @@ function QuoteLineRow({
   const tQ = useTranslations("quote");
   const [showTiers, setShowTiers] = useState(false);
 
-  // skipped 行整行灰化 + 跨列标签
-  if (qi.skipped) {
-    return (
-      <tr className="border-t border-gray-100 bg-gray-50/80">
-        <td className="px-5 py-3 font-medium text-gray-400 line-through">
-          {rfqItem?.product_name_snapshot ?? "—"}
-        </td>
-        <td className="px-5 py-3 text-gray-400">
-          {rfqItem?.sku_spec_snapshot ?? "—"}
-        </td>
-        <td className="px-5 py-3 text-right text-gray-400">
-          {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
-        </td>
-        <td colSpan={5} className="px-5 py-3">
-          <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-            {tQ("skippedLabel")}
-          </span>
-          {qi.skip_reason && (
-            <span className="ml-2 text-xs text-gray-400">{qi.skip_reason}</span>
-          )}
-        </td>
-      </tr>
-    );
-  }
+  // 显示名：优先用报价行自带快照，fallback 到询价行
+  const productName = qi.product_name_snapshot ?? rfqItem?.product_name_snapshot ?? "—";
+  const variantDisplay = qi.variant_display ?? rfqItem?.variant_display ?? "—";
+  const qty = qi.quantity ?? rfqItem?.quantity ?? "—";
+  const uom = qi.uom ?? rfqItem?.uom_snapshot ?? "";
+
+  // FEE 行显示标签
+  const isFee = qi.line_type === "FEE";
 
   return (
     <>
       <tr className="border-t border-gray-100 even:bg-slate-50/50">
         <td className="px-5 py-3 font-medium text-gray-800">
-          {rfqItem?.product_name_snapshot ?? "—"}
+          <div className="flex items-center gap-1.5">
+            {isFee && (
+              <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                {tQ("lineAdditional")}
+              </span>
+            )}
+            {productName}
+          </div>
         </td>
         <td className="px-5 py-3 text-gray-500">
-          {rfqItem?.sku_spec_snapshot ?? "—"}
+          {variantDisplay}
         </td>
         <td className="px-5 py-3 text-right text-gray-800">
-          {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
+          {qty} {uom}
         </td>
-        <td className="px-5 py-3 text-right font-semibold text-gray-800">
-          {qi.unit_price != null
-            ? formatCurrency(Number(qi.unit_price), currency, locale)
-            : "—"}
+        <td className="px-5 py-3 text-right">
+          <div className="font-semibold text-gray-800">
+            {qi.unit_price != null
+              ? formatCurrency(Number(qi.unit_price), currency, locale)
+              : "—"}
+          </div>
+          {qi.tiers.length > 0 && (
+            <div className="mt-1">
+              <button type="button" onClick={() => setShowTiers(!showTiers)}
+                className="text-[10px] font-medium text-[#00505a] hover:underline">
+                {tQ("tiers")} ({qi.tiers.length}) {showTiers ? "▲" : "▼"}
+              </button>
+              {showTiers && (
+                <div className="mt-1 space-y-0.5 text-left">
+                  {[...qi.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, idx, sorted) => {
+                    const next = sorted[idx + 1];
+                    const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                    return (
+                      <div key={idx} className="text-[10px] text-gray-500">
+                        <span className="inline-block w-16">{label}</span>
+                        <span className="font-semibold text-[#00505a]">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </td>
         <td className="px-5 py-3 text-right text-gray-600">
           {qi.moq != null ? Number(qi.moq) : "—"}
@@ -729,37 +744,6 @@ function QuoteLineRow({
             : "—"}
         </td>
       </tr>
-      {/* 阶梯价展开 */}
-      {qi.tiers.length > 0 && (
-        <tr className="border-t border-gray-50">
-          <td colSpan={8} className="px-5 py-2">
-            <button
-              type="button"
-              onClick={() => setShowTiers(!showTiers)}
-              className="text-xs font-medium text-[#0D4D4D] hover:underline"
-            >
-              {tQ("tiers")} ({qi.tiers.length})
-            </button>
-            {showTiers && (
-              <div className="mt-1.5 space-y-0.5">
-                {[...qi.tiers]
-                  .sort((a, b) => a.min_qty - b.min_qty)
-                  .map((tier, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-4 rounded px-2 py-1 text-xs text-gray-600"
-                    >
-                      <span className="w-24">≥ {tier.min_qty}</span>
-                      <span className="font-semibold text-[#0D4D4D]">
-                        {formatCurrency(Number(tier.unit_price), currency, locale)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </td>
-        </tr>
-      )}
     </>
   );
 }

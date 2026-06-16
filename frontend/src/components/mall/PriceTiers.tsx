@@ -59,7 +59,7 @@ export function PriceTiers({ tiers, unit, quantity }: PriceTiersProps) {
                 {rangeText}
                 {isActive && " \u2713"}
               </span>
-              <span className={isActive ? "text-green-700" : "text-[#0D4D4D] font-semibold"}>
+              <span className={isActive ? "text-green-700" : "text-[#00505a] font-semibold"}>
                 {formatCurrency(tier.unit_price, tier.currency, locale, {
                   maximumFractionDigits: 2,
                 })}{" "}
@@ -67,7 +67,7 @@ export function PriceTiers({ tiers, unit, quantity }: PriceTiersProps) {
               </span>
               {isActive && (
                 <span className="ml-2 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
-                  Best Price
+                  {t("detail.bestPrice")}
                 </span>
               )}
             </div>

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Check, Plus, Pencil, Trash2, X } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -16,16 +16,24 @@ import {
   getRfq,
   claimRfq,
   updateRfqItemQty,
+  addRfqItem,
+  editRfqItem,
+  deleteRfqItem,
   type RfqBuyerPublic,
   type RfqItemPublic,
+  type RfqOperatorView,
 } from "@/lib/api/rfqs";
 import {
   listQuotes,
   type RfqQuoteOperatorView,
 } from "@/lib/api/quotes";
+import { operatorProductsApi, type ProductOperatorItem } from "@/lib/api/operatorProducts";
+import { getProduct, type AttrItem } from "@/lib/api/products";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
-// 行内数量编辑组件
+// ---------- 行内数量编辑组件 ----------
+
 function EditableQuantity({
   item,
   rfqId,
@@ -114,6 +122,463 @@ function EditableQuantity({
   );
 }
 
+// ---------- 变体选择器（chip 风格） ----------
+
+interface VariantSelectorProps {
+  selectableAttrs: AttrItem[];
+  selected: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+}
+
+function VariantSelector({ selectableAttrs, selected, onChange }: VariantSelectorProps) {
+  if (selectableAttrs.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {selectableAttrs.map((attr) => (
+        <div key={attr.key}>
+          <p className="mb-1.5 text-xs font-medium text-gray-500">{attr.key}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {attr.values.map((v) => {
+              const active = selected[attr.key] === v.value;
+              return (
+                <button
+                  key={v.value}
+                  type="button"
+                  onClick={() => onChange(attr.key, active ? "" : v.value)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {v.value}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------- 添加行项弹窗 ----------
+
+interface AddItemModalProps {
+  rfqId: number;
+  onClose: () => void;
+  onAdded: () => void;
+}
+
+function AddItemModal({ rfqId, onClose, onAdded }: AddItemModalProps) {
+  const t = useTranslations("rfq");
+  const tCommon = useTranslations("common");
+  const tError = useTranslations("error");
+  const toast = useToast();
+
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<ProductOperatorItem[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const [selectedProduct, setSelectedProduct] = useState<ProductOperatorItem | null>(null);
+  const [selectableAttrs, setSelectableAttrs] = useState<AttrItem[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+  const [quantity, setQuantity] = useState("1");
+  const [remark, setRemark] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 防抖搜索
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await operatorProductsApi.list({ keyword: query.trim(), status: "ACTIVE", size: 10 });
+        setResults(res.items);
+        setShowDropdown(true);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+  }, [query]);
+
+  // 选中商品后拉详情获取可选属性
+  const handleSelectProduct = useCallback(async (product: ProductOperatorItem) => {
+    setSelectedProduct(product);
+    setShowDropdown(false);
+    setQuery(product.name);
+    setSelectedVariants({});
+    setSelectableAttrs([]);
+    setLoadingDetail(true);
+    try {
+      // 用公开商品详情接口获取 attribute_groups（含 selectable 标记）
+      const detail = await getProduct(product.id);
+      const selectable: AttrItem[] = [];
+      for (const group of detail.attribute_groups) {
+        for (const item of group.items) {
+          if (item.selectable) selectable.push(item);
+        }
+      }
+      setSelectableAttrs(selectable);
+    } catch {
+      // 无属性或接口异常，静默处理
+    } finally {
+      setLoadingDetail(false);
+    }
+  }, []);
+
+  const handleVariantChange = useCallback((key: string, value: string) => {
+    setSelectedVariants((prev) => {
+      if (!value) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: value };
+    });
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!selectedProduct) return;
+    const qty = Number(quantity);
+    if (!qty || qty <= 0) {
+      toast.error(t("quantityUpdated")); // 复用 quantity 校验
+      return;
+    }
+    setSaving(true);
+    try {
+      const selected_variants = Object.entries(selectedVariants)
+        .filter(([, v]) => v)
+        .map(([attr_name, value]) => ({ attr_name, value }));
+      await addRfqItem(rfqId, {
+        product_id: selectedProduct.id,
+        selected_variants: selected_variants.length > 0 ? selected_variants : undefined,
+        quantity: qty,
+        remark: remark.trim() || undefined,
+      });
+      toast.success(t("itemAdded"));
+      onAdded();
+      onClose();
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try { toast.error(tError(key)); } catch { toast.error(err.message); }
+      } else {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [rfqId, selectedProduct, selectedVariants, quantity, remark, toast, t, tError, onAdded, onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-xl bg-white shadow-2xl mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 标题栏 */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h3 className="text-base font-semibold text-gray-800">{t("addItem")}</h3>
+          <button type="button" onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          {/* 商品搜索 */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("searchProduct")}</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setSelectedProduct(null); }}
+                placeholder={t("searchPlaceholder")}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              {searching && (
+                <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-gray-400" />
+              )}
+              {/* 搜索下拉 */}
+              {showDropdown && results.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                  {results.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectProduct(p)}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-800">{p.name}</p>
+                        <p className="text-xs text-gray-400">{p.spu_code} · {p.category_name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showDropdown && results.length === 0 && !searching && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg">
+                  <p className="px-3 py-2.5 text-sm text-gray-400">{t("noSearchResult")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 可选属性（变体选择） */}
+          {selectedProduct && (
+            <>
+              {loadingDetail ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                </div>
+              ) : (
+                selectableAttrs.length > 0 && (
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-gray-500">{t("skuSpec")}</label>
+                    <VariantSelector
+                      selectableAttrs={selectableAttrs}
+                      selected={selectedVariants}
+                      onChange={handleVariantChange}
+                    />
+                  </div>
+                )
+              )}
+
+              {/* 数量 */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("quantity")}</label>
+                <input
+                  type="number"
+                  min={0.001}
+                  step="any"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* 备注 */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("remark")}</label>
+                <textarea
+                  rows={2}
+                  value={remark}
+                  onChange={(e) => setRemark(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="flex justify-end gap-3 border-t border-gray-100 px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          >
+            {tCommon("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving || !selectedProduct}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+          >
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {tCommon("confirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 编辑行项弹窗 ----------
+
+interface EditItemModalProps {
+  rfqId: number;
+  item: RfqItemPublic;
+  onClose: () => void;
+  onUpdated: () => void;
+}
+
+function EditItemModal({ rfqId, item, onClose, onUpdated }: EditItemModalProps) {
+  const t = useTranslations("rfq");
+  const tCommon = useTranslations("common");
+  const tError = useTranslations("error");
+  const toast = useToast();
+
+  const [selectableAttrs, setSelectableAttrs] = useState<AttrItem[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(true);
+
+  // 初始化 selected_variants: snapshot → map
+  const initVariants: Record<string, string> = {};
+  for (const v of item.variant_snapshot ?? []) {
+    initVariants[v.attr_name] = v.value;
+  }
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>(initVariants);
+  const [quantity, setQuantity] = useState(String(item.quantity));
+  const [remark, setRemark] = useState(item.remark ?? "");
+  const [saving, setSaving] = useState(false);
+
+  // 拉商品详情获取可选属性
+  useEffect(() => {
+    if (!item.product_id) { setLoadingDetail(false); return; }
+    getProduct(item.product_id).then((detail) => {
+      const selectable: AttrItem[] = [];
+      for (const group of detail.attribute_groups) {
+        for (const attr of group.items) {
+          if (attr.selectable) selectable.push(attr);
+        }
+      }
+      setSelectableAttrs(selectable);
+    }).catch(() => {}).finally(() => setLoadingDetail(false));
+  }, [item.product_id]);
+
+  const handleVariantChange = useCallback((key: string, value: string) => {
+    setSelectedVariants((prev) => {
+      if (!value) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: value };
+    });
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    const qty = Number(quantity);
+    if (!qty || qty <= 0) return;
+    setSaving(true);
+    try {
+      const selected_variants = Object.entries(selectedVariants)
+        .filter(([, v]) => v)
+        .map(([attr_name, value]) => ({ attr_name, value }));
+      await editRfqItem(rfqId, item.id, {
+        selected_variants: selected_variants.length > 0 ? selected_variants : [],
+        quantity: qty,
+        remark: remark.trim() || undefined,
+      });
+      toast.success(t("itemUpdated"));
+      onUpdated();
+      onClose();
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try { toast.error(tError(key)); } catch { toast.error(err.message); }
+      } else {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [rfqId, item.id, selectedVariants, quantity, remark, toast, t, tError, onUpdated, onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-xl bg-white shadow-2xl mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 标题栏 */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-800">{t("editItem")}</h3>
+            <p className="mt-0.5 text-xs text-gray-400">{item.product_name_snapshot}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          {/* 可选属性 */}
+          {loadingDetail ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+            </div>
+          ) : (
+            selectableAttrs.length > 0 && (
+              <div>
+                <label className="mb-2 block text-xs font-medium text-gray-500">{t("skuSpec")}</label>
+                <VariantSelector
+                  selectableAttrs={selectableAttrs}
+                  selected={selectedVariants}
+                  onChange={handleVariantChange}
+                />
+              </div>
+            )
+          )}
+
+          {/* 数量 */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("quantity")}</label>
+            <input
+              type="number"
+              min={0.001}
+              step="any"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* 备注 */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("remark")}</label>
+            <textarea
+              rows={2}
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="flex justify-end gap-3 border-t border-gray-100 px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          >
+            {tCommon("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+          >
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {tCommon("confirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 主页面内容 ----------
+
 function OperatorRfqDetailContent() {
   const params = useParams();
   const router = useRouter();
@@ -123,7 +588,7 @@ function OperatorRfqDetailContent() {
   const tError = useTranslations("error");
   const tQuote = useTranslations("quote");
   const toast = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, user } = usePermissions();
   const rfqId = Number(params.id);
 
   const { data: rfq, isLoading, error, mutate } = useSWR<RfqBuyerPublic>(
@@ -145,6 +610,12 @@ function OperatorRfqDetailContent() {
   const [claimOpen, setClaimOpen] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
+  // 行项增删改
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<RfqItemPublic | null>(null);
+  const [deletingItem, setDeletingItem] = useState<RfqItemPublic | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const handleClaim = useCallback(async () => {
     setClaiming(true);
     try {
@@ -163,6 +634,26 @@ function OperatorRfqDetailContent() {
       setClaiming(false);
     }
   }, [rfqId, mutate, toast, t, tError]);
+
+  const handleDeleteItem = useCallback(async () => {
+    if (!deletingItem) return;
+    setDeleting(true);
+    try {
+      const updated = await deleteRfqItem(rfqId, deletingItem.id) as unknown as RfqBuyerPublic;
+      mutate(updated, { revalidate: false });
+      setDeletingItem(null);
+      toast.success(t("itemDeleted"));
+    } catch (err) {
+      if (err instanceof ApiError && err.messageKey) {
+        const key = err.messageKey.replace(/^error\./, "");
+        try { toast.error(tError(key)); } catch { toast.error(err.message); }
+      } else {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }, [rfqId, deletingItem, mutate, toast, t, tError]);
 
   if (isLoading) {
     return (
@@ -188,9 +679,14 @@ function OperatorRfqDetailContent() {
     );
   }
 
+  const rfqOperator = rfq as unknown as RfqOperatorView;
   const canClaim = rfq.status === "SUBMITTED" && hasPermission("rfq:claim");
   const canBackfillQuote = rfq.status === "PROCESSING" && hasPermission("quote:write");
-  const canEditItems = rfq.status === "DRAFT";
+  // PROCESSING 态且当前用户是受理人时可编辑行项
+  const canEditItems =
+    rfq.status === "PROCESSING" &&
+    rfqOperator.operator_assignee_id != null &&
+    rfqOperator.operator_assignee_id === user?.id;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -240,8 +736,18 @@ function OperatorRfqDetailContent() {
 
       {/* 商品清单 */}
       <div className="rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
+          {canEditItems && (
+            <button
+              type="button"
+              onClick={() => setAddItemOpen(true)}
+              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("addItem")}
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -250,6 +756,9 @@ function OperatorRfqDetailContent() {
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
                 <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
+                {canEditItems && (
+                  <th className="px-5 py-2.5 font-medium text-right">{t("actions")}</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -259,7 +768,7 @@ function OperatorRfqDetailContent() {
                     {item.product_name_snapshot ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-gray-500">
-                    {item.sku_spec_snapshot ?? "—"}
+                    {item.variant_display ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <EditableQuantity
@@ -269,6 +778,30 @@ function OperatorRfqDetailContent() {
                       onUpdated={() => mutate()}
                     />
                   </td>
+                  {canEditItems && (
+                    <td className="px-5 py-3 text-right">
+                      <div className="inline-flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingItem(item)}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          {t("edit")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingItem(item)}
+                          disabled={rfq.items.length <= 1}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          title={rfq.items.length <= 1 ? t("minOneItem") : undefined}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          {t("deleteItem")}
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -433,14 +966,18 @@ function OperatorRfqDetailContent() {
                 </thead>
                 <tbody>
                   {activeQuote.items.map((qItem) => {
-                    // 找到对应 RFQ item 获取商品名
-                    const rfqItem = rfq.items.find((ri) => ri.id === qItem.rfq_item_id);
+                    // 优先用报价行自带快照，fallback 到询价行
+                    const rfqItem = qItem.source_rfq_item_id
+                      ? rfq.items.find((ri) => ri.id === qItem.source_rfq_item_id)
+                      : undefined;
+                    const itemName = qItem.product_name_snapshot ?? rfqItem?.product_name_snapshot ?? "—";
+                    const itemVariant = qItem.variant_display ?? rfqItem?.variant_display;
                     return (
                       <tr key={qItem.id} className="border-t border-gray-100 even:bg-slate-50/50">
                         <td className="px-4 py-3 font-medium text-gray-800">
-                          {rfqItem?.product_name_snapshot ?? "—"}
-                          {rfqItem?.sku_spec_snapshot && (
-                            <span className="ml-1 text-xs text-gray-400">{rfqItem.sku_spec_snapshot}</span>
+                          {itemName}
+                          {itemVariant && (
+                            <span className="ml-1 text-xs text-gray-400">{itemVariant}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-800 font-medium">
@@ -458,9 +995,11 @@ function OperatorRfqDetailContent() {
                         <td className="px-4 py-3 text-right text-gray-600">
                           {qItem.tiers.length > 0 ? (
                             <div className="text-xs">
-                              {qItem.tiers.map((tier, i) => (
-                                <div key={i}>≥{Number(tier.min_qty)}: {Number(tier.unit_price).toFixed(2)}</div>
-                              ))}
+                              {[...qItem.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, i, sorted) => {
+                                const next = sorted[i + 1];
+                                const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                                return <div key={i}>{label}: {Number(tier.unit_price).toFixed(2)}</div>;
+                              })}
                             </div>
                           ) : "—"}
                         </td>
@@ -501,6 +1040,36 @@ function OperatorRfqDetailContent() {
           </div>
         </div>
       )}
+
+      {/* 添加行项弹窗 */}
+      {addItemOpen && (
+        <AddItemModal
+          rfqId={rfqId}
+          onClose={() => setAddItemOpen(false)}
+          onAdded={() => mutate()}
+        />
+      )}
+
+      {/* 编辑行项弹窗 */}
+      {editingItem && (
+        <EditItemModal
+          rfqId={rfqId}
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onUpdated={() => mutate()}
+        />
+      )}
+
+      {/* 删除行项确认 */}
+      <ConfirmModal
+        open={!!deletingItem}
+        title={t("deleteItem")}
+        description={t("deleteItemConfirm")}
+        variant="danger"
+        loading={deleting}
+        onConfirm={handleDeleteItem}
+        onCancel={() => setDeletingItem(null)}
+      />
     </div>
   );
 }
