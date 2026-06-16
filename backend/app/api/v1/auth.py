@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+import os
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -181,24 +183,145 @@ async def _check_supplier_duplicates(
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register/buyer", summary="BUYER 自助注册")
+@router.post("/register/buyer", summary="BUYER 自助注册(坦桑尼亚场景)")
 async def register_buyer(
-    body: BuyerRegisterIn,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
+    # 文本字段
+    phone: str = Form(...),
+    password: str = Form(...),
+    name: str = Form(...),
+    company_name: str = Form(...),
+    address: str = Form(...),
+    business_category_codes: list[str] = Form(...),
+    email: str | None = Form(default=None),
+    tin: str | None = Form(default=None),
+    brela_no: str | None = Form(default=None),
+    # 文件字段
+    storefront_images: list[UploadFile] = File(...),
+    license_images: list[UploadFile] | None = File(default=None),
 ):
-    user = await auth_service.register_buyer(
-        db,
-        email=body.email,
-        username=body.username,
-        name=body.name,
-        phone=body.phone,
-        password=body.password,
-        company_name=body.company_name,
-        unified_social_credit_code=body.unified_social_credit_code,
-        request=request,
+    from app.services._buyer_utils import (
+        validate_tz_phone,
+        validate_active_level1_categories,
+        save_uploaded_image,
+        ALLOWED_EXTENSIONS,
+        MAX_IMAGE_SIZE,
     )
-    return success(RegisterOut(user_id=user.id, email=user.email).model_dump())
+    from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
+
+    # ── 全量格式校验(一次性收集) ──
+    errors: list[dict] = []
+
+    # 手机号归一化
+    try:
+        phone = validate_tz_phone(phone)
+    except Exception:
+        errors.append({"field": "phone", "code": 42201, "message": "坦桑手机号格式不正确"})
+
+    # 密码强度
+    if not validate_password_strength(password):
+        errors.append({"field": "password", "code": 42202, "message": PASSWORD_RULE_MESSAGE})
+
+    # 地址非空
+    if not address or not address.strip():
+        errors.append({"field": "address", "code": 42208, "message": "地址不能为空"})
+    else:
+        address = address.strip()
+
+    # 邮箱格式(选填)
+    if email:
+        email = email.strip()
+        if not email:
+            email = None
+        else:
+            try:
+                ev_validate_email(email)
+            except EvNotValidError:
+                errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
+
+    # 品类校验
+    try:
+        await validate_active_level1_categories(db, business_category_codes)
+    except Exception as e:
+        code = getattr(e, "biz_code", 42204)
+        errors.append({"field": "business_category_codes", "code": code, "message": str(e.detail) if hasattr(e, "detail") else str(e)})
+
+    # 门店照片张数校验
+    if not storefront_images or len(storefront_images) < 1:
+        errors.append({"field": "storefront_images", "code": 42209, "message": "至少上传 1 张门店照片"})
+    elif len(storefront_images) > 10:
+        errors.append({"field": "storefront_images", "code": 42205, "message": "门店照片最多 10 张"})
+
+    # 图片格式/大小预校验(门店)
+    if storefront_images:
+        for i, f in enumerate(storefront_images):
+            ext = os.path.splitext(f.filename or "")[1].lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                errors.append({"field": f"storefront_images[{i}]", "code": 42206, "message": f"图片格式不支持: {ext}"})
+
+    if errors:
+        raise MultipleValidationError(errors)
+
+    # ── 图片处理 + 落盘 ──
+    saved_storefront: list[tuple[str, int, int, int]] = []
+    saved_files: list[str] = []  # 回滚清理用
+
+    try:
+        for f in storefront_images:
+            content = await f.read()
+            if len(content) > MAX_IMAGE_SIZE:
+                raise MultipleValidationError([{"field": "storefront_images", "code": 42207, "message": "图片超过 5MB"}])
+            result = save_uploaded_image(content, f.filename or "img.jpg", "buyer_orgs", square=False)
+            saved_storefront.append(result)
+            saved_files.append(result[0])
+
+        saved_license: list[tuple[str, int, int, int]] = []
+        for f in (license_images or []):
+            content = await f.read()
+            if len(content) > MAX_IMAGE_SIZE:
+                raise MultipleValidationError([{"field": "license_images", "code": 42207, "message": "图片超过 5MB"}])
+            ext = os.path.splitext(f.filename or "")[1].lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                raise MultipleValidationError([{"field": "license_images", "code": 42210, "message": f"证照图片格式不支持: {ext}"}])
+            result = save_uploaded_image(content, f.filename or "img.jpg", "buyer_orgs", square=False)
+            saved_license.append(result)
+            saved_files.append(result[0])
+
+        # ── 业务写入 ──
+        user, tokens = await auth_service.register_buyer(
+            db,
+            phone=phone,
+            password=password,
+            name=name.strip(),
+            company_name=company_name.strip(),
+            address=address,
+            business_category_codes=business_category_codes,
+            storefront_images=saved_storefront,
+            email=email,
+            tin=tin.strip() if tin else None,
+            brela_no=brela_no.strip() if brela_no else None,
+            license_images=saved_license if saved_license else None,
+            request=request,
+        )
+    except Exception:
+        # 事务失败:best-effort 清理已落盘图片
+        from app.services._buyer_utils import UPLOAD_BASE_DIR
+        for key in saved_files:
+            try:
+                (UPLOAD_BASE_DIR / key).unlink(missing_ok=True)
+            except Exception:
+                pass
+        raise
+
+    # 注册即自动登录
+    _set_refresh_cookie(response, tokens["refresh_token"])
+    return success(TokenOut(
+        access_token=tokens["access_token"],
+        token_type=tokens["token_type"],
+        expires_in=tokens["expires_in"],
+    ).model_dump())
 
 
 @router.post("/register/supplier", summary="SUPPLIER 自助注册")

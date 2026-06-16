@@ -186,39 +186,6 @@ export default function RegisterPage() {
 
       {role && (
         <>
-          {/* 已选角色徽标（不可切换，返回按钮回到角色选择） */}
-          <div
-            className={
-              "mb-5 flex items-center gap-3 rounded-xl p-3 " +
-              (role === "BUYER" ? "bg-[#003366]/10" : "bg-[#FF6B35]/10")
-            }
-          >
-            <button
-              type="button"
-              onClick={() => handleSwitchRole("")}
-              className={
-                "flex h-8 w-8 items-center justify-center rounded-lg transition-colors " +
-                (role === "BUYER"
-                  ? "bg-[#003366]/20 hover:bg-[#003366]/30"
-                  : "bg-[#FF6B35]/20 hover:bg-[#FF6B35]/30")
-              }
-              title={tc("back")}
-            >
-              {role === "BUYER" ? (
-                <ShoppingCart className="h-4 w-4 text-[#003366]" />
-              ) : (
-                <Building2 className="h-4 w-4 text-[#FF6B35]" />
-              )}
-            </button>
-            <span
-              className={
-                "text-sm font-semibold " +
-                (role === "BUYER" ? "text-[#003366]" : "text-[#FF6B35]")
-              }
-            >
-              {role === "BUYER" ? t("buyerRegistration") : t("supplierOnboarding")}
-            </span>
-          </div>
 
           {role === "BUYER" && <BuyerForm onSubmitted={handleBuyerRegistered} />}
 
@@ -491,7 +458,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       }
       newFiles.push(files[i]);
     }
-    const combined = [...storefrontImages, ...newFiles].slice(0, 3);
+    const combined = [...storefrontImages, ...newFiles].slice(0, 10);
     setStorefrontImages(combined);
     if (combined.length > 0) {
       setErrors((e) => ({ ...e, storefrontImages: null }));
@@ -664,29 +631,24 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             </button>
           </div>
           {errOf("password") && <p className="text-xs text-red-500">{errOf("password")}</p>}
-          {/* 密码强度规则始终可见 */}
-          <div className="mt-1 space-y-0.5 text-xs">
-            <p className={pwdLenOk ? "text-green-600" : "text-gray-400"}>
-              {pwdLenOk ? <Check className="mr-1 inline h-3 w-3" /> : <span className="mr-1 inline-block w-3" />}
-              {t("pwd_length")}
-            </p>
-            <p className="text-gray-400">
-              {t("pwd_types_hint")}
-            </p>
-            <div className="flex flex-wrap gap-x-3">
-              <span className={pwdHasDigit ? "text-green-600" : "text-gray-400"}>
-                {pwdHasDigit && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_digit")}
-              </span>
-              <span className={pwdHasUpper ? "text-green-600" : "text-gray-400"}>
-                {pwdHasUpper && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_upper")}
-              </span>
-              <span className={pwdHasLower ? "text-green-600" : "text-gray-400"}>
-                {pwdHasLower && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_lower")}
-              </span>
-              <span className={pwdHasSpecial ? "text-green-600" : "text-gray-400"}>
-                {pwdHasSpecial && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_special")}
-              </span>
-            </div>
+          {/* 密码强度提示：一行紧凑展示 */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px]">
+            <span className={pwdLenOk ? "text-green-600" : "text-gray-400"}>
+              {pwdLenOk && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_length")}
+            </span>
+            <span className="text-gray-300">|</span>
+            <span className={pwdHasDigit ? "text-green-600" : "text-gray-400"}>
+              {pwdHasDigit && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_digit")}
+            </span>
+            <span className={pwdHasUpper ? "text-green-600" : "text-gray-400"}>
+              {pwdHasUpper && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_upper")}
+            </span>
+            <span className={pwdHasLower ? "text-green-600" : "text-gray-400"}>
+              {pwdHasLower && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_lower")}
+            </span>
+            <span className={pwdHasSpecial ? "text-green-600" : "text-gray-400"}>
+              {pwdHasSpecial && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_special")}
+            </span>
           </div>
         </div>
 
@@ -856,7 +818,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                 </button>
               </div>
             ))}
-            {storefrontImages.length < 3 && (
+            {storefrontImages.length < 10 && (
               <button
                 type="button"
                 onClick={() => sfInputRef.current?.click()}

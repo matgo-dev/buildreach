@@ -7,6 +7,7 @@
     "back_to_home": "Rudi Nyumbani"
   },
   "brand": {
+    "name": "Jukwaa la Vifaa vya Ujenzi",
     "tagline": "Mnyororo wa Usambazaji B2B kwa Miradi ya EPC Nje ya Nchi",
     "full_title": "JIJIAN SELECT - Mnyororo wa Usambazaji B2B kwa Miradi ya EPC Nje ya Nchi",
     "description": "Jukwaa la mnyororo wa usambazaji wa viwanda B2B kwa miradi ya EPC ya kampuni za serikali za China nje ya nchi"
@@ -141,7 +142,7 @@
     "label_email": "Barua pepe",
     "ph_email": "your@email.com",
     "label_storefront": "Picha za Duka",
-    "storefront_hint": "JPG/PNG/WebP, upeo 5MB kila moja, picha 1-3",
+    "storefront_hint": "JPG/PNG/WebP, upeo 5MB kila moja, picha 1-10",
     "label_tin": "Nambari ya TIN",
     "ph_tin": "Weka nambari ya TIN",
     "label_brela": "Nambari ya Usajili wa BRELA",

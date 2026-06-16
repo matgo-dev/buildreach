@@ -15,7 +15,9 @@ const LOCALES = [
 
 function AuthLocaleSwitcher() {
   const locale = useLocale();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  // 去掉 locale 前缀，避免 Link locale={x} 产生 /en/sw/register 双 locale
+  const pathname = rawPathname.replace(new RegExp(`^/${locale}`), "") || "/";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -83,8 +85,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <span className="text-2xl font-black text-white">{BRAND.logoChar}</span>
             <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#003366] bg-[#FF6B35]" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">{BRAND.name}</h1>
-          <p className="mt-1 text-[10px] tracking-[0.2em] text-white/40">{BRAND.nameEn}</p>
+          <h1 className="text-2xl font-black tracking-tight text-white">{t("name")}</h1>
           <p className="mt-2 text-sm text-white/60">{t("tagline")}</p>
         </div>
 
