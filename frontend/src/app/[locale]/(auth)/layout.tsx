@@ -53,9 +53,10 @@ function AuthLocaleSwitcher() {
               onClick={() => {
                 setOpen(false);
                 if (l.code !== locale) {
-                  // 直接替换 URL locale 前缀，不触发 React 状态重置
+                  // 保留当前 search params（含 role 等状态），切 locale 前缀
+                  const search = window.location.search;
                   const newPath = l.code === "zh" ? pathWithoutLocale : `/${l.code}${pathWithoutLocale}`;
-                  router.replace(newPath);
+                  window.location.href = newPath + search;
                 }
               }}
               className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors ${

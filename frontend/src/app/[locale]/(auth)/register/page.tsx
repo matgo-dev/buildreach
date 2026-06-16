@@ -70,7 +70,13 @@ export default function RegisterPage() {
   const locale = useLocale();
   const t = useTranslations("buyerRegister");
   const tc = useTranslations("common");
-  const [role, setRole] = useState<Role>("");
+
+  // 从 URL ?role=BUYER 恢复角色（切语言后保持状态）
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const [role, setRole] = useState<Role>(() => {
+    const r = searchParams?.get("role") || "";
+    return (r === "BUYER" || r === "SUPPLIER") ? r : "";
+  });
 
   // SUPPLIER 草稿(sessionStorage)
   const { draft, hydrated, update, clearDraft, clearRegistrationNo, clearLanguagePreference } =
@@ -85,10 +91,15 @@ export default function RegisterPage() {
     }
   }, [authLoaded, me, router]);
 
-  // 切换角色时清掉 SUPPLIER 草稿(PRD §2.3:跨角色切换清掉草稿)
+  // 切换角色时清掉 SUPPLIER 草稿 + 同步到 URL（切语言后可恢复）
   const handleSwitchRole = (next: Role) => {
     if (role === "SUPPLIER" && next !== "SUPPLIER") clearDraft();
     setRole(next);
+    // 同步到 URL query，不触发导航
+    const url = new URL(window.location.href);
+    if (next) url.searchParams.set("role", next);
+    else url.searchParams.delete("role");
+    window.history.replaceState({}, "", url.toString());
   };
 
   // SUPPLIER hydrate 完后,如果 draft.currentStep > 1,自动锁角色为 SUPPLIER
