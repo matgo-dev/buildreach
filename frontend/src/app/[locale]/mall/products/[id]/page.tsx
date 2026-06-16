@@ -25,6 +25,7 @@ import { addCartItem } from "@/lib/api/cart";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 
 // ---- 面包屑 ----
 
@@ -370,6 +371,7 @@ function ProductDetailContent() {
   const [addingToCart, setAddingToCart] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
+  const wa = useWhatsApp();
   const addBtnRef = useRef<HTMLButtonElement>(null);
 
   const prevCountRef = useRef(0);
@@ -623,9 +625,9 @@ function ProductDetailContent() {
                 {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("detail.addToInquiry")}
               </button>
-              {/* TODO: WhatsApp 平台运营号/链接配置化 */}
+              {wa.configured && (
               <a
-                href="https://wa.me/255697123456"
+                href={wa.link!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
@@ -633,6 +635,7 @@ function ProductDetailContent() {
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp {t("detail.contactPlatform")}
               </a>
+              )}
             </div>
           </div>
         </div>

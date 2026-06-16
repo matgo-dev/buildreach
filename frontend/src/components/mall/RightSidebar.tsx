@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
-import { BRAND } from "@/config/brand";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { MallButton } from "./MallButton";
 import { MallCard } from "./MallCard";
 
@@ -13,24 +13,27 @@ import { MallCard } from "./MallCard";
 export function RightSidebar() {
   const t = useTranslations("mall");
   const cartCount = useCartStore((s) => s.count);
+  const wa = useWhatsApp();
 
   return (
     <aside className="w-[300px] shrink-0 hidden xl:block">
       <div className="sticky top-[148px] space-y-3.5">
-        {/* 专属客服 */}
+        {/* 专属客服 — 号码未配置时隐藏整个卡片 */}
+        {wa.configured && (
         <MallCard>
           <h3 className="text-navy text-base font-black mb-1">{t("customerSupport")}</h3>
           <p className="text-muted text-[13px] mb-3">{t("customerSupportHint")}</p>
-          <p className="text-navy text-xl font-black mb-3">{BRAND.whatsapp}</p>
+          <p className="text-navy text-xl font-black mb-3">{wa.number}</p>
           <MallButton
             variant="whatsapp"
             block
-            href={`https://wa.me/${BRAND.whatsapp.replace(/[\s+]/g, "")}`}
+            href={wa.link!}
           >
             <MessageCircle className="h-4 w-4" />
             {t("chatOnWhatsApp")}
           </MallButton>
         </MallCard>
+        )}
 
         {/* 询价单 RFQ Cart */}
         <MallCard>
