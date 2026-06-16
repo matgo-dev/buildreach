@@ -40,6 +40,7 @@ export interface ProductListParams {
   sort?: "newest";
   page?: number;
   size?: number;
+  all_categories?: boolean;
 }
 
 export interface ProductListResponse {
@@ -166,6 +167,7 @@ export async function listProducts(
   if (params.sort) qs.set("sort", params.sort);
   if (params.page) qs.set("page", String(params.page));
   if (params.size) qs.set("size", String(params.size));
+  if (params.all_categories) qs.set("all_categories", "true");
   const q = qs.toString();
   return api.get<ProductListResponse>(`/api/v1/products${q ? `?${q}` : ""}`);
 }
