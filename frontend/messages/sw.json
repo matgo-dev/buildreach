@@ -332,7 +332,7 @@
     "unpublish": "Ondoa",
     "delete": "Futa",
     "confirmPublishTitle": "Thibitisha Kuorodhesha",
-    "confirmPublishMsg": "Orodhesha \"{name}\"?\n\nMahitaji: angalau SKU 1 inayofanya kazi, picha 1 ya bidhaa, na sifa zote zinazohitajika.",
+    "confirmPublishMsg": "Orodhesha \"{name}\"?\n\nMahitaji: angalau picha 1 ya bidhaa na sifa zote zinazohitajika.",
     "confirmPublishBtn": "Thibitisha",
     "confirmUnpublishTitle": "Thibitisha Kuondoa",
     "confirmUnpublishMsg": "Ondoa \"{name}\"? Wanunuzi hawataona bidhaa hii tena.",

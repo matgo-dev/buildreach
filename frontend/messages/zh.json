@@ -332,7 +332,7 @@
     "unpublish": "下架",
     "delete": "删除",
     "confirmPublishTitle": "确认上架",
-    "confirmPublishMsg": "确认将「{name}」上架？\n\n上架要求：至少 1 个在售 SKU、至少 1 张商品图片、必填属性齐全。",
+    "confirmPublishMsg": "确认将「{name}」上架？\n\n上架要求：至少 1 张商品图片、必填属性齐全。",
     "confirmPublishBtn": "确认上架",
     "confirmUnpublishTitle": "确认下架",
     "confirmUnpublishMsg": "确认将「{name}」下架？下架后买方将无法看到此商品。",

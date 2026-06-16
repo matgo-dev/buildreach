@@ -1,10 +1,13 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 
 import { TopStrip } from "./TopStrip";
 import { MallHeader } from "./MallHeader";
 import { MallNavRow } from "./MallNavRow";
 import { MallFooter } from "./MallFooter";
+import { useAuthStore } from "@/stores/authStore";
+import { useCartStore } from "@/stores/cartStore";
+import { getCart } from "@/lib/api/cart";
 
 /**
  * 买方前台 Layout — 深青信任风格。
@@ -19,6 +22,14 @@ export function PublicLayout({
   children: ReactNode;
   noContainer?: boolean;
 }) {
+  const user = useAuthStore((s) => s.user);
+  const syncFromCart = useCartStore((s) => s.syncFromCart);
+
+  // 登录用户进入商城页面时自动加载购物车计数
+  useEffect(() => {
+    if (!user) return;
+    getCart().then(syncFromCart).catch(() => {});
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <TopStrip />
