@@ -69,8 +69,8 @@ function AuthLocaleSwitcher() {
               }}
               className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors ${
                 l.code === locale
-                  ? "bg-blue-50 font-medium text-[#003366]"
-                  : "text-gray-700 hover:bg-gray-50"
+                  ? "bg-teal-50 font-medium text-[#0D4D4D]"
+                  : "text-gray-700 hover:bg-teal-50"
               }`}
             >
               <span>{l.short} · {l.full}</span>
@@ -87,25 +87,33 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#003366] to-[#0F4C81] p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      {/* 背景图 */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/home/hero-1.jpg)" }}
+      />
+      {/* 半透明 teal 遮罩 */}
+      <div className="absolute inset-0 bg-[#0D4D4D]/85" />
+
       {/* 语言切换 */}
-      <div className="absolute right-4 top-4">
+      <div className="absolute right-4 top-4 z-10">
         <AuthLocaleSwitcher />
       </div>
 
-      <div className="w-full max-w-md">
-        {/* 品牌区:品牌名不翻译,tagline 跟随语言 */}
+      <div className="relative z-10 w-full max-w-md">
+        {/* 品牌区 */}
         <div className="mb-8 text-center">
-          <div className="relative mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#003366] to-[#0F4C81] shadow-lg">
+          <div className="relative mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-lg backdrop-blur-sm">
             <span className="text-2xl font-black text-white">{BRAND.logoChar}</span>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#003366] bg-[#FF6B35]" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0D4D4D] bg-[#FF6B35]" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">{t("name")}</h1>
           <p className="mt-2 text-sm text-white/60">{t("tagline")}</p>
         </div>
 
         {/* 表单卡片 */}
-        <div className="rounded-2xl border-t-4 border-[#FF6B35] bg-white p-8 shadow-xl">
+        <div className="rounded-2xl border-t-4 border-[#0D4D4D] bg-white p-8 shadow-xl">
           {children}
         </div>
       </div>
