@@ -81,6 +81,14 @@ interface SpuFormState {
   supply_mode: string;
   unit: SkuUnitCode;
   currency: string;
+  // 物流参数（SPU 级）
+  lead_time_min: string;
+  lead_time_max: string;
+  packing_quantity: string;
+  gross_weight_kg: string;
+  volume_cbm: string;
+  can_consolidate: boolean;
+  cargo_type: string;
   spuAttributes: Record<string, string>;  // scope=SPU 属性
 }
 
@@ -97,6 +105,13 @@ const INITIAL_SPU: SpuFormState = {
   supply_mode: "SUPPLIER_DIRECT",
   unit: "PCS",
   currency: "TZS",
+  lead_time_min: "",
+  lead_time_max: "",
+  packing_quantity: "",
+  gross_weight_kg: "",
+  volume_cbm: "",
+  can_consolidate: true,
+  cargo_type: "",
   spuAttributes: {},
 };
 
@@ -387,6 +402,13 @@ export function ProductCreatePage() {
             supply_mode: spu.supply_mode,
             unit: spu.unit,
             currency: spu.currency,
+            lead_time_min: spu.lead_time_min ? Number(spu.lead_time_min) : undefined,
+            lead_time_max: spu.lead_time_max ? Number(spu.lead_time_max) : undefined,
+            packing_quantity: spu.packing_quantity ? Number(spu.packing_quantity) : undefined,
+            gross_weight_kg: spu.gross_weight_kg ? Number(spu.gross_weight_kg) : undefined,
+            volume_cbm: spu.volume_cbm ? Number(spu.volume_cbm) : undefined,
+            can_consolidate: spu.can_consolidate,
+            cargo_type: spu.cargo_type || undefined,
             attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
             skus: aggregateSkus,
           });
@@ -409,6 +431,13 @@ export function ProductCreatePage() {
             supply_mode: spu.supply_mode,
             unit: spu.unit,
             currency: spu.currency,
+            lead_time_min: spu.lead_time_min ? Number(spu.lead_time_min) : undefined,
+            lead_time_max: spu.lead_time_max ? Number(spu.lead_time_max) : undefined,
+            packing_quantity: spu.packing_quantity ? Number(spu.packing_quantity) : undefined,
+            gross_weight_kg: spu.gross_weight_kg ? Number(spu.gross_weight_kg) : undefined,
+            volume_cbm: spu.volume_cbm ? Number(spu.volume_cbm) : undefined,
+            can_consolidate: spu.can_consolidate,
+            cargo_type: spu.cargo_type || undefined,
             attributes: spuAttrs.length > 0 ? spuAttrs : undefined,
           });
           productId = result.id;
@@ -607,6 +636,105 @@ export function ProductCreatePage() {
                   <option value="USD">USD</option>
                   <option value="CNY">CNY</option>
                 </select>
+              </div>
+
+              {/* ── 物流参数 ── */}
+              <div className="sm:col-span-2 mt-2 mb-1">
+                <h4 className="text-sm font-medium text-slate-600 border-b border-slate-100 pb-1.5">
+                  {t("logistics_title")}
+                </h4>
+              </div>
+
+              {/* 交期范围 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_lead_time_min")}</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.lead_time_min}
+                  onChange={(e) => updateSpu("lead_time_min", e.target.value)}
+                  placeholder={t("field_lead_time_min_placeholder")}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_lead_time_max")}</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.lead_time_max}
+                  onChange={(e) => updateSpu("lead_time_max", e.target.value)}
+                  placeholder={t("field_lead_time_max_placeholder")}
+                />
+              </div>
+
+              {/* 每箱装量 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_packing_quantity")}</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.packing_quantity}
+                  onChange={(e) => updateSpu("packing_quantity", e.target.value)}
+                />
+              </div>
+
+              {/* 单件毛重 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_gross_weight_kg")}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.gross_weight_kg}
+                  onChange={(e) => updateSpu("gross_weight_kg", e.target.value)}
+                  placeholder="kg"
+                />
+              </div>
+
+              {/* 单件体积 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_volume_cbm")}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.volume_cbm}
+                  onChange={(e) => updateSpu("volume_cbm", e.target.value)}
+                  placeholder="CBM"
+                />
+              </div>
+
+              {/* 货物类型 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_cargo_type")}</label>
+                <input
+                  type="text"
+                  maxLength={20}
+                  className="mt-1.5 h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={spu.cargo_type}
+                  onChange={(e) => updateSpu("cargo_type", e.target.value)}
+                />
+              </div>
+
+              {/* 可拼柜 */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">{t("field_can_consolidate")}</label>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => updateSpu("can_consolidate", !spu.can_consolidate)}
+                    className={`relative h-5 w-10 rounded-full transition-colors ${spu.can_consolidate ? "bg-blue-500" : "bg-slate-300"}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${spu.can_consolidate ? "translate-x-5" : "translate-x-0.5"}`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {/* 认证 */}

@@ -169,6 +169,75 @@ export default function EditBasicInfo({ product, value, onChange }: EditBasicInf
             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none resize-y"
           />
         </div>
+
+        {/* ── 物流参数 ── */}
+        <div className="sm:col-span-2 mt-2 mb-1">
+          <h4 className="text-xs font-semibold text-slate-600 border-b border-slate-100 pb-1.5">
+            {t("logisticsTitle")}
+          </h4>
+        </div>
+        {/* 交期 */}
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">{t("leadTimeMin")}</label>
+          <input
+            type="number" min="0"
+            value={value.lead_time_min ?? ""}
+            onChange={(e) => onChange({ ...value, lead_time_min: e.target.value ? Number(e.target.value) : null })}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">{t("leadTimeMax")}</label>
+          <input
+            type="number" min="0"
+            value={value.lead_time_max ?? ""}
+            onChange={(e) => onChange({ ...value, lead_time_max: e.target.value ? Number(e.target.value) : null })}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+          />
+        </div>
+        {/* 装量 / 毛重 / 体积 */}
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">{t("packingQuantity")}</label>
+          <input
+            type="number" min="1"
+            value={value.packing_quantity ?? ""}
+            onChange={(e) => onChange({ ...value, packing_quantity: e.target.value ? Number(e.target.value) : null })}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">{t("grossWeightKg")}</label>
+          <input
+            type="number" min="0" step="0.01"
+            value={value.gross_weight_kg ?? ""}
+            onChange={(e) => onChange({ ...value, gross_weight_kg: e.target.value ? Number(e.target.value) : null })}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+            placeholder="kg"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">{t("volumeCbm")}</label>
+          <input
+            type="number" min="0" step="0.0001"
+            value={value.volume_cbm ?? ""}
+            onChange={(e) => onChange({ ...value, volume_cbm: e.target.value ? Number(e.target.value) : null })}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+            placeholder="CBM"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">{t("cargoType")}</label>
+          <input
+            type="text" maxLength={20}
+            value={value.cargo_type || ""}
+            onChange={(e) => onChange({ ...value, cargo_type: e.target.value || null })}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-xs text-slate-500">{t("canConsolidate")}</label>
+          <Toggle checked={value.can_consolidate ?? true} onChange={() => onChange({ ...value, can_consolidate: !(value.can_consolidate ?? true) })} size="md" />
+        </div>
       </div>
     </section>
   );

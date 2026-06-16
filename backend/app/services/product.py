@@ -186,6 +186,12 @@ async def create_product(
         raise SpuCodeExistsError()
 
     source_lang = data.source_lang or "zh"
+    # 交期范围校验
+    _validate_lead_time_range(
+        getattr(data, "lead_time_min", None),
+        getattr(data, "lead_time_max", None),
+    )
+
     product = Product(
         category_code=data.category_code,
         spu_code=spu_code,
@@ -197,6 +203,14 @@ async def create_product(
         currency=data.currency,
         is_featured=data.is_featured,
         supply_mode=getattr(data, "supply_mode", SupplyMode.SUPPLIER_DIRECT) or SupplyMode.SUPPLIER_DIRECT,
+        # 物流参数（SPU 级）
+        lead_time_min=getattr(data, "lead_time_min", None),
+        lead_time_max=getattr(data, "lead_time_max", None),
+        packing_quantity=getattr(data, "packing_quantity", None),
+        gross_weight_kg=getattr(data, "gross_weight_kg", None),
+        volume_cbm=getattr(data, "volume_cbm", None),
+        can_consolidate=getattr(data, "can_consolidate", True),
+        cargo_type=getattr(data, "cargo_type", None),
         status=ProductStatus.DRAFT,
         created_by=operator_id,
     )
@@ -240,6 +254,11 @@ async def update_product(
     # 状态机：ACTIVE 不可编辑，需先下架
     if product.status not in ProductStatus.EDITABLE:
         raise ProductNotEditableError(product.status)
+
+    # 交期范围校验（有值时）
+    lead_min = data.lead_time_min if data.lead_time_min is not None else product.lead_time_min
+    lead_max = data.lead_time_max if data.lead_time_max is not None else product.lead_time_max
+    _validate_lead_time_range(lead_min, lead_max)
 
     source_lang = product.source_lang
 
@@ -802,6 +821,19 @@ def _validate_price_tiers(tiers: list[PriceTierCreate], moq: int) -> None:
             )
 
 
+def _validate_lead_time_range(
+    lead_time_min: int | None,
+    lead_time_max: int | None,
+) -> None:
+    """校验交期区间: min <= max。"""
+    if (
+        lead_time_min is not None
+        and lead_time_max is not None
+        and lead_time_min > lead_time_max
+    ):
+        raise ProductRangeInvalidError("lead_time_min", "lead_time_max")
+
+
 def _validate_sku_ranges(
     price_min,
     price_max,
@@ -811,12 +843,7 @@ def _validate_sku_ranges(
     """校验 SKU 数值区间本身合法,不判断商业合理性。"""
     if price_min is not None and price_max is not None and price_min > price_max:
         raise ProductRangeInvalidError("price_min", "price_max")
-    if (
-        lead_time_min is not None
-        and lead_time_max is not None
-        and lead_time_min > lead_time_max
-    ):
-        raise ProductRangeInvalidError("lead_time_min", "lead_time_max")
+    _validate_lead_time_range(lead_time_min, lead_time_max)
 
 
 async def _replace_price_tiers(
@@ -1149,6 +1176,13 @@ async def create_product_aggregate(
         raise SpuCodeExistsError()
 
     source_lang = data.source_lang or "zh"
+
+    # 交期范围校验
+    _validate_lead_time_range(
+        getattr(data, "lead_time_min", None),
+        getattr(data, "lead_time_max", None),
+    )
+
     product = Product(
         category_code=data.category_code,
         spu_code=spu_code,
@@ -1160,6 +1194,14 @@ async def create_product_aggregate(
         currency=data.currency,
         is_featured=data.is_featured,
         supply_mode=getattr(data, "supply_mode", SupplyMode.SUPPLIER_DIRECT) or SupplyMode.SUPPLIER_DIRECT,
+        # 物流参数（SPU 级）
+        lead_time_min=getattr(data, "lead_time_min", None),
+        lead_time_max=getattr(data, "lead_time_max", None),
+        packing_quantity=getattr(data, "packing_quantity", None),
+        gross_weight_kg=getattr(data, "gross_weight_kg", None),
+        volume_cbm=getattr(data, "volume_cbm", None),
+        can_consolidate=getattr(data, "can_consolidate", True),
+        cargo_type=getattr(data, "cargo_type", None),
         status=ProductStatus.DRAFT,
         created_by=actor_id,
     )
@@ -1244,10 +1286,18 @@ async def save_product_aggregate(
             old_value = getattr(product, f"{field}_{source_lang}", None)
             await apply_i18n_edit(product, field, source_lang, value, old_value, domain="product")
 
-    for field in ("hs_code", "certifications", "is_featured", "supply_mode", "unit", "currency"):
+    _SPU_PLAIN_FIELDS = (
+        "hs_code", "certifications", "is_featured", "supply_mode", "unit", "currency",
+        "lead_time_min", "lead_time_max", "packing_quantity",
+        "gross_weight_kg", "volume_cbm", "can_consolidate", "cargo_type",
+    )
+    for field in _SPU_PLAIN_FIELDS:
         value = getattr(data, field, None)
         if value is not None:
             setattr(product, field, value)
+
+    # 交期范围校验（合并新旧值后校验）
+    _validate_lead_time_range(product.lead_time_min, product.lead_time_max)
 
     # SPU 级属性整体替换(硬删)
     if data.attributes is not None:

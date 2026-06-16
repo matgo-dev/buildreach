@@ -279,6 +279,10 @@ class ProductPublicDetail(BaseModel):
     unit: str = "PCS"
     moq: int | None = None
     moq_unit: str | None = None
+    lead_time_min: int | None = None
+    lead_time_max: int | None = None
+    gross_weight_kg: Decimal | None = None
+    volume_cbm: Decimal | None = None
     attribute_groups: List[AttrGroup] = []
     images: List[ProductImageSchema] = []
 
@@ -340,6 +344,14 @@ class ProductOperatorDetail(BaseModel):
     moq: int | None = None
     moq_unit: str | None = None
     ref_price_tiers: list | None = None
+    # 物流参数（SPU 级）
+    lead_time_min: int | None = None
+    lead_time_max: int | None = None
+    packing_quantity: int | None = None
+    gross_weight_kg: Decimal | None = None
+    volume_cbm: Decimal | None = None
+    can_consolidate: bool = True
+    cargo_type: str | None = None
     status: str
     created_by_name: str = ""
     skus: List[SkuOperator] = []
@@ -366,6 +378,14 @@ class ProductCreate(BaseModel):
     supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: SkuUnitCode = "PCS"
     currency: str = "TZS"
+    # 物流参数（SPU 级）
+    lead_time_min: int | None = Field(default=None, ge=0)
+    lead_time_max: int | None = Field(default=None, ge=0)
+    packing_quantity: int | None = Field(default=None, gt=0)
+    gross_weight_kg: Decimal | None = Field(default=None, gt=0)
+    volume_cbm: Decimal | None = Field(default=None, gt=0)
+    can_consolidate: bool = True
+    cargo_type: str | None = Field(default=None, max_length=20)
     attributes: List[ProductAttrCreate] | None = None
 
 
@@ -383,6 +403,14 @@ class ProductUpdate(BaseModel):
     supply_mode: str | None = None
     unit: SkuUnitCode | None = None
     currency: str | None = None
+    # 物流参数（SPU 级）
+    lead_time_min: int | None = Field(default=None, ge=0)
+    lead_time_max: int | None = Field(default=None, ge=0)
+    packing_quantity: int | None = Field(default=None, gt=0)
+    gross_weight_kg: Decimal | None = Field(default=None, gt=0)
+    volume_cbm: Decimal | None = Field(default=None, gt=0)
+    can_consolidate: bool | None = None
+    cargo_type: str | None = Field(default=None, max_length=20)
     attributes: List[ProductAttrCreate] | None = None
 
 
@@ -451,6 +479,14 @@ class ProductAggregateCreate(BaseModel):
     supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     unit: SkuUnitCode = "PCS"
     currency: str = "TZS"
+    # 物流参数（SPU 级）
+    lead_time_min: int | None = Field(default=None, ge=0)
+    lead_time_max: int | None = Field(default=None, ge=0)
+    packing_quantity: int | None = Field(default=None, gt=0)
+    gross_weight_kg: Decimal | None = Field(default=None, gt=0)
+    volume_cbm: Decimal | None = Field(default=None, gt=0)
+    can_consolidate: bool = True
+    cargo_type: str | None = Field(default=None, max_length=20)
     attributes: List[ProductAttrCreate] | None = None
     skus: List[AggregateSkuCreate] = []
     images: List[ImageRefInput] | None = None
@@ -471,6 +507,14 @@ class ProductAggregateSave(BaseModel):
     supply_mode: str | None = None
     unit: SkuUnitCode | None = None
     currency: str | None = None
+    # 物流参数（SPU 级）
+    lead_time_min: int | None = Field(default=None, ge=0)
+    lead_time_max: int | None = Field(default=None, ge=0)
+    packing_quantity: int | None = Field(default=None, gt=0)
+    gross_weight_kg: Decimal | None = Field(default=None, gt=0)
+    volume_cbm: Decimal | None = Field(default=None, gt=0)
+    can_consolidate: bool | None = None
+    cargo_type: str | None = Field(default=None, max_length=20)
     attributes: List[ProductAttrCreate] | None = None
     skus: List[AggregateSkuSave] | None = None
     images: List[ImageRefInput] | None = None
