@@ -32,7 +32,7 @@ function AuthLocaleSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+        className="flex items-center gap-1.5 rounded-lg bg-white/15 px-2.5 py-2 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25"
       >
         <Globe className="h-4 w-4" />
         {current.short}
@@ -88,13 +88,19 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      {/* 背景图 */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url(/images/home/hero-1.jpg)" }}
-      />
-      {/* 半透明 teal 遮罩 */}
-      <div className="absolute inset-0 bg-[#0D4D4D]/85" />
+      {/* 背景视频 */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 h-full w-full object-cover"
+        poster="/images/home/hero-1.jpg"
+      >
+        <source src="/uploads/hero-video.mp4" type="video/mp4" />
+      </video>
+      {/* 深色半透明遮罩（降低视频亮度，让表单突出） */}
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* 语言切换 */}
       <div className="absolute right-4 top-4 z-10">
