@@ -76,5 +76,5 @@ class RfqItem(Base, TimestampUpdateMixin, SoftDeleteMixin):
     rfq: Mapped["Rfq"] = relationship("Rfq", back_populates="items")
     product: Mapped["Product"] = relationship("Product")
     quote_items: Mapped[list["RfqQuoteItem"]] = relationship(
-        "RfqQuoteItem", back_populates="rfq_item",
+        "RfqQuoteItem", back_populates="source_rfq_item",
     )

@@ -228,18 +228,17 @@ async def test_quote_requires_processing(client, db_session):
     op = await _op_headers(client)
     rfq_id, item_id = await _create_submitted_rfq(client, bh, op, db_session)
 
-    # 不受理直接回填
+    # 不受理直接回填（新格式）
     r = await client.post(
         f"/api/v1/rfqs/{rfq_id}/quotes",
         headers=op,
         json={
-            "header": {
-                "trade_term": "FOB",
-                "currency": "USD",
-                "valid_until": "2099-12-31T00:00:00",
-            },
+            "header": {"currency": "USD"},
             "lines": [{
-                "rfq_item_id": item_id,
+                "source_rfq_item_id": item_id,
+                "line_type": "PRODUCT",
+                "product_id": 1,
+                "quantity": "10",
                 "unit_price": "55.0000",
             }],
         },
@@ -257,7 +256,11 @@ async def test_quote_after_claim_ok(client, db_session):
     # 受理
     await client.patch(f"/api/v1/rfqs/{rfq_id}/claim", headers=op)
 
-    # 回填
+    # 取 product_id
+    rfq_detail = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=op)
+    product_id = rfq_detail.json()["data"]["items"][0]["product_id"]
+
+    # 回填（新格式：独立行项）
     r = await client.post(
         f"/api/v1/rfqs/{rfq_id}/quotes",
         headers=op,
@@ -268,7 +271,10 @@ async def test_quote_after_claim_ok(client, db_session):
                 "valid_until": "2099-12-31T00:00:00",
             },
             "lines": [{
-                "rfq_item_id": item_id,
+                "source_rfq_item_id": item_id,
+                "line_type": "PRODUCT",
+                "product_id": product_id,
+                "quantity": "10.000",
                 "unit_price": "55.0000",
             }],
         },
@@ -309,17 +315,18 @@ async def test_buyer_cancel_quoted_forbidden(client, db_session):
 
     # 受理→回填
     await client.patch(f"/api/v1/rfqs/{rfq_id}/claim", headers=op)
+    rfq_detail = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=op)
+    product_id = rfq_detail.json()["data"]["items"][0]["product_id"]
     await client.post(
         f"/api/v1/rfqs/{rfq_id}/quotes",
         headers=op,
         json={
-            "header": {
-                "trade_term": "FOB",
-                "currency": "USD",
-                "valid_until": "2099-12-31T00:00:00",
-            },
+            "header": {"currency": "USD"},
             "lines": [{
-                "rfq_item_id": item_id,
+                "source_rfq_item_id": item_id,
+                "line_type": "PRODUCT",
+                "product_id": product_id,
+                "quantity": "10",
                 "unit_price": "55.0000",
             }],
         },

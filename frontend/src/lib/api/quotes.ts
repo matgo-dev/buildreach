@@ -12,31 +12,52 @@ export const CURRENCIES = ["USD", "CNY", "TZS"] as const;
 export type TradeTerm = (typeof TRADE_TERMS)[number];
 export type Currency = (typeof CURRENCIES)[number];
 
+// ---------- 行类型 ----------
+
+export const LINE_TYPES = ["PRODUCT", "FEE"] as const;
+export type LineType = (typeof LINE_TYPES)[number];
+
 // ---------- 请求类型 ----------
 
 export interface QuoteTierInput {
-  min_qty: number; // > 0
-  unit_price: number; // >= 0
+  min_qty: number;
+  unit_price: number;
+}
+
+export interface QuoteCostInput {
+  supplier_org_id?: number;
+  supplier_unit_price?: number;
+  freight_cost_alloc?: number;
+  insurance_cost?: number;
+  export_clearance_cost?: number;
+  consolidation_cost?: number;
+  gross_margin?: number;
 }
 
 export interface QuoteLineInput {
-  rfq_item_id: number;
-  skipped?: boolean;
-  skip_reason?: string;
-  unit_price?: number; // >= 0, skipped 时可不填
-  moq?: number; // > 0
-  cbm_per_unit?: number; // >= 0
-  gross_weight_per_unit?: number; // >= 0
+  source_rfq_item_id?: number | null;
+  line_type?: LineType;
+  product_id?: number | null;
+  product_name?: string;
+  selected_variants?: Array<{ attr_name: string; value: string }>;
+  quantity?: number;
+  uom?: string;
+  unit_price?: number;
+  moq?: number;
+  cbm_per_unit?: number;
+  gross_weight_per_unit?: number;
+  remark?: string;
   tiers?: QuoteTierInput[];
+  cost?: QuoteCostInput;
 }
 
 export interface QuoteHeaderInput {
   trade_term?: TradeTerm;
   named_place?: string;
   currency?: Currency;
-  valid_until?: string; // UTC ISO datetime
-  lead_time_days?: number; // >= 0
-  eta_days?: number; // >= 0
+  valid_until?: string;
+  lead_time_days?: number;
+  eta_days?: number;
 }
 
 export interface QuoteCreatePayload {
@@ -51,51 +72,27 @@ export interface QuoteTierPublic {
   unit_price: number;
 }
 
-export interface QuoteItemOperatorView {
-  id: number;
-  rfq_item_id: number;
-  skipped: boolean;
-  skip_reason: string | null;
-  unit_price: number | null;
-  moq: number | null;
-  cbm_per_unit: number | null;
-  gross_weight_per_unit: number | null;
-  line_amount: number | null;
-  tiers: QuoteTierPublic[];
-  cost: unknown | null; // 本轮不渲染
-}
-
-export interface RfqQuoteOperatorView {
-  id: number;
-  quote_no: string;
-  version: number;
-  quote_status: string; // ACTIVE | SUPERSEDED
-  quoted_by_user_id: number | null;
-  quoted_at: string | null;
-  trade_term: string | null;
-  named_place: string | null;
-  currency: string | null;
-  valid_until: string | null;
-  lead_time_days: number | null;
-  eta_days: number | null;
-  total_amount: number | null;
-  created_at: string | null;
-  items: QuoteItemOperatorView[];
-}
-
-// ---------- 买方响应类型 ----------
-
 export interface QuoteItemBuyerPublic {
   id: number;
-  rfq_item_id: number;
-  skipped: boolean;
-  skip_reason: string | null;
+  source_rfq_item_id: number | null;
+  line_type: LineType;
+  product_id: number | null;
+  product_name_snapshot: string | null;
+  quoted_variants: Array<{ attr_name: string; value: string }> | null;
+  variant_display: string | null;
+  quantity: number | null;
+  uom: string | null;
   unit_price: number | null;
   moq: number | null;
   cbm_per_unit: number | null;
   gross_weight_per_unit: number | null;
   line_amount: number | null;
+  remark: string | null;
   tiers: QuoteTierPublic[];
+}
+
+export interface QuoteItemOperatorView extends QuoteItemBuyerPublic {
+  cost: unknown | null;
 }
 
 export interface RfqQuoteBuyerPublic {
@@ -109,6 +106,24 @@ export interface RfqQuoteBuyerPublic {
   eta_days: number | null;
   total_amount: number | null;
   items: QuoteItemBuyerPublic[];
+}
+
+export interface RfqQuoteOperatorView {
+  id: number;
+  quote_no: string;
+  version: number;
+  quote_status: string;
+  quoted_by_user_id: number | null;
+  quoted_at: string | null;
+  trade_term: string | null;
+  named_place: string | null;
+  currency: string | null;
+  valid_until: string | null;
+  lead_time_days: number | null;
+  eta_days: number | null;
+  total_amount: number | null;
+  created_at: string | null;
+  items: QuoteItemOperatorView[];
 }
 
 export interface RfqDecisionResult {
