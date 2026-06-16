@@ -4,7 +4,7 @@
 // - SUPPLIER → 3 步向导(Step 1 国家 / Step 2 语言 / Step 3 表单)
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AlertCircle,
@@ -72,11 +72,17 @@ export default function RegisterPage() {
   const tc = useTranslations("common");
 
   // 从 URL ?role=BUYER 恢复角色（切语言后保持状态）
-  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const [role, setRole] = useState<Role>(() => {
-    const r = searchParams?.get("role") || "";
-    return (r === "BUYER" || r === "SUPPLIER") ? r : "";
-  });
+  const searchParams = useSearchParams();
+  const urlRole = searchParams.get("role") || "";
+  const [role, setRole] = useState<Role>(
+    (urlRole === "BUYER" || urlRole === "SUPPLIER") ? urlRole as Role : "",
+  );
+  // URL 参数变化时同步（切语言刷新后）
+  useEffect(() => {
+    if (urlRole === "BUYER" || urlRole === "SUPPLIER") {
+      setRole(urlRole as Role);
+    }
+  }, [urlRole]);
 
   // SUPPLIER 草稿(sessionStorage)
   const { draft, hydrated, update, clearDraft, clearRegistrationNo, clearLanguagePreference } =
