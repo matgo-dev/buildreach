@@ -5,7 +5,10 @@ SPU CRUD / SKU CRUD(含阶梯价整体替换) / 供货关系(挂 SKU) / 图片(S
 """
 from __future__ import annotations
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 from fastapi import UploadFile
 from sqlalchemy import delete as sa_delete, func, or_, select, update
@@ -324,12 +327,31 @@ async def _add_attrs(
     for attr in attrs:
         tpl = template_map.get(attr.attr_key)
         if tpl is None:
-            raise AttrKeyNotInTemplateError(attr.attr_key, category_code)
+            # TODO: 品类模板完善后恢复为 raise AttrKeyNotInTemplateError
+            logger.warning(
+                "属性 '%s' 不在品类 '%s' 模板中,跳过",
+                attr.attr_key, category_code,
+            )
+            # 无模板时仍保存属性,但无法填充 unit/sort_order/selectable
+            db.add(ProductAttr(
+                product_id=product_id,
+                sku_id=sku_id,
+                attr_key_en=attr.attr_key,
+                attr_value_en=attr.attr_value,
+                source_lang="en",
+                trans_meta={
+                    "attr_key_en": "src",
+                    "attr_key_zh": "pending",
+                    "attr_key_sw": "pending",
+                    "attr_value_en": "src",
+                    "attr_value_zh": "pending",
+                    "attr_value_sw": "pending",
+                },
+            ))
+            continue
         if tpl.scope != expected_scope:
             raise AttrScopeMismatchError(attr.attr_key, tpl.scope)
 
-        # 运营录入:attr_key 对应模板英文键,attr_value 为当前语言值
-        # source_lang 取 zh(运营默认中文),attr_key_en 从模板取英文键名
         db.add(ProductAttr(
             product_id=product_id,
             sku_id=sku_id,
