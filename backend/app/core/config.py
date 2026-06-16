@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     # 公网直连 / 无网关时保持 false,一律服务端生成。
     TRUST_INBOUND_TRACE_ID: bool = False
 
+    # WhatsApp 客服号码(允许带 +、空格、横线,解析时规范化)
+    WHATSAPP_DEFAULT_NUMBER: str = ""
+
     # Refresh token cookie 配置(本机 http 开发用 SECURE=False;生产 https 必须 True)
     REFRESH_COOKIE_NAME: str = "refresh_token"
     REFRESH_COOKIE_PATH: str = "/api/v1/auth"
