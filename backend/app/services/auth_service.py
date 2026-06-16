@@ -79,39 +79,42 @@ async def _phone_exists(db: AsyncSession, phone: str) -> bool:
 
 
 def _classify_identifier(identifier: str) -> str:
-    """返回 'email' / 'phone' / 'username',用于日志和分支查询。"""
+    """返回 'email' / 'phone' / 'username',用于日志和分支查询。
+
+    phone 判定:能被 phonenumbers 解析为受支持的有效号即 phone,
+    不再按长度/前缀猜测国家。
+    """
     ident = identifier.strip()
     if "@" in ident:
         return "email"
-    # 中国大陆 11 位 / 坦桑 +255 / 纯数字长号码 → 视为 phone
-    if ident.startswith("+") or (ident.isdigit() and len(ident) >= 9):
+    # 带 + 前缀或纯数字 ≥ 7 位 → 尝试作为 phone
+    if ident.startswith("+") or (ident.isdigit() and len(ident) >= 7):
         return "phone"
     return "username"
 
 
-def _normalize_phone_for_lookup(raw: str) -> str:
-    """登录时归一化手机号:尝试转为 E.164,查询 DB 存储格式。"""
-    phone = raw.strip().replace("-", "").replace(" ", "")
-    # 坦桑本地格式 → E.164
-    if phone.startswith("0") and len(phone) == 10:
-        phone = "+255" + phone[1:]
-    elif phone.startswith("255") and not phone.startswith("+"):
-        phone = "+" + phone
-    # 中国大陆 11 位(兼容存量)
-    elif phone.isdigit() and len(phone) == 11 and phone.startswith("1"):
-        pass  # 存量中国号码原样查
-    return phone
+async def _find_user_by_identifier(
+    db: AsyncSession, identifier: str, phone_region: str | None = None,
+) -> User | None:
+    """三选一识别:邮箱(含 @) / 手机号 / 用户名。
 
+    phone 分支:用 normalize_phone_to_e164 归一化后精确匹配,
+    归一化失败则回退为 username 查。
+    """
+    from app.core.phone import normalize_phone_to_e164
+    from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
 
-async def _find_user_by_identifier(db: AsyncSession, identifier: str) -> User | None:
-    """三选一识别:邮箱(含 @)/ 手机号(+前缀或纯数字) / 用户名。"""
     ident = identifier.strip()
     kind = _classify_identifier(ident)
     if kind == "email":
         row = await db.execute(select(User).where(User.email == ident))
     elif kind == "phone":
-        normalized = _normalize_phone_for_lookup(ident)
-        row = await db.execute(select(User).where(User.phone == normalized))
+        try:
+            e164 = normalize_phone_to_e164(ident, phone_region)
+            row = await db.execute(select(User).where(User.phone == e164))
+        except (PhoneFormatError, PhoneUnsupportedRegionError):
+            # 归一化失败:回退为 username 查(不暴露失败原因,防枚举)
+            row = await db.execute(select(User).where(User.username == ident))
     else:
         row = await db.execute(select(User).where(User.username == ident))
     return row.scalar_one_or_none()
@@ -349,9 +352,10 @@ async def login(
     *,
     identifier: str,
     password: str,
+    phone_region: str | None = None,
     request: Request | None = None,
 ) -> dict:
-    """identifier 支持邮箱(含 '@')或用户名。限流以 identifier+ip 为 key。"""
+    """identifier 支持邮箱 / 手机号 / 用户名。限流以 identifier+ip 为 key。"""
     ip = _client_ip(request)
     rate_key = identifier.strip().lower()
 
@@ -368,7 +372,7 @@ async def login(
         )
         raise TooManyAttemptsError()
 
-    user = await _find_user_by_identifier(db, identifier)
+    user = await _find_user_by_identifier(db, identifier, phone_region)
 
     # 用户不存在 / 密码错误 → 统一返回 401,防枚举
     if user is None or not verify_password(password, user.password_hash):

@@ -57,6 +57,7 @@ export const authApi = {
 
   registerBuyer: async (payload: {
     phone: string;
+    phone_region?: string;
     password: string;
     name: string;
     company_name: string;
@@ -72,6 +73,7 @@ export const authApi = {
     const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
     const fd = new FormData();
     fd.append("phone", payload.phone);
+    fd.append("phone_region", payload.phone_region || "TZ");
     fd.append("password", payload.password);
     fd.append("name", payload.name);
     fd.append("company_name", payload.company_name);
@@ -114,9 +116,13 @@ export const authApi = {
     return json.data as LoginResult;
   },
 
-  /** identifier 可为邮箱或用户名 */
-  login: (identifier: string, password: string) =>
-    api.post<LoginResult>("/api/v1/auth/login", { identifier, password }, { noAuth: true }),
+  /** identifier 可为邮箱、手机号或用户名 */
+  login: (identifier: string, password: string, phoneRegion?: string) =>
+    api.post<LoginResult>(
+      "/api/v1/auth/login",
+      { identifier, password, phone_region: phoneRegion || undefined },
+      { noAuth: true },
+    ),
 
   me: () => api.get<MeData>("/api/v1/auth/me"),
 

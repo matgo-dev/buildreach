@@ -59,8 +59,12 @@ function buyerInputCls(error: string | null, extra = ""): string {
   return `${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK_BUYER} ${extra}`;
 }
 
-// 坦桑尼亚手机号:9 位数字(不含 +255)
-const TZ_PHONE_RE = /^\d{9}$/;
+// 手机号前端轻量校验(最终以后端 E.164 归一化为准)
+const PHONE_REGION_CONFIG = {
+  TZ: { dialCode: "+255", flag: "🇹🇿", label: "Tanzania", re: /^\d{9}$/ },
+  CN: { dialCode: "+86", flag: "🇨🇳", label: "China", re: /^1[3-9]\d{9}$/ },
+} as const;
+type PhoneRegion = keyof typeof PHONE_REGION_CONFIG;
 // 允许的上传格式
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -337,6 +341,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const locale = useLocale();
 
   // 表单字段
+  const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>("TZ");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -394,7 +399,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     switch (field) {
       case "phone":
         if (!phone) return t("err_phone_required");
-        if (!TZ_PHONE_RE.test(phone)) return t("err_phone_format");
+        if (!PHONE_REGION_CONFIG[phoneRegion].re.test(phone)) return t("err_phone_format");
         return null;
       case "password":
         return validatePassword(password);
@@ -534,7 +539,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setLoading(true);
     try {
       const tokens = await authApi.registerBuyer({
-        phone: `+255${phone}`,
+        phone,
+        phone_region: phoneRegion,
         password,
         name,
         company_name: companyName,
@@ -597,16 +603,29 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             {t("label_phone")} <span className="text-red-500">*</span>
           </Label>
           <div className="flex">
-            <span className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
-              +255
-            </span>
+            <select
+              value={phoneRegion}
+              onChange={(e) => {
+                setPhoneRegion(e.target.value as PhoneRegion);
+                setPhone("");
+                if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
+              }}
+              className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
+            >
+              {(Object.keys(PHONE_REGION_CONFIG) as PhoneRegion[]).map((r) => (
+                <option key={r} value={r}>
+                  {PHONE_REGION_CONFIG[r].flag} {PHONE_REGION_CONFIG[r].dialCode}
+                </option>
+              ))}
+            </select>
             <input
               id="phone" name="phone" type="tel"
               value={phone}
               onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "").slice(0, 9);
+                const maxLen = phoneRegion === "CN" ? 11 : 9;
+                const v = e.target.value.replace(/\D/g, "").slice(0, maxLen);
                 setPhone(v);
-                if (errors.phone) setErrors((e) => ({ ...e, phone: null }));
+                if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
               }}
               onBlur={() => touch("phone")}
               placeholder={t("ph_phone")}

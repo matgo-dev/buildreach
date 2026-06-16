@@ -98,6 +98,24 @@ class ConflictError(BusinessError):
         super().__init__(status.HTTP_409_CONFLICT, 40009, message, message_key=MessageKey.CONFLICT)
 
 
+class PhoneFormatError(BusinessError):
+    """42221 — 手机号格式非法。"""
+    def __init__(self, message: str = "Invalid phone number format"):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 42221, message,
+            message_key=MessageKey.PHONE_FORMAT_INVALID,
+        )
+
+
+class PhoneUnsupportedRegionError(BusinessError):
+    """42222 — 手机号所属国家不在支持范围。"""
+    def __init__(self, message: str = "Phone number region not supported"):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 42222, message,
+            message_key=MessageKey.PHONE_REGION_UNSUPPORTED,
+        )
+
+
 class SupplierAlreadyRegisteredError(BusinessError):
     """供应商重复入驻(PRD v1.4 Δ9)。
 

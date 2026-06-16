@@ -40,7 +40,9 @@
       "permission_denied": "Huna ruhusa ya kufanya hili",
       "not_authenticated": "Tafadhali ingia kwanza",
       "account_disabled": "Akaunti imezimwa",
-      "password_change_required": "Tafadhali badilisha nenosiri lako kwanza"
+      "password_change_required": "Tafadhali badilisha nenosiri lako kwanza",
+      "phone_format_invalid": "Muundo wa nambari ya simu si sahihi",
+      "phone_region_unsupported": "Nchi ya nambari ya simu haihusiki"
     },
     "validation": {
       "failed": "Uthibitishaji umeshindwa, tafadhali angalia fomu",

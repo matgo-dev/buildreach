@@ -35,6 +35,8 @@ class MessageKey:
     PHONE_ALREADY_REGISTERED = "error.business.phone_already_registered"
 
     # buyer registration — 买方注册 4092x / 4220x
+    PHONE_FORMAT_INVALID = "error.auth.phone_format_invalid"
+    PHONE_REGION_UNSUPPORTED = "error.auth.phone_region_unsupported"
     BUYER_PHONE_FORMAT = "buyer.register.phone_format"
     BUYER_PASSWORD_RULE = "buyer.register.password_rule"
     BUYER_CATEGORY_REQUIRED = "buyer.register.category_required"
