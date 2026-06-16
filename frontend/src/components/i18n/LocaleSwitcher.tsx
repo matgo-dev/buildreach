@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Check, ChevronDown, Globe } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -20,6 +21,10 @@ const LOCALES = [
 export function LocaleSwitcher({ variant = "compact" }: Props) {
   const locale = useLocale();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // 切语言时保留 query params(如 ?items=4,5)
+  const qs = searchParams.toString();
+  const hrefWithQuery = qs ? `${pathname}?${qs}` : pathname;
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -51,7 +56,7 @@ export function LocaleSwitcher({ variant = "compact" }: Props) {
               <span className="font-semibold text-gray-600">{l.full}</span>
             ) : (
               <Link
-                href={pathname}
+                href={hrefWithQuery}
                 locale={l.code}
                 onClick={() => fireLanguagePref(l.pref)}
                 className="transition-colors hover:text-gray-600"
@@ -82,7 +87,7 @@ export function LocaleSwitcher({ variant = "compact" }: Props) {
           {LOCALES.map((l) => (
             <Link
               key={l.code}
-              href={pathname}
+              href={hrefWithQuery}
               locale={l.code}
               onClick={() => {
                 fireLanguagePref(l.pref);
