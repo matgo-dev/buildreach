@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useMemo } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -14,6 +14,8 @@ import { FilterBar } from "@/components/mall/FilterBar";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { Pagination } from "@/components/mall/Pagination";
 import { RightSidebar } from "@/components/mall/RightSidebar";
+import { useAuthStore } from "@/stores/authStore";
+import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
 
 const PAGE_SIZE = 20;
 
@@ -24,6 +26,17 @@ function MallContent() {
   const t = useTranslations("mall");
 
   const { tree: categoryTree } = useCategoryTree();
+
+  // 买方浏览偏好：仅 BUYER 角色才拉取，登录态变化时自动失效
+  const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
+  const { data: prefCodes } = useSWR<string[]>(
+    isBuyer ? "buyer-browse-prefs" : null,
+    () => getBrowsePreferences(),
+    { revalidateOnFocus: false },
+  );
+
+  // 品类侧栏展开状态：用户点"查看全部品类"后展开，不落 URL
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   // URL 参数读取
   const urlCat = searchParams.get("cat") || "";
@@ -49,6 +62,8 @@ function MallContent() {
   );
 
   // SWR 请求商品列表
+  // 当用户有偏好品类且未展开全部、且没有指定品类时，传 all_categories=false 让后端按偏好过滤
+  // 当用户展开全部品类或指定了具体品类时，传 all_categories=true 跳过偏好过滤
   const apiParams: ProductListParams = useMemo(
     () => ({
       category_code: urlCat || undefined,
@@ -58,8 +73,13 @@ function MallContent() {
       supply_mode: urlSupplyMode || undefined,
       page: urlPage,
       size: PAGE_SIZE,
+      // 有偏好 + 未展开全部 + 未指定具体品类 → 让后端按偏好过滤（不传 all_categories）
+      // 展开全部或指定了品类 → 传 true 让后端返回全量
+      ...(prefCodes && prefCodes.length > 0 && !urlCat
+        ? { all_categories: showAllCategories || undefined }
+        : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -101,6 +121,10 @@ function MallContent() {
           showQuickLinks
           showFeatured={urlFeatured}
           onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+          // 买方偏好品类过滤：指定了具体品类时不做偏好过滤（用户已主动选择）
+          prefCodes={urlCat ? undefined : prefCodes}
+          showAllCategories={showAllCategories || !!urlCat}
+          onToggleAllCategories={() => setShowAllCategories((v) => !v)}
         />
 
         {/* 主内容区 */}
