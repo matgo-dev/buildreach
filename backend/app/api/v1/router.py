@@ -10,6 +10,7 @@ from app.api.v1 import (
     buyer_prefs,
     cart,
     categories,
+    contact,
     credit,
     debug,
     operator_buyers,
@@ -28,6 +29,7 @@ api_router.include_router(admin_users.router)
 api_router.include_router(admin_audit.router)
 api_router.include_router(test_rbac.router)
 api_router.include_router(categories.router)
+api_router.include_router(contact.router)
 api_router.include_router(credit.router)
 api_router.include_router(products.router)
 api_router.include_router(operator_buyers.router)
