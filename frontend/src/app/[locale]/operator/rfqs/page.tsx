@@ -32,8 +32,9 @@ function OperatorRfqListContent() {
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
+  const [mineFilter, setMineFilter] = useState(false);
 
-  const swrKey = `operator-rfqs-${page}-${statusFilter}`;
+  const swrKey = `operator-rfqs-${page}-${statusFilter}-${mineFilter}`;
   const { data, isLoading, mutate } = useSWR<RfqListResponse>(
     swrKey,
     () =>
@@ -41,6 +42,7 @@ function OperatorRfqListContent() {
         page,
         page_size: PAGE_SIZE,
         status: statusFilter || undefined,
+        mine: mineFilter || undefined,
       }),
     { revalidateOnFocus: false },
   );
@@ -102,6 +104,15 @@ function OperatorRfqListContent() {
             </option>
           ))}
         </select>
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={mineFilter}
+            onChange={(e) => { setMineFilter(e.target.checked); setPage(1); }}
+            className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          {t("filterMyCreated")}
+        </label>
       </div>
 
       {/* 表格 */}
@@ -162,13 +173,21 @@ function OperatorRfqListContent() {
                         </button>
                       )}
                       {rfq.status === "PROCESSING" && (
-                        <Link
-                          href={`/${locale}/operator/rfqs/${rfq.id}/quote`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
-                        >
-                          <FileEdit className="h-3.5 w-3.5" />
-                          {t("quoteBackfill")}
-                        </Link>
+                        <>
+                          <Link
+                            href={`/${locale}/operator/rfqs/${rfq.id}`}
+                            className="text-xs font-medium text-gray-600 hover:underline"
+                          >
+                            {t("editRfqItems")}
+                          </Link>
+                          <Link
+                            href={`/${locale}/operator/rfqs/${rfq.id}/quote`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                          >
+                            <FileEdit className="h-3.5 w-3.5" />
+                            {t("quoteBackfill")}
+                          </Link>
+                        </>
                       )}
                     </div>
                   </td>

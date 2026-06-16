@@ -966,14 +966,18 @@ function OperatorRfqDetailContent() {
                 </thead>
                 <tbody>
                   {activeQuote.items.map((qItem) => {
-                    // 找到对应 RFQ item 获取商品名
-                    const rfqItem = rfq.items.find((ri) => ri.id === qItem.rfq_item_id);
+                    // 优先用报价行自带快照，fallback 到询价行
+                    const rfqItem = qItem.source_rfq_item_id
+                      ? rfq.items.find((ri) => ri.id === qItem.source_rfq_item_id)
+                      : undefined;
+                    const itemName = qItem.product_name_snapshot ?? rfqItem?.product_name_snapshot ?? "—";
+                    const itemVariant = qItem.variant_display ?? rfqItem?.variant_display;
                     return (
                       <tr key={qItem.id} className="border-t border-gray-100 even:bg-slate-50/50">
                         <td className="px-4 py-3 font-medium text-gray-800">
-                          {rfqItem?.product_name_snapshot ?? "—"}
-                          {rfqItem?.variant_display && (
-                            <span className="ml-1 text-xs text-gray-400">{rfqItem.variant_display}</span>
+                          {itemName}
+                          {itemVariant && (
+                            <span className="ml-1 text-xs text-gray-400">{itemVariant}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-800 font-medium">
@@ -991,9 +995,11 @@ function OperatorRfqDetailContent() {
                         <td className="px-4 py-3 text-right text-gray-600">
                           {qItem.tiers.length > 0 ? (
                             <div className="text-xs">
-                              {qItem.tiers.map((tier, i) => (
-                                <div key={i}>≥{Number(tier.min_qty)}: {Number(tier.unit_price).toFixed(2)}</div>
-                              ))}
+                              {[...qItem.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, i, sorted) => {
+                                const next = sorted[i + 1];
+                                const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                                return <div key={i}>{label}: {Number(tier.unit_price).toFixed(2)}</div>;
+                              })}
                             </div>
                           ) : "—"}
                         </td>

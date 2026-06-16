@@ -617,7 +617,7 @@ function ItemsAndQuoteCard({
           <tbody>
             {hasQuote
               ? quote.items.map((qi) => {
-                  const rfqItem = rfqItemMap.get(qi.rfq_item_id);
+                  const rfqItem = qi.source_rfq_item_id ? rfqItemMap.get(qi.source_rfq_item_id) : undefined;
                   return (
                     <QuoteLineRow
                       key={qi.id}
@@ -672,42 +672,33 @@ function QuoteLineRow({
   const tQ = useTranslations("quote");
   const [showTiers, setShowTiers] = useState(false);
 
-  // skipped 行整行灰化 + 跨列标签
-  if (qi.skipped) {
-    return (
-      <tr className="border-t border-gray-100 bg-gray-50/80">
-        <td className="px-5 py-3 font-medium text-gray-400 line-through">
-          {rfqItem?.product_name_snapshot ?? "—"}
-        </td>
-        <td className="px-5 py-3 text-gray-400">
-          {rfqItem?.variant_display ?? "—"}
-        </td>
-        <td className="px-5 py-3 text-right text-gray-400">
-          {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
-        </td>
-        <td colSpan={5} className="px-5 py-3">
-          <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-            {tQ("skippedLabel")}
-          </span>
-          {qi.skip_reason && (
-            <span className="ml-2 text-xs text-gray-400">{qi.skip_reason}</span>
-          )}
-        </td>
-      </tr>
-    );
-  }
+  // 显示名：优先用报价行自带快照，fallback 到询价行
+  const productName = qi.product_name_snapshot ?? rfqItem?.product_name_snapshot ?? "—";
+  const variantDisplay = qi.variant_display ?? rfqItem?.variant_display ?? "—";
+  const qty = qi.quantity ?? rfqItem?.quantity ?? "—";
+  const uom = qi.uom ?? rfqItem?.uom_snapshot ?? "";
+
+  // FEE 行显示标签
+  const isFee = qi.line_type === "FEE";
 
   return (
     <>
       <tr className="border-t border-gray-100 even:bg-slate-50/50">
         <td className="px-5 py-3 font-medium text-gray-800">
-          {rfqItem?.product_name_snapshot ?? "—"}
+          <div className="flex items-center gap-1.5">
+            {isFee && (
+              <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                {tQ("lineAdditional")}
+              </span>
+            )}
+            {productName}
+          </div>
         </td>
         <td className="px-5 py-3 text-gray-500">
-          {rfqItem?.variant_display ?? "—"}
+          {variantDisplay}
         </td>
         <td className="px-5 py-3 text-right text-gray-800">
-          {rfqItem?.quantity ?? "—"} {rfqItem?.uom_snapshot ?? ""}
+          {qty} {uom}
         </td>
         <td className="px-5 py-3 text-right font-semibold text-gray-800">
           {qi.unit_price != null
@@ -744,17 +735,23 @@ function QuoteLineRow({
               <div className="mt-1.5 space-y-0.5">
                 {[...qi.tiers]
                   .sort((a, b) => a.min_qty - b.min_qty)
-                  .map((tier, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-4 rounded px-2 py-1 text-xs text-gray-600"
-                    >
-                      <span className="w-24">≥ {tier.min_qty}</span>
-                      <span className="font-semibold text-[#00505a]">
-                        {formatCurrency(Number(tier.unit_price), currency, locale)}
-                      </span>
-                    </div>
-                  ))}
+                  .map((tier, idx, sorted) => {
+                    const next = sorted[idx + 1];
+                    const rangeLabel = next
+                      ? `${tier.min_qty} ~ ${next.min_qty - 1}`
+                      : `≥ ${tier.min_qty}`;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-4 rounded px-2 py-1 text-xs text-gray-600"
+                      >
+                        <span className="w-24">{rangeLabel}</span>
+                        <span className="font-semibold text-[#00505a]">
+                          {formatCurrency(Number(tier.unit_price), currency, locale)}
+                        </span>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </td>
