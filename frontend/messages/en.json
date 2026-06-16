@@ -332,7 +332,7 @@
     "unpublish": "Delist",
     "delete": "Delete",
     "confirmPublishTitle": "Confirm Listing",
-    "confirmPublishMsg": "List \"{name}\"?\n\nRequirements: at least 1 active SKU, 1 product image, and all required attributes.",
+    "confirmPublishMsg": "List \"{name}\"?\n\nRequirements: at least 1 product image and all required attributes.",
     "confirmPublishBtn": "Confirm",
     "confirmUnpublishTitle": "Confirm Delisting",
     "confirmUnpublishMsg": "Delist \"{name}\"? Buyers will no longer see this product.",

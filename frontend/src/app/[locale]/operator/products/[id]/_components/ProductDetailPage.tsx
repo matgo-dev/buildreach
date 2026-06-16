@@ -270,10 +270,9 @@ export default function ProductDetailPage() {
     setSaveError(null);
     try {
       await operatorProductsApi.update(product.id, spuForm);
-      await mutate();
       spuDirtyRef.current = false;
-      exitEditMode();
       toastSuccess(t("spuSaved"));
+      router.push(`/${locale}/operator/products`);
     } catch (err: unknown) {
       setSaveError(translateError(err));
     } finally {
@@ -333,7 +332,7 @@ export default function ProductDetailPage() {
         const newStatus = confirmModal.type === "publish" ? "ACTIVE" : "INACTIVE";
         await operatorProductsApi.updateStatus(product.id, { status: newStatus });
         toastSuccess(confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"));
-        await mutate();
+        router.push(`/${locale}/operator/products`);
       }
       setConfirmModal(null);
     } catch (err: unknown) {
