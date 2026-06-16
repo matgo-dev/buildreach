@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -293,8 +294,13 @@ const LOCALES = [
 function HeaderLocaleSwitcher() {
   const locale = useLocale();
   const rawPathname = usePathname();
+  const searchParams = useSearchParams();
   // 去掉 locale 前缀，避免 Link locale={x} 产生双 locale 路径
   const pathname = rawPathname.replace(new RegExp(`^/${locale}`), "") || "/";
+  const hrefWithQuery = useMemo(() => {
+    const query = searchParams.toString();
+    return `${pathname}${query ? `?${query}` : ""}`;
+  }, [pathname, searchParams]);
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -332,7 +338,7 @@ function HeaderLocaleSwitcher() {
           {LOCALES.map((l) => (
             <Link
               key={l.code}
-              href={pathname}
+              href={hrefWithQuery}
               locale={l.code}
               onClick={() => {
                 fireLanguagePref(l.pref);
