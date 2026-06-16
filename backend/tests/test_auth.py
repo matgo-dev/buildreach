@@ -182,14 +182,15 @@ async def test_supplier_register_duplicate_email_only(client):
 
 @pytest.mark.asyncio
 async def test_supplier_register_duplicate_phone_only(client):
-    """已存在手机号 + 新邮箱 + 新 (country, reg_no) → code=40903,errors 长度 1。"""
+    """已存在手机号(E.164) + 新邮箱 + 新 (country, reg_no) → code=40903,errors 长度 1。"""
     r1 = await client.post("/api/v1/auth/register/supplier", json=SUPPLIER_PAYLOAD)
     assert r1.status_code == 200
 
     payload = {
         **SUPPLIER_PAYLOAD,
         "email": "fresh@huajian.com",
-        # phone 重
+        # phone 重:用 E.164 格式直接传,确保与第一次注册归一化后一致
+        "phone": "+8613800138001",
         "country_code": "MY",
         "registration_no": "888777666555",
         "language_preference": "ms-MY",
@@ -213,7 +214,8 @@ async def test_supplier_register_duplicate_email_and_phone(client):
 
     payload = {
         **SUPPLIER_PAYLOAD,
-        # email 重 + phone 重
+        # email 重 + phone 重(E.164 确保归一化后一致)
+        "phone": "+8613800138001",
         "country_code": "MY",
         "registration_no": "777666555444",
         "language_preference": "ms-MY",

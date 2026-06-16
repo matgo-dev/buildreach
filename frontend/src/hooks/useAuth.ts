@@ -80,8 +80,8 @@ export function useLogin() {
   const setLoaded = useAuthStore((s) => s.setLoaded);
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
 
-  return async (identifier: string, password: string) => {
-    const tokens = await authApi.login(identifier, password);
+  return async (identifier: string, password: string, phoneRegion?: string) => {
+    const tokens = await authApi.login(identifier, password, phoneRegion);
     setAccessToken(tokens.access_token);
     const me = await authApi.me();
     setUser(me);

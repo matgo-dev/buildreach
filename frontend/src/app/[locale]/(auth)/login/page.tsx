@@ -10,12 +10,24 @@ import { ApiError } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 
+const PHONE_REGIONS = [
+  { code: "TZ" as const, dialCode: "+255", flag: "🇹🇿" },
+  { code: "CN" as const, dialCode: "+86", flag: "🇨🇳" },
+];
+
+/** identifier 是否看起来像手机号(纯数字 ≥7 位或以 + 开头) */
+function looksLikePhone(v: string): boolean {
+  const s = v.trim();
+  return s.startsWith("+") || (/^\d+$/.test(s) && s.length >= 7);
+}
+
 function LoginContent() {
   const t = useTranslations("auth.login");
   const tc = useTranslations("common");
   const params = useSearchParams();
   const justRegistered = params.get("registered") === "1";
   const [identifier, setIdentifier] = useState("");
+  const [phoneRegion, setPhoneRegion] = useState("TZ");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +35,8 @@ function LoginContent() {
   const [idErr, setIdErr] = useState<string | null>(null);
   const [pwdErr, setPwdErr] = useState<string | null>(null);
   const login = useLogin();
+
+  const isPhone = looksLikePhone(identifier);
 
   // 注册成功跳转过来时,自动填充刚才提交的凭证(sessionStorage,一次性消费)
   useEffect(() => {
@@ -51,7 +65,7 @@ function LoginContent() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(identifier, password);
+      await login(identifier, password, isPhone ? phoneRegion : undefined);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 429) {
@@ -94,21 +108,37 @@ function LoginContent() {
           <Label htmlFor="identifier" className="text-sm font-semibold text-gray-700">
             {t("identifier_label")}
           </Label>
-          <input
-            id="identifier"
-            type="text"
-            value={identifier}
-            onChange={(e) => { setIdentifier(e.target.value); if (idErr) setIdErr(null); }}
-            onBlur={() => setIdErr(identifier ? null : t("identifier_required"))}
-            placeholder={t("identifier_placeholder")}
-            autoComplete="username"
-            className={
-              "w-full h-12 px-4 rounded-lg border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
-              (idErr
-                ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15")
-            }
-          />
+          <div className="flex">
+            {isPhone && (
+              <select
+                value={phoneRegion}
+                onChange={(e) => setPhoneRegion(e.target.value)}
+                className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
+              >
+                {PHONE_REGIONS.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.flag} {r.dialCode}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              id="identifier"
+              type="text"
+              value={identifier}
+              onChange={(e) => { setIdentifier(e.target.value); if (idErr) setIdErr(null); }}
+              onBlur={() => setIdErr(identifier ? null : t("identifier_required"))}
+              placeholder={t("identifier_placeholder")}
+              autoComplete="username"
+              className={
+                "w-full h-12 px-4 border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
+                (isPhone ? "rounded-r-lg rounded-l-none " : "rounded-lg ") +
+                (idErr
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
+                  : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15")
+              }
+            />
+          </div>
           {idErr && <p className="text-xs text-red-500">{idErr}</p>}
         </div>
 
