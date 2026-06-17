@@ -1115,7 +1115,7 @@ def _extract_spu_fields(attributes: list[dict]) -> dict[str, Any]:
             elif ext["type"] == "list":
                 for v in vals:
                     label = (v.get("label_en") or v.get("label_zh") or "").strip()
-                    if label and label not in collectors[field]["seen"]:
+                    if label and label.lower() != "none" and label not in collectors[field]["seen"]:
                         collectors[field]["items"].append(label)
                         collectors[field]["seen"].add(label)
             break  # 一个 attr 只匹配一个 extractor
