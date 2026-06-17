@@ -637,11 +637,24 @@ def import_offer(
     if not category_code:
         raise ValueError(f"分类 '{leaf_name}' 无法映射到 DB code")
 
+    # ── 1.5 来源溯源 + 视频 ──
+    source_obj = data.get("source", {})
+    source_meta = {}
+    if isinstance(source_obj, dict):
+        if source_obj.get("offer_url"):
+            source_meta["offer_url"] = source_obj["offer_url"]
+        if source_obj.get("crawled_at"):
+            source_meta["crawled_at"] = source_obj["crawled_at"]
+    video_url = data.get("video_url") or None
+
     # ── 2. SPU 字段映射 ──
-    name_en = data.get("product_name_en") or data.get("listing_title_en", "")
-    name_zh = data.get("product_name_zh") or data.get("listing_title_zh", "")
-    desc_en = data.get("description_en") or data.get("listing_title_en") or ""
-    desc_zh = data.get("description_zh") or data.get("listing_title_zh") or ""
+    # listing_title 是阿里国际站的展示标题(subject),买方第一眼看到的;
+    # product_name 是内部短标识(常为 slug 拼接词如 "PSSkirting"),仅作兜底。
+    name_en = data.get("listing_title_en") or data.get("product_name_en") or ""
+    name_zh = data.get("listing_title_zh") or data.get("product_name_zh") or ""
+    # description 只存真正的描述,不拿标题凑
+    desc_en = data.get("description_en") or ""
+    desc_zh = data.get("description_zh") or ""
     detail_desc_en = data.get("detail_description_en") or None
     detail_desc_zh = data.get("detail_description_zh") or None
 
@@ -722,6 +735,10 @@ def import_offer(
             product.gross_weight_kg = gross_weight_kg
         if volume_cbm is not None:
             product.volume_cbm = volume_cbm
+        if video_url:
+            product.video_url = video_url
+        if source_meta:
+            product.source_meta = source_meta
         product.source = run_meta.source
         product.last_ingest_run_id = run.id
         product.updated_at = _utcnow()
@@ -761,7 +778,9 @@ def import_offer(
             ref_price_tiers=ref_price_tiers or None,
             gross_weight_kg=gross_weight_kg,
             volume_cbm=volume_cbm,
+            video_url=video_url,
             source=run_meta.source,
+            source_meta=source_meta or None,
             last_ingest_run_id=run.id,
             status=ProductStatus.DRAFT,
             source_lang=_src_lang,
@@ -858,6 +877,9 @@ def import_offer(
             # 色板图:label + swatch_image 同时有 → 额外写一张 spec_value 绑定图
             if swatch_path and label_en and value_type == "text":
                 _copy_image(offer.offer_dir / swatch_path, static_root, spu_code)
+                swatch_source_url = None
+                if isinstance(swatch_raw, dict):
+                    swatch_source_url = swatch_raw.get("source_url")
                 db.add(ProductImage(
                     product_id=product.id,
                     sku_id=None,
@@ -865,6 +887,7 @@ def import_offer(
                     image_type=ImageType.GALLERY,
                     sort_order=9000 + attr_sort,  # 色板图排后面
                     spec_value=f"颜色:{label_en}",
+                    source_url=swatch_source_url,
                 ))
 
     # ── 6. product_images:gallery + description_images ──
@@ -881,6 +904,7 @@ def import_offer(
             image_key=_image_key(spu_code, img_path),
             image_type=img_type,
             sort_order=img_sort,
+            source_url=img_def.get("source_url") or None,
         ))
         img_sort += 1
 
@@ -895,6 +919,7 @@ def import_offer(
             image_key=_image_key(spu_code, img_path),
             image_type=ImageType.DETAIL,
             sort_order=img_sort,
+            source_url=img_def.get("source_url") or None,
         ))
         img_sort += 1
 

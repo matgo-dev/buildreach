@@ -6,7 +6,7 @@ sku_id: NULL=SPU 级图片，非空=SKU 级图片。
 """
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Index, Integer, String
+from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -45,6 +45,8 @@ class ProductImage(Base, TimestampMixin, SoftDeleteMixin):
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 原始来源 URL（抓数导入时保留 CDN 地址，本地图片丢失可重新下载）
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 色板等规格图绑定到具体规格值,如 "颜色:Red"
     spec_value: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
