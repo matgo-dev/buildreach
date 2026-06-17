@@ -895,6 +895,7 @@
     "addWithVariant": "Add to Inquiry",
     "noVariants": "No selectable variants for this product",
     "collapse": "Collapse",
+    "selectVariant": "Select Variant",
     "unit": "Unit",
     "noSearchResult": "No matching products found",
     "productNotFound": "Product not found or has been delisted",
