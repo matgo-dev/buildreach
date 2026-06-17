@@ -138,10 +138,15 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     # 阿里阶梯参考价（SPU 级，运营参考用，不展示给买方）
     ref_price_tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
+    # 商品视频（抓数导入或运营手填）
+    video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # 商品来源:MANUAL(运营手动) / alibaba / 1688 等爬虫源
     source: Mapped[str] = mapped_column(
         String(50), nullable=False, default="MANUAL", server_default="MANUAL",
     )
+    # 来源溯源元数据（offer_url / crawled_at 等，按数据源不同结构可变）
+    source_meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     last_ingest_run_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("ingest_runs.id", name="fk_products_last_ingest_run_id"),

@@ -322,21 +322,24 @@ class TestProductImport:
         product = db.execute(
             select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
         ).scalar_one()
-        assert product.name_en == "SPC Flooring"
+        # listing_title 优先于 product_name 作为展示名
+        # (product_name_en="SPC Flooring" 是 slug 短名,listing_title 才是阿里展示标题)
+        assert product.name_en == "Waterproof PVC Vinyl SPC Flooring"
         assert product.source == "alibaba"
         assert product.status == ProductStatus.DRAFT
         assert product.last_ingest_run_id == run.id
 
-    def test_import_description_falls_back_to_listing_title(
+    def test_name_prefers_listing_title_over_product_name(
         self, prepared_db, cat_tree, offers, run_meta,
     ):
+        """listing_title 优先于 product_name:product_name 常为 slug 拼接词。"""
         db, slug_to_code, run = prepared_db
         offer = self._get_valid_offer(cat_tree, offers, run_meta)
         assert offer.data is not None
-        offer.data["description_en"] = ""
-        offer.data["description_zh"] = ""
-        offer.data["listing_title_en"] = "Fallback listing title EN"
-        offer.data["listing_title_zh"] = "兜底列表标题中文"
+        offer.data["product_name_en"] = "SlugName"
+        offer.data["listing_title_en"] = "Proper Display Title"
+        offer.data["product_name_zh"] = "短名"
+        offer.data["listing_title_zh"] = "正式展示标题"
         static_root = Path("/tmp/test_ingest_static")
         static_root.mkdir(exist_ok=True)
 
@@ -351,8 +354,35 @@ class TestProductImport:
         product = db.execute(
             select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
         ).scalar_one()
-        assert product.description_en == "Fallback listing title EN"
-        assert product.description_zh == "兜底列表标题中文"
+        assert product.name_en == "Proper Display Title"
+        assert product.name_zh == "正式展示标题"
+
+    def test_description_not_faked_from_listing_title(
+        self, prepared_db, cat_tree, offers, run_meta,
+    ):
+        """description 为空时保持空,不拿 listing_title 凑。"""
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        assert offer.data is not None
+        offer.data["description_en"] = ""
+        offer.data["description_zh"] = ""
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        # description 为空时不应被 listing_title 填充
+        assert product.description_en is None or product.description_en == ""
+        assert product.description_zh is None or product.description_zh == ""
 
     def test_attrs_multi_value_n_rows(self, prepared_db, cat_tree, offers, run_meta):
         """values 有几个插几行——Feature 有 3 个值应该 3 行。"""
@@ -769,3 +799,104 @@ class TestIngestRun:
         assert run2.id == run1.id
         assert run2.status == IngestRunStatus.RUNNING
         assert run2.product_count == 0
+
+
+# ---------- 新字段覆盖:video_url / source_meta / source_url ----------
+
+
+class TestNewFields:
+    """验证 video_url、source_meta、ProductImage.source_url 落库。"""
+
+    @pytest.fixture
+    def prepared_db(self, sync_db, cat_tree, run_meta):
+        slug_to_code = import_categories(sync_db, cat_tree)
+        sync_db.flush()
+        run = open_run(
+            sync_db,
+            run_key="test_new_fields",
+            source=run_meta.source,
+            operator=run_meta.operator,
+            raw_path=str(TEST_BATCH_DIR),
+            crawled_at=None,
+        )
+        sync_db.flush()
+        return sync_db, slug_to_code, run
+
+    def _get_valid_offer(self, cat_tree, offers, run_meta) -> OfferFile:
+        vr = validate_batch(TEST_BATCH_DIR, run_meta, cat_tree, offers)
+        valid = [o for o in offers if o.offer_id not in vr.offer_errors]
+        return valid[0]
+
+    def test_source_meta_persisted(self, prepared_db, cat_tree, offers, run_meta):
+        """source.offer_url / crawled_at 写入 source_meta JSON。"""
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        assert product.source_meta is not None
+        assert "offer_url" in product.source_meta
+        assert product.source_meta["offer_url"].startswith("https://")
+
+    def test_video_url_persisted(self, prepared_db, cat_tree, offers, run_meta):
+        """video_url 有值时写入 product。"""
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        # 注入 video_url 到测试数据
+        offer.data["video_url"] = "https://example.com/video.mp4"
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+        assert product.video_url == "https://example.com/video.mp4"
+
+    def test_image_source_url_persisted(self, prepared_db, cat_tree, offers, run_meta):
+        """gallery / description_images 的 source_url 写入 ProductImage。"""
+        db, slug_to_code, run = prepared_db
+        offer = self._get_valid_offer(cat_tree, offers, run_meta)
+        static_root = Path("/tmp/test_ingest_static")
+        static_root.mkdir(exist_ok=True)
+
+        import_offer(
+            db, offer,
+            slug_to_code=slug_to_code,
+            leaf_lookup=build_leaf_lookup(cat_tree),
+            run=run, run_meta=run_meta, static_root=static_root,
+        )
+        db.flush()
+
+        product = db.execute(
+            select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
+        ).scalar_one()
+
+        images = db.execute(
+            select(ProductImage).where(
+                ProductImage.product_id == product.id,
+                ProductImage.spec_value.is_(None),
+            )
+        ).scalars().all()
+        # 测试数据里的 gallery 和 description_images 都有 source_url
+        imgs_with_source = [i for i in images if i.source_url]
+        assert len(imgs_with_source) > 0
+        assert imgs_with_source[0].source_url.startswith("https://")
