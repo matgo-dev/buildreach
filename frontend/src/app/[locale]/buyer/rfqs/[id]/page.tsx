@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -187,6 +187,7 @@ function RfqDetailContent() {
     );
   }
 
+  const canEdit = rfq.status === "DRAFT";
   const canSubmitDraft = rfq.status === "DRAFT";
   const canCancel = rfq.status === "SUBMITTED";
   const canWithdraw = rfq.status === "SUBMITTED";
@@ -222,6 +223,16 @@ function RfqDetailContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => router.push(`/buyer/rfqs/${rfqId}/edit`)}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              {t("edit")}
+            </button>
+          )}
           {canSubmitDraft && (
             <button
               type="button"

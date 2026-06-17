@@ -783,6 +783,7 @@
   },
   "cart": {
     "title": "Inquiry Basket",
+    "viewRfqs": "View Inquiries",
     "empty": "Your inquiry basket is empty",
     "goToMall": "Browse Products",
     "selectAll": "Select All",
