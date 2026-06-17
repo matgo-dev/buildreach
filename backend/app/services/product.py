@@ -513,6 +513,7 @@ async def list_products_public(
     category_codes: list[str] | None = None,
     featured: bool | None = None,
     supply_mode: str | None = None,
+    certification: str | None = None,
     keyword: str | None = None,
     sort: str = "newest",
     page: int = 1,
@@ -542,6 +543,16 @@ async def list_products_public(
     if supply_mode:
         q = q.where(Product.supply_mode == supply_mode)
         count_q = count_q.where(Product.supply_mode == supply_mode)
+    if certification:
+        # JSON 数组包含查询：certifications::jsonb @> :val::jsonb
+        import json
+        from sqlalchemy import cast, bindparam
+        from sqlalchemy.dialects.postgresql import JSONB
+        cert_json = json.dumps([certification])
+        cert_param = bindparam("cert_val", value=cert_json, type_=JSONB)
+        cert_filter = cast(Product.certifications, JSONB).op("@>")(cert_param)
+        q = q.where(cert_filter)
+        count_q = count_q.where(cert_filter)
     if keyword:
         kw = f"%{keyword}%"
         keyword_filter = or_(
@@ -576,6 +587,19 @@ async def list_products_public(
     q = q.offset((page - 1) * size).limit(size)
     rows = (await db.execute(q)).scalars().all()
     return list(rows), total
+
+
+async def list_certification_options(db: AsyncSession) -> list[str]:
+    """聚合所有上架商品的认证值，去重排序，用于筛选下拉。"""
+    from sqlalchemy import text
+    result = await db.execute(text(
+        "SELECT DISTINCT cert "
+        "FROM products, jsonb_array_elements_text(certifications::jsonb) AS cert "
+        "WHERE status = 'ACTIVE' AND deleted_at IS NULL "
+        "AND certifications IS NOT NULL "
+        "ORDER BY cert"
+    ))
+    return [row[0] for row in result]
 
 
 # ── SKU CRUD ─────────────────────────────────────────────

@@ -156,6 +156,13 @@ def _to_public(p) -> dict:
     ).model_dump()
 
 
+@router.get("/certification-options", summary="认证筛选选项")
+async def certification_options(db: AsyncSession = Depends(get_db)):
+    """聚合所有上架商品的认证值，供前端筛选下拉使用。"""
+    options = await product_svc.list_certification_options(db)
+    return success(options)
+
+
 @router.get("", summary="公开商品列表")
 async def list_products(
     request: Request,
@@ -163,6 +170,7 @@ async def list_products(
     category_code: str | None = Query(None),
     featured: bool | None = Query(None),
     supply_mode: str | None = Query(None),
+    certification: str | None = Query(None, description="按认证筛选，如 CE、ISO 9001"),
     keyword: str | None = Query(None),
     sort: str = Query("newest"),
     page: int = Query(1, ge=1),
@@ -189,6 +197,7 @@ async def list_products(
         db, category_code=category_code,
         category_codes=pref_codes,
         featured=featured, supply_mode=supply_mode,
+        certification=certification,
         keyword=keyword, sort=sort, page=page, size=size,
     )
     # 买方行为埋点: SEARCH / VIEW_CATEGORY
