@@ -30,7 +30,7 @@ interface Props {
 /**
  * 筛选栏 — 参考 HTML 设计稿 .filters + .chip-row
  *
- * 行1: 搜索框 | 品类下拉 | 认证下拉 | 交期下拉 | 筛选按钮(最右)
+ * 行1: 搜索框 | 认证下拉 | 筛选按钮(最右)
  * 行2: 品类 chip,点击联动左侧品类导航
  */
 export function FilterBar({
@@ -68,7 +68,7 @@ export function FilterBar({
 
   return (
     <div
-      className="rounded-xl border border-line bg-white shadow-mall-sm overflow-hidden"
+      className="rounded-xl border border-line bg-white shadow-mall-sm"
     >
       {/* 区块标题 */}
       <div className="px-6 pt-5 pb-3">
@@ -89,7 +89,7 @@ export function FilterBar({
         onSubmit={handleSearchSubmit}
         className="px-6 pb-3"
       >
-        <div className="grid grid-cols-[1fr_repeat(2,minmax(130px,0.6fr))_auto] gap-2.5 items-center">
+        <div className="grid grid-cols-[1fr_minmax(130px,0.6fr)_auto] gap-2.5 items-center">
           {/* 搜索框 + 最近搜索下拉 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
@@ -129,16 +129,7 @@ export function FilterBar({
             <option>{t("filterCertAll")}</option>
           </select>
 
-          {/* 交期下拉(占位) */}
-          <select
-            disabled
-            className="h-[42px] rounded-[7px] border border-line-strong bg-white px-3 text-[14px] text-gray-300 outline-none cursor-not-allowed"
-            title={t("comingSoon")}
-          >
-            <option>{t("filterDeliveryAll")}</option>
-          </select>
-
-          {/* 筛选按钮 — 最右 */}
+{/* 筛选按钮 — 最右 */}
           <MallButton type="submit" variant="teal" className="h-[42px] shrink-0">
             {t("filterSearch")}
           </MallButton>
