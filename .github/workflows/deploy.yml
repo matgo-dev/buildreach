@@ -2,7 +2,7 @@ name: Deploy to ECS
 
 # 仅手动触发(代码提交 / 合并 main 不会自动部署)
 # 触发方式:
-#   - GitHub 网页:repo → Actions → "Deploy to ECS" → Run workflow
+#   - GitHub 网页:repo -> Actions -> "Deploy to ECS" -> Run workflow
 #   - 命令行:gh workflow run "Deploy to ECS"
 on:
   workflow_dispatch:
@@ -21,7 +21,12 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/buildlink-dev/buildlink-ea
+
 jobs:
+  # ── 迁移安全检查 ──
   check-migration:
     name: 迁移安全检查
     runs-on: ubuntu-latest
@@ -35,19 +40,98 @@ jobs:
           BASE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
         run: |
-          # commit message 含 [allow-destructive-migration] → 跳过
+          # commit message 含 [allow-destructive-migration] -> 跳过
           if git log -1 --pretty=%B | grep -q '\[allow-destructive-migration\]'; then
             echo "已授权破坏性迁移,跳过检查"
             exit 0
           fi
           bash deploy/check-migration-safety.sh
 
-  deploy:
-    name: 部署到 ECS
+  # ── Job 1: 构建镜像并推送到 ghcr.io ──
+  build:
+    name: 构建并推送镜像
     needs: check-migration
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
+      - uses: actions/checkout@v4
+
+      - name: 计算镜像 Tag
+        id: meta
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+          LATEST_TAG="${BRANCH}-latest"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "镜像 Tag: $IMAGE_TAG / $LATEST_TAG"
+
       # dev 分支自动用 3003/8003，main 用 3001/8001，手动填的优先
+      - name: 解析端口(构建 frontend 需要 API URL)
+        id: ports
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          INPUT_FE="${{ inputs.frontend_host_port }}"
+          INPUT_BE="${{ inputs.backend_host_port }}"
+          if [ "$BRANCH" = "dev" ]; then
+            FE="${INPUT_FE:-3003}"; [ "$INPUT_FE" = "3001" ] && FE="3003"
+            BE="${INPUT_BE:-8003}"; [ "$INPUT_BE" = "8001" ] && BE="8003"
+          else
+            FE="${INPUT_FE:-3001}"
+            BE="${INPUT_BE:-8001}"
+          fi
+          echo "frontend_port=$FE" >> "$GITHUB_OUTPUT"
+          echo "backend_port=$BE" >> "$GITHUB_OUTPUT"
+          echo "Branch=$BRANCH -> frontend=$FE, backend=$BE"
+
+      - name: 登录 ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 构建并推送 backend 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/backend:${{ steps.meta.outputs.image_tag }}
+            ${{ env.IMAGE_PREFIX }}/backend:${{ steps.meta.outputs.latest_tag }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: 构建并推送 frontend 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.image_tag }}
+            ${{ env.IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.latest_tag }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.backend_port }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  # ── Job 2: 部署到 ECS ──
+  deploy:
+    name: 部署到 ECS
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # dev 分支自动用 3003/8003，main 用 3001/8001
       - name: 解析端口
         id: ports
         run: |
@@ -63,7 +147,6 @@ jobs:
           fi
           echo "frontend_port=$FE" >> "$GITHUB_OUTPUT"
           echo "backend_port=$BE" >> "$GITHUB_OUTPUT"
-          echo "📦 Branch=$BRANCH → frontend=$FE, backend=$BE"
 
       - name: SSH 触发 deploy.sh
         uses: appleboy/ssh-action@v1.0.3
@@ -79,9 +162,9 @@ jobs:
             git fetch origin
             git reset --hard origin/${{ github.ref_name }}
             DEPLOY_REF=origin/${{ github.ref_name }} \
+            IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
             BACKEND_HOST_PORT=${{ steps.ports.outputs.backend_port }} \
             FRONTEND_HOST_PORT=${{ steps.ports.outputs.frontend_port }} \
-            DEPLOY_NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.backend_port }} \
             DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }} \
             DEPLOY_IMAGE_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.backend_port }}/static \
               bash deploy/deploy.sh
@@ -90,7 +173,8 @@ jobs:
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ 部署完成 → http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }}"
+            echo "部署完成 -> http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }}"
+            echo "镜像版本: ${{ needs.build.outputs.image_tag }}"
           else
-            echo "❌ 部署失败,登录 ECS 排查:ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}"
+            echo "部署失败,登录 ECS 排查:ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}"
           fi
