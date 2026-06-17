@@ -114,6 +114,7 @@ export function MallHeader() {
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onFocus={() => setSearchFocused(true)}
+              onClick={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
               className="flex-1 h-12 px-4 bg-white text-ink text-[14.5px] outline-none min-w-0"
             />

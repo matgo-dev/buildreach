@@ -97,6 +97,7 @@ export function FilterBar({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => setSearchFocused(true)}
+              onClick={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
               className="h-[42px] w-full rounded-[7px] border border-line-strong bg-white pl-9 pr-3 text-[14.5px] text-ink placeholder-muted outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14]"
             />
