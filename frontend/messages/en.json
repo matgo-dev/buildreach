@@ -892,6 +892,7 @@
     "alreadyAdded": "Added",
     "add": "Add",
     "noSearchResult": "No matching products found",
+    "productNotFound": "Product not found or has been delisted",
     "addItem": "Add Item",
     "editItem": "Edit Item",
     "deleteItem": "Delete",

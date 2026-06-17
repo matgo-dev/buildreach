@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Package, ShoppingCart, Loader2 } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
@@ -92,6 +92,7 @@ export function ProductCard({
 }) {
   const t = useTranslations("mall");
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
+  const router = useRouter();
   const [adding, setAdding] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
@@ -198,7 +199,16 @@ export function ProductCard({
 
         {/* 底部操作 */}
         <div className="grid grid-cols-[1fr_40px] gap-2 pt-1">
-          <MallButton variant="teal" size="md" className="text-[13px]">
+          <MallButton
+            variant="teal"
+            size="md"
+            className="text-[13px]"
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(`/buyer/rfqs/create?product_id=${product.id}`);
+            }}
+          >
             {t("startInquiry")}
           </MallButton>
           <button
