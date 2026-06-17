@@ -133,7 +133,7 @@ export const authApi = {
 
   // ----- 自助资料 -----
 
-  updateProfile: (payload: { name?: string; phone?: string | null }) =>
+  updateProfile: (payload: { name?: string; email?: string; phone?: string | null; phone_region?: string; username?: string | null }) =>
     api.patch<MeBasic>("/api/v1/auth/me/profile", payload),
 
   changeEmail: (new_email: string, current_password: string) =>

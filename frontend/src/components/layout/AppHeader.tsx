@@ -280,16 +280,15 @@ function UserMenu() {
                 工作台
               </Link>
             )}
-            <span
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
               role="menuitem"
-              aria-disabled
-              title="账户设置改版中"
-              className="flex cursor-not-allowed select-none items-center gap-2.5 px-4 py-2 text-sm text-slate-400"
+              className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              <Settings className="h-4 w-4 text-slate-300" />
+              <Settings className="h-4 w-4 text-slate-400" />
               账户设置
-              <span className="ml-auto text-[10px] text-slate-300">改版中</span>
-            </span>
+            </Link>
           </div>
 
           {/* 退出 */}

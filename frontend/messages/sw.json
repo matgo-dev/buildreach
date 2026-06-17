@@ -246,7 +246,7 @@
     "field_lead_time_min_placeholder": "Siku za chini",
     "field_lead_time_max": "Muda wa Juu (siku)",
     "field_lead_time_max_placeholder": "Siku za juu",
-    "field_packing_quantity": "Idadi kwa Sanduku",
+    "field_packing_quantity": "Idadi ya Ufungaji",
     "field_gross_weight_kg": "Uzito wa Jumla (kg)",
     "field_volume_cbm": "Ujazo (CBM)",
     "field_cargo_type": "Aina ya Mizigo",
@@ -254,10 +254,8 @@
     "field_lead_time": "Muda wa Utengenezaji (siku)",
     "field_price_tiers": "Weka Bei za Viwango",
     "field_price_tiers_hint": "Hariri katika mazungumzo",
-    "field_packing_quantity": "Idadi ya Ufungaji",
     "field_gross_weight": "Uzito wa Jumla (kg)",
     "field_volume": "Ujazo (m³)",
-    "field_can_consolidate": "Inaweza Kuunganishwa",
     "field_manufacturer_model": "Modeli",
     "field_sku_name": "Jina la SKU",
     "field_color": "Rangi",
@@ -1012,5 +1010,94 @@
     "supplierApiDebug": "Utatuzi wa API ya Msambazaji",
     "operatorApiDebug": "Utatuzi wa API ya Opereta",
     "adminApiDebug": "Utatuzi wa API ya Msimamizi"
+  },
+  "account": {
+    "title": "Mipangilio ya Akaunti",
+    "backToHome": "Rudi Nyumbani",
+    "sections": {
+      "personal": "Taarifa Binafsi",
+      "contact": "Mawasiliano na Kuingia",
+      "security": "Usalama",
+      "organization": "Shirika"
+    },
+    "fields": {
+      "name": "Jina Kamili",
+      "language": "Lugha",
+      "email": "Barua pepe",
+      "phone": "Simu",
+      "username": "Jina la mtumiaji",
+      "password": "Nenosiri",
+      "accountStatus": "Hali ya Akaunti",
+      "orgName": "Shirika",
+      "orgType": "Aina",
+      "orgRole": "Jukumu",
+      "orgStatus": "Hali",
+      "currentPassword": "Nenosiri la Sasa",
+      "newPassword": "Nenosiri Jipya",
+      "confirmPassword": "Thibitisha Nenosiri"
+    },
+    "actions": {
+      "edit": "Hariri",
+      "cancel": "Ghairi",
+      "save": "Hifadhi",
+      "change": "Badilisha",
+      "changePassword": "Badilisha Nenosiri"
+    },
+    "placeholders": {
+      "notSet": "Haijawekwa",
+      "enterName": "Ingiza jina lako",
+      "enterNewEmail": "Ingiza barua pepe mpya",
+      "enterNewPhone": "Ingiza nambari mpya ya simu",
+      "enterNewUsername": "Ingiza jina jipya la mtumiaji",
+      "enterCurrentPassword": "Ingiza nenosiri la sasa",
+      "passwordMasked": "••••••••",
+      "enterNewPassword": "Ingiza nenosiri jipya",
+      "confirmNewPassword": "Thibitisha nenosiri jipya"
+    },
+    "hints": {
+      "phoneCanBeCleared": "Acha tupu kuondoa nambari ya simu",
+      "usernameCanBeCleared": "Acha tupu kuondoa jina la mtumiaji"
+    },
+    "roles": {
+      "BUYER": "Mnunuzi",
+      "SUPPLIER": "Muuzaji",
+      "OPERATOR": "Opereta",
+      "ADMIN": "Msimamizi"
+    },
+    "orgTypes": {
+      "BUYER_ORG": "Shirika la Mnunuzi",
+      "SUPPLIER_ORG": "Shirika la Muuzaji"
+    },
+    "orgRoles": {
+      "owner": "Mmiliki",
+      "member": "Mwanachama"
+    },
+    "status": {
+      "ACTIVE": "Hai",
+      "DISABLED": "Imezimwa"
+    },
+    "errors": {
+      "nameRequired": "Jina linahitajika",
+      "sameAsCurrentEmail": "Sawa na barua pepe ya sasa",
+      "sameAsCurrentPhone": "Sawa na simu ya sasa",
+      "sameAsCurrentUsername": "Sawa na jina la sasa la mtumiaji",
+      "passwordRequired": "Nenosiri linahitajika",
+      "wrongPassword": "Nenosiri si sahihi",
+      "saveFailed": "Imeshindwa kuhifadhi",
+      "invalidPhone": "Muundo batili wa nambari ya simu",
+      "newPasswordRequired": "Nenosiri jipya linahitajika",
+      "passwordTooShort": "Nenosiri lazima liwe angalau herufi 8",
+      "passwordMismatch": "Maneno ya siri hayalingani"
+    },
+    "success": {
+      "nameSaved": "Jina limesasishwa",
+      "emailSaved": "Barua pepe imesasishwa",
+      "phoneSaved": "Simu imesasishwa",
+      "phoneCleared": "Simu imeondolewa",
+      "usernameSaved": "Jina la mtumiaji limesasishwa",
+      "usernameCleared": "Jina la mtumiaji limeondolewa",
+      "passwordSaved": "Nenosiri limesasishwa",
+      "passwordSavedRedirect": "Nenosiri limesasishwa. Inaelekeza kwenye kuingia…"
+    }
   }
 }

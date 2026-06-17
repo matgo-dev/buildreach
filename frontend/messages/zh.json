@@ -246,7 +246,7 @@
     "field_lead_time_min_placeholder": "最短天数",
     "field_lead_time_max": "最长交期（天）",
     "field_lead_time_max_placeholder": "最长天数",
-    "field_packing_quantity": "每箱装量",
+    "field_packing_quantity": "装箱数",
     "field_gross_weight_kg": "单件毛重（kg）",
     "field_volume_cbm": "单件体积（CBM）",
     "field_cargo_type": "货物类型",
@@ -254,10 +254,8 @@
     "field_lead_time": "交期 (天)",
     "field_price_tiers": "设置阶梯价",
     "field_price_tiers_hint": "弹窗编辑",
-    "field_packing_quantity": "装箱数",
     "field_gross_weight": "毛重 (kg)",
     "field_volume": "体积 (m³)",
-    "field_can_consolidate": "可拼柜",
     "field_manufacturer_model": "厂家型号",
     "field_sku_name": "SKU 名称",
     "field_color": "颜色",
@@ -1012,5 +1010,94 @@
     "supplierApiDebug": "SUPPLIER API 调试",
     "operatorApiDebug": "OPERATOR API 调试",
     "adminApiDebug": "ADMIN API 调试"
+  },
+  "account": {
+    "title": "账户设置",
+    "backToHome": "返回首页",
+    "sections": {
+      "personal": "个人信息",
+      "contact": "联系与登录",
+      "security": "安全设置",
+      "organization": "组织信息"
+    },
+    "fields": {
+      "name": "姓名",
+      "language": "语言",
+      "email": "邮箱",
+      "phone": "手机号",
+      "username": "用户名",
+      "password": "密码",
+      "accountStatus": "账户状态",
+      "orgName": "组织",
+      "orgType": "组织类型",
+      "orgRole": "组织角色",
+      "orgStatus": "组织状态",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码"
+    },
+    "actions": {
+      "edit": "编辑",
+      "cancel": "取消",
+      "save": "保存",
+      "change": "修改",
+      "changePassword": "修改密码"
+    },
+    "placeholders": {
+      "notSet": "未设置",
+      "enterName": "请输入姓名",
+      "enterNewEmail": "请输入新邮箱",
+      "enterNewPhone": "请输入新手机号",
+      "enterNewUsername": "请输入新用户名",
+      "enterCurrentPassword": "请输入当前密码",
+      "passwordMasked": "••••••••",
+      "enterNewPassword": "请输入新密码",
+      "confirmNewPassword": "再次输入新密码"
+    },
+    "hints": {
+      "phoneCanBeCleared": "留空可清除手机号",
+      "usernameCanBeCleared": "留空可清除用户名"
+    },
+    "roles": {
+      "BUYER": "买方",
+      "SUPPLIER": "供应商",
+      "OPERATOR": "运营",
+      "ADMIN": "管理员"
+    },
+    "orgTypes": {
+      "BUYER_ORG": "买方组织",
+      "SUPPLIER_ORG": "供应商组织"
+    },
+    "orgRoles": {
+      "owner": "所有者",
+      "member": "成员"
+    },
+    "status": {
+      "ACTIVE": "正常",
+      "DISABLED": "已禁用"
+    },
+    "errors": {
+      "nameRequired": "姓名不能为空",
+      "sameAsCurrentEmail": "新邮箱与当前一致",
+      "sameAsCurrentPhone": "新手机号与当前一致",
+      "sameAsCurrentUsername": "新用户名与当前一致",
+      "passwordRequired": "请输入当前密码",
+      "wrongPassword": "当前密码错误",
+      "saveFailed": "保存失败",
+      "invalidPhone": "手机号格式不正确",
+      "newPasswordRequired": "请输入新密码",
+      "passwordTooShort": "密码至少 8 位",
+      "passwordMismatch": "两次密码不一致"
+    },
+    "success": {
+      "nameSaved": "姓名已更新",
+      "emailSaved": "邮箱已更新",
+      "phoneSaved": "手机号已更新",
+      "phoneCleared": "手机号已清除",
+      "usernameSaved": "用户名已更新",
+      "usernameCleared": "用户名已清除",
+      "passwordSaved": "密码已更新",
+      "passwordSavedRedirect": "密码已更新，即将跳转登录页…"
+    }
   }
 }
