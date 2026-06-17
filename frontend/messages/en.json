@@ -450,7 +450,7 @@
     "heroHeadline": "Find · Quote · Consolidate · Track",
     "heroDesc": "Customers select products on the site or upload photos/BOM. CS confirms specs, MOQ, CBM, certifications, and trade terms, then sends a formal quotation or PI. No public prices are displayed.",
     "heroCtaStart": "Start Sourcing",
-    "heroCtaQuote": "Request Quote",
+    "heroCtaQuote": "Quote Request",
     "heroCtaContainer": "Container Slots",
     "capTitle": "Platform Capabilities",
     "capSubtitle": "One-stop procurement services for the East African building materials market",
@@ -563,7 +563,15 @@
     "recentSearches": "Recent Searches",
     "clearSearchHistory": "Clear search history",
     "showMore": "Show more",
-    "navMyOrders": "My Orders"
+    "navMyOrders": "Order Tracking",
+    "heroStat1Value": "10+ Categories",
+    "heroStat1Label": "Curated building material catalog",
+    "heroStat2Value": "200+ Factories",
+    "heroStat2Label": "Direct from China manufacturers",
+    "heroStat3Value": "Save 60%",
+    "heroStat3Label": "Shared container freight savings",
+    "heroStat4Value": "45-Day Delivery",
+    "heroStat4Label": "Order to Dar es Salaam"
   },
   "unit": {
     "PCS": "Piece",

@@ -563,7 +563,15 @@
     "recentSearches": "Utafutaji wa Hivi Karibuni",
     "clearSearchHistory": "Futa historia ya utafutaji",
     "showMore": "Onyesha zaidi",
-    "navMyOrders": "Maagizo Yangu"
+    "navMyOrders": "Fuatilia Agizo",
+    "heroStat1Value": "Aina 10+",
+    "heroStat1Label": "Orodha ya vifaa vya ujenzi",
+    "heroStat2Value": "Viwanda 200+",
+    "heroStat2Label": "Moja kwa moja kutoka China",
+    "heroStat3Value": "Okoa 60%",
+    "heroStat3Label": "Akiba ya nauli ya kontena ya pamoja",
+    "heroStat4Value": "Siku 45",
+    "heroStat4Label": "Agizo hadi Dar es Salaam"
   },
   "unit": {
     "PCS": "Kipande",
