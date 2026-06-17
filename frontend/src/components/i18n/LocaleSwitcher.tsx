@@ -67,10 +67,12 @@ export function LocaleSwitcher({ variant = "compact" }: Props) {
     api.patch("/api/v1/auth/me/language", { language_preference: pref }).catch(() => {});
   };
 
-  // 切语言：直接构造完整 URL 导航，100% 保留 query params
+  // 切语言：设 cookie 让 middleware 识别 + 硬跳转
   const switchLocale = useCallback(
     (targetLocale: string, pref: string) => {
       if (targetLocale === locale) return;
+      // 必须在跳转前设置 NEXT_LOCALE cookie，否则 middleware 会按旧偏好重定向回来
+      document.cookie = `NEXT_LOCALE=${targetLocale};path=/;max-age=31536000;SameSite=Lax`;
       fireLanguagePref(pref);
       window.location.href = buildLocalizedUrl(targetLocale);
     },
