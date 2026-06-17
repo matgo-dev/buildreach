@@ -560,7 +560,11 @@
     },
     "viewAllCategories": "View All Categories",
     "myCategories": "My Categories Only",
-    "prefFilterActive": "Showing {count} preferred categories"
+    "prefFilterActive": "Showing {count} preferred categories",
+    "recentViews": "Recently Viewed",
+    "recentSearches": "Recent Searches",
+    "clearSearchHistory": "Clear search history",
+    "showMore": "Show more"
   },
   "unit": {
     "PCS": "Piece",

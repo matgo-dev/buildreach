@@ -1,6 +1,7 @@
 """集中导入所有模型,供 Alembic autogenerate 识别。"""
 from app.db.models.audit_log import AuditLog
 from app.db.models.buyer_browse_preference import BuyerBrowsePreference
+from app.db.models.buyer_event import BuyerEvent
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_org_image import BuyerOrgImage, BuyerOrgImageType
 from app.db.models.buyer_organization import BuyerOrganization
@@ -126,6 +127,8 @@ __all__ = [
     "MessageRole",
     # i18n
     "TranslationGlossary",
+    # buyer behavior tracking
+    "BuyerEvent",
     # cart / rfq
     "Cart",
     "CartItem",

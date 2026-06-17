@@ -560,7 +560,11 @@
     },
     "viewAllCategories": "查看全部品类",
     "myCategories": "仅看我的品类",
-    "prefFilterActive": "已为您筛选 {count} 个经营品类"
+    "prefFilterActive": "已为您筛选 {count} 个经营品类",
+    "recentViews": "最近浏览",
+    "recentSearches": "最近搜索",
+    "clearSearchHistory": "清空搜索历史",
+    "showMore": "显示更多"
   },
   "unit": {
     "PCS": "件",

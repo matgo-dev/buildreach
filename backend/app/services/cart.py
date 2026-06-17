@@ -217,6 +217,20 @@ async def add_item(
         },
         commit=False,
     )
+
+    # 买方行为埋点: ADD_TO_CART
+    from app.services.buyer_event import EventType, record_event
+    await record_event(
+        db,
+        buyer_org_id=org.id,
+        user_id=user.id,
+        event_type=EventType.ADD_TO_CART,
+        resource_type="product",
+        resource_id=product_id,
+        extra={"quantity": float(quantity)},
+        request=request,
+    )
+
     await db.commit()
     return await _reload_cart(db, cart.id)
 

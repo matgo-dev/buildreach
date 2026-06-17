@@ -42,6 +42,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         # 浏览偏好(scope=self)
         Permissions.BUYER_PREF_READ,
         Permissions.BUYER_PREF_WRITE,
+        # 行为记录(最近浏览/搜索历史)
+        Permissions.BUYER_EVENT_READ,
     ],
     "SUPPLIER": [
         *_AUTH_BASE,
@@ -88,6 +90,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.CREDIT_READ,
         Permissions.CREDIT_WRITE,
         Permissions.CREDIT_RECOMPUTE,
+        # 运营分析(热门商品/转化漏斗)
+        Permissions.ANALYTICS_READ,
     ],
     "ADMIN": [
         *_AUTH_BASE,

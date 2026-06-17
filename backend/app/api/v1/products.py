@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -27,7 +27,37 @@ from app.schemas.product import (
 )
 from app.services import product as product_svc
 
+from app.services.buyer_event import EventType, record_event_background
+
 router = APIRouter(prefix="/products", tags=["products"])
+
+
+async def _resolve_buyer_identity(
+    authorization: str | None, db: AsyncSession,
+) -> tuple[int | None, int | None]:
+    """从 token 解析买方身份，返回 (user_id, buyer_org_id)。非买方或失败返回 (None, None)。"""
+    if not authorization:
+        return None, None
+    try:
+        from app.core.security import decode_token
+        from sqlalchemy import select
+        from app.db.models.buyer_member import BuyerMember
+        token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None, None
+        user_id = int(user_id)
+        # 通过 buyer_members 查买方组织
+        row = await db.execute(
+            select(BuyerMember.buyer_org_id).where(BuyerMember.user_id == user_id).limit(1)
+        )
+        buyer_org_id = row.scalar_one_or_none()
+        if not buyer_org_id:
+            return None, None
+        return user_id, buyer_org_id
+    except Exception:
+        return None, None
 
 
 def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
@@ -128,6 +158,8 @@ def _to_public(p) -> dict:
 
 @router.get("", summary="公开商品列表")
 async def list_products(
+    request: Request,
+    background_tasks: BackgroundTasks,
     category_code: str | None = Query(None),
     featured: bool | None = Query(None),
     supply_mode: str | None = Query(None),
@@ -159,6 +191,22 @@ async def list_products(
         featured=featured, supply_mode=supply_mode,
         keyword=keyword, sort=sort, page=page, size=size,
     )
+    # 买方行为埋点: SEARCH / VIEW_CATEGORY
+    buyer_uid, buyer_org = await _resolve_buyer_identity(authorization, db)
+    if buyer_uid and buyer_org:
+        if keyword:
+            background_tasks.add_task(
+                record_event_background, buyer_org, buyer_uid,
+                EventType.SEARCH, None, None,
+                {"keyword": keyword, "results": total}, request,
+            )
+        elif category_code:
+            background_tasks.add_task(
+                record_event_background, buyer_org, buyer_uid,
+                EventType.VIEW_CATEGORY, "category", None,
+                {"category_code": category_code}, request,
+            )
+
     return success({
         "items": [_to_public(p) for p in items],
         "total": total,
@@ -171,6 +219,9 @@ async def list_products(
 @router.get("/{product_id}", summary="公开商品详情")
 async def get_product(
     product_id: int,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    authorization: str | None = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
     p = await product_svc.get_product(db, product_id)
@@ -209,4 +260,14 @@ async def get_product(
         attribute_groups=_build_attribute_groups(spu_attrs, alive_imgs, locale),
         images=all_images,
     ).model_dump()
+
+    # 买方行为埋点: VIEW_PRODUCT
+    buyer_uid, buyer_org = await _resolve_buyer_identity(authorization, db)
+    if buyer_uid and buyer_org:
+        background_tasks.add_task(
+            record_event_background, buyer_org, buyer_uid,
+            EventType.VIEW_PRODUCT, "product", product_id,
+            {}, request,
+        )
+
     return success(data)
