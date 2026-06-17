@@ -152,15 +152,19 @@ async def apply_i18n_edit(
 # 后台翻译处理(提交后调用)
 # ---------------------------------------------------------------------------
 
-async def process_pending_translations(obj: object) -> None:
+async def process_pending_translations(obj: object) -> dict[str, int]:
     """处理单个对象的所有 pending/failed 翻译。
 
     由后台任务或 CLI 在独立 session 中调用,事务外执行翻译 API。
     字段状态 CAS:仅 pending/failed 才翻,避免覆盖并发手工编辑。
+
+    返回 {"translated": N, "skipped": N, "failed": N} 统计。
     """
+    stats: dict[str, int] = {"translated": 0, "skipped": 0, "failed": 0}
+
     source_lang = getattr(obj, "source_lang", None)
     if not source_lang:
-        return
+        return stats
 
     meta = _get_meta(obj)
     changed = False
@@ -191,19 +195,32 @@ async def process_pending_translations(obj: object) -> None:
         try:
             result = await translate_text(source_value, source_lang, locale)
             if result["status"] == "skipped":
-                # provider=none,保持 pending 不改
+                # 无翻译 provider,保持 pending 不改
+                stats["skipped"] += 1
+                if stats["skipped"] == 1:
+                    logger.warning(
+                        "翻译跳过: 无翻译 provider 配置,字段 %s %s→%s 保持 pending",
+                        field, source_lang, locale,
+                    )
+                else:
+                    logger.debug(
+                        "翻译跳过: %s %s→%s (无 provider)", field, source_lang, locale,
+                    )
                 continue
             setattr(obj, f"{field}_{locale}", result["translated"])
             meta[meta_key] = "auto" if result["status"] != "mock" else "mock"
             changed = True
+            stats["translated"] += 1
         except Exception:
             logger.warning("翻译失败: %s, %s→%s", field, source_lang, locale, exc_info=True)
             meta[meta_key] = "failed"
             changed = True
+            stats["failed"] += 1
 
     if changed:
         _set_meta(obj, meta)
     _clear_pending_at_if_done(obj)
+    return stats
 
 
 # ---------------------------------------------------------------------------
