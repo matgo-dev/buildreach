@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 
 import { getRecentSearches, clearRecentSearches } from "@/lib/api/buyerEvents";
@@ -16,16 +16,13 @@ interface Props {
   onClose: () => void;
 }
 
-const INITIAL_SHOW = 5;
-
 /**
  * 最近搜索下拉面板 — 搜索框聚焦时弹出。
- * 无搜索记录时不渲染。
+ * 无搜索记录时不渲染。直接显示最多 10 条。
  */
 export function RecentSearches({ visible, onSelect, onClose }: Props) {
   const t = useTranslations("mall");
   const panelRef = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState(false);
 
   const { data: keywords, mutate } = useSWR<string[]>(
     visible ? "buyer-recent-searches" : null,
@@ -57,9 +54,6 @@ export function RecentSearches({ visible, onSelect, onClose }: Props) {
 
   if (!visible || !keywords || keywords.length === 0) return null;
 
-  const displayKeywords = expanded ? keywords : keywords.slice(0, INITIAL_SHOW);
-  const hasMore = keywords.length > INITIAL_SHOW;
-
   return (
     <div
       ref={panelRef}
@@ -82,7 +76,7 @@ export function RecentSearches({ visible, onSelect, onClose }: Props) {
 
       {/* 关键词列表 */}
       <div className="py-1">
-        {displayKeywords.map((kw) => (
+        {keywords.map((kw) => (
           <button
             key={kw}
             type="button"
@@ -96,26 +90,6 @@ export function RecentSearches({ visible, onSelect, onClose }: Props) {
           </button>
         ))}
       </div>
-
-      {/* 展开/收起 */}
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          className="flex w-full items-center justify-center gap-1 border-t border-gray-100 py-2 text-xs text-gray-400 hover:text-gray-600"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="h-3 w-3" />
-            </>
-          ) : (
-            <>
-              {t("showMore")}
-              <ChevronDown className="h-3 w-3" />
-            </>
-          )}
-        </button>
-      )}
     </div>
   );
 }
