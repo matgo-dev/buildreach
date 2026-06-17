@@ -53,6 +53,8 @@ interface DraftData {
   contact_phone: string;
   contact_email: string;
   requested_delivery_place: string;
+  destination_port: string;
+  preferred_trade_term: string;
   expected_delivery_date: string;
   target_currency: string;
   certifications: string[];
@@ -66,6 +68,8 @@ function emptyDraft(): DraftData {
     contact_phone: "",
     contact_email: "",
     requested_delivery_place: "",
+    destination_port: "",
+    preferred_trade_term: "",
     expected_delivery_date: "",
     target_currency: "USD",
     certifications: [],
@@ -657,6 +661,8 @@ function RfqCreateContent() {
           contact_phone: draft.contact_phone || undefined,
           contact_email: draft.contact_email || undefined,
           requested_delivery_place: draft.requested_delivery_place || undefined,
+          destination_port: draft.destination_port || undefined,
+          preferred_trade_term: draft.preferred_trade_term || undefined,
           expected_delivery_date: draft.expected_delivery_date
             ? `${draft.expected_delivery_date}T00:00:00Z`
             : undefined,
@@ -947,6 +953,46 @@ function RfqCreateContent() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("destinationPort")}
+            </label>
+            <input
+              type="text"
+              list="destination-port-options"
+              value={draft.destination_port}
+              onChange={(e) => updateDraft("destination_port", e.target.value)}
+              placeholder={t("destinationPortPlaceholder")}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+            />
+            <datalist id="destination-port-options">
+              <option value="Dar es Salaam Port" />
+              <option value="Mombasa Port" />
+              <option value="Zanzibar Port" />
+              <option value="Tanga Port" />
+            </datalist>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("preferredTradeTerm")}
+            </label>
+            <input
+              type="text"
+              list="trade-term-options"
+              value={draft.preferred_trade_term}
+              onChange={(e) => updateDraft("preferred_trade_term", e.target.value)}
+              placeholder={t("preferredTradeTermPlaceholder")}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+            />
+            <datalist id="trade-term-options">
+              <option value="FOB" />
+              <option value="CFR" />
+              <option value="CIF" />
+              <option value="DAP" />
+              <option value="DDP" />
+              <option value="EXW" />
+            </datalist>
           </div>
         </div>
       </div>
