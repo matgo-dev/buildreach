@@ -895,6 +895,7 @@
     "addWithVariant": "添加到询价",
     "noVariants": "该商品无可选变体",
     "collapse": "收起",
+    "selectVariant": "选择变体",
     "unit": "单位",
     "noSearchResult": "未找到匹配商品",
     "productNotFound": "商品不存在或已下架",
