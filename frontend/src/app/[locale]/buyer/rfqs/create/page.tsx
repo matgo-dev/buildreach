@@ -480,6 +480,15 @@ function RfqCreateContent() {
       .filter((n) => !isNaN(n));
   }, [searchParams]);
 
+  // 从 URL product_id 参数自动添加商品
+  const productIdParam = useMemo(() => {
+    const raw = searchParams.get("product_id");
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    return isNaN(n) ? null : n;
+  }, [searchParams]);
+  const productIdLoadedRef = useRef(false);
+
   // 加载询价篮数据
   const [cartItems, setCartItems] = useState<CartItemPublic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -591,6 +600,36 @@ function RfqCreateContent() {
     },
     [],
   );
+
+  // 从 URL product_id 自动添加商品到手动列表
+  useEffect(() => {
+    if (!productIdParam || productIdLoadedRef.current) return;
+    productIdLoadedRef.current = true;
+
+    getProduct(productIdParam)
+      .then((detail) => {
+        const itemKey = makeItemKey(productIdParam, []);
+        const alreadyInCart = cartItems.some(
+          (i) => makeItemKey(i.product_id, i.selected_variants) === itemKey,
+        );
+        const alreadyManual = manualItems.some(
+          (i) => makeItemKey(i.product_id, i.selected_variants) === itemKey,
+        );
+        if (alreadyInCart || alreadyManual) return;
+
+        handleAddManualItem({
+          product_id: detail.id,
+          selected_variants: [],
+          product_name: detail.name,
+          variant_display: "\u2014",
+          unit: detail.unit || "PCS",
+          quantity: 1,
+        });
+      })
+      .catch(() => {
+        toast.error(t("productNotFound"));
+      });
+  }, [productIdParam, cartItems, manualItems, handleAddManualItem, toast, t]);
 
   const handleRemoveManualItem = useCallback((idx: number) => {
     setDraft((prev) => ({
