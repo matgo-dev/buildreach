@@ -714,6 +714,8 @@ def import_offer(
         detail_desc_en = ""
     if _dedup("brand", brand_en, brand_zh):
         brand_en = ""
+    if _dedup("origin", origin_en, origin_zh):
+        origin_en = ""
 
     # 阶梯参考价:offer.json 里的 price_tiers 数组
     raw_price_tiers = data.get("price_tiers") or []
@@ -751,24 +753,22 @@ def import_offer(
 
     if existing:
         product = existing
-        product.name_en = name_en or product.name_en
+        # 去重字段必须用 None 覆盖旧值（空字符串是去重结果，不能用 or 跳过）
+        product.name_en = name_en if (name_en or "name" in _deduped_fields) else product.name_en
         product.name_zh = name_zh or product.name_zh
-        product.description_en = desc_en or product.description_en
+        product.description_en = desc_en if (desc_en or "description" in _deduped_fields) else product.description_en
         product.description_zh = desc_zh or product.description_zh
-        product.selling_points_en = sp_en or product.selling_points_en
+        product.selling_points_en = sp_en if (sp_en or "selling_points" in _deduped_fields) else product.selling_points_en
         product.selling_points_zh = sp_zh or product.selling_points_zh
         if certs:
             product.certifications = certs
-        if brand_en:
-            product.brand_en = brand_en
+        product.brand_en = brand_en if (brand_en or "brand" in _deduped_fields) else product.brand_en
         if brand_zh:
             product.brand_zh = brand_zh
-        if origin_en:
-            product.origin_en = origin_en
+        product.origin_en = origin_en if (origin_en or "origin" in _deduped_fields) else product.origin_en
         if origin_zh:
             product.origin_zh = origin_zh
-        if detail_desc_en:
-            product.detail_description_en = detail_desc_en
+        product.detail_description_en = detail_desc_en if (detail_desc_en or "detail_description" in _deduped_fields) else product.detail_description_en
         if detail_desc_zh:
             product.detail_description_zh = detail_desc_zh
         product.category_code = category_code
