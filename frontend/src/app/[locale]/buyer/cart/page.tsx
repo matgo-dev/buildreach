@@ -214,11 +214,19 @@ function CartContent() {
           {items.map((item) => {
             const unavailable = !item.is_purchasable;
             const checked = checkedIds.has(item.item_id);
+            const detailHref = `/${locale}/mall/products/${item.product_id}`;
+            // 交期文案
+            const leadTime =
+              item.lead_time_min && item.lead_time_max
+                ? `${item.lead_time_min}-${item.lead_time_max} ${t("days")}`
+                : item.lead_time_min
+                  ? `${item.lead_time_min}+ ${t("days")}`
+                  : null;
 
             return (
               <div
                 key={item.item_id}
-                className={`flex items-start gap-3 px-5 py-4 transition-colors ${
+                className={`flex items-start gap-4 px-5 py-4 transition-colors ${
                   unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-blue-50/30"
                 }`}
               >
@@ -228,11 +236,11 @@ function CartContent() {
                   checked={checked}
                   disabled={unavailable}
                   onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                  className="mt-2 h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
+                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
                 />
 
-                {/* 商品图片 */}
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                {/* 商品图片 — 可点击跳转详情 */}
+                <a href={detailHref} className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.main_image} alt="" className="h-full w-full object-contain" />
@@ -241,26 +249,50 @@ function CartContent() {
                       <PackageOpen className="h-7 w-7" />
                     </div>
                   )}
-                </div>
+                </a>
 
                 {/* 商品详情 */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-800 line-clamp-2">
+                  {/* 商品名 — 可点击跳转详情 */}
+                  <a href={detailHref} className="text-sm font-semibold text-[#00505a] hover:underline line-clamp-2">
                     {item.product_name ?? "—"}
-                  </p>
-                  {item.variant_display && (
-                    <p className="mt-1 text-xs text-gray-500">{item.variant_display}</p>
+                  </a>
+                  {/* 短描述 */}
+                  {item.description && (
+                    <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{item.description}</p>
                   )}
-                  {/* MOQ + 单位 */}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {/* 规格 */}
+                  {item.variant_display && (
+                    <p className="mt-1 text-xs text-gray-600">
+                      <span className="text-gray-400">{t("specs")}:</span> {item.variant_display}
+                    </p>
+                  )}
+                  {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {item.moq != null && item.moq > 0 && (
                       <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
-                        MOQ: {item.moq}{item.unit ? ` ${item.unit}` : ""}
+                        MOQ: {item.moq} {item.unit ?? ""}
                       </span>
                     )}
-                    {item.unit && (
+                    {item.brand && (
+                      <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700">
+                        {item.brand}
+                      </span>
+                    )}
+                    {item.origin && (
                       <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
-                        {t("unitLabel")}: {item.unit}
+                        📍 {item.origin}
+                      </span>
+                    )}
+                    {leadTime && (
+                      <span className="inline-flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[11px] text-green-700">
+                        🕐 {leadTime}
+                      </span>
+                    )}
+                    {item.certifications.length > 0 && (
+                      <span className="inline-flex items-center rounded bg-teal-50 px-1.5 py-0.5 text-[11px] text-teal-700">
+                        ✓ {item.certifications.slice(0, 2).join(", ")}
+                        {item.certifications.length > 2 ? ` +${item.certifications.length - 2}` : ""}
                       </span>
                     )}
                   </div>
@@ -274,7 +306,7 @@ function CartContent() {
                 {/* 数量 */}
                 <div className="w-20 shrink-0 text-center pt-1">
                   {!unavailable ? (
-                    <span className="text-base font-bold text-gray-800">{item.quantity}</span>
+                    <span className="text-lg font-bold text-gray-800">{item.quantity}</span>
                   ) : (
                     <span className="text-sm text-gray-400">—</span>
                   )}

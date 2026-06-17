@@ -808,7 +808,9 @@
     "productInfo": "Taarifa za Bidhaa",
     "quantity": "Idadi",
     "comingSoon": "Inakuja hivi karibuni",
-    "unitLabel": "Kipimo"
+    "unitLabel": "Kipimo",
+    "specs": "Vipimo",
+    "days": "siku"
   },
   "rfq": {
     "title": "Maombi Yangu",

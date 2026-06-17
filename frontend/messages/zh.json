@@ -808,7 +808,9 @@
     "productInfo": "商品信息",
     "quantity": "数量",
     "comingSoon": "功能完善中",
-    "unitLabel": "单位"
+    "unitLabel": "单位",
+    "specs": "规格",
+    "days": "天"
   },
   "rfq": {
     "title": "询价管理",
