@@ -8,7 +8,7 @@ import useSWR from "swr";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
-import { listProducts, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
+import { listProducts, listCertificationOptions, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
 import { ProductGrid } from "@/components/mall/ProductGrid";
 import { FilterBar } from "@/components/mall/FilterBar";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
@@ -36,6 +36,13 @@ function MallContent() {
     { revalidateOnFocus: false },
   );
 
+  // 认证筛选选项：聚合所有上架商品的认证值
+  const { data: certOptions } = useSWR<string[]>(
+    "product-certification-options",
+    () => listCertificationOptions(),
+    { revalidateOnFocus: false },
+  );
+
   // 品类侧栏展开状态：用户点"查看全部品类"后展开，不落 URL
   const [showAllCategories, setShowAllCategories] = useState(false);
 
@@ -45,6 +52,7 @@ function MallContent() {
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
   const urlSupplyMode = searchParams.get("supply_mode") || "";
+  const urlCertification = searchParams.get("certification") || "";
   const urlPage = Number(searchParams.get("page")) || 1;
 
   // 更新 URL 参数的统一方法
@@ -72,6 +80,7 @@ function MallContent() {
       sort: urlSort as ProductListParams["sort"],
       featured: urlFeatured || undefined,
       supply_mode: urlSupplyMode || undefined,
+      certification: urlCertification || undefined,
       page: urlPage,
       size: PAGE_SIZE,
       // 有偏好 + 未展开全部 + 未指定具体品类 → 让后端按偏好过滤（不传 all_categories）
@@ -80,7 +89,7 @@ function MallContent() {
         ? { all_categories: showAllCategories || undefined }
         : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, urlPage, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -102,7 +111,7 @@ function MallContent() {
   const total = data?.total ?? 0;
   const pages = data?.pages ?? 0;
 
-  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlSort !== "newest");
+  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlCertification || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };
@@ -138,6 +147,8 @@ function MallContent() {
             sort={urlSort}
             featured={urlFeatured}
             supplyMode={urlSupplyMode}
+            certification={urlCertification}
+            certificationOptions={certOptions ?? []}
             total={total}
             activeCategoryCode={urlCat}
             categoryTree={categoryTree}
@@ -145,6 +156,7 @@ function MallContent() {
             onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
             onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
             onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
+            onCertificationChange={(cert) => updateParams({ certification: cert || undefined })}
             onCategoryChange={(code) => updateParams({ cat: code || undefined })}
             onClearAll={clearAll}
             hasActiveFilters={hasActiveFilters}
