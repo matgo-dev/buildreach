@@ -4,7 +4,8 @@
     "submit": "提交",
     "cancel": "取消",
     "confirm": "确定",
-    "back_to_home": "返回首页"
+    "back_to_home": "返回首页",
+    "selectAll": "全选"
   },
   "brand": {
     "name": "东非建材采购平台",
@@ -463,7 +464,7 @@
     "ctaRegister": "立即注册",
     "ctaLearnMore": "了解更多",
     "capItem1Title": "建材采购商城",
-    "capItem1Desc": "9 大品类、200+ 中国优质建材供应商，一站式选品询价",
+    "capItem1Desc": "10+ 大品类、200+ 中国优质建材供应商，一站式选品询价",
     "capItem2Title": "供应商信用体系",
     "capItem2Desc": "严格审核准入，T1/T2/T3 分级管理，确保供货质量",
     "capItem3Title": "进口合规支持",
@@ -806,7 +807,8 @@
     "deletePartialFail": "{failed} 件删除失败，已刷新列表",
     "productInfo": "商品信息",
     "quantity": "数量",
-    "comingSoon": "功能完善中"
+    "comingSoon": "功能完善中",
+    "unitLabel": "单位"
   },
   "rfq": {
     "title": "询价管理",
@@ -1116,7 +1118,7 @@
     "ctaRfq": "立即询价",
     "stepsTitle": "7 步完成跨境采购",
     "step1Title": "第 1 步：浏览选品 Browse & Select",
-    "step1Desc": "在商城中浏览 9 大建材品类，按规格、认证、供货方式筛选，找到符合需求的产品后加入询价清单。",
+    "step1Desc": "在商城中浏览 10+ 建材品类，按规格、认证、供货方式筛选，找到符合需求的产品后加入询价清单。",
     "step1Detail": "支持关键词搜索、品类导航、参数筛选。看不到想要的规格？也可以直接提交自定义需求。",
     "step2Title": "第 2 步：提交询价 Submit RFQ",
     "step2Desc": "在线填写询价单：选择商品、填写数量和目的港。也可以上传图片、BOM 清单或文字描述来说明需求。",

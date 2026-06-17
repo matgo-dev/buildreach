@@ -193,130 +193,151 @@ function CartContent() {
         </h1>
       </div>
 
-      {/* 表格 */}
+      {/* 商品列表 — 卡片式 */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-slate-50 text-left text-xs text-gray-500">
-              <th className="w-10 px-4 py-3">
+        {/* 表头 */}
+        <div className="flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+          <input
+            type="checkbox"
+            checked={allChecked}
+            onChange={handleToggleAll}
+            disabled={purchasableItems.length === 0}
+            className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+          />
+          <span className="flex-1 font-medium">{t("productInfo")}</span>
+          <span className="w-20 text-center font-medium">{t("quantity")}</span>
+          <span className="w-10" />
+        </div>
+
+        {/* 行项 */}
+        <div className="divide-y divide-gray-100">
+          {items.map((item) => {
+            const unavailable = !item.is_purchasable;
+            const checked = checkedIds.has(item.item_id);
+
+            return (
+              <div
+                key={item.item_id}
+                className={`flex items-start gap-3 px-5 py-4 transition-colors ${
+                  unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-blue-50/30"
+                }`}
+              >
+                {/* 勾选 */}
                 <input
                   type="checkbox"
-                  checked={allChecked}
-                  onChange={handleToggleAll}
-                  disabled={purchasableItems.length === 0}
-                  className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+                  checked={checked}
+                  disabled={unavailable}
+                  onChange={(e) => handleCheck(item.item_id, e.target.checked)}
+                  className="mt-2 h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
                 />
-              </th>
-              <th className="px-4 py-3 font-medium">{t("productInfo")}</th>
-              <th className="px-4 py-3 font-medium">{t("quantity")}</th>
-              <th className="w-14 px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const unavailable = !item.is_purchasable;
-              const checked = checkedIds.has(item.item_id);
-              const specParts = item.variant_display ?? "\u2014";
 
-              return (
-                <tr
-                  key={item.item_id}
-                  className={`border-t border-gray-100 transition-colors ${
-                    unavailable ? "opacity-50" : "even:bg-slate-50/50 hover:bg-blue-50/50"
-                  }`}
-                >
-                  {/* 勾选 */}
-                  <td className="px-4 py-3 align-top">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={unavailable}
-                      onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
-                    />
-                  </td>
-
-                  {/* 商品信息：图片 + 名称 + 规格 */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-start gap-3">
-                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-                        {item.main_image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.main_image} alt="" className="h-full w-full object-contain" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-gray-300">
-                            <PackageOpen className="h-6 w-6" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-800">
-                          {item.product_name ?? "—"}
-                        </p>
-                        <p className="mt-0.5 truncate text-xs text-gray-500">{specParts}</p>
-                        {unavailable && item.unavailable_reason && (
-                          <span className="mt-1 inline-block rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
-                            {t(`unavailable_${item.unavailable_reason}` as Parameters<typeof t>[0])}
-                          </span>
-                        )}
-                      </div>
+                {/* 商品图片 */}
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                  {item.main_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.main_image} alt="" className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-gray-300">
+                      <PackageOpen className="h-7 w-7" />
                     </div>
-                  </td>
+                  )}
+                </div>
 
-                  {/* 数量（只读展示） */}
-                  <td className="px-4 py-3 align-top">
-                    {!unavailable ? (
-                      <span className="text-sm font-semibold text-gray-700">{item.quantity}</span>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
+                {/* 商品详情 */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-800 line-clamp-2">
+                    {item.product_name ?? "—"}
+                  </p>
+                  {item.variant_display && (
+                    <p className="mt-1 text-xs text-gray-500">{item.variant_display}</p>
+                  )}
+                  {/* MOQ + 单位 */}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    {item.moq != null && item.moq > 0 && (
+                      <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                        MOQ: {item.moq}{item.unit ? ` ${item.unit}` : ""}
+                      </span>
                     )}
-                  </td>
+                    {item.unit && (
+                      <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+                        {t("unitLabel")}: {item.unit}
+                      </span>
+                    )}
+                  </div>
+                  {unavailable && item.unavailable_reason && (
+                    <span className="mt-1.5 inline-block rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
+                      {t(`unavailable_${item.unavailable_reason}` as Parameters<typeof t>[0])}
+                    </span>
+                  )}
+                </div>
 
-                  {/* 删除 */}
-                  <td className="px-4 py-3 align-top text-center">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget(item.item_id)}
-                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                {/* 数量 */}
+                <div className="w-20 shrink-0 text-center pt-1">
+                  {!unavailable ? (
+                    <span className="text-base font-bold text-gray-800">{item.quantity}</span>
+                  ) : (
+                    <span className="text-sm text-gray-400">—</span>
+                  )}
+                  {!unavailable && item.unit && (
+                    <span className="block text-[11px] text-gray-400">{item.unit}</span>
+                  )}
+                </div>
+
+                {/* 删除 */}
+                <div className="w-10 shrink-0 text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(item.item_id)}
+                    className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* 已选提示 + 批量删除 */}
-      {checkedIds.size > 0 && (
-        <div className="flex items-center gap-4 text-sm text-gray-500">
-          <span>{t("selected", { count: checkedIds.size })}</span>
+      {/* 底部操作栏 — 阿里风格：左侧全选+批量操作，右侧统计+提交 */}
+      <div className="sticky bottom-0 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
+        {/* 左：全选 + 批量删除 */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={allChecked}
+            onChange={handleToggleAll}
+            disabled={purchasableItems.length === 0}
+            className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+          />
+          <span className="text-sm text-gray-700">{tCommon("selectAll")}</span>
+        </label>
+        {checkedIds.size > 0 && (
           <button
             type="button"
             onClick={() => setBatchDeleteOpen(true)}
-            className="text-red-500 transition-colors hover:text-red-700"
+            className="text-sm text-red-500 transition-colors hover:text-red-700"
           >
             {t("deleteSelected")}
           </button>
-        </div>
-      )}
+        )}
 
-      {/* 底部操作栏 */}
-      <div className="sticky bottom-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-6 py-4 shadow-sm">
-        <span className="text-sm text-gray-600">
-          {t("selected", { count: checkedIds.size })}
-        </span>
-        <button
-          type="button"
-          disabled={checkedIds.size === 0}
-          onClick={handleSubmitInquiry}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#003d45] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-        >
-          {t("submitInquiry")}
-          <ArrowRight className="h-4 w-4" />
-        </button>
+        {/* 右：统计 + 提交 */}
+        <div className="ml-auto flex items-center gap-4">
+          <span className="text-sm text-gray-500">
+            {t("selected", { count: checkedIds.size })}
+            <span className="text-gray-400"> / {items.length}</span>
+          </span>
+          <button
+            type="button"
+            disabled={checkedIds.size === 0}
+            onClick={handleSubmitInquiry}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#e3a615] px-7 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            {t("submitInquiry")}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* 删除单项确认框 */}

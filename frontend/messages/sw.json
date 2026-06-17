@@ -4,7 +4,8 @@
     "submit": "Wasilisha",
     "cancel": "Ghairi",
     "confirm": "Thibitisha",
-    "back_to_home": "Rudi Nyumbani"
+    "back_to_home": "Rudi Nyumbani",
+    "selectAll": "Chagua Zote"
   },
   "brand": {
     "name": "Jukwaa la Vifaa vya Ujenzi",
@@ -806,7 +807,8 @@
     "deletePartialFail": "Vipande {failed} havikuweza kuondolewa, orodha imesasishwa",
     "productInfo": "Taarifa za Bidhaa",
     "quantity": "Idadi",
-    "comingSoon": "Inakuja hivi karibuni"
+    "comingSoon": "Inakuja hivi karibuni",
+    "unitLabel": "Kipimo"
   },
   "rfq": {
     "title": "Maombi Yangu",
@@ -1116,7 +1118,7 @@
     "ctaRfq": "Omba Bei Sasa",
     "stepsTitle": "Hatua 7 za Ununuzi wa Kimataifa",
     "step1Title": "Hatua 1: Tembelea na Chagua",
-    "step1Desc": "Tazama aina 9 kuu za vifaa vya ujenzi. Chuja kwa vipimo, vyeti, na njia ya usambazaji. Ongeza bidhaa kwenye orodha yako ya maombi.",
+    "step1Desc": "Tazama aina 10+ za vifaa vya ujenzi. Chuja kwa vipimo, vyeti, na njia ya usambazaji. Ongeza bidhaa kwenye orodha yako ya maombi.",
     "step1Detail": "Tumia utafutaji wa maneno, urambazaji wa kategoria, au vichujio vya vigezo. Hupati unachohitaji? Wasilisha mahitaji maalum.",
     "step2Title": "Hatua 2: Wasilisha Ombi la Bei (RFQ)",
     "step2Desc": "Jaza fomu ya ombi la bei mtandaoni: chagua bidhaa, eleza idadi na bandari ya marudio. Unaweza pia kupakia picha, orodha ya BOM au maelezo.",

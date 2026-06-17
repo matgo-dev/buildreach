@@ -1,6 +1,6 @@
 "use client";
 import { Link, usePathname } from "@/i18n/navigation";
-import { Lock } from "lucide-react";
+import { Home, Lock } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 
 import { useAuthStore } from "@/stores/authStore";
@@ -51,7 +51,16 @@ export function AppSidebar() {
 
   return (
     <aside className={`flex h-full w-60 shrink-0 flex-col overflow-y-auto ${isBuyer ? "bg-teal-950" : "bg-[#0A1929]"}`}>
-      <UserCard isBuyer={isBuyer} />
+      {/* 首页入口 */}
+      <div className="border-b border-white/10 px-3 py-2">
+        <Link
+          href="/"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+        >
+          <Home className="h-4 w-4" />
+          <span>{t("navHome")}</span>
+        </Link>
+      </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 text-sm">
         {currentWs && (
           <WorkspaceGroups
@@ -86,42 +95,6 @@ export function AppSidebar() {
   );
 }
 
-/** 顶部用户信息卡 */
-function UserCard({ isBuyer }: { isBuyer: boolean }) {
-  const user = useAuthStore((s) => s.user);
-  const t = useTranslations("mall");
-  if (!user) return null;
-
-  const displayName = user.username || user.email || t("headerMyAccount");
-  const initial = (displayName[0] ?? "U").toUpperCase();
-  const primaryRole = user.roles[0] as RoleCode | undefined;
-  const meta = primaryRole ? ROLE_BADGE[primaryRole] : null;
-
-  return (
-    <div className="border-b border-white/10 p-5">
-      <div className="flex items-center gap-3">
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium text-white ${isBuyer ? "bg-teal-800" : "bg-[#0F4C81]"}`}>
-          {initial}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white">{displayName}</p>
-          {meta && (
-            <span className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-xs ${isBuyer ? meta.clsBuyer : meta.cls}`}>
-              {t(meta.labelKey)}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const ROLE_BADGE: Record<RoleCode, { labelKey: string; cls: string; clsBuyer: string }> = {
-  BUYER:    { labelKey: "roleBuyer",    cls: "bg-[#FF6B35]/20 text-[#FF6B35]",   clsBuyer: "bg-gold/20 text-gold" },
-  SUPPLIER: { labelKey: "roleSupplier", cls: "bg-[#10B981]/20 text-[#10B981]",   clsBuyer: "bg-[#10B981]/20 text-[#10B981]" },
-  OPERATOR: { labelKey: "roleOperator", cls: "bg-sky-500/20 text-sky-400",       clsBuyer: "bg-sky-500/20 text-sky-400" },
-  ADMIN:    { labelKey: "roleAdmin",    cls: "bg-yellow-500/20 text-yellow-400", clsBuyer: "bg-yellow-500/20 text-yellow-400" },
-};
 
 function WorkspaceGroups({
   workspace,
