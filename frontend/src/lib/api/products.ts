@@ -37,6 +37,7 @@ export interface ProductListParams {
   keyword?: string;
   featured?: boolean;
   supply_mode?: string;
+  certification?: string;
   sort?: "newest";
   page?: number;
   size?: number;
@@ -164,12 +165,17 @@ export async function listProducts(
   if (params.keyword) qs.set("keyword", params.keyword);
   if (params.featured !== undefined) qs.set("featured", String(params.featured));
   if (params.supply_mode) qs.set("supply_mode", params.supply_mode);
+  if (params.certification) qs.set("certification", params.certification);
   if (params.sort) qs.set("sort", params.sort);
   if (params.page) qs.set("page", String(params.page));
   if (params.size) qs.set("size", String(params.size));
   if (params.all_categories) qs.set("all_categories", "true");
   const q = qs.toString();
   return api.get<ProductListResponse>(`/api/v1/products${q ? `?${q}` : ""}`);
+}
+
+export async function listCertificationOptions(): Promise<string[]> {
+  return api.get<string[]>("/api/v1/products/certification-options");
 }
 
 export async function getProduct(id: number): Promise<ProductPublicDetail> {

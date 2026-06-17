@@ -16,6 +16,8 @@ interface Props {
   sort: string;
   featured: boolean;
   supplyMode: string;
+  certification: string;
+  certificationOptions: string[];
   total: number;
   activeCategoryCode: string;
   categoryTree: CategoryTreeNode[];
@@ -23,6 +25,7 @@ interface Props {
   onSortChange: (sort: string) => void;
   onFeaturedToggle: () => void;
   onSupplyModeChange: (mode: string) => void;
+  onCertificationChange: (cert: string) => void;
   onCategoryChange: (code: string) => void;
   onClearAll: () => void;
   hasActiveFilters: boolean;
@@ -39,6 +42,8 @@ export function FilterBar({
   sort,
   featured,
   supplyMode,
+  certification,
+  certificationOptions,
   total,
   activeCategoryCode,
   categoryTree,
@@ -46,6 +51,7 @@ export function FilterBar({
   onSortChange,
   onFeaturedToggle,
   onSupplyModeChange,
+  onCertificationChange,
   onCategoryChange,
   onClearAll,
   hasActiveFilters,
@@ -125,13 +131,18 @@ export function FilterBar({
             )}
           </div>
 
-          {/* 认证下拉(占位) */}
+          {/* 认证下拉 */}
           <select
-            disabled
-            className="h-[42px] rounded-[7px] border border-line-strong bg-white px-3 text-[14px] text-gray-300 outline-none cursor-not-allowed"
-            title={t("comingSoon")}
+            value={certification}
+            onChange={(e) => onCertificationChange(e.target.value)}
+            className={`h-[42px] rounded-[7px] border border-line-strong bg-white px-3 text-[14px] outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14] ${
+              certification ? "text-ink" : "text-muted"
+            }`}
           >
-            <option>{t("filterCertAll")}</option>
+            <option value="">{t("filterCertAll")}</option>
+            {certificationOptions.map((cert) => (
+              <option key={cert} value={cert}>{cert}</option>
+            ))}
           </select>
 
 {/* 筛选按钮 — 最右 */}
