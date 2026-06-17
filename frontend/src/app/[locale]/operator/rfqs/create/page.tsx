@@ -345,6 +345,8 @@ function CreateOnBehalfContent() {
 
   // ③ 交货信息
   const [deliveryPlace, setDeliveryPlace] = useState("");
+  const [destinationPort, setDestinationPort] = useState("");
+  const [preferredTradeTerm, setPreferredTradeTerm] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [targetCurrency, setTargetCurrency] = useState("");
 
@@ -436,6 +438,8 @@ function CreateOnBehalfContent() {
           remark: item.remark || undefined,
         })),
         requested_delivery_place: deliveryPlace.trim() || undefined,
+        destination_port: destinationPort.trim() || undefined,
+        preferred_trade_term: preferredTradeTerm.trim() || undefined,
         expected_delivery_date: deliveryDate || undefined,
         target_currency: targetCurrency.trim() || undefined,
         contact_name: contactName.trim() || undefined,
@@ -456,8 +460,9 @@ function CreateOnBehalfContent() {
       setSubmitting(false);
     }
   }, [
-    validate, selectedBuyerOrg, items, deliveryPlace, deliveryDate, targetCurrency,
-    contactName, contactPhone, contactEmail, remark, router, locale, toast, t, tError,
+    validate, selectedBuyerOrg, items, deliveryPlace, destinationPort, preferredTradeTerm,
+    deliveryDate, targetCurrency, contactName, contactPhone, contactEmail, remark,
+    router, locale, toast, t, tError,
   ]);
 
   return (
@@ -626,6 +631,42 @@ function CreateOnBehalfContent() {
               <option value="CNY">CNY</option>
               <option value="TZS">TZS</option>
             </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("destinationPort")}</label>
+            <input
+              type="text"
+              list="op-destination-port-options"
+              value={destinationPort}
+              onChange={(e) => setDestinationPort(e.target.value)}
+              placeholder={t("destinationPortPlaceholder")}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <datalist id="op-destination-port-options">
+              <option value="Dar es Salaam Port" />
+              <option value="Mombasa Port" />
+              <option value="Zanzibar Port" />
+              <option value="Tanga Port" />
+            </datalist>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("preferredTradeTerm")}</label>
+            <input
+              type="text"
+              list="op-trade-term-options"
+              value={preferredTradeTerm}
+              onChange={(e) => setPreferredTradeTerm(e.target.value)}
+              placeholder={t("preferredTradeTermPlaceholder")}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <datalist id="op-trade-term-options">
+              <option value="FOB" />
+              <option value="CFR" />
+              <option value="CIF" />
+              <option value="DAP" />
+              <option value="DDP" />
+              <option value="EXW" />
+            </datalist>
           </div>
         </div>
       </div>

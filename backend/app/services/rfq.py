@@ -225,6 +225,8 @@ async def create_rfq(
                 contact_email=payload.contact_email,
                 remark=payload.remark,
                 requested_delivery_place=payload.requested_delivery_place,
+                destination_port=payload.destination_port,
+                preferred_trade_term=payload.preferred_trade_term,
                 expected_delivery_date=to_naive_utc(payload.expected_delivery_date),
                 target_currency=payload.target_currency,
                 required_certifications=payload.required_certifications or [],
@@ -531,6 +533,8 @@ def _serialize_rfq(
             remark=rfq.remark,
             cancel_reason=rfq.cancel_reason,
             requested_delivery_place=rfq.requested_delivery_place,
+            destination_port=rfq.destination_port,
+            preferred_trade_term=rfq.preferred_trade_term,
             expected_delivery_date=rfq.expected_delivery_date,
             target_currency=rfq.target_currency,
             required_certifications=rfq.required_certifications,
@@ -553,6 +557,8 @@ def _serialize_rfq(
         contact_email=rfq.contact_email,
         remark=rfq.remark,
         requested_delivery_place=rfq.requested_delivery_place,
+        destination_port=rfq.destination_port,
+        preferred_trade_term=rfq.preferred_trade_term,
         expected_delivery_date=rfq.expected_delivery_date,
         target_currency=rfq.target_currency,
         required_certifications=rfq.required_certifications,
@@ -754,6 +760,8 @@ async def update_rfq(
     rfq.contact_phone = payload.contact_phone
     rfq.contact_email = payload.contact_email
     rfq.requested_delivery_place = payload.requested_delivery_place
+    rfq.destination_port = payload.destination_port
+    rfq.preferred_trade_term = payload.preferred_trade_term
     rfq.expected_delivery_date = to_naive_utc(payload.expected_delivery_date)
     rfq.target_currency = payload.target_currency
     rfq.required_certifications = payload.required_certifications or []
