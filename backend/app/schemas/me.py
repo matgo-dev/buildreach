@@ -17,6 +17,7 @@ class ProfileUpdateIn(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
+    phone_region: str | None = Field(default=None, max_length=2)
 
 
 class ChangeEmailIn(BaseModel):
@@ -53,16 +54,9 @@ class ChangePhoneIn(BaseModel):
     """改/清空登录手机号(敏感:需要 current_password)。
 
     new_phone 为空字符串或 null 表示清空(此后不能用手机号登录)。
+    phone_region: 国家码(TZ/CN),用于 E.164 归一化。
     """
 
     new_phone: str | None = Field(default=None, max_length=30)
+    phone_region: str | None = Field(default=None, max_length=2)
     current_password: str = Field(..., min_length=1)
-
-    @field_validator("new_phone")
-    @classmethod
-    def _check(cls, v: str | None) -> str | None:
-        if v is None or v == "":
-            return None
-        if not PHONE_REGEX.match(v):
-            raise ValueError("手机号必须是 11 位中国大陆号码(1 开头,第二位 3-9)")
-        return v

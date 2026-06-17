@@ -1,7 +1,6 @@
 "use client";
 import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { usePathname } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import type { RoleCode } from "@/lib/auth";
 import type { PermissionCode } from "@/config/permission-matrix";

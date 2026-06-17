@@ -41,6 +41,8 @@ FROM python:3.11.10-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PYTHONUTF8=1 \
+    LANG=C.UTF-8 \
     PATH="/opt/venv/bin:$PATH"
 
 # 运行时只需要 libpq 和 curl(healthcheck 用)

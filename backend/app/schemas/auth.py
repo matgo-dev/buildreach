@@ -182,6 +182,7 @@ class MeOut(BaseModel):
     phone: str | None = None
     status: str
     must_change_password: bool
+    language_preference: str | None = None
     roles: list[str]
     permissions: list[str]
     organization: OrganizationOut | None = None
