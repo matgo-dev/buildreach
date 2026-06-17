@@ -44,6 +44,7 @@ class CurrentUser:
     phone: str | None
     status: str
     must_change_password: bool
+    language_preference: str | None = None
     roles: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
     organization: OrganizationInfo | None = None
@@ -148,6 +149,7 @@ async def get_current_user(
         phone=user.phone,
         status=user.status,
         must_change_password=user.must_change_password,
+        language_preference=user.language_preference,
         roles=role_codes,
         permissions=perm_codes,
         organization=org,

@@ -4,7 +4,8 @@
 // - SUPPLIER → 3 步向导(Step 1 国家 / Step 2 语言 / Step 3 表单)
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AlertCircle,

@@ -19,6 +19,7 @@ from app.core.exceptions import (
     InvalidCredentialsError,
     NotFoundError,
 )
+from app.core.phone import normalize_phone_to_e164, try_normalize_phone
 from app.core.security import verify_password
 from app.db.models.audit_log import AuditStatus
 from app.db.models.user import User
@@ -61,6 +62,7 @@ async def update_profile(
     user_id: int,
     name: str | None,
     phone: str | None,
+    phone_region: str | None = None,
     request: Request | None = None,
 ) -> User:
     """改基础资料(name/phone)。PATCH 语义:None=不动,空字符串=清空(仅 phone)。"""
@@ -72,6 +74,15 @@ async def update_profile(
         user.name = name
     if phone is not None:
         new_phone = phone if phone != "" else None
+        # 归一化为 E.164,与注册/登录保持一致
+        if new_phone is not None:
+            new_phone = normalize_phone_to_e164(new_phone, phone_region)
+            # 唯一性查重
+            row = await db.execute(
+                select(User.id).where(User.phone == new_phone, User.id != user.id)
+            )
+            if row.scalar_one_or_none() is not None:
+                raise ConflictError("该手机号已被其他账号使用")
         if new_phone != user.phone:
             changes["phone"] = {"old": user.phone, "new": new_phone}
             user.phone = new_phone
@@ -149,12 +160,17 @@ async def change_phone(
     user_id: int,
     new_phone: str | None,
     current_password: str,
+    phone_region: str | None = None,
     request: Request | None = None,
 ) -> User:
     """改/清空登录手机号。new_phone=None 或空字符串表示清空。"""
     user = await _load_user(db, user_id)
 
     new_value: str | None = new_phone if new_phone else None
+    # 归一化为 E.164,与注册/登录保持一致
+    if new_value is not None:
+        new_value = normalize_phone_to_e164(new_value, phone_region)
+
     if new_value == user.phone:
         return user  # 无变更,幂等
 
