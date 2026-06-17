@@ -441,6 +441,7 @@ async def me(current: CurrentUser = Depends(get_current_user)):
         phone=current.phone,
         status=current.status,
         must_change_password=current.must_change_password,
+        language_preference=current.language_preference,
         roles=current.roles,
         permissions=current.permissions,
         organization=org,
@@ -567,6 +568,7 @@ async def update_my_profile(
         user_id=current.id,
         name=body.name,
         phone=body.phone,
+        phone_region=body.phone_region,
         request=request,
     )
     return success(_me_payload(user))
@@ -630,6 +632,7 @@ async def change_my_phone(
         user_id=current.id,
         new_phone=body.new_phone,
         current_password=body.current_password,
+        phone_region=body.phone_region,
         request=request,
     )
     return success(_me_payload(user))
@@ -642,6 +645,7 @@ async def change_my_phone(
 )
 async def update_language_preference(
     body: dict,
+    request: Request,
     current: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -653,6 +657,23 @@ async def update_language_preference(
         raise ValidationFailedError(f"language_preference must be one of: {','.join(LANGUAGE_CODES)}")
 
     user = await db.get(User, current.id)
+    old_lang = user.language_preference
     user.language_preference = lang
+
+    from app.audit.constants import AuditAction, AuditResourceType
+    from app.audit.logger import write_audit
+    from app.db.models.audit_log import AuditStatus
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.PROFILE_UPDATE,
+        status=AuditStatus.SUCCESS,
+        user_id=current.id,
+        user_email=current.email,
+        resource_id=current.id,
+        request=request,
+        extra={"changes": {"language_preference": {"old": old_lang, "new": lang}}},
+        commit=False,
+    )
     await db.commit()
     return success({"language_preference": lang})
