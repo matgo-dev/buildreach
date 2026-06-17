@@ -13,6 +13,7 @@ import { ProductGrid } from "@/components/mall/ProductGrid";
 import { FilterBar } from "@/components/mall/FilterBar";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { Pagination } from "@/components/mall/Pagination";
+import { RecentViews } from "@/components/mall/RecentViews";
 import { RightSidebar } from "@/components/mall/RightSidebar";
 import { useAuthStore } from "@/stores/authStore";
 import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
@@ -129,6 +130,9 @@ function MallContent() {
 
         {/* 主内容区 */}
         <div className="min-w-0 space-y-4">
+          {/* 最近浏览（登录买方 + 有数据时显示） */}
+          {isBuyer && <RecentViews />}
+
           <FilterBar
             keyword={urlKeyword}
             sort={urlSort}

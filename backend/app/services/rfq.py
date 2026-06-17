@@ -295,6 +295,21 @@ async def create_rfq(
         extra={"rfq_no": rfq.rfq_no, "source": source, "item_count": len(item_rows)},
         commit=False,
     )
+
+    # 买方行为埋点: CREATE_RFQ（仅买方自助创建时记录）
+    if source == RfqSource.BUYER_SELF and scope.buyer_org_id:
+        from app.services.buyer_event import EventType, record_event
+        await record_event(
+            db,
+            buyer_org_id=scope.buyer_org_id,
+            user_id=user.id,
+            event_type=EventType.CREATE_RFQ,
+            resource_type="rfq",
+            resource_id=rfq.id,
+            extra={"item_count": len(item_rows)},
+            request=request,
+        )
+
     await db.commit()
 
     return await _load_and_serialize(db, rfq.id, is_operator=scope.is_operator)
@@ -631,6 +646,21 @@ async def submit_rfq(
         extra={"rfq_no": rfq.rfq_no},
         commit=False,
     )
+
+    # 买方行为埋点: SUBMIT_RFQ
+    if rfq.buyer_org_id:
+        from app.services.buyer_event import EventType, record_event
+        await record_event(
+            db,
+            buyer_org_id=rfq.buyer_org_id,
+            user_id=user.id,
+            event_type=EventType.SUBMIT_RFQ,
+            resource_type="rfq",
+            resource_id=rfq.id,
+            extra={},
+            request=request,
+        )
+
     await db.commit()
 
     return await _load_and_serialize(db, rfq.id, is_operator=False)

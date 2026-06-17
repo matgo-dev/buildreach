@@ -367,6 +367,21 @@ async def accept_rfq(
         extra=extra,
         commit=False,
     )
+
+    # 买方行为埋点: ACCEPT_QUOTE
+    if rfq.buyer_org_id:
+        from app.services.buyer_event import EventType, record_event
+        await record_event(
+            db,
+            buyer_org_id=rfq.buyer_org_id,
+            user_id=user.id,
+            event_type=EventType.ACCEPT_QUOTE,
+            resource_type="rfq",
+            resource_id=rfq.id,
+            extra={"quote_id": active_quote.id},
+            request=request,
+        )
+
     await db.commit()
 
     return {"rfq_id": rfq.id, "status": rfq.status, "accepted_quote_id": rfq.accepted_quote_id}

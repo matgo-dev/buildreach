@@ -73,6 +73,18 @@ export async function tryRefresh(): Promise<boolean> {
   return refreshPromise;
 }
 
+// ---------- Session ID（标签页级会话标识）----------
+
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+  let sid = sessionStorage.getItem("x-session-id");
+  if (!sid) {
+    sid = crypto.randomUUID();
+    sessionStorage.setItem("x-session-id", sid);
+  }
+  return sid;
+}
+
 // ---------- 主请求函数 ----------
 
 async function rawFetch(path: string, opts: RequestOptions): Promise<Response> {
@@ -88,6 +100,10 @@ async function rawFetch(path: string, opts: RequestOptions): Promise<Response> {
     "Accept-Language": lang,
     ...(headers as Record<string, string> | undefined),
   };
+  // 会话追踪
+  const sid = getSessionId();
+  if (sid) finalHeaders["X-Session-Id"] = sid;
+
   if (!noAuth) {
     const token = useAuthStore.getState().accessToken;
     if (token) finalHeaders["Authorization"] = `Bearer ${token}`;

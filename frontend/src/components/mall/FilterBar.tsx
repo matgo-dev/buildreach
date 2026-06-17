@@ -2,11 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { Search, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { useAuthStore } from "@/stores/authStore";
 import { SectionTitle } from "./SectionTitle";
 import { MallButton } from "./MallButton";
+import { RecentSearches } from "./RecentSearches";
 
 interface Props {
   keyword: string;
@@ -49,11 +51,20 @@ export function FilterBar({
 }: Props) {
   const t = useTranslations("mall");
   const [inputValue, setInputValue] = useState(keyword);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onKeywordChange(inputValue.trim());
+    setSearchFocused(false);
   };
+
+  const handleSelectSearch = useCallback((kw: string) => {
+    setInputValue(kw);
+    onKeywordChange(kw);
+    setSearchFocused(false);
+  }, [onKeywordChange]);
 
   return (
     <div
@@ -79,12 +90,13 @@ export function FilterBar({
         className="px-6 pb-3"
       >
         <div className="grid grid-cols-[1fr_repeat(2,minmax(130px,0.6fr))_auto] gap-2.5 items-center">
-          {/* 搜索框 */}
+          {/* 搜索框 + 最近搜索下拉 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
               className="h-[42px] w-full rounded-[7px] border border-line-strong bg-white pl-9 pr-3 text-[14.5px] text-ink placeholder-muted outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14]"
             />
@@ -96,6 +108,14 @@ export function FilterBar({
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+            )}
+            {/* 最近搜索下拉面板 */}
+            {isBuyer && (
+              <RecentSearches
+                visible={searchFocused}
+                onSelect={handleSelectSearch}
+                onClose={() => setSearchFocused(false)}
+              />
             )}
           </div>
 
