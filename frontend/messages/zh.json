@@ -1176,6 +1176,8 @@
     "phaseOrder": "下单",
     "phaseFulfill": "履约",
     "phaseShip": "发运",
-    "phaseComplete": "收货"
+    "phaseComplete": "收货",
+    "tabBuy": "采购路径 How to Buy",
+    "tabFulfillment": "履约保障 Fulfillment"
   }
 }
