@@ -38,6 +38,8 @@ class RfqCreate(BaseModel):
 
     # 公共需求字段
     requested_delivery_place: str | None = None
+    destination_port: str | None = None
+    preferred_trade_term: str | None = None
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
@@ -54,6 +56,8 @@ class RfqUpdate(BaseModel):
     contact_email: str | None = None
 
     requested_delivery_place: str | None = None
+    destination_port: str | None = None
+    preferred_trade_term: str | None = None
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
@@ -120,6 +124,8 @@ class RfqBuyerPublic(BaseModel):
 
     # 需求字段
     requested_delivery_place: str | None = None
+    destination_port: str | None = None
+    preferred_trade_term: str | None = None
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
@@ -160,6 +166,8 @@ class RfqOperatorView(BaseModel):
 
     # 需求字段
     requested_delivery_place: str | None = None
+    destination_port: str | None = None
+    preferred_trade_term: str | None = None
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None

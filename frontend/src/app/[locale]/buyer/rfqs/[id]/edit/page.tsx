@@ -292,6 +292,8 @@ function RfqEditContent() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [deliveryPlace, setDeliveryPlace] = useState("");
+  const [destinationPort, setDestinationPort] = useState("");
+  const [preferredTradeTerm, setPreferredTradeTerm] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [certifications, setCertifications] = useState<string[]>([]);
@@ -321,6 +323,8 @@ function RfqEditContent() {
         setContactPhone(rfq.contact_phone ?? "");
         setContactEmail(rfq.contact_email ?? "");
         setDeliveryPlace(rfq.requested_delivery_place ?? "");
+        setDestinationPort(rfq.destination_port ?? "");
+        setPreferredTradeTerm(rfq.preferred_trade_term ?? "");
         setDeliveryDate(rfq.expected_delivery_date ? rfq.expected_delivery_date.slice(0, 10) : "");
         setCurrency(rfq.target_currency ?? "USD");
         setCertifications(rfq.required_certifications ?? []);
@@ -363,11 +367,13 @@ function RfqEditContent() {
     contact_phone: contactPhone || undefined,
     contact_email: contactEmail || undefined,
     requested_delivery_place: deliveryPlace || undefined,
+    destination_port: destinationPort || undefined,
+    preferred_trade_term: preferredTradeTerm || undefined,
     expected_delivery_date: deliveryDate ? `${deliveryDate}T00:00:00Z` : undefined,
     target_currency: currency || undefined,
     required_certifications: certifications.length > 0 ? certifications : undefined,
     remark: remark || undefined,
-  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, deliveryDate, currency, certifications, remark]);
+  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark]);
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -498,6 +504,32 @@ function RfqEditContent() {
               className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20">
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("destinationPort")}</label>
+            <input type="text" list="destination-port-options" value={destinationPort} onChange={(e) => setDestinationPort(e.target.value)}
+              placeholder={t("destinationPortPlaceholder")}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+            <datalist id="destination-port-options">
+              <option value="Dar es Salaam Port" />
+              <option value="Mombasa Port" />
+              <option value="Zanzibar Port" />
+              <option value="Tanga Port" />
+            </datalist>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("preferredTradeTerm")}</label>
+            <input type="text" list="trade-term-options" value={preferredTradeTerm} onChange={(e) => setPreferredTradeTerm(e.target.value)}
+              placeholder={t("preferredTradeTermPlaceholder")}
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+            <datalist id="trade-term-options">
+              <option value="FOB" />
+              <option value="CFR" />
+              <option value="CIF" />
+              <option value="DAP" />
+              <option value="DDP" />
+              <option value="EXW" />
+            </datalist>
           </div>
         </div>
       </div>

@@ -23,6 +23,8 @@ export interface RfqCreate {
   contact_phone?: string;
   contact_email?: string;
   requested_delivery_place?: string;
+  destination_port?: string;
+  preferred_trade_term?: string;
   expected_delivery_date?: string;
   target_currency?: string;
   required_certifications?: string[];
@@ -36,6 +38,8 @@ export interface RfqUpdatePayload {
   contact_phone?: string;
   contact_email?: string;
   requested_delivery_place?: string;
+  destination_port?: string;
+  preferred_trade_term?: string;
   expected_delivery_date?: string;
   target_currency?: string;
   required_certifications?: string[];
@@ -74,6 +78,8 @@ export interface RfqBuyerPublic {
   contact_email: string | null;
   remark: string | null;
   requested_delivery_place: string | null;
+  destination_port: string | null;
+  preferred_trade_term: string | null;
   expected_delivery_date: string | null;
   target_currency: string | null;
   required_certifications: string[] | null;

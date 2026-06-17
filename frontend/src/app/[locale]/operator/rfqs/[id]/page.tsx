@@ -810,7 +810,7 @@ function OperatorRfqDetailContent() {
       </div>
 
       {/* 交货信息 */}
-      {(rfq.requested_delivery_place || rfq.expected_delivery_date || rfq.target_currency) && (
+      {(rfq.requested_delivery_place || rfq.expected_delivery_date || rfq.target_currency || rfq.destination_port || rfq.preferred_trade_term) && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("section_delivery")}</h2>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
@@ -834,6 +834,14 @@ function OperatorRfqDetailContent() {
                 <p className="font-medium text-gray-800">{rfq.target_currency}</p>
               </div>
             )}
+            <div>
+              <span className="text-xs text-gray-400">{t("destinationPort")}</span>
+              <p className="font-medium text-gray-800">{rfq.destination_port || "\u2014"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400">{t("preferredTradeTerm")}</span>
+              <p className="font-medium text-gray-800">{rfq.preferred_trade_term || "\u2014"}</p>
+            </div>
           </div>
         </div>
       )}

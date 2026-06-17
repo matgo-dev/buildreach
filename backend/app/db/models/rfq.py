@@ -141,6 +141,12 @@ class Rfq(Base, TimestampUpdateMixin, SoftDeleteMixin):
     requested_delivery_place: Mapped[str | None] = mapped_column(
         String(120), nullable=True,
     )
+    destination_port: Mapped[str | None] = mapped_column(
+        String(100), nullable=True,
+    )
+    preferred_trade_term: Mapped[str | None] = mapped_column(
+        String(20), nullable=True,
+    )
     expected_delivery_date: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True,
     )
