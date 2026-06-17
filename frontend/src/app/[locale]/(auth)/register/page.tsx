@@ -828,24 +828,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("categories") && <p className="text-xs text-red-500">{errOf("categories")}</p>}
         </div>
 
-        {/* 8. Email (optional) */}
-        <div className="space-y-1.5" id="field-email">
-          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-            {t("label_email")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <input
-            id="email" name="email" type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
-            onBlur={() => touch("email")}
-            placeholder={t("ph_email")}
-            autoComplete="email"
-            className={buyerInputCls(errOf("email"))}
-          />
-          {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
-        </div>
-
-        {/* 9. Storefront Photos (required, 1-3) */}
+        {/* 8. Storefront Photos (required) — 必填上传紧跟品类 */}
         <div className="space-y-1.5" id="field-storefrontImages">
           <Label className="text-sm font-semibold text-gray-700">
             {t("label_storefront")} <span className="text-red-500">*</span>
@@ -889,35 +872,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
         </div>
 
-        {/* 10. TIN Number (optional) */}
-        <div className="space-y-1.5" id="field-tin">
-          <Label htmlFor="tin" className="text-sm font-semibold text-gray-700">
-            {t("label_tin")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <input
-            id="tin" name="tin" type="text"
-            value={tin}
-            onChange={(e) => setTin(e.target.value)}
-            placeholder={t("ph_tin")}
-            className={buyerInputCls(null)}
-          />
-        </div>
-
-        {/* 11. BRELA Registration No (optional) */}
-        <div className="space-y-1.5" id="field-brela">
-          <Label htmlFor="brela" className="text-sm font-semibold text-gray-700">
-            {t("label_brela")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <input
-            id="brela" name="brela" type="text"
-            value={brelaNo}
-            onChange={(e) => setBrelaNo(e.target.value)}
-            placeholder={t("ph_brela")}
-            className={buyerInputCls(null)}
-          />
-        </div>
-
-        {/* 12. License Images (optional) */}
+        {/* 9. License Images (optional) — 紧跟店面照片 */}
         <div className="space-y-1.5" id="field-licenseImages">
           <Label className="text-sm font-semibold text-gray-700">
             {t("label_license")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
@@ -957,6 +912,51 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             onChange={(e) => { handleLicenseAdd(e.target.files); e.target.value = ""; }}
           />
           {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
+        </div>
+
+        {/* 10. Email (optional) */}
+        <div className="space-y-1.5" id="field-email">
+          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+            {t("label_email")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <input
+            id="email" name="email" type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
+            onBlur={() => touch("email")}
+            placeholder={t("ph_email")}
+            autoComplete="email"
+            className={buyerInputCls(errOf("email"))}
+          />
+          {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
+        </div>
+
+        {/* 11. TIN Number (optional) */}
+        <div className="space-y-1.5" id="field-tin">
+          <Label htmlFor="tin" className="text-sm font-semibold text-gray-700">
+            {t("label_tin")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <input
+            id="tin" name="tin" type="text"
+            value={tin}
+            onChange={(e) => setTin(e.target.value)}
+            placeholder={t("ph_tin")}
+            className={buyerInputCls(null)}
+          />
+        </div>
+
+        {/* 12. BRELA Registration No (optional) */}
+        <div className="space-y-1.5" id="field-brela">
+          <Label htmlFor="brela" className="text-sm font-semibold text-gray-700">
+            {t("label_brela")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
+          </Label>
+          <input
+            id="brela" name="brela" type="text"
+            value={brelaNo}
+            onChange={(e) => setBrelaNo(e.target.value)}
+            placeholder={t("ph_brela")}
+            className={buyerInputCls(null)}
+          />
         </div>
 
         {/* Submit */}
