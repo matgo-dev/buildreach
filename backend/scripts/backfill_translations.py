@@ -98,6 +98,8 @@ async def backfill(
 
     total_processed = 0
     total_translated = 0
+    total_skipped = 0
+    total_failed = 0
 
     for model_cls, spec in targets.items():
         model_name = model_cls.__tablename__
@@ -135,8 +137,10 @@ async def backfill(
                     continue
 
                 try:
-                    await process_pending_translations(row)
-                    total_translated += 1
+                    row_stats = await process_pending_translations(row)
+                    total_translated += row_stats.get("translated", 0)
+                    total_skipped += row_stats.get("skipped", 0)
+                    total_failed += row_stats.get("failed", 0)
                     batch_count += 1
 
                     if batch_count >= batch_size:
@@ -149,14 +153,16 @@ async def backfill(
             if batch_count > 0 and not dry_run:
                 await session.commit()
 
-        log.info("  %s 完成: 处理=%d, 翻译=%d", model_name, total_processed, total_translated)
+        log.info("  %s 完成: scanned=%d translated=%d skipped=%d failed=%d",
+                 model_name, total_processed, total_translated, total_skipped, total_failed)
 
     await engine.dispose()
 
     if dry_run:
         log.info("[DRY RUN] 共 %d 行需翻译,未执行。", total_processed)
     else:
-        log.info("补译完成: 处理=%d, 翻译=%d", total_processed, total_translated)
+        log.info("补译完成: scanned=%d translated=%d skipped=%d failed=%d",
+                 total_processed, total_translated, total_skipped, total_failed)
 
 
 def main() -> None:

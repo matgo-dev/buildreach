@@ -692,6 +692,29 @@ def import_offer(
     origin_en = spu_fields["origin"]["en"]
     origin_zh = spu_fields["origin"]["zh"]
 
+    # ── 去重:阿里源数据的 _en 字段可能实际是中文(与 _zh 相同) ──
+    # 如果 _en == _zh,清空 _en 让翻译管道补译,避免中文写入英文列
+    _deduped_fields: set[str] = set()
+
+    def _dedup(field_key: str, en_val: str | None, zh_val: str | None) -> bool:
+        if en_val and zh_val and en_val.strip() == zh_val.strip():
+            log.info("  去重: %s_en == %s_zh,清空 %s_en 等待翻译 (spu_code=%s)",
+                     field_key, field_key, field_key, spu_code)
+            _deduped_fields.add(field_key)
+            return True
+        return False
+
+    if _dedup("name", name_en, name_zh):
+        name_en = ""
+    if _dedup("description", desc_en, desc_zh):
+        desc_en = ""
+    if _dedup("selling_points", sp_en, sp_zh):
+        sp_en = ""
+    if _dedup("detail_description", detail_desc_en, detail_desc_zh):
+        detail_desc_en = ""
+    if _dedup("brand", brand_en, brand_zh):
+        brand_en = ""
+
     # 阶梯参考价:offer.json 里的 price_tiers 数组
     raw_price_tiers = data.get("price_tiers") or []
     ref_price_tiers = []
@@ -763,6 +786,14 @@ def import_offer(
             product.video_url = video_url
         if source_meta:
             product.source_meta = source_meta
+        # 去重字段:清空旧的中文-in-英文值,标 pending 等翻译管道补译
+        if _deduped_fields:
+            _meta = dict(product.trans_meta or {})
+            for _df in _deduped_fields:
+                setattr(product, f"{_df}_en", None)
+                _meta[f"{_df}_en"] = "pending"
+            product.trans_meta = _meta
+            product.i18n_pending_at = _utcnow()
         product.source = run_meta.source
         product.last_ingest_run_id = run.id
         product.updated_at = _utcnow()
