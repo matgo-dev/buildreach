@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mutate } from "swr";
 import { useSearchParams } from "next/navigation";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -52,6 +53,10 @@ export function MallHeader() {
       const qs = kw ? `?keyword=${encodeURIComponent(kw)}` : "";
       router.push(`/${locale}/mall${qs}`);
       setSearchFocused(false);
+      // 延迟刷新最近搜索缓存，等后端 BackgroundTask 写入完成
+      if (kw) {
+        setTimeout(() => mutate("buyer-recent-searches"), 1500);
+      }
     },
     [searchValue, router, locale],
   );

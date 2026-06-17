@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Search, X } from "lucide-react";
 import { useCallback, useState } from "react";
+import { mutate } from "swr";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { useAuthStore } from "@/stores/authStore";
@@ -58,6 +59,10 @@ export function FilterBar({
     e.preventDefault();
     onKeywordChange(inputValue.trim());
     setSearchFocused(false);
+    // 延迟刷新最近搜索缓存，等后端 BackgroundTask 写入完成
+    if (inputValue.trim()) {
+      setTimeout(() => mutate("buyer-recent-searches"), 1500);
+    }
   };
 
   const handleSelectSearch = useCallback((kw: string) => {
