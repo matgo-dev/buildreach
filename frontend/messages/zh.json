@@ -450,7 +450,7 @@
     "heroHeadline": "能找货 · 能询价 · 能拼柜 · 能跟踪",
     "heroDesc": "客户在网站选品或上传图片/BOM，客服确认规格、MOQ、CBM、认证和贸易条款后，再发送正式报价单或 PI；网站不展示公开价格。",
     "heroCtaStart": "开始采购 Start Sourcing",
-    "heroCtaQuote": "申请报价 Request Quote",
+    "heroCtaQuote": "询价申请 Quote Request",
     "heroCtaContainer": "拼柜进度 Container Slots",
     "capTitle": "平台核心能力",
     "capSubtitle": "面向东非建材市场的一站式采购服务",
@@ -563,7 +563,15 @@
     "recentSearches": "最近搜索",
     "clearSearchHistory": "清空搜索历史",
     "showMore": "显示更多",
-    "navMyOrders": "我的订单 My Orders"
+    "navMyOrders": "订单跟踪 Order Tracking",
+    "heroStat1Value": "10+ 品类",
+    "heroStat1Label": "建材工业品精选目录",
+    "heroStat2Value": "200+ 工厂",
+    "heroStat2Label": "中国产地直采供应商",
+    "heroStat3Value": "拼柜省 60%",
+    "heroStat3Label": "多单共享集装箱运费",
+    "heroStat4Value": "45 天交货",
+    "heroStat4Label": "从下单到达累斯萨拉姆"
   },
   "unit": {
     "PCS": "件",

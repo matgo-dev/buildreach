@@ -2,7 +2,7 @@
 import Link from "next/link";
 import {
   ShoppingBag, Globe, Shield, Bot, ArrowRight,
-  Truck, Package,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -32,6 +32,14 @@ const SERVICE_CARDS: { letter: string; titleKey: string; sub: string }[] = [
   { letter: "20",  titleKey: "svcContainer", sub: "Shared Container" },
   { letter: "PI",  titleKey: "svcPayment",   sub: "Company Account" },
   { letter: "BOM", titleKey: "svcBom",       sub: "Photo / BOM RFQ" },
+];
+
+// ─── Hero 右侧亮点 ───
+const HERO_STATS = [
+  { icon: "📦", valueKey: "heroStat1Value", labelKey: "heroStat1Label" },
+  { icon: "🏭", valueKey: "heroStat2Value", labelKey: "heroStat2Label" },
+  { icon: "🚢", valueKey: "heroStat3Value", labelKey: "heroStat3Label" },
+  { icon: "✅", valueKey: "heroStat4Value", labelKey: "heroStat4Label" },
 ];
 
 // ─── Hero 徽章 ───
@@ -96,11 +104,9 @@ export default function HomePage() {
 
               <div className="flex flex-wrap gap-2.5 mb-5">
                 <MallButton variant="gold" href="/mall">{t("heroCtaStart")}</MallButton>
-                <DisabledCta>
-                  <span className="h-10 px-4 inline-flex items-center rounded-[10px] text-sm font-extrabold text-white" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.24)" }}>
-                    {t("heroCtaQuote")}
-                  </span>
-                </DisabledCta>
+                <MallButton variant="outline" href="/buyer/cart">
+                  {t("heroCtaQuote")}
+                </MallButton>
                 <DisabledCta>
                   <span className="h-10 px-4 inline-flex items-center rounded-[10px] text-sm font-extrabold text-white" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.24)" }}>
                     {t("heroCtaContainer")}
@@ -119,21 +125,18 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* 右侧展示台占位 */}
-            <div className="hidden lg:grid place-items-end relative z-10">
-              <div className="w-full max-w-[320px] grid grid-cols-3 gap-3 rounded-xl p-4"
-                style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)", backdropFilter: "blur(8px)" }}>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="rounded-lg flex items-center justify-center" style={{
-                    background: i === 0 ? "rgba(216,139,0,0.22)" : i === 3 ? "rgba(21,147,95,0.2)" : "rgba(255,255,255,0.1)",
-                    border: i === 0 ? "1px solid rgba(216,139,0,0.3)" : i === 3 ? "1px solid rgba(21,147,95,0.3)" : "1px solid rgba(255,255,255,0.16)",
-                    backdropFilter: "blur(6px)",
-                    aspectRatio: "1",
-                  }}>
-                    <Package className="h-6 w-6 text-white/30" />
+            {/* 右侧：平台亮点数据 — 撑满左侧高度 */}
+            <div className="hidden lg:flex flex-col justify-between gap-2 relative z-10 w-full max-w-[320px] self-stretch">
+              {HERO_STATS.map((stat, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-5 py-4 flex-1"
+                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  <span className="text-3xl">{stat.icon}</span>
+                  <div>
+                    <div className="text-[20px] font-bold text-[#e3a615] leading-none">{t(stat.valueKey)}</div>
+                    <div className="text-[12px] text-white/60 mt-1">{t(stat.labelKey)}</div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </section>
 
