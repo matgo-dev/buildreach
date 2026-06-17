@@ -16,6 +16,8 @@ import {
   ChevronDown,
   ChevronRight,
   Calendar,
+  MapPin,
+  Package,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -37,6 +39,27 @@ function makeItemKey(productId: number, variants: Array<{ attr_name: string; val
     a.attr_name.localeCompare(b.attr_name) || a.value.localeCompare(b.value),
   );
   return `${productId}::${JSON.stringify(sorted)}`;
+}
+
+function createClientId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"));
+    return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function getOffendingProductIds(err: ApiError): number[] {
+  const data = err.data as { offending_product_ids?: unknown } | undefined;
+  if (!Array.isArray(data?.offending_product_ids)) return [];
+  return data.offending_product_ids.filter((id): id is number => typeof id === "number");
 }
 
 interface ManualItem {
@@ -337,41 +360,96 @@ function ProductSearchModal({
           )}
 
           {!searching && products.length > 0 && (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {products.map((p) => {
                 const isExpanded = expandedId === p.id;
                 const variantData = productVariantMap[p.id];
+                const hasVariants = variantData && !variantData.loading && variantData.variants.length > 0;
+                // 未展开时的快速添加（无变体商品）
+                const noVariantKey = makeItemKey(p.id, []);
+                const noVariantAdded = existingKeys.has(noVariantKey);
                 return (
-                  <div key={p.id} className="rounded-lg border border-gray-100">
-                    {/* SPU 行 */}
-                    <button
-                      type="button"
-                      onClick={() => toggleExpand(p.id)}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
-                      )}
-                      {p.main_image && (
-                        <img
-                          src={p.main_image}
-                          alt={p.name}
-                          className="h-10 w-10 shrink-0 rounded border border-gray-100 object-cover"
-                        />
-                      )}
+                  <div key={p.id} className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-sm">
+                    {/* 商品信息行 */}
+                    <div className="flex gap-3 p-3">
+                      {/* 商品图 */}
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
+                        {p.main_image ? (
+                          <img
+                            src={p.main_image}
+                            alt={p.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Package className="h-6 w-6 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      {/* 商品信息 */}
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
-                        <div className="text-xs text-gray-400">
-                          {p.spu_code}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                          <span>{p.category_name}</span>
+                          {p.origin && (
+                            <span className="flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3" />
+                              {p.origin}
+                            </span>
+                          )}
+                          {p.brand && <span>{p.brand}</span>}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-400">
+                          <span>{p.spu_code}</span>
+                          {p.moq != null && p.moq > 0 && (
+                            <span>MOQ: {p.moq} {p.moq_unit || p.unit || "PCS"}</span>
+                          )}
+                          {p.unit && <span>{t("unit")}: {p.unit}</span>}
                         </div>
                       </div>
-                    </button>
+                      {/* 操作区 */}
+                      <div className="flex shrink-0 flex-col items-end justify-between">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(p.id)}
+                          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#00505a] hover:bg-[#00505a]/5"
+                        >
+                          {isExpanded ? (
+                            <>
+                              {t("collapse")}
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              {t("selectVariant")}
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </>
+                          )}
+                        </button>
+                        {/* 无变体时直接添加 */}
+                        {!isExpanded && (
+                          <button
+                            type="button"
+                            disabled={noVariantAdded}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddProduct(p, {}, p.unit || "");
+                            }}
+                            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                              noVariantAdded
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-[#00505a] text-white hover:bg-[#003f46]"
+                            }`}
+                          >
+                            {noVariantAdded ? t("alreadyAdded") : t("quickAdd")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-                    {/* 变体选择器 */}
+                    {/* 变体选择器（展开时） */}
                     {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 pl-11">
+                      <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3">
                         {variantData?.loading && (
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
@@ -379,13 +457,13 @@ function ProductSearchModal({
                         )}
                         {variantData && !variantData.loading && (
                           <>
-                            {variantData.variants.length > 0 ? (
+                            {hasVariants ? (
                               <div className="space-y-3">
                                 {variantData.variants.map((axis) => {
                                   const selected = variantSelection[p.id]?.[axis.key];
                                   return (
                                     <div key={axis.key}>
-                                      <div className="mb-1.5 text-xs font-medium text-gray-500">{axis.display}</div>
+                                      <div className="mb-1.5 text-xs font-medium text-gray-600">{axis.display}</div>
                                       <div className="flex flex-wrap gap-1.5">
                                         {axis.values.map((v) => (
                                           <button
@@ -403,7 +481,7 @@ function ProductSearchModal({
                                             className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
                                               selected === v.value
                                                 ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
-                                                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                                             }`}
                                           >
                                             {v.display}
@@ -414,12 +492,16 @@ function ProductSearchModal({
                                   );
                                 })}
                               </div>
-                            ) : null}
+                            ) : (
+                              <p className="text-xs text-gray-400">{t("noVariants")}</p>
+                            )}
                             {/* 加入按钮 */}
-                            <div className="mt-3">
+                            <div className="mt-3 flex items-center justify-between">
+                              <span className="text-xs text-gray-400">
+                                {t("unit")}: {variantData.unit || p.unit || "PCS"}
+                              </span>
                               {(() => {
                                 const sel = variantSelection[p.id] ?? {};
-                                // 构建去重 key
                                 const selected_variants = Object.entries(sel)
                                   .filter(([, v]) => v)
                                   .map(([attr_name, value]) => ({ attr_name, value }));
@@ -430,13 +512,13 @@ function ProductSearchModal({
                                     type="button"
                                     disabled={added}
                                     onClick={() => handleAddProduct(p, sel, variantData.unit)}
-                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
                                       added
                                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                         : "bg-[#00505a] text-white hover:bg-[#003f46]"
                                     }`}
                                   >
-                                    {added ? t("alreadyAdded") : t("add")}
+                                    {added ? t("alreadyAdded") : t("addWithVariant")}
                                   </button>
                                 );
                               })()}
@@ -673,19 +755,49 @@ function RfqCreateContent() {
   const doCreate = useCallback(async (asDraft: boolean) => {
     if (submitting || savingDraft || totalItemCount === 0) return;
     if (!idemRef.current) {
-      idemRef.current = typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      idemRef.current = createClientId();
     }
     if (asDraft) setSavingDraft(true); else setSubmitting(true);
     try {
+      const availableManualItems: ManualItem[] = [];
+      const unavailableManualKeys = new Set<string>();
+
+      for (const item of manualItems) {
+        try {
+          await getProduct(item.product_id);
+          availableManualItems.push(item);
+        } catch (err) {
+          if (err instanceof ApiError && (err.status === 404 || err.code === 40008)) {
+            unavailableManualKeys.add(makeItemKey(item.product_id, item.selected_variants));
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      if (unavailableManualKeys.size > 0) {
+        setDraft((prev) => ({
+          ...prev,
+          manualItems: prev.manualItems.filter(
+            (item) => !unavailableManualKeys.has(makeItemKey(item.product_id, item.selected_variants)),
+          ),
+        }));
+        setItemsWarning(t("itemsMissing"));
+        toast.error(t("productNotFound"));
+      }
+
+      if (cartItems.length + availableManualItems.length === 0) {
+        setItemsWarning(t("itemsAllMissing"));
+        return;
+      }
+
       const allItems = [
         ...cartItems.map((c) => ({
           product_id: c.product_id,
           selected_variants: c.selected_variants,
           quantity: c.quantity,
         })),
-        ...manualItems.map((m) => ({
+        ...availableManualItems.map((m) => ({
           product_id: m.product_id,
           selected_variants: m.selected_variants,
           quantity: m.quantity,
@@ -728,7 +840,18 @@ function RfqCreateContent() {
       toast.success(t(asDraft ? "saveDraftSuccess" : "submitSuccess"));
       router.push(`/${locale}/buyer/rfqs`);
     } catch (err) {
-      if (err instanceof ApiError && err.messageKey) {
+      if (err instanceof ApiError && err.code === 40506) {
+        const ids = new Set(getOffendingProductIds(err));
+        if (ids.size > 0) {
+          setCartItems((prev) => prev.filter((item) => !ids.has(item.product_id)));
+          setDraft((prev) => ({
+            ...prev,
+            manualItems: prev.manualItems.filter((item) => !ids.has(item.product_id)),
+          }));
+        }
+        setItemsWarning(t("itemsMissing"));
+        toast.error(t("productNotFound"));
+      } else if (err instanceof ApiError && err.messageKey) {
         const key = err.messageKey.replace(/^error\./, "");
         try {
           toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>));

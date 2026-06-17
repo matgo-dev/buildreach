@@ -299,11 +299,11 @@ async def create_rfq(
     )
 
     # 买方行为埋点: CREATE_RFQ（仅买方自助创建时记录）
-    if source == RfqSource.BUYER_SELF and scope.buyer_org_id:
+    if source == RfqSource.BUYER_SELF and buyer_org_id:
         from app.services.buyer_event import EventType, record_event
         await record_event(
             db,
-            buyer_org_id=scope.buyer_org_id,
+            buyer_org_id=buyer_org_id,
             user_id=user.id,
             event_type=EventType.CREATE_RFQ,
             resource_type="rfq",
