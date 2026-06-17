@@ -136,6 +136,9 @@ def build_category_tree(raw: list) -> list[CategoryNode]:
 
     约定格式(§4.1):扁平数组,每行 {level, name_en, name_zh, parent_en}。
     靠 parent_en(父节点的 name_en)挂父子。L1 的 parent_en 为 null。
+
+    兼容：如果 parent_en 全部缺失,按 level 顺序推断父子关系——
+    遍历时维护一个 level→最近节点的栈,L(N+1) 节点挂到最近的 L(N) 节点下。
     """
     # 先建全部节点
     nodes_by_name: dict[str, CategoryNode] = {}
@@ -152,14 +155,35 @@ def build_category_tree(raw: list) -> list[CategoryNode]:
         nodes_by_name[name_en] = node
         all_nodes.append(node)
 
-    # 挂父子关系
+    # 检查是否有任何 parent_en 可用
+    has_parent_refs = any(n.parent_name_en for n in all_nodes)
+
     roots: list[CategoryNode] = []
-    for node in all_nodes:
-        if node.parent_name_en and node.parent_name_en in nodes_by_name:
-            parent = nodes_by_name[node.parent_name_en]
-            parent.children.append(node)
-        else:
-            roots.append(node)
+
+    if has_parent_refs:
+        # 原逻辑：靠 parent_en 挂父子
+        for node in all_nodes:
+            if node.parent_name_en and node.parent_name_en in nodes_by_name:
+                parent = nodes_by_name[node.parent_name_en]
+                parent.children.append(node)
+            else:
+                roots.append(node)
+    else:
+        # 兼容模式：按 level 顺序推断父子（栈式）
+        # stack[level] = 该层最近出现的节点
+        stack: dict[int, CategoryNode] = {}
+        for node in all_nodes:
+            if node.level == 1:
+                roots.append(node)
+            else:
+                parent = stack.get(node.level - 1)
+                if parent:
+                    parent.children.append(node)
+                    node.parent_name_en = parent.name_en
+                else:
+                    # 找不到父节点,降级为根
+                    roots.append(node)
+            stack[node.level] = node
 
     return roots
 
