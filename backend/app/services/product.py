@@ -544,13 +544,12 @@ async def list_products_public(
         q = q.where(Product.supply_mode == supply_mode)
         count_q = count_q.where(Product.supply_mode == supply_mode)
     if certification:
-        # JSON 数组包含查询：certifications::jsonb @> :val::jsonb
-        import json
-        from sqlalchemy import cast, bindparam
+        # certifications::jsonb @> jsonb_build_array('CE')
+        from sqlalchemy import cast
         from sqlalchemy.dialects.postgresql import JSONB
-        cert_json = json.dumps([certification])
-        cert_param = bindparam("cert_val", value=cert_json, type_=JSONB)
-        cert_filter = cast(Product.certifications, JSONB).op("@>")(cert_param)
+        cert_filter = cast(Product.certifications, JSONB).op("@>")(
+            func.jsonb_build_array(certification)
+        )
         q = q.where(cert_filter)
         count_q = count_q.where(cert_filter)
     if keyword:
