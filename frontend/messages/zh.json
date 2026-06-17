@@ -783,6 +783,7 @@
   },
   "cart": {
     "title": "询价篮",
+    "viewRfqs": "查看询价单",
     "empty": "询价篮为空",
     "goToMall": "去商城选品",
     "selectAll": "全选",
