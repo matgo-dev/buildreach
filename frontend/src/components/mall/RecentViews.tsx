@@ -17,7 +17,7 @@ export function RecentViews() {
   const { data: items } = useSWR<RecentViewProduct[]>(
     "buyer-recent-views",
     () => getRecentViews(8),
-    { revalidateOnFocus: false, dedupingInterval: 30_000 },
+    { revalidateOnFocus: true, dedupingInterval: 30_000 },
   );
 
   if (!items || items.length === 0) return null;
