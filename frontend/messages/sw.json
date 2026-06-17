@@ -1176,6 +1176,8 @@
     "phaseOrder": "Agiza",
     "phaseFulfill": "Tekeleza",
     "phaseShip": "Safirisha",
-    "phaseComplete": "Pokea"
+    "phaseComplete": "Pokea",
+    "tabBuy": "Jinsi ya Kununua",
+    "tabFulfillment": "Dhamana ya Utimizaji"
   }
 }

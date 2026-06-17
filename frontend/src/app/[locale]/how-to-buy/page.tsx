@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
@@ -65,8 +65,16 @@ function StepCard({
   );
 }
 
+const TABS = [
+  { key: "buy", labelKey: "tabBuy" },
+  { key: "fulfillment", labelKey: "tabFulfillment" },
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
+
 function HowToBuyContent() {
   const t = useTranslations("howToBuy");
+  const [activeTab, setActiveTab] = useState<TabKey>("buy");
 
   const phases = [
     { icon: "🔍", labelKey: "phaseSelect" },
@@ -80,6 +88,39 @@ function HowToBuyContent() {
 
   return (
     <PublicLayout>
+      {/* ===== Tab 切换 ===== */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-mall px-6 flex gap-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? "border-teal-600 text-teal-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              {t(tab.labelKey)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== 履约保障 Tab ===== */}
+      {activeTab === "fulfillment" && (
+        <div style={{ height: "calc(100vh - 10rem)" }}>
+          <iframe
+            src="/demos/fulfillment-showcase.html"
+            className="w-full h-full border-0"
+            title="Fulfillment Showcase"
+          />
+        </div>
+      )}
+
+      {/* ===== 采购路径 Tab ===== */}
+      {activeTab === "buy" && (
+      <>
       {/* ===== Hero — 紧凑全宽 ===== */}
       <div className="bg-gradient-to-r from-[#00505a] to-[#003a40]">
         <div className="mx-auto max-w-mall px-6 py-7">
@@ -243,6 +284,8 @@ function HowToBuyContent() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </PublicLayout>
   );
 }

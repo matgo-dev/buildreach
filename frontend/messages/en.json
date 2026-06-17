@@ -1176,6 +1176,8 @@
     "phaseOrder": "Order",
     "phaseFulfill": "Fulfill",
     "phaseShip": "Ship",
-    "phaseComplete": "Receive"
+    "phaseComplete": "Receive",
+    "tabBuy": "How to Buy",
+    "tabFulfillment": "Fulfillment Guarantee"
   }
 }
