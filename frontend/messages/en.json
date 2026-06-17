@@ -4,7 +4,8 @@
     "submit": "Submit",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "back_to_home": "Back to Home"
+    "back_to_home": "Back to Home",
+    "selectAll": "Select All"
   },
   "brand": {
     "name": "BuildLink East Africa",
@@ -463,7 +464,7 @@
     "ctaRegister": "Register Now",
     "ctaLearnMore": "Learn More",
     "capItem1Title": "Product Sourcing",
-    "capItem1Desc": "9 categories, 200+ verified China building materials suppliers, one-stop sourcing",
+    "capItem1Desc": "10+ categories, 200+ verified China building materials suppliers, one-stop sourcing",
     "capItem2Title": "Supplier Verification",
     "capItem2Desc": "Strict vetting, T1/T2/T3 tiered management, guaranteed supply quality",
     "capItem3Title": "Compliance Support",
@@ -806,7 +807,8 @@
     "deletePartialFail": "{failed} items failed to remove, list refreshed",
     "productInfo": "Product Info",
     "quantity": "Quantity",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "unitLabel": "Unit"
   },
   "rfq": {
     "title": "My Inquiries",
@@ -1116,7 +1118,7 @@
     "ctaRfq": "Start RFQ Now",
     "stepsTitle": "7 Steps to Cross-Border Procurement",
     "step1Title": "Step 1: Browse & Select",
-    "step1Desc": "Explore 9 major building material categories. Filter by specs, certifications, and supply mode. Add products to your inquiry cart.",
+    "step1Desc": "Explore 10+ building material categories. Filter by specs, certifications, and supply mode. Add products to your inquiry cart.",
     "step1Detail": "Use keyword search, category navigation, or parameter filters. Can't find what you need? Submit a custom requirement directly.",
     "step2Title": "Step 2: Submit RFQ",
     "step2Desc": "Fill in your Request for Quotation online: select products, specify quantities and destination port. You can also upload images, BOM lists, or text descriptions.",
