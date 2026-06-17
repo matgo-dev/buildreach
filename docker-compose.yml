@@ -87,6 +87,11 @@ services:
 
       # 图片访问基础 URL
       IMAGE_BASE_URL: ${IMAGE_BASE_URL:-http://localhost:8000/static}
+      # 翻译服务
+      TRANSLATION_PROVIDER: ${TRANSLATION_PROVIDER:-mock}
+      ALIYUN_TRANSLATE_ACCESS_KEY_ID: ${ALIYUN_TRANSLATE_ACCESS_KEY_ID:-}
+      ALIYUN_TRANSLATE_ACCESS_KEY_SECRET: ${ALIYUN_TRANSLATE_ACCESS_KEY_SECRET:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
     volumes:
       - uploads:/app/uploads
     ports:
