@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import {
@@ -185,12 +186,20 @@ function CartContent() {
     <div className="space-y-4">
       {/* 页标题 + 操作栏 */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">
-          {t("title")}
-          <span className="ml-2 text-base font-normal text-gray-400">
-            ({t("itemCount", { count: items.length })})
-          </span>
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-gray-800">
+            {t("title")}
+            <span className="ml-2 text-base font-normal text-gray-400">
+              ({t("itemCount", { count: items.length })})
+            </span>
+          </h1>
+          <Link
+            href="/buyer/rfqs"
+            className="rounded-md border border-[#00505a]/20 px-3 py-1 text-xs font-medium text-[#00505a] transition-colors hover:bg-[#00505a]/5"
+          >
+            {t("viewRfqs")}
+          </Link>
+        </div>
       </div>
 
       {/* 商品列表 — 卡片式 */}

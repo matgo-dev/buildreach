@@ -783,6 +783,7 @@
   },
   "cart": {
     "title": "Kikapu cha Maombi",
+    "viewRfqs": "Tazama Maombi",
     "empty": "Kikapu chako cha maombi kiko tupu",
     "goToMall": "Vinjari Bidhaa",
     "selectAll": "Chagua Zote",
