@@ -7,12 +7,14 @@ from app.api.v1 import (
     admin_audit,
     admin_users,
     auth,
+    buyer_events,
     buyer_prefs,
     cart,
     categories,
     contact,
     credit,
     debug,
+    operator_analytics,
     operator_buyers,
     operator_products,
     products,
@@ -35,7 +37,9 @@ api_router.include_router(products.router)
 api_router.include_router(operator_buyers.router)
 api_router.include_router(operator_products.router)
 api_router.include_router(suppliers.router)
+api_router.include_router(buyer_events.router)
 api_router.include_router(buyer_prefs.router)
+api_router.include_router(operator_analytics.router)
 api_router.include_router(cart.router)
 api_router.include_router(rfqs.router)
 api_router.include_router(quotes.router)

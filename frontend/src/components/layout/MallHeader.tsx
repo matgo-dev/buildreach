@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mutate } from "swr";
 import { useSearchParams } from "next/navigation";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -19,6 +20,7 @@ import {
 
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
+import { RecentSearches } from "@/components/mall/RecentSearches";
 import { useLogout } from "@/hooks/useAuth";
 import { BRAND } from "@/config/brand";
 import { workspaceDashboardOf } from "@/config/navigation";
@@ -41,6 +43,8 @@ export function MallHeader() {
   const locale = useLocale();
   const t = useTranslations("mall");
   const [searchValue, setSearchValue] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -48,8 +52,22 @@ export function MallHeader() {
       const kw = searchValue.trim();
       const qs = kw ? `?keyword=${encodeURIComponent(kw)}` : "";
       router.push(`/${locale}/mall${qs}`);
+      setSearchFocused(false);
+      // 延迟刷新最近搜索缓存，等后端 BackgroundTask 写入完成
+      if (kw) {
+        setTimeout(() => mutate("buyer-recent-searches"), 1500);
+      }
     },
     [searchValue, router, locale],
+  );
+
+  const handleSelectSearch = useCallback(
+    (kw: string) => {
+      setSearchValue(kw);
+      router.push(`/${locale}/mall?keyword=${encodeURIComponent(kw)}`);
+      setSearchFocused(false);
+    },
+    [router, locale],
   );
 
   return (
@@ -87,8 +105,8 @@ export function MallHeader() {
           </span>
         </Link>
 
-        {/* 中:搜索框 — 暖金边框 */}
-        <form onSubmit={handleSearch} className="min-w-0">
+        {/* 中:搜索框 — 暖金边框 + 最近搜索下拉 */}
+        <form onSubmit={handleSearch} className="relative min-w-0">
           <div
             className="flex rounded-[10px] overflow-hidden"
             style={{
@@ -100,6 +118,8 @@ export function MallHeader() {
               type="search"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onClick={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
               className="flex-1 h-12 px-4 bg-white text-ink text-[14.5px] outline-none min-w-0"
             />
@@ -111,6 +131,13 @@ export function MallHeader() {
               <Search className="h-5 w-5" strokeWidth={2.4} />
             </button>
           </div>
+          {isBuyer && (
+            <RecentSearches
+              visible={searchFocused}
+              onSelect={handleSelectSearch}
+              onClose={() => setSearchFocused(false)}
+            />
+          )}
         </form>
 
         {/* 右:操作区 */}

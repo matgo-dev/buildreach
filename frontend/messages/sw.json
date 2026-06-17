@@ -560,7 +560,11 @@
     },
     "viewAllCategories": "Tazama Kategoria Zote",
     "myCategories": "Kategoria Zangu Tu",
-    "prefFilterActive": "Kuonyesha kategoria {count} zinazopendekezwa"
+    "prefFilterActive": "Kuonyesha kategoria {count} zinazopendekezwa",
+    "recentViews": "Zilizotazamwa Hivi Karibuni",
+    "recentSearches": "Utafutaji wa Hivi Karibuni",
+    "clearSearchHistory": "Futa historia ya utafutaji",
+    "showMore": "Onyesha zaidi"
   },
   "unit": {
     "PCS": "Kipande",

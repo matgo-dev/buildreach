@@ -2,11 +2,14 @@
 
 import { useTranslations } from "next-intl";
 import { Search, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { mutate } from "swr";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { useAuthStore } from "@/stores/authStore";
 import { SectionTitle } from "./SectionTitle";
 import { MallButton } from "./MallButton";
+import { RecentSearches } from "./RecentSearches";
 
 interface Props {
   keyword: string;
@@ -28,7 +31,7 @@ interface Props {
 /**
  * 筛选栏 — 参考 HTML 设计稿 .filters + .chip-row
  *
- * 行1: 搜索框 | 品类下拉 | 认证下拉 | 交期下拉 | 筛选按钮(最右)
+ * 行1: 搜索框 | 认证下拉 | 筛选按钮(最右)
  * 行2: 品类 chip,点击联动左侧品类导航
  */
 export function FilterBar({
@@ -49,15 +52,28 @@ export function FilterBar({
 }: Props) {
   const t = useTranslations("mall");
   const [inputValue, setInputValue] = useState(keyword);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onKeywordChange(inputValue.trim());
+    setSearchFocused(false);
+    // 延迟刷新最近搜索缓存，等后端 BackgroundTask 写入完成
+    if (inputValue.trim()) {
+      setTimeout(() => mutate("buyer-recent-searches"), 1500);
+    }
   };
+
+  const handleSelectSearch = useCallback((kw: string) => {
+    setInputValue(kw);
+    onKeywordChange(kw);
+    setSearchFocused(false);
+  }, [onKeywordChange]);
 
   return (
     <div
-      className="rounded-xl border border-line bg-white shadow-mall-sm overflow-hidden"
+      className="rounded-xl border border-line bg-white shadow-mall-sm"
     >
       {/* 区块标题 */}
       <div className="px-6 pt-5 pb-3">
@@ -78,13 +94,15 @@ export function FilterBar({
         onSubmit={handleSearchSubmit}
         className="px-6 pb-3"
       >
-        <div className="grid grid-cols-[1fr_repeat(2,minmax(130px,0.6fr))_auto] gap-2.5 items-center">
-          {/* 搜索框 */}
+        <div className="grid grid-cols-[1fr_minmax(130px,0.6fr)_auto] gap-2.5 items-center">
+          {/* 搜索框 + 最近搜索下拉 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onClick={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
               className="h-[42px] w-full rounded-[7px] border border-line-strong bg-white pl-9 pr-3 text-[14.5px] text-ink placeholder-muted outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14]"
             />
@@ -97,6 +115,14 @@ export function FilterBar({
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
+            {/* 最近搜索下拉面板 */}
+            {isBuyer && (
+              <RecentSearches
+                visible={searchFocused}
+                onSelect={handleSelectSearch}
+                onClose={() => setSearchFocused(false)}
+              />
+            )}
           </div>
 
           {/* 认证下拉(占位) */}
@@ -108,16 +134,7 @@ export function FilterBar({
             <option>{t("filterCertAll")}</option>
           </select>
 
-          {/* 交期下拉(占位) */}
-          <select
-            disabled
-            className="h-[42px] rounded-[7px] border border-line-strong bg-white px-3 text-[14px] text-gray-300 outline-none cursor-not-allowed"
-            title={t("comingSoon")}
-          >
-            <option>{t("filterDeliveryAll")}</option>
-          </select>
-
-          {/* 筛选按钮 — 最右 */}
+{/* 筛选按钮 — 最右 */}
           <MallButton type="submit" variant="teal" className="h-[42px] shrink-0">
             {t("filterSearch")}
           </MallButton>
