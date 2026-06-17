@@ -283,16 +283,15 @@ function UserMenu() {
               <LayoutDashboard className="h-4 w-4 text-muted" />
               {t("menuDashboard")}
             </Link>
-            <span
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
               role="menuitem"
-              aria-disabled
-              title={t("menuSettingsDisabled")}
-              className="flex cursor-not-allowed select-none items-center gap-2.5 px-4 py-2 text-sm text-slate-400"
+              className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
             >
-              <Settings className="h-4 w-4 text-slate-300" />
+              <Settings className="h-4 w-4 text-muted" />
               {t("menuSettings")}
-              <span className="ml-auto text-[10px] text-slate-300">{t("menuSettingsDisabled")}</span>
-            </span>
+            </Link>
           </div>
 
           <div className="border-t border-slate-100 py-1.5">

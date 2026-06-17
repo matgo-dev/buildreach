@@ -61,23 +61,34 @@ async def update_profile(
     *,
     user_id: int,
     name: str | None,
+    email: str | None = None,
     phone: str | None,
     phone_region: str | None = None,
+    username: str | None = None,
     request: Request | None = None,
 ) -> User:
-    """改基础资料(name/phone)。PATCH 语义:None=不动,空字符串=清空(仅 phone)。"""
+    """改基础资料。PATCH 语义:None=不动,空字符串=清空(phone/username)。"""
     user = await _load_user(db, user_id)
 
     changes: dict[str, dict[str, str | None]] = {}
+
     if name is not None and name != user.name:
         changes["name"] = {"old": user.name, "new": name}
         user.name = name
+
+    if email is not None and email != user.email:
+        row = await db.execute(
+            select(User.id).where(User.email == email, User.id != user.id)
+        )
+        if row.scalar_one_or_none() is not None:
+            raise ConflictError("该邮箱已被其他账号使用")
+        changes["email"] = {"old": user.email, "new": email}
+        user.email = email
+
     if phone is not None:
         new_phone = phone if phone != "" else None
-        # 归一化为 E.164,与注册/登录保持一致
         if new_phone is not None:
             new_phone = normalize_phone_to_e164(new_phone, phone_region)
-            # 唯一性查重
             row = await db.execute(
                 select(User.id).where(User.phone == new_phone, User.id != user.id)
             )
@@ -87,8 +98,19 @@ async def update_profile(
             changes["phone"] = {"old": user.phone, "new": new_phone}
             user.phone = new_phone
 
+    if username is not None:
+        new_username = username if username != "" else None
+        if new_username is not None:
+            row = await db.execute(
+                select(User.id).where(User.username == new_username, User.id != user.id)
+            )
+            if row.scalar_one_or_none() is not None:
+                raise ConflictError("该用户名已被其他账号使用")
+        if new_username != user.username:
+            changes["username"] = {"old": user.username, "new": new_username}
+            user.username = new_username
+
     if not changes:
-        # 无变更也不报错,直接返回(幂等)
         return user
 
     await write_audit(

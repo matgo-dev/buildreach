@@ -10,14 +10,25 @@ USERNAME_REGEX = re.compile(r"^(?![0-9]+$)[A-Za-z0-9_\-]{3,50}$")
 
 
 class ProfileUpdateIn(BaseModel):
-    """改基础资料:name / phone(低风险,无需密码)。
+    """改基础资料(无需密码)。
 
-    PATCH 语义:不传的字段 = 不修改;空字符串视作清空(仅对可空字段 phone 有效)。
+    PATCH 语义:不传的字段 = 不修改;空字符串视作清空(仅对可空字段 phone/username 有效)。
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = Field(default=None)
     phone: str | None = Field(default=None, max_length=30)
     phone_region: str | None = Field(default=None, max_length=2)
+    username: str | None = Field(default=None, max_length=50)
+
+    @field_validator("username")
+    @classmethod
+    def _check_username(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        if not USERNAME_REGEX.match(v):
+            raise ValueError("用户名 3-50 位,只能含字母/数字/下划线/短横,且不能纯数字")
+        return v
 
 
 class ChangeEmailIn(BaseModel):

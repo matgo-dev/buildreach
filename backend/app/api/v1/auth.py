@@ -554,7 +554,7 @@ def _me_payload(user) -> dict:
 
 @router.patch(
     "/me/profile",
-    summary="修改自己基础资料(name / phone,无需密码)",
+    summary="修改自己基础资料(无需密码)",
     dependencies=[Depends(block_if_must_change_password)],
 )
 async def update_my_profile(
@@ -567,8 +567,10 @@ async def update_my_profile(
         db,
         user_id=current.id,
         name=body.name,
+        email=body.email,
         phone=body.phone,
         phone_region=body.phone_region,
+        username=body.username,
         request=request,
     )
     return success(_me_payload(user))

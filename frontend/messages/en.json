@@ -246,7 +246,7 @@
     "field_lead_time_min_placeholder": "Min days",
     "field_lead_time_max": "Max Lead Time (days)",
     "field_lead_time_max_placeholder": "Max days",
-    "field_packing_quantity": "Packing Qty / Carton",
+    "field_packing_quantity": "Packing Qty",
     "field_gross_weight_kg": "Gross Weight (kg)",
     "field_volume_cbm": "Volume (CBM)",
     "field_cargo_type": "Cargo Type",
@@ -254,10 +254,8 @@
     "field_lead_time": "Lead Time (days)",
     "field_price_tiers": "Set Tiered Pricing",
     "field_price_tiers_hint": "Edit in dialog",
-    "field_packing_quantity": "Packing Qty",
     "field_gross_weight": "Gross Weight (kg)",
     "field_volume": "Volume (m³)",
-    "field_can_consolidate": "Can Consolidate",
     "field_manufacturer_model": "Model",
     "field_sku_name": "SKU Name",
     "field_color": "Color",
@@ -1012,5 +1010,94 @@
     "supplierApiDebug": "Supplier API Debug",
     "operatorApiDebug": "Operator API Debug",
     "adminApiDebug": "Admin API Debug"
+  },
+  "account": {
+    "title": "Account Settings",
+    "backToHome": "Back to Home",
+    "sections": {
+      "personal": "Personal Info",
+      "contact": "Contact & Login",
+      "security": "Security",
+      "organization": "Organization"
+    },
+    "fields": {
+      "name": "Full Name",
+      "language": "Language",
+      "email": "Email",
+      "phone": "Phone",
+      "username": "Username",
+      "password": "Password",
+      "accountStatus": "Account Status",
+      "orgName": "Organization",
+      "orgType": "Type",
+      "orgRole": "Role",
+      "orgStatus": "Status",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password"
+    },
+    "actions": {
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "save": "Save",
+      "change": "Change",
+      "changePassword": "Change Password"
+    },
+    "placeholders": {
+      "notSet": "Not set",
+      "enterName": "Enter your name",
+      "enterNewEmail": "Enter new email",
+      "enterNewPhone": "Enter new phone number",
+      "enterNewUsername": "Enter new username",
+      "enterCurrentPassword": "Enter current password",
+      "passwordMasked": "••••••••",
+      "enterNewPassword": "Enter new password",
+      "confirmNewPassword": "Confirm new password"
+    },
+    "hints": {
+      "phoneCanBeCleared": "Leave empty to remove phone number",
+      "usernameCanBeCleared": "Leave empty to remove username"
+    },
+    "roles": {
+      "BUYER": "Buyer",
+      "SUPPLIER": "Supplier",
+      "OPERATOR": "Operator",
+      "ADMIN": "Admin"
+    },
+    "orgTypes": {
+      "BUYER_ORG": "Buyer Organization",
+      "SUPPLIER_ORG": "Supplier Organization"
+    },
+    "orgRoles": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled"
+    },
+    "errors": {
+      "nameRequired": "Name is required",
+      "sameAsCurrentEmail": "Same as current email",
+      "sameAsCurrentPhone": "Same as current phone",
+      "sameAsCurrentUsername": "Same as current username",
+      "passwordRequired": "Password is required",
+      "wrongPassword": "Incorrect password",
+      "saveFailed": "Failed to save",
+      "invalidPhone": "Invalid phone number format",
+      "newPasswordRequired": "New password is required",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match"
+    },
+    "success": {
+      "nameSaved": "Name updated",
+      "emailSaved": "Email updated",
+      "phoneSaved": "Phone updated",
+      "phoneCleared": "Phone removed",
+      "usernameSaved": "Username updated",
+      "usernameCleared": "Username removed",
+      "passwordSaved": "Password updated",
+      "passwordSavedRedirect": "Password updated. Redirecting to login…"
+    }
   }
 }
