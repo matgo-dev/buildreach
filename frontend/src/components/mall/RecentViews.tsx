@@ -2,10 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Clock } from "lucide-react";
+import { Clock, X } from "lucide-react";
 import useSWR from "swr";
 
-import { getRecentViews, type RecentViewProduct } from "@/lib/api/buyerEvents";
+import { getRecentViews, removeRecentView, type RecentViewProduct } from "@/lib/api/buyerEvents";
 
 /**
  * 最近浏览商品横栏 — 商城列表页顶部。
@@ -14,13 +14,31 @@ import { getRecentViews, type RecentViewProduct } from "@/lib/api/buyerEvents";
 export function RecentViews() {
   const t = useTranslations("mall");
 
-  const { data: items } = useSWR<RecentViewProduct[]>(
+  const { data: items, mutate } = useSWR<RecentViewProduct[]>(
     "buyer-recent-views",
     () => getRecentViews(8),
     { revalidateOnFocus: true, dedupingInterval: 30_000 },
   );
 
   if (!items || items.length === 0) return null;
+
+  const handleRemove = async (e: React.MouseEvent, productId: number) => {
+    // 阻止冒泡到 Link
+    e.preventDefault();
+    e.stopPropagation();
+    // 乐观更新：立即从列表移除
+    mutate(
+      items.filter((i) => i.id !== productId),
+      false,
+    );
+    try {
+      await removeRecentView(productId);
+      mutate();
+    } catch {
+      // 失败回滚
+      mutate();
+    }
+  };
 
   return (
     <div className="mb-4 rounded-lg bg-white p-4 shadow-sm">
@@ -33,9 +51,17 @@ export function RecentViews() {
           <Link
             key={item.id}
             href={`/mall/products/${item.id}`}
-            className="group flex-shrink-0"
+            className="group relative flex-shrink-0"
           >
             <div className="w-28 rounded-md border border-gray-100 bg-gray-50 p-2 transition-shadow hover:shadow-md">
+              {/* 删除按钮 — 悬浮显示 */}
+              <button
+                onClick={(e) => handleRemove(e, item.id)}
+                className="absolute -right-1.5 -top-1.5 z-10 hidden h-5 w-5 items-center justify-center rounded-full bg-gray-400 text-white shadow-sm transition-colors hover:bg-red-500 group-hover:flex"
+                title={t("removeRecentView")}
+              >
+                <X className="h-3 w-3" />
+              </button>
               {/* 商品图 */}
               <div className="mb-1.5 aspect-square w-full overflow-hidden rounded bg-white">
                 {item.main_image ? (

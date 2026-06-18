@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -12,11 +12,11 @@ import { listProducts, listCertificationOptions, type ProductListParams, type Pr
 import { ProductGrid } from "@/components/mall/ProductGrid";
 import { FilterBar } from "@/components/mall/FilterBar";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
-import { Pagination } from "@/components/mall/Pagination";
 import { RecentViews } from "@/components/mall/RecentViews";
 import { RightSidebar } from "@/components/mall/RightSidebar";
 import { useAuthStore } from "@/stores/authStore";
 import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
+import { Loader2 } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -28,7 +28,7 @@ function MallContent() {
 
   const { tree: categoryTree } = useCategoryTree();
 
-  // 买方浏览偏好：仅 BUYER 角色才拉取，登录态变化时自动失效
+  // 买方浏览偏好：仅 BUYER 角色才拉取
   const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
   const { data: prefCodes } = useSWR<string[]>(
     isBuyer ? "buyer-browse-prefs" : null,
@@ -36,14 +36,14 @@ function MallContent() {
     { revalidateOnFocus: false },
   );
 
-  // 认证筛选选项：聚合所有上架商品的认证值
+  // 认证筛选选项
   const { data: certOptions } = useSWR<string[]>(
     "product-certification-options",
     () => listCertificationOptions(),
     { revalidateOnFocus: false },
   );
 
-  // 品类侧栏展开状态：用户点"查看全部品类"后展开，不落 URL
+  // 品类侧栏展开状态
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   // URL 参数读取
@@ -53,7 +53,6 @@ function MallContent() {
   const urlFeatured = searchParams.get("featured") === "true";
   const urlSupplyMode = searchParams.get("supply_mode") || "";
   const urlCertification = searchParams.get("certification") || "";
-  const urlPage = Number(searchParams.get("page")) || 1;
 
   // 更新 URL 参数的统一方法
   const updateParams = useCallback(
@@ -63,16 +62,29 @@ function MallContent() {
         if (value) params.set(key, value);
         else params.delete(key);
       }
-      if (!("page" in updates)) params.delete("page");
+      // 无限滚动不再需要 page 参数
+      params.delete("page");
       const qs = params.toString();
       router.replace(`/${locale}/mall${qs ? `?${qs}` : ""}`, { scroll: false });
     },
     [searchParams, router, locale]
   );
 
-  // SWR 请求商品列表
-  // 当用户有偏好品类且未展开全部、且没有指定品类时，传 all_categories=false 让后端按偏好过滤
-  // 当用户展开全部品类或指定了具体品类时，传 all_categories=true 跳过偏好过滤
+  // 无限滚动状态
+  const [allProducts, setAllProducts] = useState<ProductListResponse["items"]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // 筛选条件变化时的 fingerprint，用于检测重置
+  const filterFingerprint = useMemo(
+    () => JSON.stringify({ urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, prefCodes, showAllCategories }),
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, prefCodes, showAllCategories]
+  );
+
+  // 首页请求参数（page=1）
   const apiParams: ProductListParams = useMemo(
     () => ({
       category_code: urlCat || undefined,
@@ -81,15 +93,13 @@ function MallContent() {
       featured: urlFeatured || undefined,
       supply_mode: urlSupplyMode || undefined,
       certification: urlCertification || undefined,
-      page: urlPage,
+      page: 1,
       size: PAGE_SIZE,
-      // 有偏好 + 未展开全部 + 未指定具体品类 → 让后端按偏好过滤（不传 all_categories）
-      // 展开全部或指定了品类 → 传 true 让后端返回全量
       ...(prefCodes && prefCodes.length > 0 && !urlCat
         ? { all_categories: showAllCategories || undefined }
         : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, urlPage, prefCodes, showAllCategories]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -104,21 +114,66 @@ function MallContent() {
     mutate,
   } = useSWR<ProductListResponse>(swrKey, () => listProducts(apiParams), {
     revalidateOnFocus: false,
-    keepPreviousData: true,
   });
 
-  const products = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const pages = data?.pages ?? 0;
+  // 筛选条件变化 → 重置累积数据
+  useEffect(() => {
+    setAllProducts([]);
+    setCurrentPage(1);
+    setTotalCount(0);
+    setTotalPages(0);
+  }, [filterFingerprint]);
+
+  // 首页数据到达 → 初始化
+  useEffect(() => {
+    if (data) {
+      setAllProducts(data.items);
+      setCurrentPage(data.page);
+      setTotalCount(data.total);
+      setTotalPages(data.pages);
+    }
+  }, [data]);
+
+  // 加载更多
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || currentPage >= totalPages) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const res = await listProducts({ ...apiParams, page: nextPage });
+      setAllProducts((prev) => [...prev, ...res.items]);
+      setCurrentPage(nextPage);
+      setTotalCount(res.total);
+      setTotalPages(res.pages);
+    } catch {
+      // 加载失败静默，用户可继续滚动重试
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, currentPage, totalPages, apiParams]);
+
+  // IntersectionObserver 触底加载
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  const hasMore = currentPage < totalPages;
 
   const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlCertification || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
-  };
-
-  const handlePageChange = (page: number) => {
-    updateParams({ page: page > 1 ? String(page) : undefined });
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -131,7 +186,6 @@ function MallContent() {
           showQuickLinks
           showFeatured={urlFeatured}
           onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
-          // 买方偏好品类过滤：指定了具体品类时不做偏好过滤（用户已主动选择）
           prefCodes={urlCat ? undefined : prefCodes}
           showAllCategories={showAllCategories || !!urlCat}
           onToggleAllCategories={() => setShowAllCategories((v) => !v)}
@@ -139,7 +193,7 @@ function MallContent() {
 
         {/* 主内容区 */}
         <div className="min-w-0 space-y-4">
-          {/* 最近浏览（登录买方 + 有数据时显示） */}
+          {/* 最近浏览 */}
           {isBuyer && <RecentViews />}
 
           <FilterBar
@@ -149,7 +203,7 @@ function MallContent() {
             supplyMode={urlSupplyMode}
             certification={urlCertification}
             certificationOptions={certOptions ?? []}
-            total={total}
+            total={totalCount}
             activeCategoryCode={urlCat}
             categoryTree={categoryTree}
             onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
@@ -163,22 +217,31 @@ function MallContent() {
           />
 
           <ProductGrid
-            products={products}
+            products={allProducts}
             categoryTree={categoryTree}
-            isLoading={isLoading}
+            isLoading={isLoading && allProducts.length === 0}
             error={error}
             onRetry={() => mutate()}
             onClearFilters={clearAll}
           />
 
-          {pages > 1 && (
-            <Pagination
-              page={urlPage}
-              pages={pages}
-              total={total}
-              size={PAGE_SIZE}
-              onPageChange={handlePageChange}
-            />
+          {/* 触底哨兵 + 加载状态 */}
+          {hasMore && (
+            <div ref={sentinelRef} className="flex items-center justify-center py-6">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{t("loadingMore")}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 全部加载完毕提示 */}
+          {!hasMore && allProducts.length > PAGE_SIZE && (
+            <div className="py-4 text-center text-xs text-gray-400">
+              {t("noMoreProducts")}
+            </div>
           )}
         </div>
 
