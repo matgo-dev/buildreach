@@ -914,6 +914,14 @@ def import_offer(
                 continue
             seen_attr_values.add(attr_identity)
 
+            # 色板图:有 swatch_path 时下载并记录 image_key 到 attr 行
+            swatch_image_key: str | None = None
+            if swatch_path:
+                _copy_image(offer.offer_dir / swatch_path, static_root, spu_code)
+                swatch_image_key = _image_key(spu_code, swatch_path)
+                if value_type == "text":
+                    value_type = "image"
+
             db.add(ProductAttr(
                 product_id=product.id,
                 sku_id=None,
@@ -925,6 +933,7 @@ def import_offer(
                 value_type=value_type,
                 sort_order=attr_sort,
                 selectable=selectable,
+                swatch_image=swatch_image_key,
                 source_lang="en",
                 trans_meta={
                     "attr_key_en": "src",
@@ -937,22 +946,6 @@ def import_offer(
                 i18n_pending_at=_utcnow(),
             ))
             attr_sort += 1
-
-            # 色板图:label + swatch_image 同时有 → 额外写一张 spec_value 绑定图
-            if swatch_path and label_en and value_type == "text":
-                _copy_image(offer.offer_dir / swatch_path, static_root, spu_code)
-                swatch_source_url = None
-                if isinstance(swatch_raw, dict):
-                    swatch_source_url = swatch_raw.get("source_url")
-                db.add(ProductImage(
-                    product_id=product.id,
-                    sku_id=None,
-                    image_key=_image_key(spu_code, swatch_path),
-                    image_type=ImageType.GALLERY,
-                    sort_order=9000 + attr_sort,  # 色板图排后面
-                    spec_value=f"颜色:{label_en}",
-                    source_url=swatch_source_url,
-                ))
 
     # ── 6. product_images:gallery + description_images ──
     img_sort = 0

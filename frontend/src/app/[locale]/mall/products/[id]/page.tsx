@@ -12,6 +12,7 @@ import {
   MessageCircle,
   AlertCircle,
   Loader2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -47,10 +48,11 @@ function buildBreadcrumb(
   return path;
 }
 
-// ---- 色板缩略图 ----
+// ---- 色板缩略图（点击可放大预览） ----
 
 function SwatchThumb({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false);
+  const [preview, setPreview] = useState(false);
 
   if (failed) {
     return (
@@ -61,21 +63,51 @@ function SwatchThumb({ src, alt }: { src: string; alt: string }) {
   }
 
   return (
-    <div className="relative">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        onError={() => setFailed(true)}
-        className="h-[54px] w-[54px] rounded-md border border-gray-300 object-cover"
-        loading="lazy"
-      />
-      {alt && (
-        <span className="mt-0.5 block text-center text-[10px] text-gray-500 leading-tight">
-          {alt}
-        </span>
+    <>
+      <div
+        className="relative"
+        onDoubleClick={(e) => { e.stopPropagation(); setPreview(true); }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          onError={() => setFailed(true)}
+          className="h-[54px] w-[54px] rounded-md border border-gray-300 object-cover"
+          loading="lazy"
+        />
+        {alt && (
+          <span className="mt-0.5 block text-center text-[10px] text-gray-500 leading-tight">
+            {alt}
+          </span>
+        )}
+      </div>
+      {/* 色板放大预览 */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70"
+          onClick={() => setPreview(false)}
+        >
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={alt}
+              className="max-h-[70vh] max-w-[70vw] rounded-lg object-contain"
+            />
+            <button
+              onClick={() => setPreview(false)}
+              className="absolute -right-3 -top-3 rounded-full bg-white p-1.5 shadow-md hover:bg-gray-100 transition-colors"
+            >
+              <X className="h-4 w-4 text-gray-600" />
+            </button>
+            {alt && (
+              <p className="mt-2 text-center text-sm text-white/80">{alt}</p>
+            )}
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -432,6 +464,12 @@ function ProductDetailContent() {
     return buildBreadcrumb(categoryTree, product.category_code);
   }, [product, categoryTree]);
 
+  // Gallery 图片列表（稳定引用，避免每次渲染 filter 产生新数组导致主图重置）
+  const galleryImages = useMemo(() => {
+    if (!product) return [];
+    return product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL");
+  }, [product]);
+
   // 可选规格轴提到右侧面板(颜色/厚度等)
   const inlineAttrs = useMemo(() => {
     if (!product) return [];
@@ -526,7 +564,7 @@ function ProductDetailContent() {
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* 左:图片轮播(排除 DETAIL 类型) */}
           <ProductGallery
-            images={product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL")}
+            images={galleryImages}
           />
 
           {/* 右:信息面板 */}
