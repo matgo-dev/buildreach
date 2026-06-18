@@ -1012,6 +1012,7 @@
     "quotedVariants": "报价变体",
     "selectProduct": "选择商品",
     "searchProduct": "搜索商品",
+    "noSearchResult": "未找到匹配商品",
     "selectVariant": "选择变体",
     "responseLines": "回应买方需求",
     "feeLines": "额外费用",
@@ -1026,7 +1027,12 @@
     "deleteLineConfirm": "确认删除此行？",
     "requoteHint": "当前为重报，可在上次报价基础上修改",
     "downloadPdf": "下载报价单",
-    "downloadError": "报价单下载失败"
+    "downloadError": "报价单下载失败",
+    "editVariant": "修改规格",
+    "confirmVariant": "确认修改",
+    "noSelectableAttrs": "该商品无可选规格",
+    "skuSpec": "选择变体",
+    "moqFromTier": "由阶梯价第一档决定"
   },
   "nav": {
     "mall": "严选商城",
