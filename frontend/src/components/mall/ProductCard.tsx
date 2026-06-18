@@ -128,42 +128,35 @@ export function ProductCard({
       href={`/mall/products/${product.id}`}
       className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
     >
-      {/* 图片区 */}
+      {/* 图片区 — 撑满，窄边距 */}
       <div
-        className="relative min-h-[152px] flex items-center justify-center overflow-hidden border-b border-[#edf2f5]"
+        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-[#edf2f5] p-2"
         style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
       >
         {product.main_image ? (
           <img
             src={product.main_image}
             alt={product.name}
-            className="h-[142px] w-[142px] object-contain mix-blend-multiply"
+            className="h-full w-full object-contain"
             loading="lazy"
           />
         ) : (
           <Package className="h-12 w-12 text-gray-300" />
         )}
-        <div className="absolute top-2.5 left-2.5 flex gap-1">
-          {product.is_featured && (
-            <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-              {t("featured")}
-            </span>
-          )}
-          {product.supply_mode === "PLATFORM_STOCK" ? (
-            <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-              {t("supplyModePlatformStock")}
-            </span>
-          ) : (
-            <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-              {t("supplyModeSupplierDirect")}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* 信息区 */}
       <div className="p-3.5 space-y-2">
         <h3 className="min-h-[46px] text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
+          {product.supply_mode === "PLATFORM_STOCK" ? (
+            <span className="inline-flex items-center rounded bg-teal-900 px-1.5 py-px text-[10px] font-bold text-white mr-1 align-text-top">
+              {t("supplyModePlatformStock")}
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded border border-teal-700 px-1.5 py-px text-[10px] font-bold text-teal-800 mr-1 align-text-top">
+              {t("supplyModeSupplierDirect")}
+            </span>
+          )}
           {product.name}
         </h3>
 
