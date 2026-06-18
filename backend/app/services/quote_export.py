@@ -107,8 +107,15 @@ async def generate_quote_pdf(
     labels = get_labels(locale)
     now = datetime.utcnow()
 
+    # CJK 字体 ~18MB，weasyprint 每次加载子集化需 3s+；en/sw 纯拉丁字母无需 CJK
+    if locale == "zh":
+        font_family = '"Noto Sans CJK SC", "Noto Sans", "Helvetica Neue", Arial, sans-serif'
+    else:
+        font_family = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
     template = _jinja_env.get_template("quote.html")
     html_str = template.render(
+        font_family=font_family,
         L=labels,
         locale=locale,
         rfq=rfq,
