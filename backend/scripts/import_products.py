@@ -627,6 +627,15 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
     for root in cat_tree:
         _upsert_node(root, None)
 
+    # 全量刷新 is_leaf:有 active 子节点的品类为非叶子
+    all_cats = db.execute(select(Category)).scalars().all()
+    parent_codes_with_active_children: set[str] = set()
+    for c in all_cats:
+        if c.parent_code and c.is_active:
+            parent_codes_with_active_children.add(c.parent_code)
+    for c in all_cats:
+        c.is_leaf = c.code not in parent_codes_with_active_children
+
     log.info("  分类导入: 新增=%d, 更新=%d, 总映射=%d", inserted, updated, len(slug_to_code))
     return slug_to_code
 
