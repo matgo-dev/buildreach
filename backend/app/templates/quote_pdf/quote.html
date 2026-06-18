@@ -14,7 +14,7 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: {{ font_family }};
+    font-family: {{ font_family | safe }};
     font-size: 11px;
     color: #333;
     line-height: 1.5;
