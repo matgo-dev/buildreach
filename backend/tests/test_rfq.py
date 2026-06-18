@@ -942,3 +942,143 @@ async def test_list_no_product_enhancement(client, db_session):
         assert rfq_item["brand"] is None
         assert rfq_item["origin"] is None
         assert rfq_item["category_name"] is None
+
+
+# ── first_item_image 列表缩略图 ─────────────────────────
+
+
+async def _create_product_with_image(db_session: AsyncSession) -> tuple[int, str]:
+    """创建带主图的 ACTIVE 商品,返回 (product_id, expected_image_url)。"""
+    from app.db.models.product import Product, ProductStatus
+    from app.db.models.product_image import ProductImage, ImageType
+    from app.core.config import settings
+    from datetime import datetime, timezone
+
+    cat = (await db_session.execute(
+        select(Category).where(Category.level == 3).limit(1)
+    )).scalar_one_or_none()
+    assert cat is not None
+
+    product = Product(
+        name_zh="带图商品",
+        name_en="Product With Image",
+        category_code=cat.code,
+        spu_code=f"IMG-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+        unit="PCS",
+        currency="TZS",
+        status=ProductStatus.ACTIVE,
+        source_lang="en",
+        trans_meta={},
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    image_key = f"test/product_{product.id}_main.jpg"
+    img = ProductImage(
+        product_id=product.id,
+        image_key=image_key,
+        image_type=ImageType.MAIN,
+        sort_order=0,
+    )
+    db_session.add(img)
+    await db_session.flush()
+
+    expected_url = f"{settings.IMAGE_BASE_URL}/{image_key}"
+    return product.id, expected_url
+
+
+@pytest.mark.asyncio
+async def test_list_first_item_image_online(client, db_session):
+    """列表:首项商品有主图 → first_item_image 返回图片 URL。"""
+    bh = await _buyer_headers(client)
+    pid, expected_url = await _create_product_with_image(db_session)
+
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "1.000"}],
+    })
+    assert resp.status_code == 200
+
+    resp = await client.get("/api/v1/rfqs", headers=bh)
+    assert resp.status_code == 200
+    rfqs = resp.json()["data"]["items"]
+    # 找到刚创建的 RFQ
+    target = next((r for r in rfqs if r["items"][0]["product_id"] == pid), None)
+    assert target is not None
+    assert target["first_item_image"] == expected_url
+
+
+@pytest.mark.asyncio
+async def test_list_first_item_image_no_image(client, db_session):
+    """列表:首项商品无图 → first_item_image 为 null。"""
+    bh = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "1.000"}],
+    })
+    assert resp.status_code == 200
+
+    resp = await client.get("/api/v1/rfqs", headers=bh)
+    assert resp.status_code == 200
+    rfqs = resp.json()["data"]["items"]
+    target = next((r for r in rfqs if r["items"][0]["product_id"] == pid), None)
+    assert target is not None
+    assert target["first_item_image"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_first_item_image_soft_deleted_product(client, db_session):
+    """列表:首项商品已软删 → first_item_image 为 null,列表正常。"""
+    from app.db.models.product import Product
+    from datetime import datetime, timezone
+
+    bh = await _buyer_headers(client)
+    pid, _ = await _create_product_with_image(db_session)
+
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "1.000"}],
+    })
+    assert resp.status_code == 200
+
+    # 软删商品
+    prod = await db_session.get(Product, pid)
+    prod.deleted_at = datetime.now(timezone.utc)
+    await db_session.flush()
+
+    resp = await client.get("/api/v1/rfqs", headers=bh)
+    assert resp.status_code == 200
+    rfqs = resp.json()["data"]["items"]
+    target = next((r for r in rfqs if r["items"][0]["product_id"] == pid), None)
+    assert target is not None
+    assert target["first_item_image"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_first_item_image_empty_items(client, db_session):
+    """列表:RFQ 无行项(边界) → first_item_image 为 null,不报错。"""
+    bh = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+
+    # 创建草稿
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "1.000"}],
+        "as_draft": True,
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 删除行项,使 RFQ 变成空行项
+    rfq_items = resp.json()["data"]["items"]
+    if rfq_items:
+        for item in rfq_items:
+            await client.delete(
+                f"/api/v1/rfqs/{rfq_id}/items/{item['id']}",
+                headers=bh,
+            )
+
+    resp = await client.get("/api/v1/rfqs", headers=bh)
+    assert resp.status_code == 200
+    rfqs = resp.json()["data"]["items"]
+    target = next((r for r in rfqs if r["id"] == rfq_id), None)
+    assert target is not None
+    assert target["first_item_image"] is None

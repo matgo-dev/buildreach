@@ -382,15 +382,23 @@ async def list_rfqs(
 
     total = (await db.execute(count_q)).scalar() or 0
 
+    # 列表 eager-load:补 product+images 用于取首项缩略图
     q = (
-        q.options(selectinload(Rfq.items))
+        q.options(
+            selectinload(Rfq.items)
+            .selectinload(RfqItem.product)
+            .selectinload(Product.images),
+        )
         .order_by(Rfq.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
     rows = (await db.execute(q)).scalars().all()
 
-    serialized = [_serialize_rfq(r, is_operator=scope.is_operator) for r in rows]
+    serialized = [
+        _serialize_rfq(r, is_operator=scope.is_operator, with_first_item_image=True)
+        for r in rows
+    ]
     return {
         "items": [s.model_dump() for s in serialized],
         "total": total,
@@ -605,7 +613,7 @@ def _serialize_item(
 
 def _serialize_rfq(
     rfq: Rfq, *, is_operator: bool, quote_data: object = None,
-    with_product: bool = False,
+    with_product: bool = False, with_first_item_image: bool = False,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """按角色序列化询价单。quote_data 由详情接口传入(层叠报价)。"""
     active_items = [
@@ -613,6 +621,13 @@ def _serialize_rfq(
         if getattr(it, "deleted_at", None) is None
     ]
     items = [_serialize_item(it, with_product=with_product) for it in active_items]
+
+    # 列表级首项缩略图
+    first_item_image = None
+    if with_first_item_image and active_items:
+        p = active_items[0].product
+        if p is not None and getattr(p, "deleted_at", None) is None:
+            first_item_image = _resolve_main_image_from_product(p)
 
     if is_operator:
         result = RfqOperatorView(
@@ -662,6 +677,7 @@ def _serialize_rfq(
         attachment_urls=rfq.attachment_urls,
         created_at=rfq.created_at,
         updated_at=rfq.updated_at,
+        first_item_image=first_item_image,
         items=items,
     )
     if quote_data is not None:

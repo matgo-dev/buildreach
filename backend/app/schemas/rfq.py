@@ -142,6 +142,9 @@ class RfqBuyerPublic(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
+    # 列表缩略图:首个有效行项主图,读时 JOIN
+    first_item_image: str | None = None
+
     # 行项目
     items: list[RfqItemPublic] = []
 
