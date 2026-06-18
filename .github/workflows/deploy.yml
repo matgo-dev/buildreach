@@ -24,8 +24,8 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/buildlink-dev/buildlink-ea
-  ACR_REGISTRY: registry.cn-hangzhou.aliyuncs.com
-  ACR_IMAGE_PREFIX: registry.cn-hangzhou.aliyuncs.com/buildlink01
+  ACR_REGISTRY: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com
+  ACR_IMAGE_PREFIX: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01
 
 jobs:
   # ── 迁移安全检查 ──
