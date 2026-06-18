@@ -672,5 +672,15 @@ class RfqInvalidAttachmentUrlError(BusinessError):
         )
 
 
+class RfqNoQuoteToExportError(BusinessError):
+    """40527 — 该 RFQ 无 ACTIVE 报价,无可导出单据。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40527,
+            "No active quote available for export",
+            message_key=MessageKey.RFQ_NO_QUOTE_TO_EXPORT,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}
