@@ -16,6 +16,7 @@ from app.schemas.rfq import (
     RfqCancelRequest, RfqCreate, RfqItemEdit, RfqItemInput, RfqItemUpdate, RfqUpdate,
 )
 from app.services import rfq as rfq_svc
+from app.services.quote_export import generate_quote_pdf
 
 router = APIRouter(
     prefix="/rfqs",
@@ -190,3 +191,28 @@ async def delete_rfq_item(
         db, current, rfq_id, item_id, request=request,
     )
     return success(result.model_dump())
+
+
+# ── 报价导出 ──────────────────────────────────────────────
+
+
+@router.get("/{rfq_id}/quote/export", summary="导出报价单 PDF")
+async def export_quote_pdf(
+    rfq_id: int,
+    request: Request,
+    current: CurrentUser = Depends(require_permission(Permissions.RFQ_READ)),
+    db: AsyncSession = Depends(get_db),
+):
+    """买方/运营下载买方版报价单 PDF。语言跟随用户当前 locale。"""
+    from fastapi.responses import Response
+
+    locale = getattr(request.state, "locale", "en")
+    pdf_bytes, filename = await generate_quote_pdf(db, rfq_id, current, locale)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
