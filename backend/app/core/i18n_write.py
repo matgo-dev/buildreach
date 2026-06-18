@@ -185,6 +185,10 @@ async def process_pending_translations(obj: object) -> dict[str, int]:
         src_col = f"{field}_{source_lang}"
         source_value = getattr(obj, src_col, None)
         if not source_value:
+            # 源值为空,无需翻译,清除 pending 状态避免 sweeper 永久循环
+            if meta.get(meta_key) in ("pending", "failed"):
+                meta[meta_key] = "src"
+                changed = True
             continue
 
         # CAS:再检一次当前状态,仍为 pending/failed 才处理
