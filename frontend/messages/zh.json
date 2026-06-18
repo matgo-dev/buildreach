@@ -1031,7 +1031,8 @@
     "editVariant": "修改规格",
     "confirmVariant": "确认修改",
     "noSelectableAttrs": "该商品无可选规格",
-    "skuSpec": "选择变体"
+    "skuSpec": "选择变体",
+    "moqFromTier": "由阶梯价第一档决定"
   },
   "nav": {
     "mall": "严选商城",

@@ -724,7 +724,15 @@ function QuoteBackfillContent() {
               </tr>
             </thead>
             <tbody>
-              {lines.map((line, idx) => {
+              {/* 排序：PRODUCT 行在前，FEE 行在后 */}
+              {[...lines.map((l, i) => i)]
+                .sort((a, b) => {
+                  const aFee = lines[a].line_type === "FEE" ? 1 : 0;
+                  const bFee = lines[b].line_type === "FEE" ? 1 : 0;
+                  return aFee - bFee || a - b;
+                })
+                .map((idx) => {
+                const line = lines[idx];
                 const priceEmpty = showErrors && (line.unit_price === "" || isNaN(parseFloat(line.unit_price)));
                 const isFee = line.line_type === "FEE";
                 const hasProduct = !!line.product_id;
@@ -805,9 +813,13 @@ function QuoteBackfillContent() {
                         className={`h-8 w-full rounded border px-2 text-right text-xs outline-none focus:border-blue-500 ${priceEmpty ? "border-red-400 bg-red-50" : "border-gray-200"}`}
                         placeholder="0.00" />
                     </td>
-                    {/* MOQ */}
+                    {/* MOQ — 有阶梯价时锁定为第一档 min_qty */}
                     <td className="px-3 py-3 text-right">
-                      {isFee ? <span className="text-xs text-gray-400">—</span> : (
+                      {isFee ? <span className="text-xs text-gray-400">—</span> : line.tiers.length > 0 ? (
+                        <span className="inline-block h-8 w-full rounded border border-gray-100 bg-gray-50 px-2 text-right text-xs leading-8 text-gray-500" title={t("moqFromTier")}>
+                          {line.tiers[0].min_qty || "—"}
+                        </span>
+                      ) : (
                         <input type="number" min="0" step="any" value={line.moq}
                           onChange={(e) => updateLine(idx, { moq: e.target.value })}
                           className="h-8 w-full rounded border border-gray-200 px-2 text-right text-xs outline-none focus:border-blue-500" />
@@ -937,7 +949,7 @@ function QuoteBackfillContent() {
       {/* 弹窗 */}
       {tierModalIdx !== null && (
         <QuoteTierModal tiers={lines[tierModalIdx].tiers} moq={parseFloat(lines[tierModalIdx].moq) || 1}
-          onConfirm={(newTiers) => { updateLine(tierModalIdx, { tiers: newTiers }); setTierModalIdx(null); }}
+          onConfirm={(newTiers) => { updateLine(tierModalIdx, { tiers: newTiers, moq: newTiers.length > 0 ? String(newTiers[0].min_qty) : lines[tierModalIdx].moq }); setTierModalIdx(null); }}
           onCancel={() => setTierModalIdx(null)} t={t} />
       )}
       {showAddModal && (
