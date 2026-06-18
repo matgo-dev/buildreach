@@ -171,8 +171,8 @@ export function CategoryCascader({
             {value.level2Code ? t("select_level3") : t("select_parent_first")}
           </option>
           {level3Options.map((n) => (
-            <option key={n.code} value={n.code}>
-              {n.name}
+            <option key={n.code} value={n.code} disabled={!n.is_leaf}>
+              {n.name}{!n.is_leaf ? ` (${t("has_subcategory")})` : ""}
             </option>
           ))}
         </select>

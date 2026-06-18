@@ -71,8 +71,8 @@ export function CategoryCascaderDropdown({ tree, value, onChange, placeholder = 
   );
 
   const handleSelect = useCallback(
-    (code: string, hasChildren: boolean) => {
-      if (hasChildren) return; // 有子级不选中，继续展开
+    (code: string, isLeaf: boolean) => {
+      if (!isLeaf) return; // 非叶子不可选中,继续展开
       onChange(code);
       setOpen(false);
     },
@@ -112,19 +112,18 @@ export function CategoryCascaderDropdown({ tree, value, onChange, placeholder = 
           {/* L1 列 */}
           <ul className="max-h-[320px] w-[180px] overflow-y-auto border-r border-slate-100 py-1">
             {tree.map((n) => {
-              const hasChildren = !!n.children?.length;
               const active = hoverL1 === n.code;
               return (
                 <li
                   key={n.code}
                   onMouseEnter={() => { setHoverL1(n.code); setHoverL2(null); }}
-                  onClick={() => handleSelect(n.code, hasChildren)}
+                  onClick={() => handleSelect(n.code, n.is_leaf)}
                   className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm transition-colors ${
                     active ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
                   <span className="truncate">{n.name}</span>
-                  {hasChildren && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+                  {!n.is_leaf && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
                 </li>
               );
             })}
@@ -134,35 +133,39 @@ export function CategoryCascaderDropdown({ tree, value, onChange, placeholder = 
           {l2Options.length > 0 && (
             <ul className="max-h-[320px] w-[180px] overflow-y-auto border-r border-slate-100 py-1">
               {l2Options.map((n) => {
-                const hasChildren = !!n.children?.length;
                 const active = hoverL2 === n.code;
                 return (
                   <li
                     key={n.code}
                     onMouseEnter={() => setHoverL2(n.code)}
-                    onClick={() => handleSelect(n.code, hasChildren)}
+                    onClick={() => handleSelect(n.code, n.is_leaf)}
                     className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm transition-colors ${
                       active ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
                     }`}
                   >
                     <span className="truncate">{n.name}</span>
-                    {hasChildren && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+                    {!n.is_leaf && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
                   </li>
                 );
               })}
             </ul>
           )}
 
-          {/* L3 列 */}
+          {/* L3+ 列 */}
           {l3Options.length > 0 && (
             <ul className="max-h-[320px] w-[180px] overflow-y-auto py-1">
               {l3Options.map((n) => (
                 <li
                   key={n.code}
-                  onClick={() => handleSelect(n.code, false)}
-                  className="cursor-pointer truncate px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+                  onClick={() => handleSelect(n.code, n.is_leaf)}
+                  className={`cursor-pointer truncate px-3 py-2 text-sm transition-colors ${
+                    n.is_leaf
+                      ? "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                      : "text-slate-400 cursor-not-allowed"
+                  }`}
                 >
                   {n.name}
+                  {!n.is_leaf && <span className="ml-1 text-xs text-slate-300">▸</span>}
                 </li>
               ))}
             </ul>
