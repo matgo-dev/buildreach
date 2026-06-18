@@ -812,7 +812,11 @@
     "comingSoon": "Coming soon",
     "unitLabel": "Unit",
     "specs": "Specs",
-    "days": "days"
+    "days": "days",
+    "editVariant": "Edit Specs",
+    "confirmVariant": "Confirm",
+    "cancelEdit": "Cancel",
+    "duplicateVariant": "This variant already exists in your basket"
   },
   "rfq": {
     "title": "My Inquiries",

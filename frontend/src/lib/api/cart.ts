@@ -56,12 +56,12 @@ export async function addCartItem(
   });
 }
 
-/** 修改询价篮项数量 */
+/** 修改询价篮项（数量 / 变体均可单独传） */
 export async function updateCartItem(
   itemId: number,
-  quantity: number
+  patch: { quantity?: number; selected_variants?: Array<{ attr_name: string; value: string }> },
 ): Promise<CartPublic> {
-  return api.patch<CartPublic>(`/api/v1/cart/items/${itemId}`, { quantity });
+  return api.patch<CartPublic>(`/api/v1/cart/items/${itemId}`, patch);
 }
 
 /** 删除单个询价篮项 */

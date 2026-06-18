@@ -624,7 +624,7 @@ function RfqCreateContent() {
         setTimeout(async () => {
           qtyDebounceRef.delete(itemId);
           try {
-            const updated = await updateCartItem(itemId, qty);
+            const updated = await updateCartItem(itemId, { quantity: qty });
             syncFromCart(updated);
           } catch {
             // 失败不回滚
@@ -640,15 +640,20 @@ function RfqCreateContent() {
 
   const [draft, setDraft] = useState<DraftData>(() => {
     if (typeof window === "undefined") return emptyDraft();
-    try {
-      const saved = sessionStorage.getItem(draftKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // 兼容旧版无 manualItems
-        if (!parsed.manualItems) parsed.manualItems = [];
-        return parsed;
-      }
-    } catch {}
+
+    // 从商品卡片带 product_id 进入时，跳过旧草稿，避免混入残留 items
+    const hasProductIdParam = new URLSearchParams(window.location.search).has("product_id");
+
+    if (!hasProductIdParam) {
+      try {
+        const saved = sessionStorage.getItem(draftKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (!parsed.manualItems) parsed.manualItems = [];
+          return parsed;
+        }
+      } catch {}
+    }
 
     return {
       ...emptyDraft(),

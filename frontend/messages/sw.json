@@ -812,7 +812,11 @@
     "comingSoon": "Inakuja hivi karibuni",
     "unitLabel": "Kipimo",
     "specs": "Vipimo",
-    "days": "siku"
+    "days": "siku",
+    "editVariant": "Hariri Vipimo",
+    "confirmVariant": "Thibitisha",
+    "cancelEdit": "Ghairi",
+    "duplicateVariant": "Mchanganyiko huu tayari upo kwenye kikapu"
   },
   "rfq": {
     "title": "Maombi Yangu",

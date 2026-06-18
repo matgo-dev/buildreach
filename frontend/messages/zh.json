@@ -812,7 +812,11 @@
     "comingSoon": "功能完善中",
     "unitLabel": "单位",
     "specs": "规格",
-    "days": "天"
+    "days": "天",
+    "editVariant": "修改规格",
+    "confirmVariant": "确认修改",
+    "cancelEdit": "取消",
+    "duplicateVariant": "该规格已在篮中"
   },
   "rfq": {
     "title": "询价管理",
