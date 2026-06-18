@@ -30,18 +30,12 @@ from app.services import product as product_svc
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
-    """SPU 属性按 attr_group → attr_key 两层聚合,色板值关联 swatch 图。
+def _build_attribute_groups(attrs, locale: str) -> list[dict]:
+    """SPU 属性按 attr_group → attr_key 两层聚合,色板图直接从 attr.swatch_image 读取。
 
     聚合逻辑:同 attr_key 的多行合成一个 AttrItem.values(N 行→多值)。
-    色板:value_type=image 时,从 images 按 spec_value 匹配取图 URL 填 swatch_image。
+    色板:value_type=image 时,直接读 attr.swatch_image 拼完整 URL。
     """
-    # 按 spec_value 索引图片,用于色板匹配
-    spec_image_map: dict[str, str] = {}
-    for img in images:
-        if img.spec_value:
-            spec_image_map[img.spec_value] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
-
     # 两层聚合:group → key → values
     from collections import OrderedDict
     group_map: OrderedDict[str, OrderedDict[str, dict]] = OrderedDict()
@@ -63,8 +57,8 @@ def _build_attribute_groups(attrs, images, locale: str) -> list[dict]:
             key_map[key]["selectable"] = True
 
         swatch = None
-        if attr.value_type == "image" and attr.spec_value:
-            swatch = spec_image_map.get(attr.spec_value)
+        if attr.value_type == "image" and attr.swatch_image:
+            swatch = f"{settings.IMAGE_BASE_URL}/{attr.swatch_image}"
 
         key_map[key]["values"].append(
             AttrValue(value=value, value_type=attr.value_type or "text", swatch_image=swatch).model_dump()
@@ -202,7 +196,7 @@ async def get_product(
         unit=p.unit,
         moq=p.moq,
         moq_unit=p.moq_unit,
-        attribute_groups=_build_attribute_groups(spu_attrs, alive_imgs, locale),
+        attribute_groups=_build_attribute_groups(spu_attrs, locale),
         images=all_images,
     ).model_dump()
     return success(data)

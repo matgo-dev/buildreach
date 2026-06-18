@@ -69,5 +69,7 @@ class ProductAttr(Base, I18nMixin):
     selectable: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false",
     )
+    # 色板图片路径(如 products/SPU001/red.jpg),直接挂属性值行
+    swatch_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     product: Mapped["Product"] = relationship("Product", back_populates="attrs")
