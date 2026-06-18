@@ -24,7 +24,7 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
-import AttachmentUploader from "@/components/rfq/AttachmentUploader";
+// import AttachmentUploader from "@/components/rfq/AttachmentUploader";  // 禁用:附件安全版落地前暂停
 import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
@@ -1412,10 +1412,12 @@ function RfqCreateContent() {
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
             />
           </div>
+          {/* 禁用:附件安全版落地前暂停
           <AttachmentUploader
             urls={draft.attachment_urls}
             onChange={(urls) => updateDraft("attachment_urls", urls)}
           />
+          */}
         </div>
       </div>
 

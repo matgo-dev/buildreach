@@ -1024,7 +1024,9 @@
     "addLineCustom": "Kipengele Maalum",
     "confirm": "Thibitisha",
     "deleteLineConfirm": "Futa safu hii?",
-    "requoteHint": "Kunukuu upya: rekebisha kulingana na nukuu iliyotangulia"
+    "requoteHint": "Kunukuu upya: rekebisha kulingana na nukuu iliyotangulia",
+    "downloadPdf": "Pakua Nukuu",
+    "downloadError": "Imeshindwa kupakua nukuu"
   },
   "nav": {
     "mall": "Duka",

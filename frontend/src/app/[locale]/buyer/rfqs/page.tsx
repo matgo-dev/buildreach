@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Package, ShoppingCart } from "lucide-react";
+import { Loader2, FileText, Package, ShoppingCart, Download } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -19,6 +19,7 @@ import {
   type RfqListResponse,
 } from "@/lib/api/rfqs";
 import { acceptRfq, rejectRfq } from "@/lib/api/quotes";
+import { exportQuotePdf } from "@/lib/api/quote-export";
 import { formatRelativeTime } from "@/lib/formatters";
 import { useCartStore } from "@/stores/cartStore";
 import Link from "next/link";
@@ -111,9 +112,45 @@ function RfqListContent() {
     setConfirmModal({ open: true, title, description, variant, confirmLabel, action });
   }, []);
 
+  // 导出报价单
+  const [exportingId, setExportingId] = useState<number | null>(null);
+  const handleExport = useCallback(async (rfqId: number) => {
+    setExportingId(rfqId);
+    try {
+      await exportQuotePdf(rfqId);
+    } catch (err) {
+      showError(err);
+    } finally {
+      setExportingId(null);
+    }
+  }, [showError]);
+
   // 按状态渲染操作按钮
   const renderActions = useCallback((rfq: { id: number; status: string }) => {
     const btns: React.ReactNode[] = [];
+
+    // QUOTED / ACCEPTED 可导出报价单
+    if (rfq.status === "QUOTED" || rfq.status === "ACCEPTED") {
+      btns.push(
+        <button
+          key="export"
+          type="button"
+          disabled={exportingId === rfq.id}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleExport(rfq.id);
+          }}
+          className="inline-flex items-center gap-1 text-xs font-medium text-[#00505a] hover:underline disabled:opacity-50"
+        >
+          {exportingId === rfq.id ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Download className="h-3 w-3" />
+          )}
+          {tQ("downloadPdf")}
+        </button>,
+      );
+    }
 
     if (rfq.status === "DRAFT") {
       btns.push(
@@ -198,7 +235,7 @@ function RfqListContent() {
     }
 
     return <div className="flex items-center justify-end gap-3">{btns}</div>;
-  }, [t, tQ, locale, router, hasPermission, openConfirm, execAction]);
+  }, [t, tQ, locale, router, hasPermission, openConfirm, execAction, exportingId, handleExport]);
 
   return (
     <div className="space-y-4">

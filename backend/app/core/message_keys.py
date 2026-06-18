@@ -96,6 +96,7 @@ class MessageKey:
     RFQ_MIN_ONE_ITEM = "error.rfq.min_one_item"
     RFQ_TOO_MANY_ATTACHMENTS = "error.rfq.too_many_attachments"
     RFQ_INVALID_ATTACHMENT_URL = "error.rfq.invalid_attachment_url"
+    RFQ_NO_QUOTE_TO_EXPORT = "error.rfq.no_quote_to_export"
 
     # quote — 报价模块 405xx
     QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"

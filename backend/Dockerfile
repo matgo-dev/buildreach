@@ -22,6 +22,10 @@ RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors
         build-essential \
         curl \
         ca-certificates \
+        # weasyprint 编译依赖
+        libpango1.0-dev \
+        libcairo2-dev \
+        libgdk-pixbuf-2.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 装 uv(从阿里云 PyPI 镜像装,不走 ghcr.io 拉镜像层)
@@ -54,6 +58,13 @@ RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors
         libjpeg62-turbo \
         zlib1g \
         libwebp7 \
+        # weasyprint 运行时
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libcairo2 \
+        libgdk-pixbuf-2.0-0 \
+        # CJK 字体(中文不乱码)
+        fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 appuser
 

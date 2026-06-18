@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 15mm 25mm 15mm;
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 9px;
+      color: #999;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans CJK SC", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    color: #333;
+    line-height: 1.5;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #0D4D4D;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .header-left h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #0D4D4D;
+    margin-bottom: 4px;
+  }
+  .header-right {
+    text-align: right;
+    font-size: 10px;
+    color: #666;
+  }
+  .header-right .primary-no {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+  }
+  .parties {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 16px;
+  }
+  .party {
+    flex: 1;
+    background: #f8fafa;
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .party h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #0D4D4D;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+  .party p {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+  .terms-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    background: #f0f6f6;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
+    font-size: 10px;
+  }
+  .terms-bar .term-item span {
+    color: #888;
+  }
+  .terms-bar .term-item strong {
+    color: #333;
+  }
+  h2.section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0D4D4D;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    font-size: 10px;
+  }
+  table th {
+    background: #f1f5f5;
+    color: #555;
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #ddd;
+  }
+  table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+  }
+  table tr:last-child td { border-bottom: none; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .tier-table {
+    margin: 4px 0 0 16px;
+    font-size: 9px;
+    width: auto;
+  }
+  .tier-table th, .tier-table td {
+    padding: 2px 8px;
+    background: #fafafa;
+  }
+  .totals {
+    margin-left: auto;
+    width: 260px;
+    margin-bottom: 20px;
+  }
+  .totals tr td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  .totals .total-row td {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0D4D4D;
+    border-top: 2px solid #0D4D4D;
+    border-bottom: none;
+    padding-top: 8px;
+  }
+  .footer {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+    font-size: 9px;
+    color: #999;
+  }
+  .footer .disclaimer {
+    font-style: italic;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+{# ── 页眉 ── #}
+<div class="header">
+  <div class="header-left">
+    <h1>{{ L.doc_title }}</h1>
+    <span style="font-size:11px;color:#666;">{{ platform.name }}</span>
+  </div>
+  <div class="header-right">
+    <div class="primary-no">{{ L.rfq_no }}: {{ rfq.rfq_no }}</div>
+    <div>{{ L.quote_no }}: {{ quote.quote_no }}</div>
+    <div>{{ L.issue_date }}: {{ issue_date }}</div>
+    {% if quote.valid_until %}
+    <div>{{ L.valid_until }}: {{ valid_until }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── 双方 ── #}
+<div class="parties">
+  <div class="party">
+    <h3>{{ L.from_title }}</h3>
+    <p><strong>{{ platform.name }}</strong></p>
+    {% if platform.address %}<p>{{ platform.address }}</p>{% endif %}
+    {% if platform.email %}<p>{{ platform.email }}</p>{% endif %}
+  </div>
+  <div class="party">
+    <h3>{{ L.to_title }}</h3>
+    {% if rfq.contact_name %}<p><strong>{{ rfq.contact_name }}</strong></p>{% endif %}
+    {% if buyer_org %}<p>{{ buyer_org }}</p>{% endif %}
+    {% if rfq.contact_email %}<p>{{ rfq.contact_email }}</p>{% endif %}
+    {% if rfq.contact_phone %}<p>{{ rfq.contact_phone }}</p>{% endif %}
+  </div>
+</div>
+
+{# ── 交易条款 ── #}
+<div class="terms-bar">
+  {% if quote.trade_term %}
+  <div class="term-item"><span>{{ L.trade_term }}:</span> <strong>{{ quote.trade_term }}{% if quote.named_place %} — {{ quote.named_place }}{% endif %}</strong></div>
+  {% endif %}
+  {% if quote.currency %}
+  <div class="term-item"><span>{{ L.currency }}:</span> <strong>{{ quote.currency }}</strong></div>
+  {% endif %}
+  {% if rfq.requested_delivery_place %}
+  <div class="term-item"><span>{{ L.delivery_place }}:</span> <strong>{{ rfq.requested_delivery_place }}</strong></div>
+  {% endif %}
+  {% if rfq.destination_port %}
+  <div class="term-item"><span>{{ L.destination_port }}:</span> <strong>{{ rfq.destination_port }}</strong></div>
+  {% endif %}
+  {% if rfq.expected_delivery_date %}
+  <div class="term-item"><span>{{ L.expected_delivery }}:</span> <strong>{{ expected_delivery_date }}</strong></div>
+  {% endif %}
+  {% if quote.lead_time_days %}
+  <div class="term-item"><span>{{ L.lead_time }}:</span> <strong>{{ quote.lead_time_days }}</strong></div>
+  {% endif %}
+  {% if quote.eta_days %}
+  <div class="term-item"><span>{{ L.eta }}:</span> <strong>{{ quote.eta_days }}</strong></div>
+  {% endif %}
+</div>
+
+{# ── 商品行 ── #}
+<h2 class="section-title">{{ L.items_title }}</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px;">{{ L.col_no }}</th>
+      <th>{{ L.col_product }}</th>
+      <th>{{ L.col_variant }}</th>
+      <th class="text-center">{{ L.col_qty }}</th>
+      <th class="text-center">{{ L.col_unit }}</th>
+      <th class="text-right">{{ L.col_unit_price }}</th>
+      <th class="text-right">{{ L.col_amount }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in product_items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.product_name_snapshot or "—" }}</td>
+      <td>{{ item.variant_display or "—" }}</td>
+      <td class="text-center">{{ item.quantity or "—" }}</td>
+      <td class="text-center">{{ item.uom or "—" }}</td>
+      <td class="text-right">{{ format_amount(item.unit_price) }}</td>
+      <td class="text-right">{{ format_amount(item.line_amount) }}</td>
+    </tr>
+    {% if item.tiers %}
+    <tr>
+      <td></td>
+      <td colspan="6">
+        <table class="tier-table">
+          <thead><tr><th>{{ L.tier_min_qty }}</th><th class="text-right">{{ L.col_unit_price }}</th></tr></thead>
+          <tbody>
+            {% for tier in item.tiers %}
+            <tr><td>≥ {{ tier.min_qty }}</td><td class="text-right">{{ format_amount(tier.unit_price) }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+
+{# ── 费用行 ── #}
+{% if fee_items %}
+<h2 class="section-title">{{ L.fee_section }}</h2>
+<table>
+  <thead>
+    <tr>
+      <th>{{ L.col_remark }}</th>
+      <th class="text-right" style="width:120px;">{{ L.col_amount }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fee in fee_items %}
+    <tr>
+      <td>{{ fee.remark or "—" }}</td>
+      <td class="text-right">{{ format_amount(fee.line_amount) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ── 合计 ── #}
+<table class="totals">
+  <tbody>
+    {% if fee_items %}
+    <tr>
+      <td>{{ L.subtotal_products }}</td>
+      <td class="text-right">{{ format_amount(subtotal_products) }}</td>
+    </tr>
+    <tr>
+      <td>{{ L.subtotal_fees }}</td>
+      <td class="text-right">{{ format_amount(subtotal_fees) }}</td>
+    </tr>
+    {% endif %}
+    <tr class="total-row">
+      <td>{{ L.total }} ({{ quote.currency or "USD" }})</td>
+      <td class="text-right">{{ format_amount(quote.total_amount) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+{# ── 页脚 ── #}
+<div class="footer">
+  <p class="disclaimer">{{ L.disclaimer }}</p>
+  <p>{{ L.generated_at }}: {{ generated_at }}</p>
+  {% if platform.email %}<p>{{ platform.email }}</p>{% endif %}
+</div>
+
+</body>
+</html>

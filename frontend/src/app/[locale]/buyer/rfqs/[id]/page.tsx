@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package, Download } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -15,6 +15,7 @@ import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { ApiError } from "@/lib/api";
 import { getRfq, cancelRfq, withdrawRfq, submitRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
+import { exportQuotePdf } from "@/lib/api/quote-export";
 import {
   listBuyerQuotes, acceptRfq, rejectRfq,
   type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
@@ -283,7 +284,7 @@ function RfqDetailContent() {
 
       {/* 报价区块（独立卡片） */}
       {showQuoteSection && quote && (
-        <QuoteCard rfq={rfq} quote={quote} isExpiredHint={isExpiredHint} locale={locale} />
+        <QuoteCard rfq={rfq} quote={quote} isExpiredHint={isExpiredHint} locale={locale} onError={showError} />
       )}
 
       {/* 无报价提示 */}
@@ -377,7 +378,8 @@ function RfqDetailContent() {
               <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
             </div>
           )}
-          {rfq.attachment_urls && rfq.attachment_urls.length > 0 && (
+          {/* 禁用:附件安全版落地前暂停 */}
+          {false && rfq.attachment_urls && rfq.attachment_urls.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-gray-700">{t("attachment.label")}</h3>
               <div className="flex flex-wrap gap-3">
@@ -600,20 +602,38 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
 
 // ---- 报价卡片（独立区块） ----
 
+// 允许导出报价单的 RFQ 状态
+const EXPORTABLE_STATUSES = new Set(["QUOTED", "ACCEPTED"]);
+
 function QuoteCard({
   rfq,
   quote,
   isExpiredHint,
   locale,
+  onError,
 }: {
   rfq: RfqBuyerPublic;
   quote: RfqQuoteBuyerPublic;
   isExpiredHint: boolean;
   locale: string;
+  onError: (err: unknown) => void;
 }) {
   const tQ = useTranslations("quote");
   const currency = quote.currency ?? "USD";
   const isAccepted = rfq.status === "ACCEPTED";
+  const canExport = EXPORTABLE_STATUSES.has(rfq.status);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await exportQuotePdf(rfq.id);
+    } catch (err: unknown) {
+      onError(err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
@@ -628,7 +648,24 @@ function QuoteCard({
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400">{quote.quote_no}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{quote.quote_no}</span>
+          {canExport && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="inline-flex items-center gap-1 rounded-md border border-[#0D4D4D]/20 px-2.5 py-1 text-xs font-medium text-[#0D4D4D] transition-colors hover:bg-[#0D4D4D]/5 disabled:opacity-50"
+            >
+              {downloading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3" />
+              )}
+              {tQ("downloadPdf")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 过期软提示 */}
@@ -728,11 +765,11 @@ function QuoteLineRow({
   const tQ = useTranslations("quote");
   const [showTiers, setShowTiers] = useState(false);
 
-  const productName = qi.product_name_snapshot ?? "—";
-  const variantDisplay = qi.variant_display;
-  const qty = qi.quantity ?? "—";
-  const uom = qi.uom ?? "";
   const isFee = qi.line_type === "FEE";
+  const productName = isFee ? (qi.remark || "—") : (qi.product_name_snapshot ?? "—");
+  const variantDisplay = isFee ? null : qi.variant_display;
+  const qty = isFee ? null : (qi.quantity ?? "—");
+  const uom = isFee ? "" : (qi.uom ?? "");
 
   return (
     <tr className="border-t border-gray-100 even:bg-slate-50/50">
@@ -750,15 +787,17 @@ function QuoteLineRow({
         </div>
       </td>
       <td className="px-4 py-3 text-right text-gray-800">
-        {qty} {uom}
+        {qty != null ? <>{qty} {uom}</> : "—"}
       </td>
       <td className="px-4 py-3 text-right">
+        {isFee ? <span className="text-gray-400">—</span> : (
         <div className="font-semibold text-gray-800">
           {qi.unit_price != null
             ? formatCurrency(Number(qi.unit_price), currency, locale)
             : "—"}
         </div>
-        {qi.tiers.length > 0 && (
+        )}
+        {!isFee && qi.tiers.length > 0 && (
           <div className="mt-1">
             <button type="button" onClick={() => setShowTiers(!showTiers)}
               className="text-[10px] font-medium text-[#00505a] hover:underline">
