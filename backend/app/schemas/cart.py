@@ -31,8 +31,16 @@ class CartItemPublic(BaseModel):
     # 商品信息
     product_name: str | None = None
     variant_display: str | None = None  # 动态拼接，同 RFQ
+    description: str | None = None      # 商品短描述
+    brand: str | None = None
+    origin: str | None = None           # 产地
     unit: str | None = None
     moq: int | None = None
+    supply_mode: str | None = None      # PLATFORM_STOCK / SUPPLIER_DIRECT
+    certifications: list[str] = []
+    lead_time_min: int | None = None
+    lead_time_max: int | None = None
+    category_name: str | None = None    # 所属品类名
 
     # 可购状态
     is_purchasable: bool = True

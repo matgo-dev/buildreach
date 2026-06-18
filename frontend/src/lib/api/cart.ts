@@ -15,8 +15,16 @@ export interface CartItemPublic {
   quantity: number;
   product_name: string | null;
   variant_display: string | null;
+  description: string | null;
+  brand: string | null;
+  origin: string | null;
   unit: string | null;
   moq: number | null;
+  supply_mode: string | null;
+  certifications: string[];
+  lead_time_min: number | null;
+  lead_time_max: number | null;
+  category_name: string | null;
   is_purchasable: boolean;
   unavailable_reason: string | null;
   // 可能的值: PRODUCT_DELETED | PRODUCT_INACTIVE | VARIANT_UNAVAILABLE
