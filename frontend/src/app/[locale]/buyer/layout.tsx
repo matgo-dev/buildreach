@@ -19,7 +19,7 @@ import { getCart } from "@/lib/api/cart";
  */
 
 // 使用商城布局（无侧边栏）的路径
-const MALL_STYLE_PATHS = ["/buyer/cart", "/buyer/rfqs/create"];
+const MALL_STYLE_PATHS = ["/buyer/cart", "/buyer/rfqs"];
 
 export default function BuyerLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);

@@ -13,6 +13,7 @@ import {
   PackageOpen,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -195,22 +196,21 @@ function CartContent() {
 
   return (
     <div className="space-y-4">
-      {/* 页标题 + 操作栏 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-gray-800">
-            {t("title")}
-            <span className="ml-2 text-base font-normal text-gray-400">
-              ({t("itemCount", { count: items.length })})
-            </span>
-          </h1>
-          <Link
-            href="/buyer/rfqs"
-            className="rounded-md border border-[#00505a]/20 px-3 py-1 text-xs font-medium text-[#00505a] transition-colors hover:bg-[#00505a]/5"
-          >
-            {t("viewRfqs")}
-          </Link>
-        </div>
+      {/* 页标题 + 跳转按钮 */}
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-bold text-gray-800">
+          {t("title")}
+          <span className="ml-2 text-base font-normal text-gray-400">
+            ({t("itemCount", { count: items.length })})
+          </span>
+        </h1>
+        <Link
+          href="/buyer/rfqs"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a]/30 px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
+        >
+          <FileText className="h-4 w-4" />
+          {t("viewRfqs")}
+        </Link>
       </div>
 
       {/* 商品列表 — 卡片式 */}

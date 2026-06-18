@@ -202,16 +202,16 @@ function RfqListContent() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <h1 className="text-xl font-bold text-gray-800">{t("title")}</h1>
         <Link
           href={`/${locale}/buyer/cart`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a] px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a]/30 px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
         >
           <ShoppingCart className="h-4 w-4" />
           {t("goToCart")}
           {cartCount > 0 && (
-            <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00505a] px-1 text-xs text-white group-hover:bg-white group-hover:text-[#00505a]">
+            <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00505a] px-1 text-xs text-white">
               {cartCount}
             </span>
           )}
@@ -258,6 +258,15 @@ function RfqListContent() {
 
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {/* 表头 — 与询价篮表头对齐: px-5 py-3 bg-slate-50 */}
+        <div className="flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+          <span className="flex-1 font-medium">{t("productSummary")}</span>
+          <span className="w-24 text-center font-medium">{t("totalQty")}</span>
+          <span className="w-24 text-center font-medium">{t("status")}</span>
+          <span className="w-28 text-center font-medium">{t("submitTime")}</span>
+          <span className="w-32 text-right font-medium">{t("actions")}</span>
+        </div>
+
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-[#00505a]" />
@@ -268,53 +277,62 @@ function RfqListContent() {
             <p className="text-sm">{t("emptyList")}</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-5 py-3 font-medium">{t("rfqNo")}</th>
-                <th className="px-5 py-3 font-medium">{t("productSummary")}</th>
-                <th className="px-5 py-3 font-medium text-right">{t("totalQty")}</th>
-                <th className="px-5 py-3 font-medium">{t("status")}</th>
-                <th className="px-5 py-3 font-medium">{t("submitTime")}</th>
-                <th className="px-5 py-3 font-medium text-right">{t("actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((rfq) => {
-                const summary = buildProductSummary(rfq.items);
+          <div className="divide-y divide-gray-100">
+            {data.items.map((rfq) => {
+              const summary = buildProductSummary(rfq.items);
 
-                return (
-                  <tr
-                    key={rfq.id}
-                    onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
-                    className="cursor-pointer border-t border-gray-100 transition-colors even:bg-slate-50/50 hover:bg-blue-50/50"
-                  >
-                    <td className="px-5 py-3 font-medium text-[#00505a]">
-                      {rfq.rfq_no}
-                    </td>
-                    <td className="max-w-[280px] px-5 py-3">
-                      <div className="flex items-start gap-2">
-                        <Package className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                        <span className="line-clamp-2 text-gray-700">{summary}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-right text-gray-600 whitespace-nowrap">
-                      {t("itemCount", { count: rfq.items.length })}
-                    </td>
-                    <td className="px-5 py-3">
-                      <RfqStatusBadge status={rfq.status} />
-                    </td>
-                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+              return (
+                <div
+                  key={rfq.id}
+                  onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
+                  className="flex cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
+                >
+                  {/* 缩略图 + 商品信息 — 与询价篮行对齐 */}
+                  <div className="flex flex-1 items-center gap-4 min-w-0">
+                    <div className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                      {rfq.first_item_image ? (
+                        <img
+                          src={rfq.first_item_image}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-gray-300">
+                          <Package className="h-6 w-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-medium text-[#00505a]">{rfq.rfq_no}</span>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-gray-700">{summary}</p>
+                    </div>
+                  </div>
+
+                  {/* 数量 */}
+                  <div className="w-24 shrink-0 text-center">
+                    <span className="text-sm text-gray-600">{t("itemCount", { count: rfq.items.length })}</span>
+                  </div>
+
+                  {/* 状态 */}
+                  <div className="w-24 shrink-0 text-center">
+                    <RfqStatusBadge status={rfq.status} />
+                  </div>
+
+                  {/* 时间 */}
+                  <div className="w-28 shrink-0 text-center">
+                    <span className="text-xs text-gray-400">
                       {rfq.created_at ? formatRelativeTime(rfq.created_at, locale) : "—"}
-                    </td>
-                    <td className="px-5 py-3">
-                      {renderActions(rfq)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </span>
+                  </div>
+
+                  {/* 操作 */}
+                  <div className="w-32 shrink-0">
+                    {renderActions(rfq)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
