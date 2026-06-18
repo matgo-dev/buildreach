@@ -378,33 +378,7 @@ function RfqDetailContent() {
               <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
             </div>
           )}
-          {/* 禁用:附件安全版落地前暂停 */}
-          {false && rfq.attachment_urls && rfq.attachment_urls.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-700">{t("attachment.label")}</h3>
-              <div className="flex flex-wrap gap-3">
-                {rfq.attachment_urls.map((url: string) => {
-                  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(url);
-                  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-                  return isImage ? (
-                    <a key={url} href={`${apiBase}${url}`} target="_blank" rel="noreferrer"
-                       className="h-20 w-20 rounded-lg border border-gray-200 overflow-hidden hover:border-[#00505a] transition-colors">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`${apiBase}${url}`} alt="" className="h-full w-full object-cover" />
-                    </a>
-                  ) : (
-                    <a key={url} href={`${apiBase}${url}`} download
-                       className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
-                      <FileText className="h-6 w-6 text-gray-400" />
-                      <span className="mt-1 text-[10px] text-gray-400 truncate w-full text-center px-1">
-                        {url.split("/").pop()?.slice(-12)}
-                      </span>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* 禁用:附件安全版落地前暂停,附件展示代码已移除,待安全版工单恢复 */}
         </div>
       )}
 
