@@ -1,7 +1,7 @@
 """商品分类(支持任意层级)。
 
 设计要点(详见 docs/商品三级分类-PRD-v1.0.md §3):
-- 单表自关联,层级不限(level >= 1),叶子 = 无子节点
+- 单表自关联,层级不限(level >= 1),叶子 = is_leaf 字段标记(参考阿里 B2B)
 - `code` 是业务主键,**永久不变契约**(§3.4):所有业务关联表外键引用 `code`,不引用 `id`
 - code 格式:`XX.XXX.XXX…` 纯数字点分(2-3-3-…),层级可 >3
 - 删除走 `is_active=false`,永不物理删
@@ -48,3 +48,7 @@ class Category(Base, TimestampUpdateMixin, I18nMixin):
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # 叶子节点标记:无 active 子节点的品类为叶子,避免每次查子表判断(参考阿里 B2B leaf 字段)
+    is_leaf: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )

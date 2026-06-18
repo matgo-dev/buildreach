@@ -67,6 +67,7 @@ async def get_tree(
             name_en=r.name_en,
             name=get_localized(r, "name"),
             level=r.level,
+            is_leaf=r.is_leaf,
             children=[],
         )
         nodes_by_code[r.code] = node
