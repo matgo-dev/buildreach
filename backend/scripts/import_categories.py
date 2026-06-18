@@ -411,7 +411,22 @@ def import_from_xlsx(
         else:
             stats.kept += 1
 
+    # 全量刷新 is_leaf:有 active 子节点的品类为非叶子
+    if not dry_run:
+        _sync_is_leaf(db)
+
     return stats
+
+
+def _sync_is_leaf(db: Session) -> None:
+    """全量刷新所有品类的 is_leaf 标记。"""
+    all_cats = db.execute(select(Category)).scalars().all()
+    parent_codes_with_active_children: set[str] = set()
+    for cat in all_cats:
+        if cat.parent_code and cat.is_active:
+            parent_codes_with_active_children.add(cat.parent_code)
+    for cat in all_cats:
+        cat.is_leaf = cat.code not in parent_codes_with_active_children
 
 
 # ---------------- CLI ----------------

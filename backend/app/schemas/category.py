@@ -22,6 +22,7 @@ class CategoryNode(BaseModel):
     level: int
     parent_code: str | None = None
     sort_order: int
+    is_leaf: bool = True
 
 
 class CategoryTreeNode(BaseModel):
@@ -34,6 +35,7 @@ class CategoryTreeNode(BaseModel):
     name_sw: str | None = None
     name: str = ""  # 按请求 locale 填充的本地化名称
     level: int
+    is_leaf: bool = True
     children: List["CategoryTreeNode"] = []
 
 
