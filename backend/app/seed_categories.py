@@ -187,6 +187,16 @@ async def seed_categories(db: AsyncSession) -> None:
 
     await db.flush()
 
+    # 同步 is_leaf:有 active 子节点的品类为非叶子
+    all_cats = (await db.execute(select(Category))).scalars().all()
+    parent_codes_with_children: set[str] = set()
+    for c in all_cats:
+        if c.parent_code and c.is_active:
+            parent_codes_with_children.add(c.parent_code)
+    for c in all_cats:
+        c.is_leaf = c.code not in parent_codes_with_children
+    await db.flush()
+
     # upsert 属性模板(按唯一键 category_code + attr_key 查重)
     attr_created, attr_updated = 0, 0
     for item in attr_rows:

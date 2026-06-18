@@ -26,6 +26,12 @@ async def _seed(db_session, rows: list[tuple]):
     await db_session.execute(text("DELETE FROM categories WHERE level = 1"))
     await db_session.commit()
 
+    # 收集有 active 子节点的 parent_code,用于计算 is_leaf
+    parent_codes_with_active_children: set[str] = set()
+    for code, name_zh, level, parent_code, sort_order, is_active in rows:
+        if parent_code and is_active:
+            parent_codes_with_active_children.add(parent_code)
+
     now = _utcnow()
     for code, name_zh, level, parent_code, sort_order, is_active in rows:
         db_session.add(
@@ -36,6 +42,7 @@ async def _seed(db_session, rows: list[tuple]):
                 parent_code=parent_code,
                 sort_order=sort_order,
                 is_active=is_active,
+                is_leaf=code not in parent_codes_with_active_children,
                 created_at=now,
                 updated_at=now,
             )

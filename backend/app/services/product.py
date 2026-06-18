@@ -171,14 +171,14 @@ async def _generate_sku_code(
 async def create_product(
     db: AsyncSession, data: ProductCreate, operator_id: int,
 ) -> Product:
-    # 品类存在 + 叶子校验(叶子 = DB 中无子节点,不硬编码层级)
+    # 品类存在 + 叶子校验(直接读 is_leaf 字段)
     cat = await db.execute(
         select(Category).where(Category.code == data.category_code)
     )
     category = cat.scalar_one_or_none()
     if not category:
         raise NotFoundError("Category not found")
-    if await _has_children(db, data.category_code):
+    if not category.is_leaf:
         raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
@@ -1205,13 +1205,13 @@ async def create_product_aggregate(
 
     service 持 commit；审计以 commit=False 写入，与业务写共用同一次 commit。
     """
-    # 品类校验(叶子 = DB 中无子节点,不硬编码层级)
+    # 品类校验(直接读 is_leaf 字段,不再子查询)
     cat = (await db.execute(
         select(Category).where(Category.code == data.category_code)
     )).scalar_one_or_none()
     if not cat:
         raise NotFoundError("Category not found")
-    if await _has_children(db, data.category_code):
+    if not cat.is_leaf:
         raise CategoryNotLeafError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
@@ -1668,15 +1668,25 @@ async def get_purchasable_sku(
 
 # ── 内部工具 ─────────────────────────────────────────────
 
-async def _has_children(db: AsyncSession, category_code: str) -> bool:
-    """判断分类是否有子节点(叶子 = 无子节点,不硬编码层级)。"""
-    child = (await db.execute(
+async def sync_parent_is_leaf(db: AsyncSession, parent_code: str | None) -> None:
+    """根据 active 子节点数量同步父节点的 is_leaf 标记。
+
+    品类增删/停启用时调用,保证 is_leaf 与实际子节点状态一致。
+    """
+    if parent_code is None:
+        return
+    parent = (await db.execute(
+        select(Category).where(Category.code == parent_code)
+    )).scalar_one_or_none()
+    if parent is None:
+        return
+    has_active_child = (await db.execute(
         select(Category.code).where(
-            Category.parent_code == category_code,
+            Category.parent_code == parent_code,
             Category.is_active.is_(True),
         ).limit(1)
-    )).scalar_one_or_none()
-    return child is not None
+    )).scalar_one_or_none() is not None
+    parent.is_leaf = not has_active_child
 
 
 async def _get_product_or_404(
