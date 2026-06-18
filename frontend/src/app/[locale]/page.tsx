@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {
-  ShoppingBag, Globe, Shield, Bot, ArrowRight,
+  ShoppingBag, Globe, Shield, ArrowRight,
   Truck,
   type LucideIcon,
 } from "lucide-react";
@@ -169,25 +169,6 @@ export default function HomePage() {
               ))}
             </div>
           </MallCard>
-
-          {/* ── AI 工具箱 ── */}
-          <div className="rounded-xl p-6 text-white" style={{
-            background: "linear-gradient(120deg, #003f46, #00505a 60%, #006773)",
-          }}>
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Bot className="w-5 h-5 text-gold" />
-                  <h3 className="text-base font-black">{t("aiToolbox")}</h3>
-                  <span className="text-[9px] px-2 py-0.5 bg-gold/20 text-gold rounded-full font-extrabold">{t("aiPowered")}</span>
-                </div>
-                <p className="text-white/50 text-sm">{t("aiDesc")}</p>
-              </div>
-              <MallButton variant="gold" href="/ai" className="shrink-0">
-                {t("aiEnter")} <ArrowRight className="w-4 h-4" />
-              </MallButton>
-            </div>
-          </div>
 
           {/* ── 底部 CTA ── */}
           <div className="rounded-xl p-10 text-center text-white" style={{
