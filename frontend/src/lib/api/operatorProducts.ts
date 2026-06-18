@@ -436,6 +436,7 @@ export const operatorProductsApi = {
     const qs = new URLSearchParams();
     if (params?.category_code) qs.set("category_code", params.category_code);
     if (params?.status) qs.set("status", params.status);
+    if (params?.supply_mode) qs.set("supply_mode", params.supply_mode);
     if (params?.keyword) qs.set("keyword", params.keyword);
     if (params?.page !== undefined) qs.set("page", String(params.page));
     if (params?.size !== undefined) qs.set("size", String(params.size));
