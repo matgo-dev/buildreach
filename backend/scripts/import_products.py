@@ -894,9 +894,11 @@ def import_offer(
                 swatch_path = swatch_raw
 
             # 确定 value_type
-            if swatch_path and not (label_en or label_zh):
+            # 有 swatch_image 的属性值标记为 image,让 API 层能匹配 product_images.spec_value
+            if swatch_path:
                 value_type = "image"
-                attr_value = swatch_path
+                # 纯图片值(无文本标签)用 swatch_path 作值;否则用文本标签
+                attr_value = (label_en or label_zh) if (label_en or label_zh) else swatch_path
             else:
                 value_type = "text"
                 attr_value = label_en or label_zh
@@ -939,7 +941,7 @@ def import_offer(
             attr_sort += 1
 
             # 色板图:label + swatch_image 同时有 → 额外写一张 spec_value 绑定图
-            if swatch_path and label_en and value_type == "text":
+            if swatch_path and label_en:
                 _copy_image(offer.offer_dir / swatch_path, static_root, spu_code)
                 swatch_source_url = None
                 if isinstance(swatch_raw, dict):
