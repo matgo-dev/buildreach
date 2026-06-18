@@ -5,6 +5,7 @@
     "cancel": "Ghairi",
     "confirm": "Thibitisha",
     "back_to_home": "Rudi Nyumbani",
+    "back": "Rudi",
     "selectAll": "Chagua Zote"
   },
   "brand": {
@@ -93,7 +94,8 @@
       "quantity_invalid": "Idadi si sahihi",
       "item_not_found": "Bidhaa ya kikapu haikupatikana",
       "buyer_org_required": "Hakuna shirika la mnunuzi linalopatikana",
-      "product_not_available": "Bidhaa hii haipatikani au imeondolewa"
+      "product_not_available": "Bidhaa hii haipatikani au imeondolewa",
+      "duplicate_variant": "Aina hii tayari ipo kwenye kikapu"
     },
     "rfq": {
       "no_valid_items": "Hakuna bidhaa halali za kuwasilisha RFQ",
@@ -106,7 +108,9 @@
       "already_claimed": "RFQ hii tayari imedaiwa na opereta mwingine",
       "item_not_found": "Kipande cha RFQ hakikupatikana",
       "not_assigned_to_you": "Ombi hili halikupewa wewe",
-      "min_one_item": "Angalau kipengee kimoja kinahitajika"
+      "min_one_item": "Angalau kipengee kimoja kinahitajika",
+      "too_many_attachments": "Viambatisho vingi sana (upeo 6)",
+      "invalid_attachment_url": "URL ya kiambatisho si sahihi"
     },
     "quote": {
       "rfq_state_invalid": "Operesheni ya nukuu hairuhusiwi kwa hali ya sasa ya RFQ",
@@ -812,7 +816,11 @@
     "comingSoon": "Inakuja hivi karibuni",
     "unitLabel": "Kipimo",
     "specs": "Vipimo",
-    "days": "siku"
+    "days": "siku",
+    "editVariant": "Hariri Vipimo",
+    "confirmVariant": "Thibitisha",
+    "cancelEdit": "Ghairi",
+    "duplicateVariant": "Mchanganyiko huu tayari upo kwenye kikapu"
   },
   "rfq": {
     "title": "Maombi Yangu",
@@ -919,7 +927,18 @@
     "buyerOrgRequired": "Tafadhali chagua shirika la mnunuzi",
     "itemsRequired": "Tafadhali ongeza angalau bidhaa moja",
     "createSuccess": "Ombi limeundwa",
-    "draftSaved": "Rasimu imehifadhiwa"
+    "draftSaved": "Rasimu imehifadhiwa",
+    "attachment": {
+      "label": "Viambatisho",
+      "upload": "Bonyeza au buruta kupakia (picha / PDF / Excel)",
+      "hint": "Inasaidia JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Hadi faili 6.",
+      "maxReached": "Viambatisho 6 vinaruhusiwa tu",
+      "invalidType": "Aina ya faili haihimiliwi. Inaruhusiwa: JPG, PNG, WEBP, PDF, XLSX",
+      "tooLarge": "Faili kubwa mno. Picha ≤5 MB, hati ≤10 MB"
+    },
+    "backToCartEdit": "Rudi kwenye Kikapu",
+    "onlyDraftEditable": "Ombi la Manunuzi lenye hali ya RASIMU pekee linaweza kuhaririwa",
+    "loadFailed": "Imeshindwa kupakia Ombi la Manunuzi"
   },
   "quote": {
     "backfillTitle": "Jaza Nukuu",

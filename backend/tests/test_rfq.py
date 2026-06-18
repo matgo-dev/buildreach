@@ -2,7 +2,7 @@
 
 覆盖:统一 items 入参、代客、目标 org 校验、商品可用性校验、
 rfq_no 生成、dup product+variant、scope 越权(404)、撤销守卫+幂等、
-买方 DTO 不漏内部 id、清篮零副作用。
+买方 DTO 不漏内部 id、清篮零副作用、attachment_urls 校验。
 """
 from __future__ import annotations
 
@@ -94,6 +94,33 @@ async def _add_to_cart(client: AsyncClient, headers: dict, product_id: int, qty:
     })
     assert r.status_code == 200, r.text
     return r.json()["data"]["items"][-1]["item_id"]
+
+
+async def _create_purchasable_product(db_session: AsyncSession) -> int:
+    """在 DB 中直接创建一个可购商品,返回 product_id。"""
+    from app.db.models.category import Category
+    from app.db.models.product import Product, ProductStatus
+    from datetime import datetime, timezone
+
+    cat = (await db_session.execute(
+        select(Category).where(Category.level == 3).limit(1)
+    )).scalar_one_or_none()
+    assert cat is not None, "No level-3 category in seed data"
+
+    product = Product(
+        name_zh="Test Product",
+        name_en="Test Product",
+        category_code=cat.code,
+        spu_code=f"TEST-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+        unit="PCS",
+        currency="TZS",
+        status=ProductStatus.ACTIVE,
+        source_lang="en",
+        trans_meta={},
+    )
+    db_session.add(product)
+    await db_session.flush()
+    return product.id
 
 
 # ── 统一 items 创建 ─────────────────────────────────────
@@ -688,3 +715,230 @@ async def test_idempotency_cart_items_untouched(client: AsyncClient, db_session:
         select(CartItem).where(CartItem.id == cart_item_id)
     )
     assert row.scalar_one_or_none() is not None
+
+
+# ── attachment_urls 校验 ─────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_rfq_with_valid_attachments(client, db_session):
+    """创建询价单:合法附件 URL → 200。"""
+    hdr = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+    payload = {
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 1}],
+        "attachment_urls": [f"/static/rfq-attachments/{uuid4()}.jpg"],
+    }
+    resp = await client.post("/api/v1/rfqs", json=payload, headers=hdr)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_create_rfq_external_url_rejected(client, db_session):
+    """创建询价单:外部 URL 拒绝 → 422 with code 40522。"""
+    hdr = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+    payload = {
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 1}],
+        "attachment_urls": ["https://evil.com/malware.jpg"],
+    }
+    resp = await client.post("/api/v1/rfqs", json=payload, headers=hdr)
+    assert resp.status_code == 422
+    assert resp.json()["code"] == 40522
+
+
+@pytest.mark.asyncio
+async def test_create_rfq_too_many_attachments(client, db_session):
+    """创建询价单:超过 6 个附件 → 422 with code 40521。"""
+    hdr = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+    urls = [f"/static/rfq-attachments/{uuid4()}.jpg" for _ in range(7)]
+    payload = {
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 1}],
+        "attachment_urls": urls,
+    }
+    resp = await client.post("/api/v1/rfqs", json=payload, headers=hdr)
+    assert resp.status_code == 422
+    assert resp.json()["code"] == 40521
+
+
+@pytest.mark.asyncio
+async def test_create_rfq_empty_attachments_ok(client, db_session):
+    """创建询价单:空附件列表 → 200。"""
+    hdr = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+    payload = {
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 1}],
+        "attachment_urls": [],
+    }
+    resp = await client.post("/api/v1/rfqs", json=payload, headers=hdr)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_rfq_with_valid_attachments(client, db_session):
+    """更新询价单:合法附件 URL → 200。"""
+    hdr = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+
+    # 先创建询价单
+    resp = await client.post("/api/v1/rfqs", headers=hdr, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 1}],
+        "as_draft": True,
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 更新为新附件
+    payload = {
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 2}],
+        "attachment_urls": [f"/static/rfq-attachments/{uuid4()}.pdf"],
+        "contact_name": "Test",
+        "contact_phone": "1234567890",
+        "contact_email": "test@example.com",
+        "requested_delivery_place": "Dar es Salaam",
+        "destination_port": "Dar Port",
+        "preferred_trade_term": "FOB",
+        "expected_delivery_date": "2025-12-31",
+        "target_currency": "TZS",
+    }
+    resp = await client.patch(f"/api/v1/rfqs/{rfq_id}", headers=hdr, json=payload)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_rfq_too_many_attachments(client, db_session):
+    """更新询价单:超过 6 个附件 → 422 with code 40521。"""
+    hdr = await _buyer_headers(client)
+    pid = await _create_purchasable_product(db_session)
+
+    # 先创建询价单
+    resp = await client.post("/api/v1/rfqs", headers=hdr, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 1}],
+        "as_draft": True,
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 更新为超额附件
+    urls = [f"/static/rfq-attachments/{uuid4()}.jpg" for _ in range(7)]
+    payload = {
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": 2}],
+        "attachment_urls": urls,
+        "contact_name": "Test",
+        "contact_phone": "1234567890",
+        "contact_email": "test@example.com",
+        "requested_delivery_place": "Dar es Salaam",
+        "destination_port": "Dar Port",
+        "preferred_trade_term": "FOB",
+        "expected_delivery_date": "2025-12-31",
+        "target_currency": "TZS",
+    }
+    resp = await client.patch(f"/api/v1/rfqs/{rfq_id}", headers=hdr, json=payload)
+    assert resp.status_code == 422
+    assert resp.json()["code"] == 40521
+
+
+# ── 详情页商品信息增强 ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_detail_product_enhancement_fields(client, db_session):
+    """详情接口：在线商品 → 行项含增强字段（main_image/spu_code/brand/origin/category_name）。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid, _ = await _create_active_product(client, op, db_session)
+
+    # 创建询价单
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "5.000"}],
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 获取详情
+    resp = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    item = data["items"][0]
+
+    # 增强字段应存在（spu_code 和 category_name 应有值）
+    assert "main_image" in item
+    assert "spu_code" in item
+    assert item["spu_code"] is not None  # _create_active_product 生成了 spu_code
+    assert "brand" in item
+    assert "origin" in item
+    assert "category_name" in item
+    assert item["category_name"] is not None  # _create_active_product 设置了 category_code
+
+    # 核心快照字段不受影响
+    assert item["product_name_snapshot"] is not None
+    assert item["quantity"] == 5.0
+
+
+@pytest.mark.asyncio
+async def test_detail_soft_deleted_product_degrades(client, db_session):
+    """详情接口：商品软删后增强字段为 null，核心快照正常，不报错。"""
+    from app.db.models.product import Product
+    from datetime import datetime, timezone
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid, _ = await _create_active_product(client, op, db_session)
+
+    # 创建询价单
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "3.000"}],
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 软删商品
+    product = (await db_session.execute(
+        select(Product).where(Product.id == pid)
+    )).scalar_one()
+    product.deleted_at = datetime.now(timezone.utc)
+    await db_session.commit()
+
+    # 获取详情 — 不报错
+    resp = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
+    assert resp.status_code == 200
+    item = resp.json()["data"]["items"][0]
+
+    # 增强字段降级为 null
+    assert item["main_image"] is None
+    assert item["spu_code"] is None
+    assert item["brand"] is None
+    assert item["origin"] is None
+    assert item["category_name"] is None
+
+    # 核心快照字段正常
+    assert item["product_name_snapshot"] is not None
+    assert item["quantity"] == 3.0
+
+
+@pytest.mark.asyncio
+async def test_list_no_product_enhancement(client, db_session):
+    """列表接口：行项增强字段为 null（with_product=False），不触发 lazy-load。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid, _ = await _create_active_product(client, op, db_session)
+
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "2.000"}],
+    })
+    assert resp.status_code == 200
+
+    # 列表
+    resp = await client.get("/api/v1/rfqs", headers=bh)
+    assert resp.status_code == 200
+    items_list = resp.json()["data"]["items"]
+    assert len(items_list) >= 1
+
+    # 列表行项增强字段应为 null
+    for rfq_item in items_list[0]["items"]:
+        assert rfq_item["main_image"] is None
+        assert rfq_item["spu_code"] is None
+        assert rfq_item["brand"] is None
+        assert rfq_item["origin"] is None
+        assert rfq_item["category_name"] is None

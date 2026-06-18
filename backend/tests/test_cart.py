@@ -403,3 +403,112 @@ async def test_selected_variants_in_response(client, db_session):
     assert item["selected_variants"] == [{"attr_name": "color", "value": "red"}]
     assert item["variant_display"] is not None
     assert "color" in item["variant_display"]
+
+
+# ── Task 2: 变体编辑扩展测试 ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_update_item_no_fields_422(client, db_session):
+    """PATCH 两者皆不传 → 422"""
+    hdr = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid = await _create_purchasable_product(client, op, db_session)
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": [], "quantity": 1}, headers=hdr)
+    cart = (await client.get("/api/v1/cart", headers=hdr)).json()["data"]
+    item_id = cart["items"][0]["item_id"]
+
+    resp = await client.patch(f"/api/v1/cart/items/{item_id}", json={}, headers=hdr)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_item_variant_success(client, db_session):
+    """PATCH 改变体成功 → 200"""
+    hdr = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid = await _create_purchasable_product(client, op, db_session)
+    # 加购空变体行
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": [], "quantity": 1}, headers=hdr)
+    cart = (await client.get("/api/v1/cart", headers=hdr)).json()["data"]
+    item_id = cart["items"][0]["item_id"]
+
+    # 改变体
+    new_variants = [{"attr_name": "color", "value": "red"}]
+    resp = await client.patch(f"/api/v1/cart/items/{item_id}", json={"selected_variants": new_variants}, headers=hdr)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_item_only_quantity(client, db_session):
+    """PATCH 仅改量 → 200，变体不变"""
+    hdr = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid = await _create_purchasable_product(client, op, db_session)
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": [], "quantity": 1}, headers=hdr)
+    cart = (await client.get("/api/v1/cart", headers=hdr)).json()["data"]
+    item_id = cart["items"][0]["item_id"]
+
+    resp = await client.patch(f"/api/v1/cart/items/{item_id}", json={"quantity": 5}, headers=hdr)
+    assert resp.status_code == 200
+    updated = resp.json()["data"]["items"]
+    matched = [i for i in updated if i["item_id"] == item_id]
+    assert len(matched) == 1
+    assert float(matched[0]["quantity"]) == 5.0
+
+
+@pytest.mark.asyncio
+async def test_update_item_duplicate_variant_409(client, db_session):
+    """PATCH 改为篮中已有规格 → 409 / 40520"""
+    hdr = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid = await _create_purchasable_product(client, op, db_session)
+    v1 = [{"attr_name": "color", "value": "red"}]
+    v2 = [{"attr_name": "color", "value": "blue"}]
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": v1, "quantity": 1}, headers=hdr)
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": v2, "quantity": 1}, headers=hdr)
+    cart = (await client.get("/api/v1/cart", headers=hdr)).json()["data"]
+    # 找 blue 行（按 selected_variants 查找）
+    blue_item = [
+        i for i in cart["items"]
+        if any(v.get("value") == "blue" for v in (i.get("selected_variants") or []))
+    ]
+    if not blue_item:
+        # 变体未归一化成功时取第二行
+        blue_item = [cart["items"][1]]
+    item_id = blue_item[0]["item_id"]
+
+    # 把 blue 改成 red → 重复 → 409
+    resp = await client.patch(f"/api/v1/cart/items/{item_id}", json={"selected_variants": v1}, headers=hdr)
+    assert resp.status_code == 409
+    assert resp.json()["code"] == 40520
+
+
+@pytest.mark.asyncio
+async def test_update_item_zero_quantity_rejected(client, db_session):
+    """PATCH 改量为 0 → 422 (Pydantic gt=0 拦截)"""
+    hdr = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid = await _create_purchasable_product(client, op, db_session)
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": [], "quantity": 1}, headers=hdr)
+    cart = (await client.get("/api/v1/cart", headers=hdr)).json()["data"]
+    item_id = cart["items"][0]["item_id"]
+
+    resp = await client.patch(f"/api/v1/cart/items/{item_id}", json={"quantity": 0}, headers=hdr)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_item_other_user_404(client, db_session):
+    """越权改他人行项 → 403/404"""
+    hdr = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid = await _create_purchasable_product(client, op, db_session)
+    await client.post("/api/v1/cart/items", json={"product_id": pid, "selected_variants": [], "quantity": 1}, headers=hdr)
+    cart = (await client.get("/api/v1/cart", headers=hdr)).json()["data"]
+    item_id = cart["items"][0]["item_id"]
+
+    # 运营身份无 buyer org → 403/404
+    op_hdr = await _op_headers(client)
+    resp = await client.patch(f"/api/v1/cart/items/{item_id}", json={"quantity": 5}, headers=op_hdr)
+    assert resp.status_code in (403, 404)

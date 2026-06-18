@@ -527,7 +527,6 @@ function ProductDetailContent() {
           {/* 左:图片轮播(排除 DETAIL 类型) */}
           <ProductGallery
             images={product.images.filter((img) => img.sku_id == null && img.image_type !== "DETAIL")}
-            isFeatured={product.is_featured}
           />
 
           {/* 右:信息面板 */}
@@ -535,23 +534,7 @@ function ProductDetailContent() {
             <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
             <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
 
-            {/* 履约模式标签 */}
-            <div className="mt-1.5 flex gap-1.5">
-              {product.supply_mode === "PLATFORM_STOCK" ? (
-                <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
-                  {t("supplyModePlatformStock")}
-                </span>
-              ) : (
-                <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
-                  {t("supplyModeSupplierDirect")}
-                </span>
-              )}
-              {product.is_featured && (
-                <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-bold text-white">
-                  {t("featured")}
-                </span>
-              )}
-            </div>
+            {/* 认证徽章行（与列表卡片统一，不再显示履约模式/精选标签） */}
 
             {/* 认证徽章 */}
             {product.certifications && product.certifications.length > 0 && (

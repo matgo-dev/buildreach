@@ -5,6 +5,7 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "back_to_home": "Back to Home",
+    "back": "Back",
     "selectAll": "Select All"
   },
   "brand": {
@@ -93,7 +94,8 @@
       "quantity_invalid": "Invalid quantity",
       "item_not_found": "Cart item not found",
       "buyer_org_required": "No active buyer organization available",
-      "product_not_available": "This product is not available or has been delisted"
+      "product_not_available": "This product is not available or has been delisted",
+      "duplicate_variant": "This variant already exists in your basket"
     },
     "rfq": {
       "no_valid_items": "No valid items for RFQ submission",
@@ -106,7 +108,9 @@
       "already_claimed": "This RFQ has already been claimed by another operator",
       "item_not_found": "RFQ item not found",
       "not_assigned_to_you": "This inquiry is not assigned to you",
-      "min_one_item": "At least one item is required"
+      "min_one_item": "At least one item is required",
+      "too_many_attachments": "Too many attachments (max 6)",
+      "invalid_attachment_url": "Invalid attachment URL"
     },
     "quote": {
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",
@@ -812,7 +816,11 @@
     "comingSoon": "Coming soon",
     "unitLabel": "Unit",
     "specs": "Specs",
-    "days": "days"
+    "days": "days",
+    "editVariant": "Edit Specs",
+    "confirmVariant": "Confirm",
+    "cancelEdit": "Cancel",
+    "duplicateVariant": "This variant already exists in your basket"
   },
   "rfq": {
     "title": "My Inquiries",
@@ -919,7 +927,18 @@
     "buyerOrgRequired": "Please select a buyer organization",
     "itemsRequired": "Please add at least one item",
     "createSuccess": "RFQ created successfully",
-    "draftSaved": "Draft saved"
+    "draftSaved": "Draft saved",
+    "attachment": {
+      "label": "Attachments",
+      "upload": "Click or drag to upload (image / PDF / Excel)",
+      "hint": "Supports JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Up to 6 files.",
+      "maxReached": "Maximum 6 attachments allowed",
+      "invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
+      "tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB"
+    },
+    "backToCartEdit": "Back to Basket",
+    "onlyDraftEditable": "Only DRAFT RFQ can be edited",
+    "loadFailed": "Failed to load RFQ"
   },
   "quote": {
     "backfillTitle": "Quote Backfill",

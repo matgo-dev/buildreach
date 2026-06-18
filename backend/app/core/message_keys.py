@@ -80,6 +80,7 @@ class MessageKey:
     CART_QUANTITY_INVALID = "error.cart.quantity_invalid"
     CART_ITEM_NOT_FOUND = "error.cart.item_not_found"
     BUYER_ORG_REQUIRED = "error.cart.buyer_org_required"
+    CART_DUPLICATE_VARIANT = "error.cart.duplicate_variant"
 
     # rfq — 询价单模块 405xx
     RFQ_NO_VALID_ITEMS = "error.rfq.no_valid_items"
@@ -93,6 +94,8 @@ class MessageKey:
     RFQ_ITEM_NOT_FOUND = "error.rfq.item_not_found"
     RFQ_NOT_ASSIGNED_TO_YOU = "error.rfq.not_assigned_to_you"
     RFQ_MIN_ONE_ITEM = "error.rfq.min_one_item"
+    RFQ_TOO_MANY_ATTACHMENTS = "error.rfq.too_many_attachments"
+    RFQ_INVALID_ATTACHMENT_URL = "error.rfq.invalid_attachment_url"
 
     # quote — 报价模块 405xx
     QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"
