@@ -131,17 +131,5 @@ async def generate_quote_pdf(
     from weasyprint import HTML
     pdf_bytes = HTML(string=html_str).write_pdf()
 
-    # 文件名:Quotation_{quote_no}_{商品摘要}_{日期}.pdf
-    product_names = [i.product_name_snapshot for i in product_items if i.product_name_snapshot]
-    if product_names:
-        shown = "+".join(product_names[:2])
-        summary = f"{shown}等{len(product_names)}件" if len(product_names) > 2 else shown
-    else:
-        summary = ""
-    date_str = now.strftime("%Y-%m-%d")
-    parts = ["Quotation", quote.quote_no]
-    if summary:
-        parts.append(summary)
-    parts.append(date_str)
-    filename = "_".join(parts) + ".pdf"
+    filename = f"{rfq.rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"
     return pdf_bytes, filename
