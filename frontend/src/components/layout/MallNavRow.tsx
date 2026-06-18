@@ -14,10 +14,10 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { href: "/",            labelKey: "navHome" },
+  { href: "/how-to-buy",  labelKey: "navHowToBuy" },
   { href: "/mall",        labelKey: "navMall" },
   { href: "/buyer/cart",  labelKey: "navQuoteRequest" },
   { href: "#",            labelKey: "navMyOrders",      disabled: true },
-  { href: "/how-to-buy",  labelKey: "navHowToBuy" },
 ];
 
 export function MallNavRow() {
