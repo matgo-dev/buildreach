@@ -1012,6 +1012,7 @@
     "quotedVariants": "Quoted Variants",
     "selectProduct": "Select Product",
     "searchProduct": "Search Product",
+    "noSearchResult": "No matching products found",
     "selectVariant": "Select Variant",
     "responseLines": "Response to Buyer Request",
     "feeLines": "Additional Fees",
@@ -1026,10 +1027,7 @@
     "deleteLineConfirm": "Delete this line?",
     "requoteHint": "Re-quoting: modify based on previous quote",
     "downloadPdf": "Download Quote",
-    "downloadError": "Failed to download quotation",
-    "editVariant": "Edit Specs",
-    "confirmVariant": "Confirm",
-    "noSelectableAttrs": "No selectable specs for this product"
+    "downloadError": "Failed to download quotation"
   },
   "nav": {
     "mall": "Mall",

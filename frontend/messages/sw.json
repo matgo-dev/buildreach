@@ -1012,6 +1012,7 @@
     "quotedVariants": "Anuwai za Nukuu",
     "selectProduct": "Chagua Bidhaa",
     "searchProduct": "Tafuta Bidhaa",
+    "noSearchResult": "Hakuna bidhaa zinazolingana zilizopatikana",
     "selectVariant": "Chagua Anuwai",
     "responseLines": "Jibu la Ombi la Mnunuzi",
     "feeLines": "Ada za Ziada",
@@ -1026,10 +1027,7 @@
     "deleteLineConfirm": "Futa safu hii?",
     "requoteHint": "Kunukuu upya: rekebisha kulingana na nukuu iliyotangulia",
     "downloadPdf": "Pakua Nukuu",
-    "downloadError": "Imeshindwa kupakua nukuu",
-    "editVariant": "Badilisha Vipimo",
-    "confirmVariant": "Thibitisha",
-    "noSelectableAttrs": "Bidhaa hii haina vipimo vinavyochaguliwa"
+    "downloadError": "Imeshindwa kupakua nukuu"
   },
   "nav": {
     "mall": "Duka",

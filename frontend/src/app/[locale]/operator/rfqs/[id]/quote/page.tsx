@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Plus, Trash2, X, Search } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -26,7 +26,8 @@ import {
   type LineType,
   type RfqQuoteOperatorView,
 } from "@/lib/api/quotes";
-import { listProducts as searchProducts, getProduct, type AttrItem } from "@/lib/api/products";
+import { getProduct, type AttrItem } from "@/lib/api/products";
+import { operatorProductsApi, type ProductOperatorItem } from "@/lib/api/operatorProducts";
 
 // ── sessionStorage 草稿 ─────────────────────────────────
 
@@ -95,49 +96,250 @@ function QuoteTierModal({ tiers: initial, moq, onConfirm, onCancel, t }: {
   );
 }
 
-// ── 行内商品搜索下拉 ────────────────────────────────────
+// ── 变体选择器 ─────────────────────────────────────────
 
-function InlineProductSearch({ onSelect, t }: {
-  onSelect: (product: { id: number; name: string; unit: string; moq: number | null }) => void;
-  t: (k: string) => string;
-}) {
-  const [keyword, setKeyword] = useState("");
-  const [results, setResults] = useState<Array<{ id: number; name: string; unit: string; moq: number | null }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+interface VariantSelectorProps {
+  selectableAttrs: AttrItem[];
+  selected: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+}
 
-  const doSearch = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults([]); return; }
-    setLoading(true);
+function VariantSelector({ selectableAttrs, selected, onChange }: VariantSelectorProps) {
+  if (selectableAttrs.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {selectableAttrs.map((attr) => (
+        <div key={attr.key}>
+          <p className="mb-1.5 text-xs font-medium text-gray-500">{attr.key}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {attr.values.map((v) => {
+              const active = selected[attr.key] === v.value;
+              return (
+                <button key={v.value} type="button"
+                  onClick={() => onChange(attr.key, active ? "" : v.value)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                  }`}>
+                  {v.value}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function buildVariantDisplay(variants: Array<{ attr_name: string; value: string }>): string {
+  if (variants.length === 0) return "";
+  return variants.map((v) => `${v.attr_name}: ${v.value}`).join(", ");
+}
+
+// ── 添加商品弹窗 ──────────────────────────────────────
+
+interface AddProductModalProps {
+  onClose: () => void;
+  onAdd: (item: {
+    product_id: number;
+    product_name: string;
+    selected_variants: Array<{ attr_name: string; value: string }>;
+    variant_display: string;
+    quantity: string;
+    uom: string;
+    moq: string;
+  }) => void;
+}
+
+function AddProductModal({ onClose, onAdd }: AddProductModalProps) {
+  const t = useTranslations("quote");
+  const tCommon = useTranslations("common");
+  const toast = useToast();
+
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<ProductOperatorItem[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const [selectedProduct, setSelectedProduct] = useState<ProductOperatorItem | null>(null);
+  const [productUnit, setProductUnit] = useState("PCS");
+  const [productMoq, setProductMoq] = useState<number | null>(null);
+  const [selectableAttrs, setSelectableAttrs] = useState<AttrItem[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+  const [quantity, setQuantity] = useState("1");
+
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 防抖搜索商品（operator API，只搜 ACTIVE）
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await operatorProductsApi.list({ keyword: query.trim(), status: "ACTIVE", size: 10 });
+        setResults(res.items);
+        setShowDropdown(true);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+  }, [query]);
+
+  // 选中商品 -> 拉详情获取 selectable 属性 + unit/moq
+  const handleSelectProduct = useCallback(async (product: ProductOperatorItem) => {
+    setSelectedProduct(product);
+    setShowDropdown(false);
+    setQuery(product.name);
+    setSelectedVariants({});
+    setSelectableAttrs([]);
+    setProductUnit("PCS");
+    setProductMoq(null);
+    setLoadingDetail(true);
     try {
-      const resp = await searchProducts({ keyword: q.trim(), size: 10 });
-      setResults(resp.items.map((p) => ({ id: p.id, name: p.name, unit: p.unit ?? "PCS", moq: p.moq ?? null })));
-      setOpen(true);
-    } catch { setResults([]); } finally { setLoading(false); }
+      const detail = await getProduct(product.id);
+      setProductUnit(detail.unit ?? "PCS");
+      setProductMoq(detail.moq ?? null);
+      const selectable: AttrItem[] = [];
+      for (const group of detail.attribute_groups) {
+        for (const item of group.items) {
+          if (item.selectable) selectable.push(item);
+        }
+      }
+      setSelectableAttrs(selectable);
+    } catch {
+      // 无属性或接口异常，静默处理
+    } finally {
+      setLoadingDetail(false);
+    }
   }, []);
 
+  const handleVariantChange = useCallback((key: string, value: string) => {
+    setSelectedVariants((prev) => {
+      if (!value) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: value };
+    });
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    if (!selectedProduct) return;
+    const qty = Number(quantity);
+    if (!qty || qty <= 0) {
+      toast.error(t("quantity") + " > 0");
+      return;
+    }
+
+    const variants = Object.entries(selectedVariants)
+      .filter(([, v]) => v)
+      .map(([attr_name, value]) => ({ attr_name, value }));
+
+    onAdd({
+      product_id: selectedProduct.id,
+      product_name: selectedProduct.name,
+      selected_variants: variants,
+      variant_display: buildVariantDisplay(variants),
+      quantity: String(qty),
+      uom: productUnit,
+      moq: productMoq ? String(productMoq) : "",
+    });
+    onClose();
+  }, [selectedProduct, selectedVariants, quantity, productUnit, productMoq, onAdd, onClose, toast, t]);
+
   return (
-    <div className="relative">
-      <div className="flex gap-1">
-        <input type="text" value={keyword}
-          onChange={(e) => { setKeyword(e.target.value); if (e.target.value.length >= 2) doSearch(e.target.value); }}
-          onKeyDown={(e) => e.key === "Enter" && doSearch(keyword)}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder={t("searchProduct")}
-          className="h-8 w-full rounded border border-gray-200 px-2 text-xs outline-none focus:border-blue-500" />
-        {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-500 absolute right-2 top-2" />}
-      </div>
-      {open && results.length > 0 && (
-        <div className="absolute left-0 top-9 z-20 w-64 rounded-lg border border-gray-200 bg-white shadow-lg max-h-48 overflow-y-auto">
-          {results.map((p) => (
-            <button key={p.id} type="button"
-              onClick={() => { onSelect(p); setOpen(false); setKeyword(""); setResults([]); }}
-              className="w-full px-3 py-2 text-left text-xs hover:bg-blue-50">
-              <span className="font-medium text-gray-800">{p.name}</span>
-            </button>
-          ))}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="mx-4 w-full max-w-lg rounded-xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}>
+        {/* 标题 */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h3 className="text-base font-semibold text-gray-800">{t("addProductLine")}</h3>
+          <button type="button" onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      )}
+
+        <div className="space-y-4 p-5">
+          {/* 商品搜索 */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("searchProduct")}</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <input type="text" value={query}
+                onChange={(e) => { setQuery(e.target.value); setSelectedProduct(null); }}
+                placeholder={t("searchProduct")}
+                className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              {searching && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-gray-400" />}
+              {showDropdown && results.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                  {results.map((p) => (
+                    <button key={p.id} type="button" onClick={() => handleSelectProduct(p)}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50">
+                      <div>
+                        <p className="font-medium text-gray-800">{p.name}</p>
+                        <p className="text-xs text-gray-400">{p.spu_code} &middot; {p.category_name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showDropdown && results.length === 0 && !searching && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg">
+                  <p className="px-3 py-2.5 text-sm text-gray-400">{t("noSearchResult")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 选中商品后：变体 + 数量 */}
+          {selectedProduct && (
+            <>
+              {loadingDetail ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                </div>
+              ) : (
+                selectableAttrs.length > 0 && (
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-gray-500">{t("selectVariant")}</label>
+                    <VariantSelector selectableAttrs={selectableAttrs} selected={selectedVariants} onChange={handleVariantChange} />
+                  </div>
+                )
+              )}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("quantity")}</label>
+                <input type="number" min={0.001} step="any" value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="flex justify-end gap-3 border-t border-gray-100 px-5 py-4">
+          <button type="button" onClick={onClose}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+            {tCommon("cancel")}
+          </button>
+          <button type="button" onClick={handleConfirm} disabled={!selectedProduct}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60">
+            {tCommon("confirm")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -231,6 +433,7 @@ function QuoteBackfillContent() {
   const [tierModalIdx, setTierModalIdx] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // 变体编辑
   const [expandedVariantIdx, setExpandedVariantIdx] = useState<number | null>(null);
@@ -292,16 +495,39 @@ function QuoteBackfillContent() {
     setLines((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const addEmptyLine = useCallback(() => {
+  // 通过弹窗添加商品行
+  const addProductLine = useCallback((item: {
+    product_id: number; product_name: string;
+    selected_variants: Array<{ attr_name: string; value: string }>;
+    variant_display: string; quantity: string; uom: string; moq: string;
+  }) => {
     setLines((prev) => [...prev, {
       _key: nextKey(),
       source_rfq_item_id: null,
       line_type: "PRODUCT" as LineType,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      selected_variants: item.selected_variants,
+      variant_display: item.variant_display,
+      quantity: item.quantity,
+      uom: item.uom,
+      unit_price: "",
+      moq: item.moq, cbm_per_unit: "", gross_weight_per_unit: "",
+      tiers: [], remark: "",
+    }]);
+  }, []);
+
+  // 直接添加费用行（无需弹窗）
+  const addFeeLine = useCallback(() => {
+    setLines((prev) => [...prev, {
+      _key: nextKey(),
+      source_rfq_item_id: null,
+      line_type: "FEE" as LineType,
       product_id: null,
       product_name: "",
       selected_variants: [],
       variant_display: "",
-      quantity: "",
+      quantity: "1",
       uom: "",
       unit_price: "",
       moq: "", cbm_per_unit: "", gross_weight_per_unit: "",
@@ -560,10 +786,10 @@ function QuoteBackfillContent() {
                           </button>
                         </div>
                       ) : (
-                        <InlineProductSearch t={t} onSelect={(p) => updateLine(idx, {
-                          product_id: p.id, product_name: p.name, uom: p.unit,
-                          moq: p.moq ? String(p.moq) : "",
-                        })} />
+                        <button type="button" onClick={() => setShowAddModal(true)}
+                          className="inline-flex items-center gap-1 rounded-md border border-dashed border-blue-300 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors">
+                          <Search className="h-3 w-3" /> {t("selectProduct")}
+                        </button>
                       )}
                     </td>
                     {/* 数量 */}
@@ -669,13 +895,19 @@ function QuoteBackfillContent() {
                   </React.Fragment>
                 );
               })}
-              {/* 末行"+"添加按钮 */}
-              <tr>
+              {/* 末行添加按钮 */}
+              <tr className="border-t border-dashed border-gray-200">
                 <td colSpan={7} className="px-4 py-3">
-                  <button type="button" onClick={addEmptyLine}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600">
-                    <Plus className="h-4 w-4" /> {t("addLine")}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setShowAddModal(true)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600">
+                      <Plus className="h-4 w-4" /> {t("addProductLine")}
+                    </button>
+                    <button type="button" onClick={addFeeLine}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700">
+                      <Plus className="h-3.5 w-3.5" /> {t("addFeeLine")}
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -707,6 +939,12 @@ function QuoteBackfillContent() {
         <QuoteTierModal tiers={lines[tierModalIdx].tiers} moq={parseFloat(lines[tierModalIdx].moq) || 1}
           onConfirm={(newTiers) => { updateLine(tierModalIdx, { tiers: newTiers }); setTierModalIdx(null); }}
           onCancel={() => setTierModalIdx(null)} t={t} />
+      )}
+      {showAddModal && (
+        <AddProductModal
+          onClose={() => setShowAddModal(false)}
+          onAdd={(item) => { addProductLine(item); setShowAddModal(false); }}
+        />
       )}
     </div>
   );
