@@ -83,17 +83,9 @@ export default function HomePage() {
             }} />
 
             <div className="relative z-10">
-              <span
-                className="inline-flex items-center gap-2 min-h-[30px] px-3.5 rounded-full text-[12.5px] font-extrabold text-[#d6fffb] uppercase tracking-wider mb-4"
-                style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)", backdropFilter: "blur(6px)" }}
-              >
-                <span className="w-[7px] h-[7px] rounded-full bg-gold" style={{ boxShadow: "0 0 10px #e3a615" }} />
-                {t("heroEyebrow")}
-              </span>
-
-              <h1 className="text-white font-black leading-[1.08] mb-2" style={{ fontSize: "clamp(30px, 3vw, 44px)", textShadow: "0 2px 20px rgba(0,30,34,.3)" }}>
+              <h1 className="text-white font-black leading-[1.08] mb-2 whitespace-nowrap" style={{ fontSize: "clamp(22px, 2.4vw, 36px)", textShadow: "0 2px 20px rgba(0,30,34,.3)" }}>
                 {t("heroHeadline")}
-                <span className="block mt-2 text-gold font-extrabold" style={{ fontSize: "clamp(20px, 2vw, 28px)" }}>
+                <span className="block mt-2 text-gold font-extrabold whitespace-nowrap" style={{ fontSize: "clamp(16px, 1.6vw, 22px)" }}>
                   {BRAND.tagline}
                 </span>
               </h1>
