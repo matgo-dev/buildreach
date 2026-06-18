@@ -5,6 +5,7 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "back_to_home": "Back to Home",
+    "back": "Back",
     "selectAll": "Select All"
   },
   "brand": {
@@ -933,7 +934,9 @@
     "attachment.maxReached": "Maximum 6 attachments allowed",
     "attachment.invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
     "attachment.tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB",
-    "backToCartEdit": "Back to Basket"
+    "backToCartEdit": "Back to Basket",
+    "onlyDraftEditable": "Only DRAFT RFQ can be edited",
+    "loadFailed": "Failed to load RFQ"
   },
   "quote": {
     "backfillTitle": "Quote Backfill",

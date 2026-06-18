@@ -32,6 +32,7 @@ export default function AttachmentUploader({
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
+      if (uploading) return;
       if (!files || files.length === 0) return;
 
       const remaining = MAX_ATTACHMENTS - urls.length;
@@ -114,6 +115,7 @@ export default function AttachmentUploader({
               <button
                 type="button"
                 onClick={() => handleRemove(idx)}
+                aria-label="Remove"
                 className="absolute -right-1.5 -top-1.5 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block"
               >
                 <X className="h-3 w-3" />
@@ -127,6 +129,9 @@ export default function AttachmentUploader({
         <div
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
           className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 py-4 text-sm text-gray-400 transition-colors hover:border-[#00505a]/40 hover:text-gray-500"
           onClick={() => inputRef.current?.click()}
         >

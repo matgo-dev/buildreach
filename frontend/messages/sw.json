@@ -5,6 +5,7 @@
     "cancel": "Ghairi",
     "confirm": "Thibitisha",
     "back_to_home": "Rudi Nyumbani",
+    "back": "Rudi",
     "selectAll": "Chagua Zote"
   },
   "brand": {
@@ -933,7 +934,9 @@
     "attachment.maxReached": "Viambatisho 6 vinaruhusiwa tu",
     "attachment.invalidType": "Aina ya faili haihimiliwi. Inaruhusiwa: JPG, PNG, WEBP, PDF, XLSX",
     "attachment.tooLarge": "Faili kubwa mno. Picha ≤5 MB, hati ≤10 MB",
-    "backToCartEdit": "Rudi kwenye Kikapu"
+    "backToCartEdit": "Rudi kwenye Kikapu",
+    "onlyDraftEditable": "Ombi la Manunuzi lenye hali ya RASIMU pekee linaweza kuhaririwa",
+    "loadFailed": "Imeshindwa kupakia Ombi la Manunuzi"
   },
   "quote": {
     "backfillTitle": "Jaza Nukuu",

@@ -306,7 +306,7 @@ function RfqEditContent() {
     getRfq(rfqId)
       .then((rfq) => {
         if (rfq.status !== "DRAFT") {
-          toast.error("Only DRAFT RFQ can be edited");
+          toast.error(t("onlyDraftEditable"));
           router.replace(`/${locale}/buyer/rfqs/${rfqId}`);
           return;
         }
@@ -334,7 +334,7 @@ function RfqEditContent() {
         setAttachmentUrls(rfq.attachment_urls ?? []);
       })
       .catch(() => {
-        toast.error("Failed to load RFQ");
+        toast.error(t("loadFailed"));
         router.replace(`/${locale}/buyer/rfqs`);
       })
       .finally(() => setLoading(false));

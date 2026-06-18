@@ -5,6 +5,7 @@
     "cancel": "取消",
     "confirm": "确定",
     "back_to_home": "返回首页",
+    "back": "返回",
     "selectAll": "全选"
   },
   "brand": {
@@ -933,7 +934,9 @@
     "attachment.maxReached": "最多上传 6 个附件",
     "attachment.invalidType": "文件类型不支持，支持 JPG、PNG、WEBP、PDF、XLSX",
     "attachment.tooLarge": "文件过大，图片 ≤5MB，文档 ≤10MB",
-    "backToCartEdit": "返回询价篮修改"
+    "backToCartEdit": "返回询价篮修改",
+    "onlyDraftEditable": "仅草稿状态的询价单可以编辑",
+    "loadFailed": "询价单加载失败"
   },
   "quote": {
     "backfillTitle": "报价回填",

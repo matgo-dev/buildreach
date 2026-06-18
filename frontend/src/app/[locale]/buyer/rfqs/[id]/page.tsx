@@ -4,7 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package } from "lucide-react";
+import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -175,13 +176,13 @@ function RfqDetailContent() {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
         <AlertCircle className="mb-4 h-12 w-12 text-gray-300" />
-        <p className="text-sm text-gray-500">询价单不存在</p>
+        <p className="text-sm text-gray-500">{tError("rfq.not_found")}</p>
         <button
           type="button"
           onClick={() => router.back()}
           className="mt-4 text-sm text-[#00505a] hover:underline"
         >
-          返回
+          {tCommon("back")}
         </button>
       </div>
     );
@@ -226,7 +227,7 @@ function RfqDetailContent() {
           {canEdit && (
             <button
               type="button"
-              onClick={() => router.push(`/buyer/rfqs/${rfqId}/edit`)}
+              onClick={() => router.push(`/${locale}/buyer/rfqs/${rfqId}/edit`)}
               className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -667,13 +668,63 @@ function ItemsAndQuoteCard({
                 })
               : rfq.items.map((item) => (
                   <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
-                    <td className="px-5 py-3 font-medium text-gray-800">
-                      {item.product_name_snapshot ?? "—"}
+                    {/* 商品图+信息 */}
+                    <td className="px-5 py-3" colSpan={2}>
+                      <div className="flex items-start gap-3">
+                        {/* 64×64 缩略图 */}
+                        {item.main_image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.main_image}
+                            alt=""
+                            className="h-16 w-16 flex-shrink-0 rounded-lg border border-gray-100 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50">
+                            <Package className="h-6 w-6 text-gray-300" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          {/* 商品名（可点击跳商品详情） */}
+                          <Link
+                            href={`/mall/products/${item.product_id}`}
+                            className="text-sm font-medium text-gray-800 hover:text-[#00505a] hover:underline"
+                          >
+                            {item.product_name_snapshot ?? "—"}
+                          </Link>
+                          {/* 标签行：SPU / 品牌 / 产地 */}
+                          {(item.spu_code || item.brand || item.origin) && (
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {item.spu_code && (
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                                  SPU: {item.spu_code}
+                                </span>
+                              )}
+                              {item.brand && (
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                                  {item.brand}
+                                </span>
+                              )}
+                              {item.origin && (
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                                  {item.origin}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {/* 品类 */}
+                          {item.category_name && (
+                            <p className="mt-0.5 text-[10px] text-gray-400">{item.category_name}</p>
+                          )}
+                          {/* 变体规格 */}
+                          {item.variant_display && (
+                            <p className="mt-1 text-xs text-gray-500">{item.variant_display}</p>
+                          )}
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-500">
-                      {item.variant_display ?? "—"}
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-800">
+                    {/* 数量 */}
+                    <td className="px-5 py-3 text-right align-top font-semibold text-gray-800">
                       {item.quantity} {item.uom_snapshot ?? ""}
                     </td>
                   </tr>

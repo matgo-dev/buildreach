@@ -485,7 +485,7 @@ function CartContent() {
       </div>
 
       {/* 底部操作栏 — 阿里风格：左侧全选+批量操作，右侧统计+提交 */}
-      <div className="sticky bottom-0 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
+      <div className="sticky bottom-0 z-10 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
         {/* 左：全选 + 批量删除 */}
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
