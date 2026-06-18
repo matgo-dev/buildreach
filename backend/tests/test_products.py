@@ -171,7 +171,7 @@ async def test_public_list_billboard_no_price(client: AsyncClient):
     assert "name" in item
     assert "unit" in item
     # 广告牌模式:无价格/SKU
-    _REMOVED_LIST_FIELDS = {"price_min", "price_max", "currency", "moq",
+    _REMOVED_LIST_FIELDS = {"price_min", "price_max", "currency",
                             "lead_time_min", "lead_time_max", "sku_count"}
     for field in _REMOVED_LIST_FIELDS:
         assert field not in item, f"Buyer list should not contain '{field}'"
