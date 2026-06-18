@@ -22,7 +22,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
-import AttachmentUploader from "@/components/rfq/AttachmentUploader";
+// import AttachmentUploader from "@/components/rfq/AttachmentUploader";  // 禁用:附件安全版落地前暂停
 
 const CURRENCIES = ["USD", "KES", "CNY"];
 
@@ -591,10 +591,12 @@ function RfqEditContent() {
             <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={3}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
           </div>
+          {/* 禁用:附件安全版落地前暂停
           <AttachmentUploader
             urls={attachmentUrls}
             onChange={setAttachmentUrls}
           />
+          */}
         </div>
       </div>
 

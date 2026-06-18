@@ -377,6 +377,7 @@ function RfqDetailContent() {
               <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
             </div>
           )}
+          {/* 禁用:附件安全版落地前暂停
           {rfq.attachment_urls && rfq.attachment_urls.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-gray-700">{t("attachment.label")}</h3>
@@ -403,6 +404,7 @@ function RfqDetailContent() {
               </div>
             </div>
           )}
+          */}
         </div>
       )}
 
