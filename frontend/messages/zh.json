@@ -928,12 +928,14 @@
     "itemsRequired": "请添加至少一个商品",
     "createSuccess": "询价单已创建",
     "draftSaved": "草稿已保存",
-    "attachment.label": "附件",
-    "attachment.upload": "点击或拖拽上传（图片 / PDF / Excel）",
-    "attachment.hint": "支持 JPG、PNG、WEBP（≤5MB），PDF、XLSX（≤10MB），最多 6 个",
-    "attachment.maxReached": "最多上传 6 个附件",
-    "attachment.invalidType": "文件类型不支持，支持 JPG、PNG、WEBP、PDF、XLSX",
-    "attachment.tooLarge": "文件过大，图片 ≤5MB，文档 ≤10MB",
+    "attachment": {
+      "label": "附件",
+      "upload": "点击或拖拽上传（图片 / PDF / Excel）",
+      "hint": "支持 JPG、PNG、WEBP（≤5MB），PDF、XLSX（≤10MB），最多 6 个",
+      "maxReached": "最多上传 6 个附件",
+      "invalidType": "文件类型不支持，支持 JPG、PNG、WEBP、PDF、XLSX",
+      "tooLarge": "文件过大，图片 ≤5MB，文档 ≤10MB"
+    },
     "backToCartEdit": "返回询价篮修改",
     "onlyDraftEditable": "仅草稿状态的询价单可以编辑",
     "loadFailed": "询价单加载失败"

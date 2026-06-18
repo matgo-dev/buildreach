@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -648,10 +648,11 @@ function RfqCreateContent() {
   const [draft, setDraft] = useState<DraftData>(() => {
     if (typeof window === "undefined") return emptyDraft();
 
-    // 从商品卡片带 product_id 进入时，跳过旧草稿，避免混入残留 items
-    const hasProductIdParam = new URLSearchParams(window.location.search).has("product_id");
+    // 从询价篮或商品直询进入时，不恢复旧草稿，每次都是全新请求
+    const params = new URLSearchParams(window.location.search);
+    const hasEntryParam = params.has("product_id") || params.has("items");
 
-    if (!hasProductIdParam) {
+    if (!hasEntryParam) {
       try {
         const saved = sessionStorage.getItem(draftKey);
         if (saved) {
@@ -696,6 +697,61 @@ function RfqCreateContent() {
     [],
   );
 
+  // 手动行项的变体数据缓存 + 选中状态
+  const [manualVariantMap, setManualVariantMap] = useState<Record<number, ProductVariantEntry>>({});
+  const [manualVariantSelection, setManualVariantSelection] = useState<Record<number, Record<string, string>>>({});
+  const [manualExpandedId, setManualExpandedId] = useState<number | null>(null);
+
+  // 加载商品的变体轴
+  const loadVariantAxes = useCallback(async (productId: number) => {
+    if (manualVariantMap[productId]) return;
+    setManualVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: true } }));
+    try {
+      const detail = await getProduct(productId);
+      const variants: VariantAxis[] = [];
+      for (const group of detail.attribute_groups ?? []) {
+        for (const item of group.items ?? []) {
+          if (item.selectable && item.values.length > 0) {
+            variants.push({
+              key: item.key,
+              display: item.key,
+              values: item.values.map((v) => ({ value: v.value, display: v.value })),
+            });
+          }
+        }
+      }
+      setManualVariantMap((prev) => ({
+        ...prev,
+        [productId]: { variants, unit: detail.unit, loading: false },
+      }));
+      // 有变体时自动展开
+      if (variants.length > 0) {
+        setManualExpandedId(productId);
+      }
+    } catch {
+      setManualVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: false } }));
+    }
+  }, [manualVariantMap]);
+
+  // 应用变体选择到手动行项
+  const handleApplyVariant = useCallback((idx: number, productId: number) => {
+    const sel = manualVariantSelection[productId] ?? {};
+    const selected_variants = Object.entries(sel)
+      .filter(([, v]) => v)
+      .map(([attr_name, value]) => ({ attr_name, value }));
+    const variant_display = selected_variants
+      .map((v) => `${v.attr_name}: ${v.value}`)
+      .join(" / ") || "\u2014";
+    setDraft((prev) => ({
+      ...prev,
+      manualItems: prev.manualItems.map((m, i) =>
+        i === idx ? { ...m, selected_variants, variant_display } : m,
+      ),
+    }));
+    setManualExpandedId(null);
+    idemRef.current = null;
+  }, [manualVariantSelection]);
+
   // 从 URL product_id 自动添加商品到手动列表
   useEffect(() => {
     if (!productIdParam || productIdLoadedRef.current) return;
@@ -720,6 +776,27 @@ function RfqCreateContent() {
           unit: detail.unit || "PCS",
           quantity: 1,
         });
+
+        // 加载变体轴数据
+        const variants: VariantAxis[] = [];
+        for (const group of detail.attribute_groups ?? []) {
+          for (const item of group.items ?? []) {
+            if (item.selectable && item.values.length > 0) {
+              variants.push({
+                key: item.key,
+                display: item.key,
+                values: item.values.map((v) => ({ value: v.value, display: v.value })),
+              });
+            }
+          }
+        }
+        setManualVariantMap((prev) => ({
+          ...prev,
+          [detail.id]: { variants, unit: detail.unit, loading: false },
+        }));
+        if (variants.length > 0) {
+          setManualExpandedId(detail.id);
+        }
       })
       .catch(() => {
         toast.error(t("productNotFound"));
@@ -920,12 +997,14 @@ function RfqCreateContent() {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => isCartPath ? router.push(`/${locale}/buyer/cart`) : router.back()}
           className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-bold text-gray-800">{t("create")}</h1>
+        <h1 className="text-xl font-bold text-gray-800">
+          {isCartPath ? t("backToCartEdit") : t("create")}
+        </h1>
       </div>
 
       {/* 失效提示 */}
@@ -950,19 +1029,6 @@ function RfqCreateContent() {
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
         </div>
-
-        {/* 篮子路径：显示返回询价篮修改链接 */}
-        {isCartPath && (
-          <div className="px-5 py-2 border-b border-gray-100">
-            <a
-              href={`/${locale}/buyer/cart`}
-              className="inline-flex items-center gap-1 text-sm text-[#00505a] hover:underline"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {t("backToCartEdit")}
-            </a>
-          </div>
-        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -1026,42 +1092,127 @@ function RfqCreateContent() {
               ))}
 
               {/* 手动添加的商品 */}
-              {manualItems.map((item, idx) => (
-                <tr key={`manual-${item.product_id}-${idx}`} className="border-t border-gray-100 even:bg-slate-50/50">
-                  <td className="px-5 py-3 font-medium text-gray-800">
-                    {item.product_name}
-                  </td>
-                  <td className="px-5 py-3 text-gray-500">
-                    {item.variant_display}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="inline-flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
-                        }}
-                        min={1}
-                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
-                      />
-                      <span className="text-xs text-gray-500">
-                        {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveManualItem(idx)}
-                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {manualItems.map((item, idx) => {
+                const variantData = manualVariantMap[item.product_id];
+                const isExpanded = manualExpandedId === item.product_id;
+                const hasVariants = variantData && !variantData.loading && variantData.variants.length > 0;
+                return (
+                  <React.Fragment key={`manual-${item.product_id}-${idx}`}>
+                    <tr className="border-t border-gray-100 even:bg-slate-50/50">
+                      <td className="px-5 py-3 font-medium text-gray-800">
+                        {item.product_name}
+                      </td>
+                      <td className="px-5 py-3 text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <span>{item.variant_display}</span>
+                          {/* 变体编辑按钮 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isExpanded) {
+                                setManualExpandedId(null);
+                              } else {
+                                loadVariantAxes(item.product_id);
+                                setManualExpandedId(item.product_id);
+                              }
+                            }}
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-[#00505a] hover:bg-[#00505a]/5 transition-colors"
+                          >
+                            {isExpanded ? t("collapse") : t("selectVariant")}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
+                            }}
+                            min={1}
+                            className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                          />
+                          <span className="text-xs text-gray-500">
+                            {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveManualItem(idx)}
+                          className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                    {/* 变体选择面板（展开时） */}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={4} className="bg-gray-50/60 px-5 py-3">
+                          {variantData?.loading && (
+                            <div className="flex items-center justify-center py-3">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            </div>
+                          )}
+                          {variantData && !variantData.loading && (
+                            <>
+                              {hasVariants ? (
+                                <div className="space-y-3">
+                                  {variantData.variants.map((axis) => {
+                                    const selected = manualVariantSelection[item.product_id]?.[axis.key];
+                                    return (
+                                      <div key={axis.key}>
+                                        <div className="mb-1.5 text-xs font-medium text-gray-600">{axis.display}</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {axis.values.map((v) => (
+                                            <button
+                                              key={v.value}
+                                              type="button"
+                                              onClick={() => {
+                                                setManualVariantSelection((prev) => ({
+                                                  ...prev,
+                                                  [item.product_id]: {
+                                                    ...(prev[item.product_id] ?? {}),
+                                                    [axis.key]: prev[item.product_id]?.[axis.key] === v.value ? "" : v.value,
+                                                  },
+                                                }));
+                                              }}
+                                              className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                                                selected === v.value
+                                                  ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
+                                                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                              }`}
+                                            >
+                                              {v.display}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyVariant(idx, item.product_id)}
+                                    className="mt-1 rounded-md bg-[#00505a] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#003f46]"
+                                  >
+                                    {t("confirmVariant") ?? "确认选择"}
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-400">{t("noVariants")}</p>
+                              )}
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
 
               {/* 空状态 */}
               {totalItemCount === 0 && (

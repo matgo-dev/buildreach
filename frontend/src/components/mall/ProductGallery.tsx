@@ -114,11 +114,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
             📷
           </div>
         )}
-        {isFeatured && (
-          <span className="absolute left-2 top-2 rounded bg-[#15935f] px-2 py-0.5 text-[10px] font-semibold text-white">
-            {t("featured")}
-          </span>
-        )}
+        {/* 精选角标已随列表卡片统一移除 */}
       </div>
 
       {/* 缩略图 */}

@@ -928,12 +928,14 @@
     "itemsRequired": "Please add at least one item",
     "createSuccess": "RFQ created successfully",
     "draftSaved": "Draft saved",
-    "attachment.label": "Attachments",
-    "attachment.upload": "Click or drag to upload (image / PDF / Excel)",
-    "attachment.hint": "Supports JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Up to 6 files.",
-    "attachment.maxReached": "Maximum 6 attachments allowed",
-    "attachment.invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
-    "attachment.tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB",
+    "attachment": {
+      "label": "Attachments",
+      "upload": "Click or drag to upload (image / PDF / Excel)",
+      "hint": "Supports JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Up to 6 files.",
+      "maxReached": "Maximum 6 attachments allowed",
+      "invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
+      "tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB"
+    },
     "backToCartEdit": "Back to Basket",
     "onlyDraftEditable": "Only DRAFT RFQ can be edited",
     "loadFailed": "Failed to load RFQ"

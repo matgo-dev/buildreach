@@ -195,10 +195,6 @@ function RfqDetailContent() {
   const canDecide = rfq.status === "QUOTED" && hasPermission(Permissions.RFQ_DECIDE);
   const showQuoteSection = QUOTE_VISIBLE_STATUSES.has(rfq.status);
 
-  // rfqItem 查找表，用于报价行 join 取商品快照
-  const rfqItemMap = new Map<number, RfqItemPublic>();
-  rfq.items.forEach((item) => rfqItemMap.set(item.id, item));
-
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* 头部 */}
@@ -282,14 +278,20 @@ function RfqDetailContent() {
         </div>
       </div>
 
-      {/* 商品 & 报价 — 整合卡片 */}
-      <ItemsAndQuoteCard
-        rfq={rfq}
-        quote={showQuoteSection ? quote : null}
-        rfqItemMap={rfqItemMap}
-        isExpiredHint={isExpiredHint}
-        locale={locale}
-      />
+      {/* 询价行项 */}
+      <RfqItemsCard rfq={rfq} />
+
+      {/* 报价区块（独立卡片） */}
+      {showQuoteSection && quote && (
+        <QuoteCard rfq={rfq} quote={quote} isExpiredHint={isExpiredHint} locale={locale} />
+      )}
+
+      {/* 无报价提示 */}
+      {showQuoteSection && !quote && (
+        <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
+          <p className="text-sm text-gray-400">{tQ("noQuote")}</p>
+        </div>
+      )}
 
       {/* 交货信息 */}
       {(rfq.requested_delivery_place || rfq.expected_delivery_date || rfq.target_currency) && (
@@ -513,34 +515,112 @@ function RfqDetailContent() {
   );
 }
 
-// ---- 商品 & 报价整合卡片 ----
+// ---- 询价行项卡片（独立区块） ----
 
-function ItemsAndQuoteCard({
+function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
+  const t = useTranslations("rfq");
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-5 py-3">
+        <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left text-xs text-gray-500">
+              <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
+              <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
+              <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rfq.items.map((item) => (
+              <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
+                <td className="px-5 py-3" colSpan={2}>
+                  <div className="flex items-start gap-3">
+                    {item.main_image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.main_image}
+                        alt=""
+                        className="h-16 w-16 flex-shrink-0 rounded-lg border border-gray-100 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50">
+                        <Package className="h-6 w-6 text-gray-300" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/mall/products/${item.product_id}`}
+                        className="text-sm font-medium text-gray-800 hover:text-[#00505a] hover:underline"
+                      >
+                        {item.product_name_snapshot ?? "—"}
+                      </Link>
+                      {(item.spu_code || item.brand || item.origin) && (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {item.spu_code && (
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                              SPU: {item.spu_code}
+                            </span>
+                          )}
+                          {item.brand && (
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                              {item.brand}
+                            </span>
+                          )}
+                          {item.origin && (
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                              {item.origin}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {item.category_name && (
+                        <p className="mt-0.5 text-[10px] text-gray-400">{item.category_name}</p>
+                      )}
+                      {item.variant_display && (
+                        <p className="mt-1 text-xs text-gray-500">{item.variant_display}</p>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3 text-right align-top font-semibold text-gray-800">
+                  {item.quantity} {item.uom_snapshot ?? ""}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---- 报价卡片（独立区块） ----
+
+function QuoteCard({
   rfq,
   quote,
-  rfqItemMap,
   isExpiredHint,
   locale,
 }: {
   rfq: RfqBuyerPublic;
-  quote: RfqQuoteBuyerPublic | null;
-  rfqItemMap: Map<number, RfqItemPublic>;
+  quote: RfqQuoteBuyerPublic;
   isExpiredHint: boolean;
   locale: string;
 }) {
-  const t = useTranslations("rfq");
   const tQ = useTranslations("quote");
-
-  const hasQuote = !!quote;
-  const currency = quote?.currency ?? "USD";
+  const currency = quote.currency ?? "USD";
   const isAccepted = rfq.status === "ACCEPTED";
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
-      {/* 卡片标题 */}
+      {/* 标题 */}
       <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{tQ("viewTitle")}</h2>
           {isAccepted && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
               <CheckCircle2 className="h-3 w-3" />
@@ -548,7 +628,7 @@ function ItemsAndQuoteCard({
             </span>
           )}
         </div>
-        {quote && <span className="text-xs text-gray-400">{quote.quote_no}</span>}
+        <span className="text-xs text-gray-400">{quote.quote_no}</span>
       </div>
 
       {/* 过期软提示 */}
@@ -559,187 +639,77 @@ function ItemsAndQuoteCard({
         </div>
       )}
 
-      {/* 报价摘要条 — 有报价时展示条款概要 */}
-      {hasQuote && (
-        <div className="grid grid-cols-2 gap-3 border-b border-gray-100 px-5 py-4 text-sm sm:grid-cols-4">
-          {quote.trade_term && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("tradeTerm")}</span>
-              <p className="font-medium text-gray-800">{quote.trade_term}</p>
-            </div>
-          )}
-          {quote.named_place && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("namedPlace")}</span>
-              <p className="font-medium text-gray-800">{quote.named_place}</p>
-            </div>
-          )}
-          {quote.currency && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("currency")}</span>
-              <p className="font-medium text-gray-800">{quote.currency}</p>
-            </div>
-          )}
-          {quote.valid_until && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("validUntil")}</span>
-              <p className="font-medium text-gray-800">
-                {formatDate(quote.valid_until, locale, { hour: undefined, minute: undefined })}
-              </p>
-            </div>
-          )}
-          {quote.lead_time_days != null && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("leadTimeDays")}</span>
-              <p className="font-medium text-gray-800">{quote.lead_time_days}</p>
-            </div>
-          )}
-          {quote.eta_days != null && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("etaDays")}</span>
-              <p className="font-medium text-gray-800">{quote.eta_days}</p>
-            </div>
-          )}
-          {quote.total_amount != null && (
-            <div>
-              <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
-              <p className="text-base font-bold text-[#00505a]">
-                {formatCurrency(Number(quote.total_amount), currency, locale)}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* 报价条款 */}
+      <div className="grid grid-cols-2 gap-3 border-b border-gray-100 px-5 py-4 text-sm sm:grid-cols-4">
+        {quote.trade_term && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("tradeTerm")}</span>
+            <p className="font-medium text-gray-800">{quote.trade_term}</p>
+          </div>
+        )}
+        {quote.named_place && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("namedPlace")}</span>
+            <p className="font-medium text-gray-800">{quote.named_place}</p>
+          </div>
+        )}
+        {quote.currency && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("currency")}</span>
+            <p className="font-medium text-gray-800">{quote.currency}</p>
+          </div>
+        )}
+        {quote.valid_until && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("validUntil")}</span>
+            <p className="font-medium text-gray-800">
+              {formatDate(quote.valid_until, locale, { hour: undefined, minute: undefined })}
+            </p>
+          </div>
+        )}
+        {quote.lead_time_days != null && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("leadTimeDays")}</span>
+            <p className="font-medium text-gray-800">{quote.lead_time_days}</p>
+          </div>
+        )}
+        {quote.eta_days != null && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("etaDays")}</span>
+            <p className="font-medium text-gray-800">{quote.eta_days}</p>
+          </div>
+        )}
+        {quote.total_amount != null && (
+          <div>
+            <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
+            <p className="text-base font-bold text-[#00505a]">
+              {formatCurrency(Number(quote.total_amount), currency, locale)}
+            </p>
+          </div>
+        )}
+      </div>
 
-      {/* 整合表格 */}
+      {/* 报价明细表格 */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            {hasQuote ? (
-              <>
-                {/* 第一层：列组标题 */}
-                <tr className="text-xs">
-                  <th
-                    colSpan={3}
-                    className="border-b border-gray-100 bg-gray-50 px-5 py-1.5 text-left font-semibold text-gray-500"
-                  >
-                    {tQ("groupRequest")}
-                  </th>
-                  <th
-                    colSpan={5}
-                    className="border-b border-gray-100 border-l border-l-gray-200 bg-[#00505a]/[0.04] px-5 py-1.5 text-left font-semibold text-[#00505a]/60"
-                  >
-                    {tQ("groupResponse")}
-                  </th>
-                </tr>
-                {/* 第二层：各列标题 */}
-                <tr className="text-left text-xs text-gray-500 whitespace-nowrap">
-                  <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("product")}</th>
-                  <th className="bg-gray-50 px-4 py-2 font-medium">{tQ("spec")}</th>
-                  <th className="bg-gray-50 px-4 py-2 font-medium text-right">{tQ("quantity")}</th>
-                  <th className="border-l border-l-gray-200 bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("unitPrice")}</th>
-                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("moq")}</th>
-                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("cbm")}</th>
-                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("grossWeight")}</th>
-                  <th className="bg-[#00505a]/[0.04] px-4 py-2 font-medium text-right text-[#00505a]/60">{tQ("totalAmount")}</th>
-                </tr>
-              </>
-            ) : (
-              <tr className="bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
-                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
-                <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
-              </tr>
-            )}
+            <tr className="bg-gray-50 text-left text-xs text-gray-500 whitespace-nowrap">
+              <th className="px-4 py-2.5 font-medium">{tQ("product")}</th>
+              <th className="px-4 py-2.5 font-medium text-right">{tQ("quantity")}</th>
+              <th className="px-4 py-2.5 font-medium text-right">{tQ("unitPrice")}</th>
+              <th className="px-4 py-2.5 font-medium text-right">{tQ("moq")}</th>
+              <th className="px-4 py-2.5 font-medium text-right">{tQ("cbm")}</th>
+              <th className="px-4 py-2.5 font-medium text-right">{tQ("grossWeight")}</th>
+              <th className="px-4 py-2.5 font-medium text-right">{tQ("totalAmount")}</th>
+            </tr>
           </thead>
           <tbody>
-            {hasQuote
-              ? quote.items.map((qi) => {
-                  const rfqItem = qi.source_rfq_item_id ? rfqItemMap.get(qi.source_rfq_item_id) : undefined;
-                  return (
-                    <QuoteLineRow
-                      key={qi.id}
-                      qi={qi}
-                      rfqItem={rfqItem}
-                      currency={currency}
-                      locale={locale}
-                    />
-                  );
-                })
-              : rfq.items.map((item) => (
-                  <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
-                    {/* 商品图+信息 */}
-                    <td className="px-5 py-3" colSpan={2}>
-                      <div className="flex items-start gap-3">
-                        {/* 64×64 缩略图 */}
-                        {item.main_image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.main_image}
-                            alt=""
-                            className="h-16 w-16 flex-shrink-0 rounded-lg border border-gray-100 object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50">
-                            <Package className="h-6 w-6 text-gray-300" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          {/* 商品名（可点击跳商品详情） */}
-                          <Link
-                            href={`/mall/products/${item.product_id}`}
-                            className="text-sm font-medium text-gray-800 hover:text-[#00505a] hover:underline"
-                          >
-                            {item.product_name_snapshot ?? "—"}
-                          </Link>
-                          {/* 标签行：SPU / 品牌 / 产地 */}
-                          {(item.spu_code || item.brand || item.origin) && (
-                            <div className="mt-1 flex flex-wrap gap-1.5">
-                              {item.spu_code && (
-                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
-                                  SPU: {item.spu_code}
-                                </span>
-                              )}
-                              {item.brand && (
-                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
-                                  {item.brand}
-                                </span>
-                              )}
-                              {item.origin && (
-                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
-                                  {item.origin}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {/* 品类 */}
-                          {item.category_name && (
-                            <p className="mt-0.5 text-[10px] text-gray-400">{item.category_name}</p>
-                          )}
-                          {/* 变体规格 */}
-                          {item.variant_display && (
-                            <p className="mt-1 text-xs text-gray-500">{item.variant_display}</p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    {/* 数量 */}
-                    <td className="px-5 py-3 text-right align-top font-semibold text-gray-800">
-                      {item.quantity} {item.uom_snapshot ?? ""}
-                    </td>
-                  </tr>
-                ))
-            }
+            {quote.items.map((qi) => (
+              <QuoteLineRow key={qi.id} qi={qi} currency={currency} locale={locale} />
+            ))}
           </tbody>
         </table>
       </div>
-
-      {/* 无报价时的提示（仅报价可见状态但尚无报价） */}
-      {!hasQuote && QUOTE_VISIBLE_STATUSES.has(rfq.status) && (
-        <div className="border-t border-gray-100 px-5 py-4">
-          <p className="text-sm text-gray-400">{tQ("noQuote")}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -748,91 +718,84 @@ function ItemsAndQuoteCard({
 
 function QuoteLineRow({
   qi,
-  rfqItem,
   currency,
   locale,
 }: {
   qi: QuoteItemBuyerPublic;
-  rfqItem: RfqItemPublic | undefined;
   currency: string;
   locale: string;
 }) {
   const tQ = useTranslations("quote");
   const [showTiers, setShowTiers] = useState(false);
 
-  // 显示名：优先用报价行自带快照，fallback 到询价行
-  const productName = qi.product_name_snapshot ?? rfqItem?.product_name_snapshot ?? "—";
-  const variantDisplay = qi.variant_display ?? rfqItem?.variant_display ?? "—";
-  const qty = qi.quantity ?? rfqItem?.quantity ?? "—";
-  const uom = qi.uom ?? rfqItem?.uom_snapshot ?? "";
-
-  // FEE 行显示标签
+  const productName = qi.product_name_snapshot ?? "—";
+  const variantDisplay = qi.variant_display;
+  const qty = qi.quantity ?? "—";
+  const uom = qi.uom ?? "";
   const isFee = qi.line_type === "FEE";
 
   return (
-    <>
-      <tr className="border-t border-gray-100 even:bg-slate-50/50">
-        <td className="px-5 py-3 font-medium text-gray-800">
-          <div className="flex items-center gap-1.5">
-            {isFee && (
-              <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                {tQ("lineAdditional")}
-              </span>
-            )}
-            {productName}
-          </div>
-        </td>
-        <td className="px-5 py-3 text-gray-500">
-          {variantDisplay}
-        </td>
-        <td className="px-5 py-3 text-right text-gray-800">
-          {qty} {uom}
-        </td>
-        <td className="px-5 py-3 text-right">
-          <div className="font-semibold text-gray-800">
-            {qi.unit_price != null
-              ? formatCurrency(Number(qi.unit_price), currency, locale)
-              : "—"}
-          </div>
-          {qi.tiers.length > 0 && (
-            <div className="mt-1">
-              <button type="button" onClick={() => setShowTiers(!showTiers)}
-                className="text-[10px] font-medium text-[#00505a] hover:underline">
-                {tQ("tiers")} ({qi.tiers.length}) {showTiers ? "▲" : "▼"}
-              </button>
-              {showTiers && (
-                <div className="mt-1 space-y-0.5 text-left">
-                  {[...qi.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, idx, sorted) => {
-                    const next = sorted[idx + 1];
-                    const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
-                    return (
-                      <div key={idx} className="text-[10px] text-gray-500">
-                        <span className="inline-block w-16">{label}</span>
-                        <span className="font-semibold text-[#00505a]">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+    <tr className="border-t border-gray-100 even:bg-slate-50/50">
+      <td className="px-4 py-3 font-medium text-gray-800">
+        <div className="flex items-center gap-1.5">
+          {isFee && (
+            <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+              {tQ("lineAdditional")}
+            </span>
           )}
-        </td>
-        <td className="px-5 py-3 text-right text-gray-600">
-          {qi.moq != null ? Number(qi.moq) : "—"}
-        </td>
-        <td className="px-5 py-3 text-right text-gray-600">
-          {qi.cbm_per_unit != null ? Number(qi.cbm_per_unit) : "—"}
-        </td>
-        <td className="px-5 py-3 text-right text-gray-600">
-          {qi.gross_weight_per_unit != null ? Number(qi.gross_weight_per_unit) : "—"}
-        </td>
-        <td className="px-5 py-3 text-right font-semibold text-gray-800">
-          {qi.line_amount != null
-            ? formatCurrency(Number(qi.line_amount), currency, locale)
+          {productName}
+          {variantDisplay && (
+            <span className="ml-1 text-xs text-gray-400">{variantDisplay}</span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right text-gray-800">
+        {qty} {uom}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <div className="font-semibold text-gray-800">
+          {qi.unit_price != null
+            ? formatCurrency(Number(qi.unit_price), currency, locale)
             : "—"}
-        </td>
-      </tr>
-    </>
+        </div>
+        {qi.tiers.length > 0 && (
+          <div className="mt-1">
+            <button type="button" onClick={() => setShowTiers(!showTiers)}
+              className="text-[10px] font-medium text-[#00505a] hover:underline">
+              {tQ("tiers")} ({qi.tiers.length}) {showTiers ? "▲" : "▼"}
+            </button>
+            {showTiers && (
+              <div className="mt-1 space-y-0.5 text-left">
+                {[...qi.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, idx, sorted) => {
+                  const next = sorted[idx + 1];
+                  const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                  return (
+                    <div key={idx} className="text-[10px] text-gray-500">
+                      <span className="inline-block w-16">{label}</span>
+                      <span className="font-semibold text-[#00505a]">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right text-gray-600">
+        {qi.moq != null ? Number(qi.moq) : "—"}
+      </td>
+      <td className="px-4 py-3 text-right text-gray-600">
+        {qi.cbm_per_unit != null ? Number(qi.cbm_per_unit) : "—"}
+      </td>
+      <td className="px-4 py-3 text-right text-gray-600">
+        {qi.gross_weight_per_unit != null ? Number(qi.gross_weight_per_unit) : "—"}
+      </td>
+      <td className="px-4 py-3 text-right font-semibold text-gray-800">
+        {qi.line_amount != null
+          ? formatCurrency(Number(qi.line_amount), currency, locale)
+          : "—"}
+      </td>
+    </tr>
   );
 }
 

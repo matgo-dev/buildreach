@@ -95,7 +95,7 @@ class RfqListQuery(BaseModel):
 # ── 响应体:行项目 ──────────────────────────────────────
 
 class RfqItemPublic(BaseModel):
-    """询价行项目(快照)。"""
+    """询价行项目(快照 + 读时 JOIN 增强)。"""
     id: int
     product_id: int
     variant_snapshot: list[dict] = []
@@ -105,6 +105,13 @@ class RfqItemPublic(BaseModel):
     quantity: Decimal
     target_unit_price: Decimal | None = None
     remark: str | None = None
+
+    # 读时 JOIN 增强字段（详情页填充，列表页为 None）
+    main_image: str | None = None
+    spu_code: str | None = None
+    brand: str | None = None
+    origin: str | None = None
+    category_name: str | None = None
 
 
 # ── 响应体:买方视角 ────────────────────────────────────

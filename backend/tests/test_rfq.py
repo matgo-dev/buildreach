@@ -837,3 +837,108 @@ async def test_update_rfq_too_many_attachments(client, db_session):
     resp = await client.patch(f"/api/v1/rfqs/{rfq_id}", headers=hdr, json=payload)
     assert resp.status_code == 422
     assert resp.json()["code"] == 40521
+
+
+# ── 详情页商品信息增强 ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_detail_product_enhancement_fields(client, db_session):
+    """详情接口：在线商品 → 行项含增强字段（main_image/spu_code/brand/origin/category_name）。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid, _ = await _create_active_product(client, op, db_session)
+
+    # 创建询价单
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "5.000"}],
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 获取详情
+    resp = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    item = data["items"][0]
+
+    # 增强字段应存在（spu_code 和 category_name 应有值）
+    assert "main_image" in item
+    assert "spu_code" in item
+    assert item["spu_code"] is not None  # _create_active_product 生成了 spu_code
+    assert "brand" in item
+    assert "origin" in item
+    assert "category_name" in item
+    assert item["category_name"] is not None  # _create_active_product 设置了 category_code
+
+    # 核心快照字段不受影响
+    assert item["product_name_snapshot"] is not None
+    assert item["quantity"] == 5.0
+
+
+@pytest.mark.asyncio
+async def test_detail_soft_deleted_product_degrades(client, db_session):
+    """详情接口：商品软删后增强字段为 null，核心快照正常，不报错。"""
+    from app.db.models.product import Product
+    from datetime import datetime, timezone
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid, _ = await _create_active_product(client, op, db_session)
+
+    # 创建询价单
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "3.000"}],
+    })
+    assert resp.status_code == 200
+    rfq_id = resp.json()["data"]["id"]
+
+    # 软删商品
+    product = (await db_session.execute(
+        select(Product).where(Product.id == pid)
+    )).scalar_one()
+    product.deleted_at = datetime.now(timezone.utc)
+    await db_session.commit()
+
+    # 获取详情 — 不报错
+    resp = await client.get(f"/api/v1/rfqs/{rfq_id}", headers=bh)
+    assert resp.status_code == 200
+    item = resp.json()["data"]["items"][0]
+
+    # 增强字段降级为 null
+    assert item["main_image"] is None
+    assert item["spu_code"] is None
+    assert item["brand"] is None
+    assert item["origin"] is None
+    assert item["category_name"] is None
+
+    # 核心快照字段正常
+    assert item["product_name_snapshot"] is not None
+    assert item["quantity"] == 3.0
+
+
+@pytest.mark.asyncio
+async def test_list_no_product_enhancement(client, db_session):
+    """列表接口：行项增强字段为 null（with_product=False），不触发 lazy-load。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    pid, _ = await _create_active_product(client, op, db_session)
+
+    resp = await client.post("/api/v1/rfqs", headers=bh, json={
+        "items": [{"product_id": pid, "selected_variants": [], "quantity": "2.000"}],
+    })
+    assert resp.status_code == 200
+
+    # 列表
+    resp = await client.get("/api/v1/rfqs", headers=bh)
+    assert resp.status_code == 200
+    items_list = resp.json()["data"]["items"]
+    assert len(items_list) >= 1
+
+    # 列表行项增强字段应为 null
+    for rfq_item in items_list[0]["items"]:
+        assert rfq_item["main_image"] is None
+        assert rfq_item["spu_code"] is None
+        assert rfq_item["brand"] is None
+        assert rfq_item["origin"] is None
+        assert rfq_item["category_name"] is None

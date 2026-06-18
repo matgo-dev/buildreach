@@ -45,6 +45,7 @@ from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrgStatus, BuyerOrganization
 from app.db.models.product import Product, ProductStatus
+from app.db.models.product_image import ImageType
 from app.db.models.rfq import Rfq, RfqSource, RfqStatus
 from app.db.models.rfq_item import RfqItem
 from app.schemas.rfq import (
@@ -403,10 +404,21 @@ async def list_rfqs(
 async def get_rfq(
     db: AsyncSession, user: CurrentUser, rfq_id: int,
 ) -> RfqBuyerPublic | RfqOperatorView:
-    """详情,scope 校验 + 报价层叠。"""
+    """详情,scope 校验 + 报价层叠 + 商品增强字段。"""
     scope = resolve_rfq_scope(user)
 
-    rfq = await load_rfq(db, rfq_id, with_items=True)
+    # eager-load items → product → images，用于增强字段
+    q = (
+        select(Rfq)
+        .where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
+        .options(
+            selectinload(Rfq.items)
+            .selectinload(RfqItem.product)
+            .selectinload(Product.images),
+        )
+    )
+    row = await db.execute(q)
+    rfq = row.scalar_one_or_none()
     if not rfq:
         raise RfqNotFoundError()
 
@@ -421,7 +433,7 @@ async def get_rfq(
         db, rfq.id, is_operator=scope.is_operator,
     )
 
-    return _serialize_rfq(rfq, is_operator=scope.is_operator, quote_data=quote_data)
+    return _serialize_rfq(rfq, is_operator=scope.is_operator, quote_data=quote_data, with_product=True)
 
 
 # ── 撤销 ──────────────────────────────────────────────
@@ -481,27 +493,73 @@ def _resolve_direct_items(items: list) -> list[dict]:
     ]
 
 
+# ── 主图解析（复用 cart.py 范式） ─────────────────────
+
+def _resolve_main_image_from_product(product) -> str | None:
+    """Product → 主图 URL，软删过滤 + MAIN 优先 + sort_order 兜底。"""
+    from app.core.config import settings
+
+    if product is None or not product.images:
+        return None
+
+    base = settings.IMAGE_BASE_URL
+    prod_images = [i for i in product.images if not getattr(i, "deleted_at", None)]
+    if not prod_images:
+        return None
+
+    main = next((i for i in prod_images if i.image_type == ImageType.MAIN), None)
+    img = main or sorted(prod_images, key=lambda i: i.sort_order)[0]
+    return f"{base}/{img.image_key}"
+
+
 # ── 加载与序列化 ──────────────────────────────────────
 
 async def _load_and_serialize(
     db: AsyncSession, rfq_id: int, *, is_operator: bool, refresh: bool = False,
+    with_product: bool = False,
 ) -> RfqBuyerPublic | RfqOperatorView:
-    """重新加载并序列化。refresh=True 时强制从 DB 刷新（行项增删后需要）。"""
+    """重新加载并序列化。refresh=True 时强制从 DB 刷新（行项增删后需要）。
+    with_product=True 时 eager-load product+images 用于详情页增强字段。
+    """
+    load_options = [selectinload(Rfq.items)]
+    if with_product:
+        load_options = [
+            selectinload(Rfq.items)
+            .selectinload(RfqItem.product)
+            .selectinload(Product.images),
+        ]
+
     if refresh:
         # 清除 identity map 中的旧缓存，确保 selectinload 拿到最新行项
         await db.execute(
             select(Rfq).where(Rfq.id == rfq_id)
-            .options(selectinload(Rfq.items))
+            .options(*load_options)
             .execution_options(populate_existing=True)
         )
-    rfq = await load_rfq(db, rfq_id, with_items=True)
+
+    # 详情路径：自行查询（带 product eager-load），不走 load_rfq（它不支持 product 加载）
+    if with_product:
+        q = (
+            select(Rfq)
+            .where(Rfq.id == rfq_id, Rfq.deleted_at.is_(None))
+            .options(*load_options)
+        )
+        row = await db.execute(q)
+        rfq = row.scalar_one_or_none()
+    else:
+        rfq = await load_rfq(db, rfq_id, with_items=True)
+
     if not rfq:
         raise RfqNotFoundError()
-    return _serialize_rfq(rfq, is_operator=is_operator)
+    return _serialize_rfq(rfq, is_operator=is_operator, with_product=with_product)
 
 
-def _serialize_item(item: RfqItem, locale: str = "zh") -> RfqItemPublic:
-    """序列化行项目,按 locale 选快照语言。"""
+def _serialize_item(
+    item: RfqItem, locale: str = "zh", *, with_product: bool = False,
+) -> RfqItemPublic:
+    """序列化行项目,按 locale 选快照语言。
+    with_product=True 时从 item.product 读时 JOIN 填充增强字段。
+    """
     if locale == "en":
         name = item.product_name_snapshot_en or item.product_name_snapshot_zh
     else:
@@ -515,6 +573,18 @@ def _serialize_item(item: RfqItem, locale: str = "zh") -> RfqItemPublic:
         display = (item.variant_snapshot_zh if locale == "zh" else item.variant_snapshot_en) \
                   or item.variant_snapshot_zh or item.variant_snapshot_en
 
+    # 增强字段（详情页读时 JOIN）
+    main_image = spu_code = brand = origin = category_name = None
+    if with_product:
+        product = item.product
+        # 降级：product 不存在或已软删 → 增强字段保持 None，核心快照照常
+        if product is not None and getattr(product, "deleted_at", None) is None:
+            main_image = _resolve_main_image_from_product(product)
+            spu_code = product.spu_code
+            brand = get_localized(product, "brand")
+            origin = get_localized(product, "origin")
+            category_name = product.category_code
+
     return RfqItemPublic(
         id=item.id,
         product_id=item.product_id,
@@ -525,18 +595,24 @@ def _serialize_item(item: RfqItem, locale: str = "zh") -> RfqItemPublic:
         quantity=item.quantity,
         target_unit_price=item.target_unit_price,
         remark=item.remark,
+        main_image=main_image,
+        spu_code=spu_code,
+        brand=brand,
+        origin=origin,
+        category_name=category_name,
     )
 
 
 def _serialize_rfq(
     rfq: Rfq, *, is_operator: bool, quote_data: object = None,
+    with_product: bool = False,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """按角色序列化询价单。quote_data 由详情接口传入(层叠报价)。"""
     active_items = [
         it for it in rfq.items
         if getattr(it, "deleted_at", None) is None
     ]
-    items = [_serialize_item(it) for it in active_items]
+    items = [_serialize_item(it, with_product=with_product) for it in active_items]
 
     if is_operator:
         result = RfqOperatorView(
