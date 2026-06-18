@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── 请求体 ──────────────────────────────────────────────
@@ -16,7 +16,14 @@ class CartItemAdd(BaseModel):
 
 
 class CartItemUpdate(BaseModel):
-    quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
+    quantity: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
+    selected_variants: list[dict[str, str]] | None = None
+
+    @model_validator(mode="after")
+    def at_least_one(self) -> "CartItemUpdate":
+        if self.quantity is None and self.selected_variants is None:
+            raise ValueError("quantity or selected_variants required")
+        return self
 
 
 # ── 响应体 ──────────────────────────────────────────────
