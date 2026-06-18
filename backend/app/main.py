@@ -97,7 +97,7 @@ app.add_middleware(
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Trace-Id"],
+    expose_headers=["X-Trace-Id", "Content-Disposition"],
 )
 from app.core.locale import LocaleMiddleware
 

@@ -131,5 +131,6 @@ async def generate_quote_pdf(
     from weasyprint import HTML
     pdf_bytes = HTML(string=html_str).write_pdf()
 
-    filename = f"Quotation_{rfq.rfq_no}.pdf"
+    date_str = now.strftime("%Y-%m-%d")
+    filename = f"Quotation_{quote.quote_no}_{date_str}.pdf"
     return pdf_bytes, filename
