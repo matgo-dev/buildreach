@@ -7,7 +7,6 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.ext.asyncio import AsyncSession
-from weasyprint import HTML
 
 from app.core.exceptions import RfqNoQuoteToExportError, RfqNotFoundError
 from app.schemas.quote import RfqQuoteBuyerPublic
@@ -123,6 +122,8 @@ async def generate_quote_pdf(
         format_amount=_format_amount,
     )
 
+    # 懒加载:weasyprint 依赖系统库(pango/cairo),启动时 import 会在缺库环境下崩溃
+    from weasyprint import HTML
     pdf_bytes = HTML(string=html_str).write_pdf()
 
     filename = f"Quotation_{rfq.rfq_no}.pdf"
