@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -26,7 +26,7 @@ import {
   type LineType,
   type RfqQuoteOperatorView,
 } from "@/lib/api/quotes";
-import { listProducts as searchProducts } from "@/lib/api/products";
+import { listProducts as searchProducts, getProduct, type AttrItem } from "@/lib/api/products";
 
 // ── sessionStorage 草稿 ─────────────────────────────────
 
@@ -98,11 +98,11 @@ function QuoteTierModal({ tiers: initial, moq, onConfirm, onCancel, t }: {
 // ── 行内商品搜索下拉 ────────────────────────────────────
 
 function InlineProductSearch({ onSelect, t }: {
-  onSelect: (product: { id: number; name: string; unit: string }) => void;
+  onSelect: (product: { id: number; name: string; unit: string; moq: number | null }) => void;
   t: (k: string) => string;
 }) {
   const [keyword, setKeyword] = useState("");
-  const [results, setResults] = useState<Array<{ id: number; name: string; unit: string }>>([]);
+  const [results, setResults] = useState<Array<{ id: number; name: string; unit: string; moq: number | null }>>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -111,7 +111,7 @@ function InlineProductSearch({ onSelect, t }: {
     setLoading(true);
     try {
       const resp = await searchProducts({ keyword: q.trim(), size: 10 });
-      setResults(resp.items.map((p) => ({ id: p.id, name: p.name, unit: p.unit ?? "PCS" })));
+      setResults(resp.items.map((p) => ({ id: p.id, name: p.name, unit: p.unit ?? "PCS", moq: p.moq ?? null })));
       setOpen(true);
     } catch { setResults([]); } finally { setLoading(false); }
   }, []);
@@ -231,6 +231,11 @@ function QuoteBackfillContent() {
   const [tierModalIdx, setTierModalIdx] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+
+  // 变体编辑
+  const [expandedVariantIdx, setExpandedVariantIdx] = useState<number | null>(null);
+  const [productAttrsCache, setProductAttrsCache] = useState<Record<number, AttrItem[]>>({});
+  const [editingVariants, setEditingVariants] = useState<Array<{ attr_name: string; value: string }>>([]);
 
   // 初始化
   useEffect(() => {
@@ -498,7 +503,8 @@ function QuoteBackfillContent() {
                 const isFee = line.line_type === "FEE";
                 const hasProduct = !!line.product_id;
                 return (
-                  <tr key={line._key} className="border-t border-gray-100 even:bg-slate-50/50">
+                  <React.Fragment key={line._key}>
+                  <tr className="border-t border-gray-100 even:bg-slate-50/50">
                     {/* 类型 */}
                     <td className="px-3 py-3">
                       <select value={line.line_type}
@@ -521,15 +527,42 @@ function QuoteBackfillContent() {
                         <input type="text" value={line.product_name} onChange={(e) => updateLine(idx, { product_name: e.target.value })}
                           placeholder={t("feeName")} className="h-8 w-full rounded border border-gray-200 px-2 text-xs outline-none focus:border-blue-500" />
                       ) : hasProduct ? (
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium text-gray-800 truncate text-xs" title={line.product_name}>{line.product_name}</span>
+                        <div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium text-gray-800 truncate text-xs" title={line.product_name}>{line.product_name}</span>
+                          </div>
                           {line.variant_display && line.variant_display !== "—" && (
                             <span className="text-[10px] text-gray-400">{line.variant_display}</span>
                           )}
+                          <button type="button"
+                            onClick={() => {
+                              if (expandedVariantIdx === idx) {
+                                setExpandedVariantIdx(null);
+                              } else {
+                                setExpandedVariantIdx(idx);
+                                // 懒加载产品属性（只取 selectable 轴）
+                                if (line.product_id && !productAttrsCache[line.product_id]) {
+                                  getProduct(line.product_id).then((p) => {
+                                    const selectable: AttrItem[] = [];
+                                    for (const grp of p.attribute_groups) {
+                                      for (const attr of grp.items) {
+                                        if (attr.selectable) selectable.push(attr);
+                                      }
+                                    }
+                                    setProductAttrsCache((prev) => ({ ...prev, [line.product_id!]: selectable }));
+                                  }).catch(() => {});
+                                }
+                                setEditingVariants([...line.selected_variants]);
+                              }
+                            }}
+                            className="mt-0.5 block text-[11px] text-blue-600 hover:text-blue-800 hover:underline">
+                            {t("editVariant")}
+                          </button>
                         </div>
                       ) : (
                         <InlineProductSearch t={t} onSelect={(p) => updateLine(idx, {
                           product_id: p.id, product_name: p.name, uom: p.unit,
+                          moq: p.moq ? String(p.moq) : "",
                         })} />
                       )}
                     </td>
@@ -569,14 +602,79 @@ function QuoteBackfillContent() {
                       </button>
                     </td>
                   </tr>
+                  {/* 变体编辑展开行 */}
+                  {expandedVariantIdx === idx && line.product_id && (
+                    <tr className="border-t border-gray-50 bg-gray-50/50">
+                      <td colSpan={7} className="px-4 py-3">
+                        {line.product_id && productAttrsCache[line.product_id] ? (
+                          productAttrsCache[line.product_id].length > 0 ? (
+                            <>
+                              {productAttrsCache[line.product_id].map((attr) => (
+                                <div key={attr.key} className="mb-2.5">
+                                  <span className="text-xs font-medium text-gray-500 mb-1 block">{attr.key}</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {attr.values.map((av) => {
+                                      const isSelected = editingVariants.some(
+                                        (v) => v.attr_name === attr.key && v.value === av.value,
+                                      );
+                                      return (
+                                        <button key={av.value} type="button"
+                                          onClick={() => {
+                                            setEditingVariants((prev) => {
+                                              const without = prev.filter((v) => v.attr_name !== attr.key);
+                                              if (isSelected) return without;
+                                              return [...without, { attr_name: attr.key, value: av.value }];
+                                            });
+                                          }}
+                                          className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                                            isSelected
+                                              ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                          }`}>
+                                          {av.value}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="mt-2 flex gap-2">
+                                <button type="button"
+                                  onClick={() => {
+                                    const display = editingVariants.map((v) => `${v.attr_name}: ${v.value}`).join("; ");
+                                    updateLine(idx, { selected_variants: [...editingVariants], variant_display: display || "—" });
+                                    setExpandedVariantIdx(null);
+                                  }}
+                                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                                  {t("confirmVariant")}
+                                </button>
+                                <button type="button"
+                                  onClick={() => setExpandedVariantIdx(null)}
+                                  className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+                                  {t("cancel")}
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400">{t("noSelectableAttrs")}</span>
+                          )
+                        ) : (
+                          <div className="flex items-center justify-center py-3">
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
               {/* 末行"+"添加按钮 */}
-              <tr className="border-t border-dashed border-gray-200">
-                <td colSpan={7} className="px-4 py-2">
+              <tr>
+                <td colSpan={7} className="px-4 py-3">
                   <button type="button" onClick={addEmptyLine}
-                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800">
-                    <Plus className="h-3.5 w-3.5" /> {t("addLine")}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600">
+                    <Plus className="h-4 w-4" /> {t("addLine")}
                   </button>
                 </td>
               </tr>
