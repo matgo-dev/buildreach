@@ -106,22 +106,46 @@ function HowToBuyContent() {
 
   return (
     <PublicLayout>
-      {/* ===== Tab 切换 ===== */}
+      {/* ===== Tab 切换 — 箭头流程式 ===== */}
       <div className="bg-white border-b border-gray-200">
-        <div className="mx-auto max-w-mall px-6 py-3 flex items-center gap-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-lg px-5 py-2 text-sm font-medium transition-all ${
-                activeTab === tab.key
-                  ? "bg-[#00505a] text-white shadow-sm"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-              }`}
-            >
-              {t(tab.labelKey)}
-            </button>
-          ))}
+        <div className="mx-auto max-w-mall px-6 py-3 flex items-center">
+          {TABS.map((tab, i) => {
+            const isActive = activeTab === tab.key;
+            const isFirst = i === 0;
+            const isLast = i === TABS.length - 1;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`relative flex items-center justify-center text-sm font-medium transition-all h-9 ${
+                  isFirst ? "pl-4 pr-6 rounded-l-lg" : "pl-7 pr-6"
+                } ${isLast ? "rounded-r-lg" : ""} ${
+                  isActive
+                    ? "bg-[#00505a] text-white"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                }`}
+                style={{
+                  clipPath: isLast
+                    ? undefined
+                    : "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%)",
+                }}
+              >
+                {t(tab.labelKey)}
+                {/* 非首个 tab 左侧的箭头凹口遮罩 */}
+                {!isFirst && (
+                  <span
+                    className={`absolute left-0 top-0 h-full w-3 ${
+                      isActive ? "text-gray-100" : "text-white"
+                    }`}
+                    style={{
+                      clipPath: "polygon(0 0, 100% 50%, 0 100%)",
+                      backgroundColor: "currentColor",
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
