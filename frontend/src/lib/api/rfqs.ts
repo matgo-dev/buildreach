@@ -93,6 +93,7 @@ export interface RfqBuyerPublic {
   attachment_urls: string[] | null;
   created_at: string | null;
   updated_at: string | null;
+  first_item_image: string | null; // 列表缩略图:首个有效行项主图
   items: RfqItemPublic[];
 }
 
