@@ -180,6 +180,44 @@ async def test_api_tree(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_api_tree_is_leaf_values(client, db_session):
+    """树响应中 is_leaf 值正确：有 active 子节点的品类为非叶子，L3 为叶子。"""
+    await _seed(db_session, SAMPLE)
+    r = await client.get("/api/v1/categories/tree")
+    assert r.status_code == 200
+    data = r.json()["data"]
+
+    # 构建 code→node 映射方便断言
+    node_map: dict = {}
+    def _walk(nodes: list) -> None:
+        for n in nodes:
+            node_map[n["code"]] = n
+            _walk(n.get("children", []))
+    _walk(data)
+
+    # L1/L2 有 active 子节点，is_leaf=False
+    assert node_map["01"]["is_leaf"] is False,   "L1 有子节点，应为非叶子"
+    assert node_map["01.001"]["is_leaf"] is False, "L2 有子节点，应为非叶子"
+    assert node_map["01.002"]["is_leaf"] is False, "L2 有子节点，应为非叶子"
+    # L3 无子节点，is_leaf=True
+    assert node_map["01.001.001"]["is_leaf"] is True, "L3 应为叶子"
+    assert node_map["01.001.002"]["is_leaf"] is True, "L3 应为叶子"
+
+
+@pytest.mark.asyncio
+async def test_api_list_is_leaf_values(client, db_session):
+    """扁平列表响应中 is_leaf 字段存在且值正确。"""
+    await _seed(db_session, SAMPLE)
+    r = await client.get("/api/v1/categories")
+    assert r.status_code == 200
+    node_map = {n["code"]: n for n in r.json()["data"]}
+
+    assert node_map["01"]["is_leaf"] is False
+    assert node_map["01.001"]["is_leaf"] is False
+    assert node_map["01.001.001"]["is_leaf"] is True
+
+
+@pytest.mark.asyncio
 async def test_api_no_permission_required(client, db_session):
     """公开 API:不携带任何 Authorization 都能访问。"""
     await _seed(db_session, SAMPLE)
