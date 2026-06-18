@@ -188,7 +188,8 @@
     "select_level3": "Chagua kiwango cha 3",
     "select_parent_first": "Chagua mzazi kwanza",
     "load_error": "Imeshindwa kupakia kategoria",
-    "no_data": "Hakuna kategoria zinazopatikana, tafadhali wasiliana na msimamizi"
+    "no_data": "Hakuna kategoria zinazopatikana, tafadhali wasiliana na msimamizi",
+    "has_subcategory": "ina kategoria ndogo"
   },
   "productCreate": {
     "page_title": "Unda Bidhaa",

@@ -188,7 +188,8 @@
     "select_level3": "请选择三级",
     "select_parent_first": "请先选上级",
     "load_error": "加载分类失败",
-    "no_data": "暂无分类数据,请联系管理员"
+    "no_data": "暂无分类数据,请联系管理员",
+    "has_subcategory": "含子分类"
   },
   "productCreate": {
     "page_title": "创建商品",

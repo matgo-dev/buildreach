@@ -188,7 +188,8 @@
     "select_level3": "Select level 3",
     "select_parent_first": "Select parent first",
     "load_error": "Failed to load categories",
-    "no_data": "No categories available, please contact admin"
+    "no_data": "No categories available, please contact admin",
+    "has_subcategory": "has subcategory"
   },
   "productCreate": {
     "page_title": "Create Product",
