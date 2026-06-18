@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Suspense, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { Link, useRouter, usePathname } from "@/i18n/navigation";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -74,7 +75,24 @@ type TabKey = (typeof TABS)[number]["key"];
 
 function HowToBuyContent() {
   const t = useTranslations("howToBuy");
-  const [activeTab, setActiveTab] = useState<TabKey>("buy");
+  const locale = useLocale();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const tabParam = searchParams.get("tab");
+  const activeTab: TabKey = tabParam === "fulfillment" ? "fulfillment" : "buy";
+
+  const setActiveTab = useCallback((tab: TabKey) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "buy") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
+  }, [searchParams, router, pathname]);
 
   const phases = [
     { icon: "🔍", labelKey: "phaseSelect" },
@@ -111,7 +129,7 @@ function HowToBuyContent() {
       {activeTab === "fulfillment" && (
         <div style={{ height: "calc(100vh - 10rem)" }}>
           <iframe
-            src="/demos/fulfillment-showcase.html"
+            src={`/demos/fulfillment-showcase.html?lang=${locale}`}
             className="w-full h-full border-0"
             title="Fulfillment Showcase"
           />
