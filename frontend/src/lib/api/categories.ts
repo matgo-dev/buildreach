@@ -14,6 +14,7 @@ export interface CategoryNode {
   level: 1 | 2 | 3;
   parent_code: string | null;
   sort_order: number;
+  is_leaf: boolean;
 }
 
 export interface CategoryTreeNode {
@@ -23,6 +24,8 @@ export interface CategoryTreeNode {
   name_en: string | null;
   name: string; // 后端按 Accept-Language 填充的本地化名称
   level: 1 | 2 | 3;
+  /** 无 active 子节点时为 true（后端维护，不要靠 children.length 判断叶子） */
+  is_leaf: boolean;
   children: CategoryTreeNode[];
 }
 
