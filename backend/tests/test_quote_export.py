@@ -16,6 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.category import Category
+from app.services import quote_export
+from app.services.quote_export import build_content_disposition
 
 
 # ── helpers（与 test_quote.py 保持一致）──────────────────────
@@ -125,6 +127,26 @@ async def _create_quoted_rfq(
 
 
 # ── 测试用例 ──────────────────────────────────────────────
+
+def test_quote_export_image_key_uses_local_file_uri(tmp_path, monkeypatch):
+    """PDF 渲染图片应走本地文件,避免 ECS 上自请求公网静态图。"""
+    upload_root = tmp_path / "uploads"
+    image_path = upload_root / "products" / "P-001" / "main.jpg"
+    image_path.parent.mkdir(parents=True)
+    image_path.write_bytes(b"fake-image")
+
+    monkeypatch.setattr(quote_export, "_UPLOADS_DIR", upload_root)
+
+    assert quote_export._image_key_to_file_uri("products/P-001/main.jpg") == image_path.as_uri()
+    assert quote_export._image_key_to_file_uri("../secret.jpg") is None
+
+
+def test_quote_export_content_disposition_encodes_filename():
+    cd = build_content_disposition("RFQ-测试_2026-06-18.pdf")
+
+    assert 'filename="RFQ-___2026-06-18.pdf"' in cd
+    assert "filename*=UTF-8''RFQ-%E6%B5%8B%E8%AF%95_2026-06-18.pdf" in cd
+
 
 @pytest.mark.asyncio
 async def test_buyer_export_active_quote_200(client: AsyncClient, db_session: AsyncSession):

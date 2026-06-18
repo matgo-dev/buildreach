@@ -2,17 +2,19 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from datetime import datetime
 from decimal import Decimal
 from functools import partial
 from pathlib import Path
+from urllib.parse import quote
 
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select
 
-from app.core.config import settings
 from app.core.exceptions import RfqNoQuoteToExportError, RfqNotFoundError
 from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.quote import RfqQuoteBuyerPublic
@@ -25,6 +27,9 @@ from app.services.quote import load_quote_for_rfq_detail
 from app.templates.quote_pdf.labels import get_labels
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "quote_pdf"
+_UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
+logger = logging.getLogger("app.quote_export")
+
 _jinja_env = Environment(
     loader=FileSystemLoader(str(_TEMPLATE_DIR)),
     autoescape=True,
@@ -57,6 +62,45 @@ def _format_date(dt: datetime | str | None, locale: str) -> str:
     return dt.strftime("%Y-%m-%d")
 
 
+def _image_key_to_file_uri(image_key: str | None) -> str | None:
+    """Return a local file URI for product images used by PDF rendering.
+
+    WeasyPrint would otherwise fetch IMAGE_BASE_URL over HTTP while the request
+    is already inside the backend container. On ECS that self-roundtrip can add
+    seconds and can fail independently of PDF generation.
+    """
+    if not image_key:
+        return None
+
+    normalized = Path(image_key)
+    if normalized.is_absolute() or ".." in normalized.parts:
+        return None
+
+    image_path = (_UPLOADS_DIR / normalized).resolve()
+    try:
+        image_path.relative_to(_UPLOADS_DIR.resolve())
+    except ValueError:
+        return None
+
+    if not image_path.is_file():
+        return None
+    return image_path.as_uri()
+
+
+def _download_filename(rfq_no: str, now: datetime) -> str:
+    return f"{rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"
+
+
+def build_content_disposition(filename: str) -> str:
+    """Build a safe RFC 5987 Content-Disposition value."""
+    fallback = "".join(
+        ch if ch.isascii() and ch not in {'"', "\\", "\r", "\n"} else "_"
+        for ch in filename
+    ) or "quotation.pdf"
+    encoded = quote(filename, safe="")
+    return f'attachment; filename="{fallback}"; filename*=UTF-8\'\'{encoded}'
+
+
 async def generate_quote_pdf(
     db: AsyncSession,
     rfq_id: int,
@@ -72,6 +116,7 @@ async def generate_quote_pdf(
         RfqNotFoundError: RFQ 不存在或越权
         RfqNoQuoteToExportError: 无 ACTIVE 报价
     """
+    started_at = time.perf_counter()
     scope = resolve_rfq_scope(user)  # type: ignore[arg-type]
 
     # 鉴权:买方只能看自己的 RFQ
@@ -112,9 +157,10 @@ async def generate_quote_pdf(
                 ProductImage.deleted_at.is_(None),
             )
         )
-        base = settings.IMAGE_BASE_URL
         for pid, key in rows.all():
-            image_map[pid] = f"{base}/{key}"
+            uri = _image_key_to_file_uri(key)
+            if uri:
+                image_map[pid] = uri
 
     subtotal_products = sum(
         (i.line_amount or Decimal("0")) for i in product_items
@@ -158,11 +204,22 @@ async def generate_quote_pdf(
     )
 
     # weasyprint 是 CPU 密集同步操作，放线程池避免阻塞事件循环
+    render_started_at = time.perf_counter()
     pdf_bytes = await asyncio.get_event_loop().run_in_executor(
         None, partial(_render_pdf, html_str),
     )
 
-    filename = f"{rfq.rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"
+    logger.info(
+        "quote PDF generated rfq_id=%s locale=%s items=%d images=%d render_ms=%.1f total_ms=%.1f",
+        rfq_id,
+        locale,
+        len(product_items),
+        len(image_map),
+        (time.perf_counter() - render_started_at) * 1000,
+        (time.perf_counter() - started_at) * 1000,
+    )
+
+    filename = _download_filename(rfq.rfq_no, now)
     return pdf_bytes, filename
 
 
