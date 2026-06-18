@@ -32,6 +32,9 @@ dependencies = [
     "phonenumbers>=9.0.32",
     # i18n 补译自动化:调度扫描
     "apscheduler>=3.10.0,<4",
+    # PDF 报价单导出
+    "weasyprint>=62.0",
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
