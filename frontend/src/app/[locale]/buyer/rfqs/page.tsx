@@ -296,12 +296,12 @@ function RfqListContent() {
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {/* 表头 — 与询价篮表头对齐: px-5 py-3 bg-slate-50 */}
-        <div className="flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
-          <span className="flex-1 font-medium">{t("productSummary")}</span>
-          <span className="w-24 text-center font-medium">{t("totalQty")}</span>
-          <span className="w-24 text-center font-medium">{t("status")}</span>
-          <span className="w-28 text-center font-medium">{t("submitTime")}</span>
-          <span className="w-32 text-right font-medium">{t("actions")}</span>
+        <div className="grid grid-cols-[1fr_80px_80px_100px_160px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+          <span className="font-medium">{t("productSummary")}</span>
+          <span className="text-center font-medium">{t("totalQty")}</span>
+          <span className="text-center font-medium">{t("status")}</span>
+          <span className="text-center font-medium">{t("submitTime")}</span>
+          <span className="text-right font-medium">{t("actions")}</span>
         </div>
 
         {isLoading ? (
@@ -322,10 +322,10 @@ function RfqListContent() {
                 <div
                   key={rfq.id}
                   onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
-                  className="flex cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
+                  className="grid grid-cols-[1fr_80px_80px_100px_160px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
                 >
-                  {/* 缩略图 + 商品信息 — 与询价篮行对齐 */}
-                  <div className="flex flex-1 items-center gap-4 min-w-0">
+                  {/* 缩略图 + 商品信息 */}
+                  <div className="flex items-center gap-4 min-w-0">
                     <div className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
                       {rfq.first_item_image ? (
                         <img
@@ -346,24 +346,24 @@ function RfqListContent() {
                   </div>
 
                   {/* 数量 */}
-                  <div className="w-24 shrink-0 text-center">
+                  <div className="text-center">
                     <span className="text-sm text-gray-600">{t("itemCount", { count: rfq.items.length })}</span>
                   </div>
 
                   {/* 状态 */}
-                  <div className="w-24 shrink-0 text-center">
+                  <div className="text-center">
                     <RfqStatusBadge status={rfq.status} />
                   </div>
 
                   {/* 时间 */}
-                  <div className="w-28 shrink-0 text-center">
+                  <div className="text-center">
                     <span className="text-xs text-gray-400">
                       {rfq.created_at ? formatRelativeTime(rfq.created_at, locale) : "—"}
                     </span>
                   </div>
 
                   {/* 操作 */}
-                  <div className="w-32 shrink-0">
+                  <div>
                     {renderActions(rfq)}
                   </div>
                 </div>
