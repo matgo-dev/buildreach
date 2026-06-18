@@ -42,7 +42,7 @@ services:
     logging: *default-logging
 
   backend:
-    image: registry.cn-hangzhou.aliyuncs.com/buildlink01/backend:${IMAGE_TAG:-main-latest}
+    image: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01/backend:${IMAGE_TAG:-main-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -80,7 +80,7 @@ services:
     logging: *default-logging
 
   frontend:
-    image: registry.cn-hangzhou.aliyuncs.com/buildlink01/frontend:${IMAGE_TAG:-main-latest}
+    image: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01/frontend:${IMAGE_TAG:-main-latest}
     restart: unless-stopped
     depends_on:
       - backend
