@@ -143,22 +143,20 @@ export function ProductCard({
         ) : (
           <Package className="h-12 w-12 text-gray-300" />
         )}
-        <div className="absolute top-2.5 left-2.5 flex gap-1">
-          {product.is_featured && (
-            <span className="rounded-full bg-whatsapp px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-              {t("featured")}
-            </span>
-          )}
-          {product.supply_mode === "PLATFORM_STOCK" ? (
-            <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-              {t("supplyModePlatformStock")}
-            </span>
-          ) : (
-            <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-              {t("supplyModeSupplierDirect")}
-            </span>
-          )}
-        </div>
+        {product.is_featured && (
+          <span className="absolute top-2.5 left-2.5 rounded-full bg-gold px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-sm">
+            {t("featured")}
+          </span>
+        )}
+        {product.supply_mode === "PLATFORM_STOCK" ? (
+          <span className="absolute bottom-2.5 left-2.5 rounded-full bg-teal-900 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+            {t("supplyModePlatformStock")}
+          </span>
+        ) : (
+          <span className="absolute bottom-2.5 left-2.5 rounded-full bg-teal-700 px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+            {t("supplyModeSupplierDirect")}
+          </span>
+        )}
       </div>
 
       {/* 信息区 */}
