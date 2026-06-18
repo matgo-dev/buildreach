@@ -221,6 +221,26 @@ async def _get_product_main_image(db: AsyncSession, product_id: int) -> str | No
     return None
 
 
+# --------------- 删除: 单条浏览记录 ---------------
+
+async def remove_recent_view(
+    db: AsyncSession,
+    user_id: int,
+    product_id: int,
+) -> int:
+    """物理删除该用户对指定商品的所有 VIEW_PRODUCT 事件，返回删除行数。"""
+    result = await db.execute(
+        delete(BuyerEvent).where(
+            BuyerEvent.user_id == user_id,
+            BuyerEvent.event_type == EventType.VIEW_PRODUCT,
+            BuyerEvent.resource_type == "product",
+            BuyerEvent.resource_id == product_id,
+        )
+    )
+    await db.flush()
+    return result.rowcount
+
+
 # --------------- 查询: 最近搜索 ---------------
 
 async def get_recent_searches(
