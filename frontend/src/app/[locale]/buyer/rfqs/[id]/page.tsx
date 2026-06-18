@@ -765,11 +765,11 @@ function QuoteLineRow({
   const tQ = useTranslations("quote");
   const [showTiers, setShowTiers] = useState(false);
 
-  const productName = qi.product_name_snapshot ?? "—";
-  const variantDisplay = qi.variant_display;
-  const qty = qi.quantity ?? "—";
-  const uom = qi.uom ?? "";
   const isFee = qi.line_type === "FEE";
+  const productName = isFee ? (qi.remark || "—") : (qi.product_name_snapshot ?? "—");
+  const variantDisplay = isFee ? null : qi.variant_display;
+  const qty = isFee ? null : (qi.quantity ?? "—");
+  const uom = isFee ? "" : (qi.uom ?? "");
 
   return (
     <tr className="border-t border-gray-100 even:bg-slate-50/50">
@@ -787,15 +787,17 @@ function QuoteLineRow({
         </div>
       </td>
       <td className="px-4 py-3 text-right text-gray-800">
-        {qty} {uom}
+        {qty != null ? <>{qty} {uom}</> : "—"}
       </td>
       <td className="px-4 py-3 text-right">
+        {isFee ? <span className="text-gray-400">—</span> : (
         <div className="font-semibold text-gray-800">
           {qi.unit_price != null
             ? formatCurrency(Number(qi.unit_price), currency, locale)
             : "—"}
         </div>
-        {qi.tiers.length > 0 && (
+        )}
+        {!isFee && qi.tiers.length > 0 && (
           <div className="mt-1">
             <button type="button" onClick={() => setShowTiers(!showTiers)}
               className="text-[10px] font-medium text-[#00505a] hover:underline">
