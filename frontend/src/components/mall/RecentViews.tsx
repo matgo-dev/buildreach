@@ -48,7 +48,7 @@ export function RecentViews() {
         <Clock className="h-4 w-4" />
         <span>{t("recentViews")}</span>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
+      <div className="flex gap-3 overflow-x-auto pt-2 pb-1 pr-2 scrollbar-thin">
         {items.map((item) => (
           <Link
             key={item.id}

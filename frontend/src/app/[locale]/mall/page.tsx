@@ -117,12 +117,14 @@ function MallContent() {
   });
 
   // 筛选条件变化 → 重置累积数据
+  // 用 swrKey 而非 filterFingerprint：prefCodes 加载不改变 API 请求，
+  // 但会改变 fingerprint 导致 allProducts 被清空而 SWR 不重新请求 → 空白页
   useEffect(() => {
     setAllProducts([]);
     setCurrentPage(1);
     setTotalCount(0);
     setTotalPages(0);
-  }, [filterFingerprint]);
+  }, [swrKey]);
 
   // 首页数据到达 → 初始化
   useEffect(() => {
