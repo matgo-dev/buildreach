@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -350,7 +350,7 @@ function RfqDetailContent() {
       )}
 
       {/* 附加要求 */}
-      {((rfq.required_certifications && rfq.required_certifications.length > 0) || rfq.remark) && (
+      {((rfq.required_certifications && rfq.required_certifications.length > 0) || rfq.remark || (rfq.attachment_urls && rfq.attachment_urls.length > 0)) && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("section_extra")}</h2>
           {rfq.required_certifications && rfq.required_certifications.length > 0 && (
@@ -369,9 +369,35 @@ function RfqDetailContent() {
             </div>
           )}
           {rfq.remark && (
-            <div>
+            <div className="mb-3">
               <span className="text-xs text-gray-400">{t("remark")}</span>
               <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
+            </div>
+          )}
+          {rfq.attachment_urls && rfq.attachment_urls.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-700">{t("attachment.label")}</h3>
+              <div className="flex flex-wrap gap-3">
+                {rfq.attachment_urls.map((url: string) => {
+                  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(url);
+                  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+                  return isImage ? (
+                    <a key={url} href={`${apiBase}${url}`} target="_blank" rel="noreferrer"
+                       className="h-20 w-20 rounded-lg border border-gray-200 overflow-hidden hover:border-[#00505a] transition-colors">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`${apiBase}${url}`} alt="" className="h-full w-full object-cover" />
+                    </a>
+                  ) : (
+                    <a key={url} href={`${apiBase}${url}`} download
+                       className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
+                      <FileText className="h-6 w-6 text-gray-400" />
+                      <span className="mt-1 text-[10px] text-gray-400 truncate w-full text-center px-1">
+                        {url.split("/").pop()?.slice(-12)}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
