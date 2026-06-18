@@ -10,7 +10,11 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
+from app.core.config import settings
 from app.core.exceptions import RfqNoQuoteToExportError, RfqNotFoundError
+from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.quote import RfqQuoteBuyerPublic
 from app.services._rfq_loader import (
     _resolve_buyer_org_id,
@@ -96,6 +100,22 @@ async def generate_quote_pdf(
     product_items = [i for i in quote.items if i.line_type == "PRODUCT"]
     fee_items = [i for i in quote.items if i.line_type == "FEE"]
 
+    # 批量查商品主图
+    product_ids = [i.product_id for i in product_items if i.product_id]
+    image_map: dict[int, str] = {}
+    if product_ids:
+        rows = await db.execute(
+            select(ProductImage.product_id, ProductImage.image_key)
+            .where(
+                ProductImage.product_id.in_(product_ids),
+                ProductImage.image_type == ImageType.MAIN,
+                ProductImage.deleted_at.is_(None),
+            )
+        )
+        base = settings.IMAGE_BASE_URL
+        for pid, key in rows.all():
+            image_map[pid] = f"{base}/{key}"
+
     subtotal_products = sum(
         (i.line_amount or Decimal("0")) for i in product_items
     )
@@ -125,6 +145,7 @@ async def generate_quote_pdf(
         platform=_PLATFORM_INFO,
         buyer_org=buyer_org,
         product_items=product_items,
+        image_map=image_map,
         fee_items=fee_items,
         subtotal_products=subtotal_products,
         subtotal_fees=subtotal_fees,
