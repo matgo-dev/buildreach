@@ -95,6 +95,11 @@ fi
 
 # ---- 3. 拉取镜像 ----
 echo "[deploy] [3/6] 拉取镜像(IMAGE_TAG=$IMAGE_TAG)"
+# 登录阿里云 ACR（凭证从 .env.production 读取）
+if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
+    echo "[deploy]       登录阿里云 ACR..."
+    echo "$ACR_PASSWORD" | docker login --username "$ACR_USERNAME" --password-stdin registry.cn-hangzhou.aliyuncs.com
+fi
 docker compose -f "$COMPOSE_FILE" --env-file .env.production pull backend frontend
 
 # ---- 4. 启动容器 ----
