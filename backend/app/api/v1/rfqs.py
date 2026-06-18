@@ -16,7 +16,7 @@ from app.schemas.rfq import (
     RfqCancelRequest, RfqCreate, RfqItemEdit, RfqItemInput, RfqItemUpdate, RfqUpdate,
 )
 from app.services import rfq as rfq_svc
-from app.services.quote_export import generate_quote_pdf
+from app.services.quote_export import build_content_disposition, generate_quote_pdf
 
 router = APIRouter(
     prefix="/rfqs",
@@ -213,6 +213,6 @@ async def export_quote_pdf(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": build_content_disposition(filename),
         },
     )
