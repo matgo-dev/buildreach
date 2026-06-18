@@ -137,9 +137,10 @@ if [ "$HEALTHY" -ne 1 ]; then
 fi
 
 # ---- 6. 清理 ----
-echo "[deploy] [6/6] 清理 dangling 镜像(保留 volume)"
-# 注意:严禁 prune volumes!只清 dangling images
+echo "[deploy] [6/6] 清理 dangling 镜像 + 构建缓存(保留 volume)"
+# 注意:严禁 prune volumes!只清 dangling images + build cache
 docker image prune -f --filter "dangling=true" 2>&1 | tail -3 | sed 's/^/         /'
+docker builder prune -f --keep-storage=500MB 2>&1 | tail -3 | sed 's/^/         /'
 
 echo "[deploy] =================================================="
 echo "[deploy] 部署成功 $(date -Iseconds)"
