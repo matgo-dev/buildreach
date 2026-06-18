@@ -642,5 +642,35 @@ class RfqMinOneItemError(BusinessError):
         )
 
 
+class CartDuplicateVariantError(BusinessError):
+    """40520 — 询价篮改变体后与篮中已有行规格重复。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40520,
+            "Variant combination already exists in cart",
+            message_key=MessageKey.CART_DUPLICATE_VARIANT,
+        )
+
+
+class RfqTooManyAttachmentsError(BusinessError):
+    """40521 — RFQ 附件数超过上限(6)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40521,
+            "Too many attachments, maximum 6 allowed",
+            message_key=MessageKey.RFQ_TOO_MANY_ATTACHMENTS,
+        )
+
+
+class RfqInvalidAttachmentUrlError(BusinessError):
+    """40522 — RFQ 附件 URL 非法。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40522,
+            "Invalid attachment URL",
+            message_key=MessageKey.RFQ_INVALID_ATTACHMENT_URL,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}
