@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Clock, X } from "lucide-react";
+import { useLocale } from "next-intl";
 import useSWR from "swr";
 
 import { getRecentViews, removeRecentView, type RecentViewProduct } from "@/lib/api/buyerEvents";
@@ -13,9 +14,10 @@ import { getRecentViews, removeRecentView, type RecentViewProduct } from "@/lib/
  */
 export function RecentViews() {
   const t = useTranslations("mall");
+  const locale = useLocale();
 
   const { data: items, mutate } = useSWR<RecentViewProduct[]>(
-    "buyer-recent-views",
+    `buyer-recent-views-${locale}`,
     () => getRecentViews(8),
     { revalidateOnFocus: true, dedupingInterval: 30_000 },
   );
