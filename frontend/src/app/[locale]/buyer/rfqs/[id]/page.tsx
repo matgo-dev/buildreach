@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package, Download } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -15,6 +15,7 @@ import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { ApiError } from "@/lib/api";
 import { getRfq, cancelRfq, withdrawRfq, submitRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
+import { exportQuotePdf } from "@/lib/api/quote-export";
 import {
   listBuyerQuotes, acceptRfq, rejectRfq,
   type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
@@ -614,8 +615,22 @@ function QuoteCard({
   locale: string;
 }) {
   const tQ = useTranslations("quote");
+  const { addToast } = useToast();
   const currency = quote.currency ?? "USD";
   const isAccepted = rfq.status === "ACCEPTED";
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await exportQuotePdf(rfq.id);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addToast(msg, "error");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
@@ -630,7 +645,22 @@ function QuoteCard({
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400">{quote.quote_no}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{quote.quote_no}</span>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-1 rounded-md border border-[#0D4D4D]/20 px-2.5 py-1 text-xs font-medium text-[#0D4D4D] transition-colors hover:bg-[#0D4D4D]/5 disabled:opacity-50"
+          >
+            {downloading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Download className="h-3 w-3" />
+            )}
+            {tQ("downloadPdf")}
+          </button>
+        </div>
       </div>
 
       {/* 过期软提示 */}

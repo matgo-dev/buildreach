@@ -1021,7 +1021,9 @@
     "addLineCustom": "Custom Item",
     "confirm": "Confirm",
     "deleteLineConfirm": "Delete this line?",
-    "requoteHint": "Re-quoting: modify based on previous quote"
+    "requoteHint": "Re-quoting: modify based on previous quote",
+    "downloadPdf": "Download Quote",
+    "downloadError": "Failed to download quotation"
   },
   "nav": {
     "mall": "Mall",
