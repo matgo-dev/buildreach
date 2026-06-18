@@ -1027,7 +1027,11 @@
     "deleteLineConfirm": "Delete this line?",
     "requoteHint": "Re-quoting: modify based on previous quote",
     "downloadPdf": "Download Quote",
-    "downloadError": "Failed to download quotation"
+    "downloadError": "Failed to download quotation",
+    "editVariant": "Edit Specs",
+    "confirmVariant": "Confirm",
+    "noSelectableAttrs": "No selectable specs",
+    "skuSpec": "Select Variant"
   },
   "nav": {
     "mall": "Mall",

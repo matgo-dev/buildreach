@@ -714,13 +714,13 @@ function QuoteBackfillContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-3 py-2.5 font-medium w-20">{t("lineType")}</th>
+                <th className="px-3 py-2.5 font-medium w-[72px]">{t("lineType")}</th>
                 <th className="px-3 py-2.5 font-medium">{t("product")}</th>
-                <th className="px-3 py-2.5 font-medium text-right w-24">{t("quantity")}</th>
-                <th className="px-3 py-2.5 font-medium text-right w-28">{t("unitPrice")} *</th>
+                <th className="px-3 py-2.5 font-medium text-right w-20">{t("quantity")}</th>
+                <th className="px-3 py-2.5 font-medium text-right w-24">{t("unitPrice")} *</th>
                 <th className="px-3 py-2.5 font-medium text-right w-20">{t("moq")}</th>
-                <th className="px-3 py-2.5 font-medium text-center w-16">{t("tiers")}</th>
-                <th className="px-3 py-2.5 font-medium w-10"></th>
+                <th className="px-3 py-2.5 font-medium text-center w-20 whitespace-nowrap">{t("tiers")}</th>
+                <th className="px-3 py-2.5 font-medium w-8"></th>
               </tr>
             </thead>
             <tbody>
@@ -816,7 +816,7 @@ function QuoteBackfillContent() {
                     {/* 阶梯价 */}
                     <td className="px-3 py-3 text-center">
                       {isFee ? <span className="text-xs text-gray-400">—</span> : (
-                        <button type="button" onClick={() => setTierModalIdx(idx)} className="text-xs text-blue-600 hover:underline">
+                        <button type="button" onClick={() => setTierModalIdx(idx)} className="whitespace-nowrap text-xs text-blue-600 hover:underline">
                           {line.tiers.length > 0 ? `${line.tiers.length}` : t("setTiers")}
                         </button>
                       )}

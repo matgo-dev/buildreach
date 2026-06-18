@@ -1027,7 +1027,11 @@
     "deleteLineConfirm": "Futa safu hii?",
     "requoteHint": "Kunukuu upya: rekebisha kulingana na nukuu iliyotangulia",
     "downloadPdf": "Pakua Nukuu",
-    "downloadError": "Imeshindwa kupakua nukuu"
+    "downloadError": "Imeshindwa kupakua nukuu",
+    "editVariant": "Badilisha Vipimo",
+    "confirmVariant": "Thibitisha",
+    "noSelectableAttrs": "Hakuna vipimo",
+    "skuSpec": "Chagua Anuwai"
   },
   "nav": {
     "mall": "Duka",
