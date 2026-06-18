@@ -809,7 +809,9 @@
     "productInfo": "Product Info",
     "quantity": "Quantity",
     "comingSoon": "Coming soon",
-    "unitLabel": "Unit"
+    "unitLabel": "Unit",
+    "specs": "Specs",
+    "days": "days"
   },
   "rfq": {
     "title": "My Inquiries",
