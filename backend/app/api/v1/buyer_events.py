@@ -28,6 +28,17 @@ async def recent_views(
     return success(items)
 
 
+@router.delete("/recent-views/{product_id}", summary="删除单条浏览记录")
+async def remove_recent_view(
+    product_id: int,
+    current: CurrentUser = Depends(require_permission(Permissions.BUYER_EVENT_READ)),
+    db: AsyncSession = Depends(get_db),
+):
+    deleted = await event_svc.remove_recent_view(db, current.id, product_id)
+    await db.commit()
+    return success({"deleted": deleted})
+
+
 @router.get("/recent-searches", summary="最近搜索词")
 async def recent_searches(
     current: CurrentUser = Depends(require_permission(Permissions.BUYER_EVENT_READ)),

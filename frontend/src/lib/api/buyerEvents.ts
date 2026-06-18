@@ -25,6 +25,10 @@ export async function getRecentSearches(limit = 10): Promise<string[]> {
   return api.get(`/api/v1/buyer/events/recent-searches?limit=${limit}`);
 }
 
+export async function removeRecentView(productId: number): Promise<{ deleted: number }> {
+  return api.delete(`/api/v1/buyer/events/recent-views/${productId}`);
+}
+
 export async function clearRecentSearches(): Promise<{ deleted: number }> {
   return api.delete("/api/v1/buyer/events/recent-searches");
 }
