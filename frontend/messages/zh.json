@@ -93,7 +93,8 @@
       "quantity_invalid": "数量无效",
       "item_not_found": "询价篮商品不存在",
       "buyer_org_required": "当前用户无可用买方组织",
-      "product_not_available": "该商品不可购买或已下架"
+      "product_not_available": "该商品不可购买或已下架",
+      "duplicate_variant": "该规格已在询价篮中"
     },
     "rfq": {
       "no_valid_items": "提交无有效行项目",
@@ -106,7 +107,9 @@
       "already_claimed": "该询价单已被其他运营受理",
       "item_not_found": "询价行项不存在",
       "not_assigned_to_you": "该询价单不是您受理的",
-      "min_one_item": "询价单至少保留一个行项"
+      "min_one_item": "询价单至少保留一个行项",
+      "too_many_attachments": "附件数超过上限(最多6个)",
+      "invalid_attachment_url": "附件链接无效"
     },
     "quote": {
       "rfq_state_invalid": "当前询价单状态不允许此报价操作",
