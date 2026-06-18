@@ -66,6 +66,13 @@ export interface RfqItemPublic {
   quantity: number;
   target_unit_price: number | null;
   remark: string | null;
+
+  // 读时 JOIN 增强字段（详情页填充，列表页为 null）
+  main_image: string | null;
+  spu_code: string | null;
+  brand: string | null;
+  origin: string | null;
+  category_name: string | null;
 }
 
 export interface RfqBuyerPublic {

@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
     BuyerOrgRequiredError,
+    CartDuplicateVariantError,
     CartItemNotFoundError,
     CartProductNotAvailableError,
     CartQuantityInvalidError,
@@ -235,20 +236,64 @@ async def add_item(
     return await _reload_cart(db, cart.id)
 
 
-async def update_item_qty(
-    db: AsyncSession, user: CurrentUser, item_id: int, quantity: Decimal,
-    *, request: Request | None = None,
+async def update_item(
+    db: AsyncSession, user: CurrentUser, item_id: int,
+    *, quantity: Decimal | None = None,
+    selected_variants: list[dict[str, str]] | None = None,
+    request: Request | None = None,
 ) -> CartPublic:
-    """改量。"""
-    if quantity <= 0:
-        raise CartQuantityInvalidError()
-
+    """改量和/或改变体。"""
     item = await _get_own_item_or_404(db, user, item_id)
-    await db.execute(
-        update(CartItem)
-        .where(CartItem.id == item.id)
-        .values(quantity=quantity)
-    )
+    extra: dict[str, object] = {"item_id": item_id}
+
+    # ── 变体更新 ──
+    if selected_variants is not None:
+        normalized = await normalize_variants_to_en(db, item.product_id, selected_variants)
+        new_fp = variant_fingerprint(normalized)
+
+        # 预查同 cart 内其他行是否已存在相同指纹（并发兜底前置拦截）
+        dup_row = await db.execute(
+            select(CartItem.id).where(
+                CartItem.cart_id == item.cart_id,
+                CartItem.product_id == item.product_id,
+                CartItem.variant_fingerprint == new_fp,
+                CartItem.id != item.id,
+            )
+        )
+        if dup_row.scalar_one_or_none() is not None:
+            raise CartDuplicateVariantError()
+
+        # SAVEPOINT 内 UPDATE（并发兜底）—— 用显式 nested 避免 async with 在测试环境的兼容问题
+        nested = await db.begin_nested()
+        try:
+            await db.execute(
+                update(CartItem)
+                .where(CartItem.id == item.id)
+                .values(selected_variants=normalized, variant_fingerprint=new_fp)
+            )
+        except IntegrityError:
+            await nested.rollback()
+            raise CartDuplicateVariantError()
+        except BaseException:
+            await nested.rollback()
+            raise
+        else:
+            await nested.commit()
+
+        extra["new_fingerprint"] = new_fp
+        extra["new_variants"] = normalized
+
+    # ── 数量更新 ──
+    if quantity is not None:
+        if quantity <= 0:
+            raise CartQuantityInvalidError()
+        await db.execute(
+            update(CartItem)
+            .where(CartItem.id == item.id)
+            .values(quantity=quantity)
+        )
+        extra["quantity"] = str(quantity)
+
     # 审计与业务写同事务
     await write_audit(
         db,
@@ -258,7 +303,7 @@ async def update_item_qty(
         user_email=user.email,
         resource_id=item_id,
         request=request,
-        extra={"item_id": item_id, "quantity": str(quantity)},
+        extra=extra,
         commit=False,
     )
     await db.commit()

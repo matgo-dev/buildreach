@@ -45,7 +45,7 @@ async def add_item(
     return success(cart.model_dump())
 
 
-@router.patch("/items/{item_id}", summary="改量")
+@router.patch("/items/{item_id}", summary="改量/改变体")
 async def update_item(
     item_id: int,
     request: Request,
@@ -53,7 +53,12 @@ async def update_item(
     current: CurrentUser = Depends(require_permission(Permissions.CART_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    cart = await cart_svc.update_item_qty(db, current, item_id, data.quantity, request=request)
+    cart = await cart_svc.update_item(
+        db, current, item_id,
+        quantity=data.quantity,
+        selected_variants=data.selected_variants,
+        request=request,
+    )
     return success(cart.model_dump())
 
 

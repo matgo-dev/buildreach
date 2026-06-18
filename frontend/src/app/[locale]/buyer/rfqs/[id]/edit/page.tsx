@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
+import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 
 const CURRENCIES = ["USD", "KES", "CNY"];
 
@@ -298,13 +299,14 @@ function RfqEditContent() {
   const [currency, setCurrency] = useState("USD");
   const [certifications, setCertifications] = useState<string[]>([]);
   const [remark, setRemark] = useState("");
+  const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
 
   // 加载已有数据
   useEffect(() => {
     getRfq(rfqId)
       .then((rfq) => {
         if (rfq.status !== "DRAFT") {
-          toast.error("Only DRAFT RFQ can be edited");
+          toast.error(t("onlyDraftEditable"));
           router.replace(`/${locale}/buyer/rfqs/${rfqId}`);
           return;
         }
@@ -329,9 +331,10 @@ function RfqEditContent() {
         setCurrency(rfq.target_currency ?? "USD");
         setCertifications(rfq.required_certifications ?? []);
         setRemark(rfq.remark ?? "");
+        setAttachmentUrls(rfq.attachment_urls ?? []);
       })
       .catch(() => {
-        toast.error("Failed to load RFQ");
+        toast.error(t("loadFailed"));
         router.replace(`/${locale}/buyer/rfqs`);
       })
       .finally(() => setLoading(false));
@@ -373,7 +376,8 @@ function RfqEditContent() {
     target_currency: currency || undefined,
     required_certifications: certifications.length > 0 ? certifications : undefined,
     remark: remark || undefined,
-  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark]);
+    attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
+  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark, attachmentUrls]);
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -587,6 +591,10 @@ function RfqEditContent() {
             <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={3}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
           </div>
+          <AttachmentUploader
+            urls={attachmentUrls}
+            onChange={setAttachmentUrls}
+          />
         </div>
       </div>
 

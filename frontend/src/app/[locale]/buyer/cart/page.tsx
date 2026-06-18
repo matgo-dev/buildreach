@@ -11,6 +11,8 @@ import {
   Trash2,
   ArrowRight,
   PackageOpen,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -21,9 +23,11 @@ import { ApiError } from "@/lib/api";
 import {
   getCart,
   removeCartItem,
+  updateCartItem,
   type CartItemPublic,
   type CartPublic,
 } from "@/lib/api/cart";
+import { getProduct, type AttrItem } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
 
 // ---------- 主页面 ----------
@@ -89,6 +93,13 @@ function CartContent() {
       return next;
     });
   }, []);
+
+  // 变体编辑
+  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  // productId -> 可选属性轴列表（已筛出 selectable=true）
+  const [productAttrs, setProductAttrs] = useState<Record<number, AttrItem[]>>({});
+  const [editingVariants, setEditingVariants] = useState<Array<{ attr_name: string; value: string }>>([]);
+  const [variantSaving, setVariantSaving] = useState(false);
 
   // 删除单项
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
@@ -233,8 +244,8 @@ function CartContent() {
                   : null;
 
             return (
+              <div key={item.item_id}>
               <div
-                key={item.item_id}
                 className={`flex items-start gap-4 px-5 py-4 transition-colors ${
                   unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-blue-50/30"
                 }`}
@@ -270,11 +281,41 @@ function CartContent() {
                   {item.description && (
                     <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{item.description}</p>
                   )}
-                  {/* 规格 */}
+                  {/* 规格 + 修改规格按钮 */}
                   {item.variant_display && (
                     <p className="mt-1 text-xs text-gray-600">
                       <span className="text-gray-400">{t("specs")}:</span> {item.variant_display}
                     </p>
+                  )}
+                  {!unavailable && item.selected_variants && item.selected_variants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (expandedItemId === item.item_id) {
+                          setExpandedItemId(null);
+                        } else {
+                          setExpandedItemId(item.item_id);
+                          // 懒加载产品属性（只取 selectable 轴）
+                          if (!productAttrs[item.product_id]) {
+                            getProduct(item.product_id).then((p) => {
+                              const selectable: AttrItem[] = [];
+                              for (const grp of p.attribute_groups) {
+                                for (const attr of grp.items) {
+                                  if (attr.selectable) selectable.push(attr);
+                                }
+                              }
+                              setProductAttrs((prev) => ({ ...prev, [item.product_id]: selectable }));
+                            }).catch(() => {});
+                          }
+                          setEditingVariants([...(item.selected_variants || [])]);
+                        }
+                      }}
+                      className="mt-1 inline-flex items-center gap-0.5 text-xs text-[#00505a] hover:underline"
+                    >
+                      {t("editVariant")}
+                      {expandedItemId === item.item_id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
                   )}
                   {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -313,14 +354,37 @@ function CartContent() {
                 </div>
 
                 {/* 数量 */}
-                <div className="w-20 shrink-0 text-center pt-1">
+                <div className="w-24 shrink-0 text-center pt-1">
                   {!unavailable ? (
-                    <span className="text-lg font-bold text-gray-800">{item.quantity}</span>
+                    <div>
+                      <input
+                        type="number"
+                        key={`qty-${item.item_id}-${item.quantity}`}
+                        defaultValue={item.quantity}
+                        min={0.01}
+                        step="any"
+                        onKeyDown={(e) => {
+                          if (e.key === "-" || e.key === "e" || e.key === "E") e.preventDefault();
+                        }}
+                        onBlur={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (isNaN(v) || v <= 0) {
+                            e.target.value = String(item.quantity);
+                            return;
+                          }
+                          if (v === item.quantity) return;
+                          updateCartItem(item.item_id, { quantity: v })
+                            .then((cart) => { mutate(cart, false); syncFromCart(cart); })
+                            .catch(() => { e.target.value = String(item.quantity); });
+                        }}
+                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                      />
+                      {item.unit && (
+                        <span className="block text-[11px] text-gray-400 mt-0.5">{item.unit}</span>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-sm text-gray-400">—</span>
-                  )}
-                  {!unavailable && item.unit && (
-                    <span className="block text-[11px] text-gray-400">{item.unit}</span>
                   )}
                 </div>
 
@@ -335,13 +399,93 @@ function CartContent() {
                   </button>
                 </div>
               </div>
+
+              {/* 变体编辑面板 */}
+              {expandedItemId === item.item_id && (
+                <div className="mx-4 mb-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                  {productAttrs[item.product_id] ? (
+                    <>
+                      {productAttrs[item.product_id].map((attr) => (
+                        <div key={attr.key} className="mb-3">
+                          <span className="text-xs font-medium text-gray-500 mb-1.5 block">{attr.key}</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {attr.values.map((av) => {
+                              const isSelected = editingVariants.some(
+                                (v) => v.attr_name === attr.key && v.value === av.value
+                              );
+                              return (
+                                <button
+                                  key={av.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingVariants((prev) => {
+                                      const without = prev.filter((v) => v.attr_name !== attr.key);
+                                      if (isSelected) return without;
+                                      return [...without, { attr_name: attr.key, value: av.value }];
+                                    });
+                                  }}
+                                  className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                                    isSelected
+                                      ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
+                                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                  }`}
+                                >
+                                  {av.value}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          disabled={variantSaving}
+                          onClick={async () => {
+                            setVariantSaving(true);
+                            try {
+                              const cart = await updateCartItem(item.item_id, { selected_variants: editingVariants });
+                              mutate(cart, false);
+                              syncFromCart(cart);
+                              setExpandedItemId(null);
+                            } catch (err: unknown) {
+                              if (err instanceof ApiError && err.code === 40520) {
+                                toast.error(t("duplicateVariant"));
+                              } else {
+                                toast.error(err instanceof Error ? err.message : tError("general" as Parameters<typeof tError>[0]));
+                              }
+                            } finally {
+                              setVariantSaving(false);
+                            }
+                          }}
+                          className="rounded-md bg-[#00505a] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#003f46] disabled:opacity-50"
+                        >
+                          {t("confirmVariant")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedItemId(null)}
+                          className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          {t("cancelEdit")}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
             );
           })}
         </div>
       </div>
 
       {/* 底部操作栏 — 阿里风格：左侧全选+批量操作，右侧统计+提交 */}
-      <div className="sticky bottom-0 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
+      <div className="sticky bottom-0 z-10 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
         {/* 左：全选 + 批量删除 */}
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
