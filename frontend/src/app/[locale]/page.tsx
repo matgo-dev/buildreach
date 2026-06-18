@@ -170,11 +170,7 @@ export default function HomePage() {
             <p className="text-white/50 text-sm mb-5">{t("ctaDesc")}</p>
             <div className="flex justify-center gap-3">
               <MallButton variant="gold" href="/register">{t("ctaRegister")}</MallButton>
-              <DisabledCta>
-                <span className="h-10 px-6 inline-flex items-center rounded-[10px] text-sm font-extrabold text-white" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.24)" }}>
-                  {t("ctaLearnMore")}
-                </span>
-              </DisabledCta>
+              <MallButton variant="outline" href="/how-to-buy">{t("ctaLearnMore")}</MallButton>
             </div>
           </div>
         </div>
