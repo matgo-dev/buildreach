@@ -1,8 +1,10 @@
 """报价单 PDF 导出服务。"""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from decimal import Decimal
+from functools import partial
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -134,9 +136,16 @@ async def generate_quote_pdf(
         format_amount=_format_amount,
     )
 
-    # 懒加载:weasyprint 依赖系统库(pango/cairo),启动时 import 会在缺库环境下崩溃
-    from weasyprint import HTML
-    pdf_bytes = HTML(string=html_str).write_pdf()
+    # weasyprint 是 CPU 密集同步操作，放线程池避免阻塞事件循环
+    pdf_bytes = await asyncio.get_event_loop().run_in_executor(
+        None, partial(_render_pdf, html_str),
+    )
 
     filename = f"{rfq.rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"
     return pdf_bytes, filename
+
+
+def _render_pdf(html_str: str) -> bytes:
+    """同步 PDF 渲染，由线程池调用。懒加载 weasyprint 避免启动时缺库崩溃。"""
+    from weasyprint import HTML
+    return HTML(string=html_str).write_pdf()
