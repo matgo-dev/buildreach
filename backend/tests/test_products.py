@@ -1104,14 +1104,15 @@ async def _seed_template_hierarchy(db_session):
     now = _utcnow()
 
     # 插入测试品类(T 前缀避免与 seed 冲突)
-    for code, name, level, parent in [
-        ("T1", "测试一级", 1, None),
-        ("T1.001", "测试二级", 2, "T1"),
-        ("T1.001.001", "测试三级", 3, "T1.001"),
+    for code, name, level, parent, is_leaf in [
+        ("T1", "测试一级", 1, None, False),
+        ("T1.001", "测试二级", 2, "T1", False),
+        ("T1.001.001", "测试三级", 3, "T1.001", True),
     ]:
         db_session.add(Category(
             code=code, name_zh=name, level=level, parent_code=parent,
-            sort_order=0, is_active=True, created_at=now, updated_at=now,
+            sort_order=0, is_active=True, is_leaf=is_leaf,
+            created_at=now, updated_at=now,
         ))
     await db_session.flush()
 
