@@ -24,6 +24,7 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
+import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
@@ -83,6 +84,7 @@ interface DraftData {
   certifications: string[];
   remark: string;
   manualItems: ManualItem[];
+  attachment_urls: string[];
 }
 
 function emptyDraft(): DraftData {
@@ -98,6 +100,7 @@ function emptyDraft(): DraftData {
     certifications: [],
     remark: "",
     manualItems: [],
+    attachment_urls: [],
   };
 }
 
@@ -571,6 +574,10 @@ function RfqCreateContent() {
   }, [searchParams]);
   const productIdLoadedRef = useRef(false);
 
+  // 入口路径区分
+  const isCartPath = itemIds.length > 0;
+  const isDirectPath = productIdParam !== null && !isCartPath;
+
   // 加载询价篮数据
   const [cartItems, setCartItems] = useState<CartItemPublic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -650,6 +657,7 @@ function RfqCreateContent() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (!parsed.manualItems) parsed.manualItems = [];
+          if (!parsed.attachment_urls) parsed.attachment_urls = [];
           return parsed;
         }
       } catch {}
@@ -826,6 +834,7 @@ function RfqCreateContent() {
           required_certifications:
             draft.certifications.length > 0 ? draft.certifications : undefined,
           remark: draft.remark || undefined,
+          attachment_urls: draft.attachment_urls.length > 0 ? draft.attachment_urls : undefined,
         },
         idemRef.current,
       );
@@ -941,6 +950,20 @@ function RfqCreateContent() {
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
         </div>
+
+        {/* 篮子路径：显示返回询价篮修改链接 */}
+        {isCartPath && (
+          <div className="px-5 py-2 border-b border-gray-100">
+            <a
+              href={`/${locale}/buyer/cart`}
+              className="inline-flex items-center gap-1 text-sm text-[#00505a] hover:underline"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {t("backToCartEdit")}
+            </a>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -948,7 +971,7 @@ function RfqCreateContent() {
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
                 <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
-                <th className="w-12 px-3 py-2.5" />
+                {!isCartPath && <th className="w-12 px-3 py-2.5" />}
               </tr>
             </thead>
             <tbody>
@@ -962,31 +985,43 @@ function RfqCreateContent() {
                     {item.variant_display ?? "\u2014"}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <div className="inline-flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (!isNaN(v) && v > 0) handleCartQuantityChange(item.item_id, v);
-                        }}
-                        min={1}
-                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
-                      />
-                      <span className="text-xs text-gray-500">
-                        {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
-                      </span>
-                    </div>
+                    {isCartPath ? (
+                      /* 篮子路径：只读显示数量 */
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-gray-800">{item.quantity}</span>
+                        <span className="text-xs text-gray-500">
+                          {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            if (!isNaN(v) && v > 0) handleCartQuantityChange(item.item_id, v);
+                          }}
+                          min={1}
+                          className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                        />
+                        <span className="text-xs text-gray-500">
+                          {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
+                        </span>
+                      </div>
+                    )}
                   </td>
-                  <td className="px-3 py-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCartItem(item.item_id)}
-                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
+                  {!isCartPath && (
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCartItem(item.item_id)}
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
 
@@ -1045,19 +1080,21 @@ function RfqCreateContent() {
                 </tr>
               )}
 
-              {/* 添加商品按钮 */}
-              <tr className="border-t border-gray-100">
-                <td colSpan={4} className="px-5 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowSearch(true)}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {t("addProduct")}
-                  </button>
-                </td>
-              </tr>
+              {/* 添加商品按钮：篮子路径和直询路径不显示 */}
+              {!isCartPath && !isDirectPath && (
+                <tr className="border-t border-gray-100">
+                  <td colSpan={4} className="px-5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowSearch(true)}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t("addProduct")}
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -1224,6 +1261,10 @@ function RfqCreateContent() {
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
             />
           </div>
+          <AttachmentUploader
+            urls={draft.attachment_urls}
+            onChange={(urls) => updateDraft("attachment_urls", urls)}
+          />
         </div>
       </div>
 

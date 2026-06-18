@@ -929,7 +929,8 @@
     "attachment.hint": "支持 JPG、PNG、WEBP（≤5MB），PDF、XLSX（≤10MB），最多 6 个",
     "attachment.maxReached": "最多上传 6 个附件",
     "attachment.invalidType": "文件类型不支持，支持 JPG、PNG、WEBP、PDF、XLSX",
-    "attachment.tooLarge": "文件过大，图片 ≤5MB，文档 ≤10MB"
+    "attachment.tooLarge": "文件过大，图片 ≤5MB，文档 ≤10MB",
+    "backToCartEdit": "返回询价篮修改"
   },
   "quote": {
     "backfillTitle": "报价回填",

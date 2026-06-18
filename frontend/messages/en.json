@@ -929,7 +929,8 @@
     "attachment.hint": "Supports JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Up to 6 files.",
     "attachment.maxReached": "Maximum 6 attachments allowed",
     "attachment.invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
-    "attachment.tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB"
+    "attachment.tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB",
+    "backToCartEdit": "Back to Basket"
   },
   "quote": {
     "backfillTitle": "Quote Backfill",
