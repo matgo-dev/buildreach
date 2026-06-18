@@ -38,7 +38,7 @@
     font-size: 10px;
     color: #666;
   }
-  .header-right .quote-no {
+  .header-right .primary-no {
     font-size: 13px;
     font-weight: 600;
     color: #333;
@@ -160,8 +160,8 @@
     <span style="font-size:11px;color:#666;">{{ platform.name }}</span>
   </div>
   <div class="header-right">
-    <div class="quote-no">{{ L.quote_no }}: {{ quote.quote_no }}</div>
-    <div>{{ L.rfq_no }}: {{ rfq.rfq_no }}</div>
+    <div class="primary-no">{{ L.rfq_no }}: {{ rfq.rfq_no }}</div>
+    <div>{{ L.quote_no }}: {{ quote.quote_no }}</div>
     <div>{{ L.issue_date }}: {{ issue_date }}</div>
     {% if quote.valid_until %}
     <div>{{ L.valid_until }}: {{ valid_until }}</div>
