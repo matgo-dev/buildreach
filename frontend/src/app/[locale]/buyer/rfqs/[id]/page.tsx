@@ -284,7 +284,7 @@ function RfqDetailContent() {
 
       {/* 报价区块（独立卡片） */}
       {showQuoteSection && quote && (
-        <QuoteCard rfq={rfq} quote={quote} isExpiredHint={isExpiredHint} locale={locale} />
+        <QuoteCard rfq={rfq} quote={quote} isExpiredHint={isExpiredHint} locale={locale} onError={showError} />
       )}
 
       {/* 无报价提示 */}
@@ -602,21 +602,26 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
 
 // ---- 报价卡片（独立区块） ----
 
+// 允许导出报价单的 RFQ 状态
+const EXPORTABLE_STATUSES = new Set(["QUOTED", "ACCEPTED"]);
+
 function QuoteCard({
   rfq,
   quote,
   isExpiredHint,
   locale,
+  onError,
 }: {
   rfq: RfqBuyerPublic;
   quote: RfqQuoteBuyerPublic;
   isExpiredHint: boolean;
   locale: string;
+  onError: (err: unknown) => void;
 }) {
   const tQ = useTranslations("quote");
-  const { addToast } = useToast();
   const currency = quote.currency ?? "USD";
   const isAccepted = rfq.status === "ACCEPTED";
+  const canExport = EXPORTABLE_STATUSES.has(rfq.status);
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {
@@ -624,8 +629,7 @@ function QuoteCard({
     try {
       await exportQuotePdf(rfq.id);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      addToast(msg, "error");
+      onError(err);
     } finally {
       setDownloading(false);
     }
@@ -646,19 +650,21 @@ function QuoteCard({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{quote.quote_no}</span>
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="inline-flex items-center gap-1 rounded-md border border-[#0D4D4D]/20 px-2.5 py-1 text-xs font-medium text-[#0D4D4D] transition-colors hover:bg-[#0D4D4D]/5 disabled:opacity-50"
-          >
-            {downloading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Download className="h-3 w-3" />
-            )}
-            {tQ("downloadPdf")}
-          </button>
+          {canExport && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="inline-flex items-center gap-1 rounded-md border border-[#0D4D4D]/20 px-2.5 py-1 text-xs font-medium text-[#0D4D4D] transition-colors hover:bg-[#0D4D4D]/5 disabled:opacity-50"
+            >
+              {downloading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3" />
+              )}
+              {tQ("downloadPdf")}
+            </button>
+          )}
         </div>
       </div>
 

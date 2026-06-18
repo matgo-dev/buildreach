@@ -77,6 +77,11 @@ async def generate_quote_pdf(
     if rfq is None:
         raise RfqNotFoundError()
 
+    # 仅 QUOTED / ACCEPTED 状态允许导出
+    _EXPORTABLE = {"QUOTED", "ACCEPTED"}
+    if rfq.status not in _EXPORTABLE:
+        raise RfqNoQuoteToExportError()
+
     # 取 ACTIVE 买方报价
     quote_data = await load_quote_for_rfq_detail(db, rfq_id, is_operator=False)
     if quote_data is None:
