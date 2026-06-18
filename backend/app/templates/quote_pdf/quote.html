@@ -144,6 +144,9 @@
     font-size: 9px;
     color: #999;
   }
+  table td img {
+    vertical-align: middle;
+  }
   .footer .disclaimer {
     font-style: italic;
     margin-bottom: 8px;
@@ -229,7 +232,14 @@
     {% for item in product_items %}
     <tr>
       <td>{{ loop.index }}</td>
-      <td>{{ item.product_name_snapshot or "—" }}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          {% if item.product_id and image_map.get(item.product_id) %}
+          <img src="{{ image_map[item.product_id] }}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:3px;border:1px solid #eee;flex-shrink:0;" />
+          {% endif %}
+          <span>{{ item.product_name_snapshot or "—" }}</span>
+        </div>
+      </td>
       <td>{{ item.variant_display or "—" }}</td>
       <td class="text-center">{{ item.quantity or "—" }}</td>
       <td class="text-center">{{ item.uom or "—" }}</td>
