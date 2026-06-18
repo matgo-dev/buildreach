@@ -15,6 +15,7 @@ from sqlalchemy import delete as sa_delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.exceptions import (
     NotFoundError,
     ImageFormatInvalidError,
@@ -463,6 +464,30 @@ async def get_product(db: AsyncSession, product_id: int) -> Product:
     return await _get_product_or_404(db, product_id, load_relations=True)
 
 
+async def _batch_main_images(
+    db: AsyncSession, product_ids: list[int],
+) -> dict[int, str]:
+    """批量查每个商品的主图 URL — DISTINCT ON 每个 product_id 只取一行。"""
+    if not product_ids:
+        return {}
+    q = (
+        select(ProductImage.product_id, ProductImage.image_key)
+        .where(
+            ProductImage.product_id.in_(product_ids),
+            _not_deleted(ProductImage),
+        )
+        .order_by(
+            ProductImage.product_id,
+            (ProductImage.image_type != ImageType.MAIN).asc(),
+            ProductImage.sort_order.asc(),
+        )
+        .distinct(ProductImage.product_id)
+    )
+    rows = (await db.execute(q)).all()
+    base = settings.IMAGE_BASE_URL
+    return {pid: f"{base}/{key}" for pid, key in rows}
+
+
 async def list_products_operator(
     db: AsyncSession,
     *,
@@ -472,9 +497,9 @@ async def list_products_operator(
     keyword: str | None = None,
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int]:
+) -> tuple[list[Product], int, dict[int, str]]:
+    # 列表只需 SKU（价格汇总+计数），不加载全部图片（批量查主图）
     q = select(Product).options(
-        selectinload(Product.images.and_(_not_deleted(ProductImage))),
         selectinload(Product.skus.and_(_not_deleted(ProductSku))),
     ).where(_not_deleted(Product))
     count_q = select(func.count(Product.id)).where(_not_deleted(Product))
@@ -503,7 +528,9 @@ async def list_products_operator(
     total = (await db.execute(count_q)).scalar() or 0
     q = q.order_by(Product.created_at.desc()).offset((page - 1) * size).limit(size)
     rows = (await db.execute(q)).scalars().all()
-    return list(rows), total
+    products = list(rows)
+    main_image_map = await _batch_main_images(db, [p.id for p in products])
+    return products, total, main_image_map
 
 
 async def list_products_public(
@@ -518,11 +545,9 @@ async def list_products_public(
     sort: str = "newest",
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int]:
-    q = select(Product).options(
-        selectinload(Product.images.and_(_not_deleted(ProductImage))),
-        selectinload(Product.skus.and_(_not_deleted(ProductSku))).selectinload(ProductSku.price_tiers),
-    ).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+) -> tuple[list[Product], int, dict[int, str]]:
+    # 列表不加载图片关系，主图由 _batch_main_images 批量查
+    q = select(Product).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
     count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
 
     if category_code:
@@ -585,7 +610,9 @@ async def list_products_public(
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * size).limit(size)
     rows = (await db.execute(q)).scalars().all()
-    return list(rows), total
+    products = list(rows)
+    main_image_map = await _batch_main_images(db, [p.id for p in products])
+    return products, total, main_image_map
 
 
 async def list_certification_options(db: AsyncSession) -> list[str]:

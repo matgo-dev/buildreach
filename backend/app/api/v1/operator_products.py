@@ -162,7 +162,7 @@ def _sku_to_operator(sku) -> dict:
     ).model_dump()
 
 
-def _to_operator(p, creator_name_map: dict | None = None) -> dict:
+def _to_operator(p, creator_name_map: dict | None = None, main_image_url: str | None = None) -> dict:
     prices = spu_price_range(p)
     active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE) if p.skus else 0
     created_by_name = ""
@@ -179,7 +179,7 @@ def _to_operator(p, creator_name_map: dict | None = None) -> dict:
         brand=get_localized(p, "brand") or None,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
-        main_image=_get_main_image_url(p),
+        main_image=main_image_url if main_image_url is not None else _get_main_image_url(p),
         status=p.status,
         created_by_name=created_by_name,
         price_min=prices["price_min"],
@@ -204,7 +204,7 @@ async def list_products(
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_READ)),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total = await product_svc.list_products_operator(
+    items, total, img_map = await product_svc.list_products_operator(
         db, category_code=category_code, status=status,
         supply_mode=supply_mode, keyword=keyword,
         page=page, size=size,
@@ -220,7 +220,7 @@ async def list_products(
         creator_name_map = {r.id: r.name for r in rows}
 
     return success({
-        "items": [_to_operator(p, creator_name_map) for p in items],
+        "items": [_to_operator(p, creator_name_map, main_image_url=img_map.get(p.id)) for p in items],
         "total": total,
         "page": page,
         "size": size,

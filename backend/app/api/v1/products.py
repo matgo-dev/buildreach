@@ -137,7 +137,7 @@ def _get_main_image_url(p) -> str | None:
     return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
 
 
-def _to_public(p) -> dict:
+def _to_public(p, *, main_image_url: str | None = None) -> dict:
     return ProductPublic(
         id=p.id,
         spu_code=p.spu_code,
@@ -149,7 +149,7 @@ def _to_public(p) -> dict:
         certifications=p.certifications,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
-        main_image=_get_main_image_url(p),
+        main_image=main_image_url if main_image_url is not None else _get_main_image_url(p),
         unit=p.unit,
         moq=p.moq,
         moq_unit=p.moq_unit,
@@ -193,7 +193,7 @@ async def list_products(
         except Exception:
             pass  # token 无效或过期:不过滤,展示全量
 
-    items, total = await product_svc.list_products_public(
+    items, total, img_map = await product_svc.list_products_public(
         db, category_code=category_code,
         category_codes=pref_codes,
         featured=featured, supply_mode=supply_mode,
@@ -217,7 +217,7 @@ async def list_products(
             )
 
     return success({
-        "items": [_to_public(p) for p in items],
+        "items": [_to_public(p, main_image_url=img_map.get(p.id)) for p in items],
         "total": total,
         "page": page,
         "size": size,
