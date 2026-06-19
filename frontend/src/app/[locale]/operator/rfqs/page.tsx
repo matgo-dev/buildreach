@@ -177,6 +177,14 @@ function OperatorRfqListContent() {
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                      {rfq.status === "DRAFT" && rfq.source === "OPERATOR_PROXY" && (
+                        <Link
+                          href={`/${locale}/operator/rfqs/${rfq.id}`}
+                          className="text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          {t("editRfqItems")}
+                        </Link>
+                      )}
                       {rfq.status === "SUBMITTED" && (
                         <button
                           type="button"
