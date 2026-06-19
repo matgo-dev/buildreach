@@ -757,6 +757,8 @@ async def submit_rfq(
     if offending:
         raise RfqProductNotAvailableError(offending)
 
+    # Operator 代录的 DRAFT 提交后自动受理到 PROCESSING
+    auto_claim = rfq.source == RfqSource.OPERATOR_PROXY
     rfq.status = RfqStatus.SUBMITTED
 
     await write_audit(
@@ -771,23 +773,38 @@ async def submit_rfq(
         commit=False,
     )
 
-    # 买方行为埋点: SUBMIT_RFQ
-    if rfq.buyer_org_id:
-        from app.services.buyer_event import EventType, record_event
-        await record_event(
+    if auto_claim:
+        rfq.status = RfqStatus.PROCESSING
+        rfq.operator_assignee_id = user.id
+        await write_audit(
             db,
-            buyer_org_id=rfq.buyer_org_id,
+            resource_type=AuditResourceType.RFQ,
+            action=AuditAction.CLAIM,
             user_id=user.id,
-            event_type=EventType.SUBMIT_RFQ,
-            resource_type="rfq",
+            user_email=user.email,
             resource_id=rfq.id,
-            extra={},
             request=request,
+            extra={"rfq_no": rfq.rfq_no, "auto_claim": True},
+            commit=False,
         )
+    else:
+        # 买方行为埋点: SUBMIT_RFQ
+        if rfq.buyer_org_id:
+            from app.services.buyer_event import EventType, record_event
+            await record_event(
+                db,
+                buyer_org_id=rfq.buyer_org_id,
+                user_id=user.id,
+                event_type=EventType.SUBMIT_RFQ,
+                resource_type="rfq",
+                resource_id=rfq.id,
+                extra={},
+                request=request,
+            )
 
     await db.commit()
 
-    return await _load_and_serialize(db, rfq.id, is_operator=False)
+    return await _load_and_serialize(db, rfq.id, is_operator=auto_claim)
 
 
 # ── 撤回改单 ────────────────────────────────────────────

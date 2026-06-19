@@ -78,6 +78,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         # 单边模型:运营代客录入询价 + 回填报价 + 撤销 + 受理 + 代客决策
         Permissions.RFQ_READ,
         Permissions.RFQ_CREATE,
+        Permissions.RFQ_UPDATE,
         Permissions.RFQ_CANCEL,
         Permissions.RFQ_DECIDE,
         Permissions.RFQ_CLAIM,
