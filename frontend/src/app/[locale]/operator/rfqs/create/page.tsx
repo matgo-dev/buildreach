@@ -725,7 +725,7 @@ function CreateOnBehalfContent() {
       toast.success(asDraft ? t("draftSaved") : t("createSuccess"));
       // 提交成功后清除草稿
       try { sessionStorage.removeItem(draftKey); } catch {}
-      router.push(`/${locale}/operator/rfqs/${result.id}`);
+      router.push(`/${locale}/operator/rfqs`);
     } catch (err) {
       if (err instanceof ApiError && err.messageKey) {
         const key = err.messageKey.replace(/^error\./, "");
