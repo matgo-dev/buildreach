@@ -821,7 +821,7 @@
     "specs": "规格",
     "days": "天",
     "editVariant": "修改规格",
-    "confirmVariant": "确认修改",
+    "confirmVariant": "确认",
     "cancelEdit": "取消",
     "duplicateVariant": "该规格已在篮中"
   },
@@ -912,7 +912,7 @@
     "collapse": "收起",
     "selectVariant": "选择变体",
     "editVariant": "修改规格",
-    "confirmVariant": "确认修改",
+    "confirmVariant": "确认",
     "unit": "单位",
     "noSearchResult": "未找到匹配商品",
     "productNotFound": "商品不存在或已下架",
@@ -1031,7 +1031,7 @@
     "downloadPdf": "下载报价单",
     "downloadError": "报价单下载失败",
     "editVariant": "修改规格",
-    "confirmVariant": "确认修改",
+    "confirmVariant": "确认",
     "noSelectableAttrs": "该商品无可选规格",
     "skuSpec": "选择变体",
     "moqFromTier": "由阶梯价第一档决定"
