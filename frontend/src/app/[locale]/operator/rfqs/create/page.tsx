@@ -550,7 +550,7 @@ function CreateOnBehalfContent() {
         }
         // 获取 buyer_org 信息（编辑模式从 RfqOperatorView 读 buyer_org_id）
         const orgId = (rfq as unknown as { buyer_org_id: number }).buyer_org_id;
-        const orgs = await searchBuyerOrgs("", 1, 100);
+        const orgs = await searchBuyerOrgs("", 1, 50);
         const matchOrg = orgs.items.find((o) => o.id === orgId) ?? null;
 
         setDraft({

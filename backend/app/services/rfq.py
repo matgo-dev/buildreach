@@ -568,12 +568,17 @@ async def _load_and_serialize(
 
 
 def _serialize_item(
-    item: RfqItem, locale: str = "zh", *, with_product: bool = False,
+    item: RfqItem, locale: str | None = None, *, with_product: bool = False,
 ) -> RfqItemPublic:
     """序列化行项目,按 locale 选快照语言。
     with_product=True 时从 item.product 读时 JOIN 填充增强字段。
+    locale 未传时从请求级 contextvar 自动获取。
     """
-    if locale == "en":
+    if locale is None:
+        from app.core.locale import get_current_locale
+        locale = get_current_locale()
+
+    if locale in ("en", "sw"):
         name = item.product_name_snapshot_en or item.product_name_snapshot_zh
     else:
         name = item.product_name_snapshot_zh or item.product_name_snapshot_en
@@ -584,7 +589,7 @@ def _serialize_item(
         display = _variant_snapshot_to_display(item.variant_snapshot, locale)
     else:
         display = (item.variant_snapshot_zh if locale == "zh" else item.variant_snapshot_en) \
-                  or item.variant_snapshot_zh or item.variant_snapshot_en
+                  or item.variant_snapshot_en or item.variant_snapshot_zh
 
     # 增强字段（详情页读时 JOIN）
     main_image = spu_code = brand = origin = category_name = None
