@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ArrowLeft,
@@ -20,7 +20,7 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
-import { createRfq } from "@/lib/api/rfqs";
+import { createRfq, getRfq, updateRfq } from "@/lib/api/rfqs";
 import { operatorProductsApi, type ProductOperatorItem } from "@/lib/api/operatorProducts";
 import { getProduct, type AttrItem } from "@/lib/api/products";
 import { searchBuyerOrgs, type BuyerOrgBrief } from "@/lib/api/operatorBuyers";
@@ -499,17 +499,24 @@ function AddItemModal({ existingKeys, onClose, onAdd }: AddItemModalProps) {
 function CreateOnBehalfContent() {
   const router = useRouter();
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const t = useTranslations("rfq");
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
   const toast = useToast();
   const user = useAuthStore((s) => s.user);
 
-  const draftKey = `op_rfq_draft_${user?.id ?? "anon"}`;
+  // 编辑模式：URL 带 rfq_id 参数
+  const editRfqId = searchParams.get("rfq_id") ? Number(searchParams.get("rfq_id")) : null;
+  const isEditMode = editRfqId !== null;
+  const [editLoaded, setEditLoaded] = useState(false);
+
+  const draftKey = isEditMode ? `op_rfq_edit_${editRfqId}` : `op_rfq_draft_${user?.id ?? "anon"}`;
 
   // ---------- 统一草稿 state ----------
 
   const [draft, setDraft] = useState<OperatorRfqDraft>(() => {
+    if (isEditMode) return emptyDraft(); // 编辑模式从 API 加载
     if (typeof window === "undefined") return emptyDraft();
     try {
       const saved = sessionStorage.getItem(draftKey);
@@ -524,10 +531,60 @@ function CreateOnBehalfContent() {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // 自动持久化
+  // 自动持久化（编辑模式不持久化到 sessionStorage）
   useEffect(() => {
+    if (isEditMode) return;
     try { sessionStorage.setItem(draftKey, JSON.stringify(draft)); } catch {}
-  }, [draft, draftKey]);
+  }, [draft, draftKey, isEditMode]);
+
+  // 编辑模式：加载已有询价单数据
+  useEffect(() => {
+    if (!isEditMode || editLoaded) return;
+    (async () => {
+      try {
+        const rfq = await getRfq(editRfqId);
+        if (rfq.status !== "DRAFT") {
+          toast.error("该询价单不是草稿状态，无法编辑");
+          router.push(`/${locale}/operator/rfqs`);
+          return;
+        }
+        // 获取 buyer_org 信息（编辑模式从 RfqOperatorView 读 buyer_org_id）
+        const orgId = (rfq as unknown as { buyer_org_id: number }).buyer_org_id;
+        const orgs = await searchBuyerOrgs("", 1, 100);
+        const matchOrg = orgs.items.find((o) => o.id === orgId) ?? null;
+
+        setDraft({
+          buyerOrg: matchOrg,
+          items: rfq.items.map((item) => ({
+            dedupeKey: buildDedupeKey(item.product_id, item.variant_snapshot ?? []),
+            product_id: item.product_id,
+            product_name: item.product_name_snapshot ?? `商品#${item.product_id}`,
+            main_image_url: item.main_image ?? "",
+            category_name: "",
+            unit: item.uom_snapshot ?? "件",
+            moq: null,
+            selected_variants: item.variant_snapshot ?? [],
+            variant_display: item.variant_display ?? buildVariantDisplay(item.variant_snapshot ?? []),
+            quantity: item.quantity,
+            remark: item.remark ?? "",
+          })),
+          deliveryPlace: rfq.requested_delivery_place ?? "",
+          deliveryDate: rfq.expected_delivery_date ?? "",
+          targetCurrency: rfq.target_currency ?? "",
+          destinationPort: rfq.destination_port ?? "",
+          preferredTradeTerm: rfq.preferred_trade_term ?? "",
+          contactName: rfq.contact_name ?? "",
+          contactPhone: rfq.contact_phone ?? "",
+          contactEmail: rfq.contact_email ?? "",
+          remark: rfq.remark ?? "",
+        });
+        setEditLoaded(true);
+      } catch {
+        toast.error("加载询价单失败");
+        router.push(`/${locale}/operator/rfqs`);
+      }
+    })();
+  }, [isEditMode, editRfqId, editLoaded, router, locale, toast]);
 
   // 便捷 getters
   const selectedBuyerOrg = draft.buyerOrg;
@@ -703,15 +760,13 @@ function CreateOnBehalfContent() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const result = await createRfq({
-        buyer_org_id: selectedBuyerOrg!.id,
-        as_draft: asDraft,
-        items: items.map((item) => ({
-          product_id: item.product_id,
-          selected_variants: item.selected_variants.length > 0 ? item.selected_variants : undefined,
-          quantity: item.quantity,
-          remark: item.remark || undefined,
-        })),
+      const itemsPayload = items.map((item) => ({
+        product_id: item.product_id,
+        selected_variants: item.selected_variants.length > 0 ? item.selected_variants : undefined,
+        quantity: item.quantity,
+        remark: item.remark || undefined,
+      }));
+      const metaPayload = {
         requested_delivery_place: draft.deliveryPlace.trim() || undefined,
         destination_port: draft.destinationPort.trim() || undefined,
         preferred_trade_term: draft.preferredTradeTerm.trim() || undefined,
@@ -721,8 +776,19 @@ function CreateOnBehalfContent() {
         contact_phone: draft.contactPhone.trim() || undefined,
         contact_email: draft.contactEmail.trim() || undefined,
         remark: draft.remark.trim() || undefined,
-      });
-      toast.success(asDraft ? t("draftSaved") : t("createSuccess"));
+      };
+
+      if (isEditMode) {
+        await updateRfq(editRfqId!, { items: itemsPayload, ...metaPayload });
+      } else {
+        await createRfq({
+          buyer_org_id: selectedBuyerOrg!.id,
+          as_draft: asDraft,
+          items: itemsPayload,
+          ...metaPayload,
+        });
+      }
+      toast.success(asDraft || isEditMode ? t("draftSaved") : t("createSuccess"));
       // 提交成功后清除草稿
       try { sessionStorage.removeItem(draftKey); } catch {}
       router.push(`/${locale}/operator/rfqs`);
@@ -738,8 +804,17 @@ function CreateOnBehalfContent() {
     }
   }, [
     validate, selectedBuyerOrg, items, draft, draftKey,
-    router, locale, toast, t, tError,
+    router, locale, toast, t, tError, isEditMode, editRfqId,
   ]);
+
+  // 编辑模式加载中
+  if (isEditMode && !editLoaded) {
+    return (
+      <div className="flex min-h-[300px] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -752,7 +827,7 @@ function CreateOnBehalfContent() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-bold text-gray-800">{t("createOnBehalf")}</h1>
+        <h1 className="text-xl font-bold text-gray-800">{isEditMode ? t("editDraft") : t("createOnBehalf")}</h1>
       </div>
 
       {/* ① 买方组织 */}
@@ -1147,17 +1222,19 @@ function CreateOnBehalfContent() {
           className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-5 py-2.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-60"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {t("saveDraft")}
+          {isEditMode ? tCommon("save") : t("saveDraft")}
         </button>
-        <button
-          type="button"
-          onClick={() => handleSubmit(false)}
-          disabled={submitting}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
-        >
-          {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {t("submitDirectly")}
-        </button>
+        {!isEditMode && (
+          <button
+            type="button"
+            onClick={() => handleSubmit(false)}
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+          >
+            {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {t("submitDirectly")}
+          </button>
+        )}
       </div>
 
       {/* 添加商品弹窗 */}

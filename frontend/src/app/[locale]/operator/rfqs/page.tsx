@@ -14,7 +14,7 @@ import Pagination from "@/components/ui/Pagination";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import { ApiError } from "@/lib/api";
-import { listRfqs, claimRfq, type RfqListResponse } from "@/lib/api/rfqs";
+import { listRfqs, claimRfq, submitRfq, cancelRfq, type RfqListResponse } from "@/lib/api/rfqs";
 import { formatDate } from "@/lib/formatters";
 
 const PAGE_SIZE = 20;
@@ -27,6 +27,7 @@ function OperatorRfqListContent() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("rfq");
+  const tCommon = useTranslations("common");
   const tError = useTranslations("error");
   const toast = useToast();
 
@@ -77,6 +78,36 @@ function OperatorRfqListContent() {
       setClaiming(false);
     }
   }, [claimTarget, mutate, toast, t, showError]);
+
+  // 提交草稿
+  const [submitTarget, setSubmitTarget] = useState<number | null>(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const handleSubmitDraft = useCallback(async () => {
+    if (!submitTarget) return;
+    setSubmitLoading(true);
+    try {
+      await submitRfq(submitTarget);
+      mutate();
+      setSubmitTarget(null);
+      toast.success(t("submitSuccess"));
+    } catch (err) { showError(err); }
+    finally { setSubmitLoading(false); }
+  }, [submitTarget, mutate, toast, t, showError]);
+
+  // 删除（取消）草稿
+  const [cancelTarget, setCancelTarget] = useState<number | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const handleCancelDraft = useCallback(async () => {
+    if (!cancelTarget) return;
+    setCancelLoading(true);
+    try {
+      await cancelRfq(cancelTarget);
+      mutate();
+      setCancelTarget(null);
+      toast.success(t("cancelSuccess"));
+    } catch (err) { showError(err); }
+    finally { setCancelLoading(false); }
+  }, [cancelTarget, mutate, toast, t, showError]);
 
   return (
     <div className="space-y-4">
@@ -178,12 +209,28 @@ function OperatorRfqListContent() {
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
                       {rfq.status === "DRAFT" && rfq.source === "OPERATOR_PROXY" && (
-                        <Link
-                          href={`/${locale}/operator/rfqs/${rfq.id}`}
-                          className="text-xs font-medium text-blue-600 hover:underline"
-                        >
-                          {t("editRfqItems")}
-                        </Link>
+                        <>
+                          <Link
+                            href={`/${locale}/operator/rfqs/create?rfq_id=${rfq.id}`}
+                            className="text-xs font-medium text-blue-600 hover:underline"
+                          >
+                            {t("editRfqItems")}
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setSubmitTarget(rfq.id)}
+                            className="text-xs font-medium text-green-600 hover:underline"
+                          >
+                            {t("submitDraft")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCancelTarget(rfq.id)}
+                            className="text-xs font-medium text-red-500 hover:underline"
+                          >
+                            {t("deleteDraft")}
+                          </button>
+                        </>
                       )}
                       {rfq.status === "SUBMITTED" && (
                         <button
@@ -248,6 +295,30 @@ function OperatorRfqListContent() {
         confirmLabel={t("claim")}
         onConfirm={handleClaim}
         onCancel={() => setClaimTarget(null)}
+      />
+
+      {/* 提交草稿确认弹窗 */}
+      <ConfirmModal
+        open={submitTarget !== null}
+        title={t("submitDraft")}
+        description={t("submitDraftConfirm")}
+        variant="primary"
+        loading={submitLoading}
+        confirmLabel={t("submitDraft")}
+        onConfirm={handleSubmitDraft}
+        onCancel={() => setSubmitTarget(null)}
+      />
+
+      {/* 删除草稿确认弹窗 */}
+      <ConfirmModal
+        open={cancelTarget !== null}
+        title={t("deleteDraft")}
+        description={t("deleteDraftConfirm")}
+        variant="danger"
+        loading={cancelLoading}
+        confirmLabel={tCommon("delete")}
+        onConfirm={handleCancelDraft}
+        onCancel={() => setCancelTarget(null)}
       />
     </div>
   );
