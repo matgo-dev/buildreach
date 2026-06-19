@@ -841,7 +841,7 @@
     "cancel": "Ghairi Ombi",
     "cancelConfirm": "Ghairi ombi hili?",
     "cancelReason": "Sababu (si lazima)",
-    "cancelSuccess": "Ombi limeghairiwa",
+    "cancelSuccess": "Ombi limefutwa",
     "submitSuccess": "Ombi limewasilishwa",
     "filterAll": "Zote",
     "filterMine": "Maombi Yangu",
@@ -881,8 +881,8 @@
     "claim": "Dai",
     "claimConfirm": "Dai ombi hili? Mnunuzi hataweza kulibadilisha baada ya kudaiwa.",
     "claimSuccess": "Ombi limedaiwa",
-    "submitDraft": "Wasilisha Ombi",
-    "submitDraftConfirm": "Wasilisha ombi hili? Litaingia hali ya kusubiri ukaguzi.",
+    "submitDraft": "Wasilisha",
+    "submitDraftConfirm": "Wasilisha ombi hili? Litaonekana kwa mnunuzi.",
     "submitDraftSuccess": "Ombi limewasilishwa",
     "quoteBackfill": "Jaza Nukuu",
     "editRfqItems": "Hariri",
@@ -926,6 +926,7 @@
     "noVariant": "Hakuna anuwai",
     "minOneItem": "Angalau kipande kimoja kinahitajika",
     "createOnBehalf": "Unda Ombi kwa Niaba",
+    "editDraft": "Hariri Rasimu",
     "selectBuyerOrg": "Chagua Shirika la Mnunuzi",
     "searchBuyerOrg": "Tafuta shirika la mnunuzi...",
     "submitDirectly": "Wasilisha Moja kwa Moja",
@@ -943,7 +944,9 @@
     },
     "backToCartEdit": "Rudi kwenye Kikapu",
     "onlyDraftEditable": "Ombi la Manunuzi lenye hali ya RASIMU pekee linaweza kuhaririwa",
-    "loadFailed": "Imeshindwa kupakia Ombi la Manunuzi"
+    "loadFailed": "Imeshindwa kupakia Ombi la Manunuzi",
+    "deleteDraft": "Futa",
+    "deleteDraftConfirm": "Futa rasimu hii? Haitaweza kurejeshwa."
   },
   "quote": {
     "backfillTitle": "Jaza Nukuu",
