@@ -16,7 +16,7 @@ from decimal import Decimal
 
 from app.core.datetime import to_naive_utc
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -362,15 +362,20 @@ async def list_rfqs(
             q = q.where(Rfq.buyer_user_id == user.id)
             count_q = count_q.where(Rfq.buyer_user_id == user.id)
 
-    # Operator 不看买方草稿和已取消的询价单
+    # Operator: 隐藏买方草稿和已取消，但保留自己代录的（任何状态）
     if scope.is_operator and not scope.is_buyer:
-        hidden = (RfqStatus.DRAFT, RfqStatus.CANCELLED)
-        q = q.where(Rfq.status.notin_(hidden))
-        count_q = count_q.where(Rfq.status.notin_(hidden))
-        # "我代录的"——运营通过代录创建的询价单
         if mine:
+            # "我代录的"——只看自己创建的，所有状态可见
             q = q.where(Rfq.created_by_user_id == user.id)
             count_q = count_q.where(Rfq.created_by_user_id == user.id)
+        else:
+            # 全量视图：买方草稿/已取消不可见，但代录的 DRAFT 可见
+            hide_buyer_draft = and_(
+                Rfq.status.in_((RfqStatus.DRAFT, RfqStatus.CANCELLED)),
+                Rfq.source != RfqSource.OPERATOR_PROXY,
+            )
+            q = q.where(~hide_buyer_draft)
+            count_q = count_q.where(~hide_buyer_draft)
 
     if status_filter:
         q = q.where(Rfq.status == status_filter)
