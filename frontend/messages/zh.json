@@ -110,7 +110,8 @@
       "not_assigned_to_you": "该询价单不是您受理的",
       "min_one_item": "询价单至少保留一个行项",
       "too_many_attachments": "附件数超过上限(最多6个)",
-      "invalid_attachment_url": "附件链接无效"
+      "invalid_attachment_url": "附件链接无效",
+      "no_quote_to_export": "没有可导出的报价"
     },
     "quote": {
       "rfq_state_invalid": "当前询价单状态不允许此报价操作",

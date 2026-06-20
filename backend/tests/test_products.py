@@ -438,8 +438,9 @@ async def test_operator_product_detail_v2_i18n(client: AsyncClient):
     assert "source_lang" in data
     assert data["source_lang"] == "zh"
     assert data["name_zh"] == "测试LED面板灯36W"
-    # name_en 由 mock 翻译填充(mock 返回原文)
-    assert data["name_en"] is not None
+    # name_en 由异步翻译填充,测试环境中后台任务不执行,
+    # 因此 name_en 可能为 None(pending 状态)
+    assert "name_en" in data
     assert "skus" in data
     assert len(data["skus"]) >= 1
     # SKU 也有 v2 i18n

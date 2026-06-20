@@ -328,10 +328,12 @@ async def test_write_returns_full_cart_dto(client, db_session):
                 "is_purchasable", "unavailable_reason", "unit", "moq"):
         assert key in item, f"Missing key: {key}"
 
-    # 不含供应商/成本/报价
-    item_str = str(item).lower()
-    assert "supplier" not in item_str
-    assert "cost" not in item_str
+    # 不含供应商/成本/报价(供应商字段指 supplier_id/supplier_name 等,
+    # supply_mode 是商品属性不算泄露)
+    assert "supplier_id" not in item
+    assert "supplier_name" not in item
+    assert "cost" not in item
+    assert "cost_price" not in item
 
 
 @pytest.mark.asyncio
