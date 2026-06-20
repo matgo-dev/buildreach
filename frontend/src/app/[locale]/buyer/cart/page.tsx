@@ -13,8 +13,8 @@ import {
   PackageOpen,
   ChevronDown,
   ChevronUp,
-  FileText,
 } from "lucide-react";
+import { RfqTabNav } from "@/components/rfq/RfqTabNav";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -196,21 +196,14 @@ function CartContent() {
 
   return (
     <div className="space-y-4">
-      {/* 页标题 + 跳转按钮 */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-bold text-gray-800">
-          {t("title")}
-          <span className="ml-2 text-base font-normal text-gray-400">
-            ({t("itemCount", { count: items.length })})
-          </span>
-        </h1>
-        <Link
-          href="/buyer/rfqs"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a]/30 px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
-        >
-          <FileText className="h-4 w-4" />
-          {t("viewRfqs")}
-        </Link>
+      {/* Tab 导航：询价篮 / 我的询价单 */}
+      <RfqTabNav />
+
+      {/* 商品数量提示 */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-500">
+          {t("itemCount", { count: items.length })}
+        </span>
       </div>
 
       {/* 商品列表 — 卡片式 */}
@@ -311,7 +304,7 @@ function CartContent() {
                           setEditingVariants([...(item.selected_variants || [])]);
                         }
                       }}
-                      className="mt-1 inline-flex items-center gap-0.5 text-xs text-[#00505a] hover:underline"
+                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-[#00505a]/30 px-2.5 py-0.5 text-xs font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10"
                     >
                       {t("editVariant")}
                       {expandedItemId === item.item_id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -458,14 +451,14 @@ function CartContent() {
                               setVariantSaving(false);
                             }
                           }}
-                          className="rounded-md bg-[#00505a] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#003f46] disabled:opacity-50"
+                          className="rounded-full border border-[#00505a] bg-[#00505a] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b] disabled:opacity-50"
                         >
                           {t("confirmVariant")}
                         </button>
                         <button
                           type="button"
                           onClick={() => setExpandedItemId(null)}
-                          className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                          className="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
                         >
                           {t("cancelEdit")}
                         </button>
@@ -501,7 +494,7 @@ function CartContent() {
           <button
             type="button"
             onClick={() => setBatchDeleteOpen(true)}
-            className="text-sm text-red-500 transition-colors hover:text-red-700"
+            className="inline-flex items-center rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100"
           >
             {t("deleteSelected")}
           </button>
