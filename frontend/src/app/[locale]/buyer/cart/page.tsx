@@ -13,8 +13,8 @@ import {
   PackageOpen,
   ChevronDown,
   ChevronUp,
-  FileText,
 } from "lucide-react";
+import { RfqTabNav } from "@/components/rfq/RfqTabNav";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -196,21 +196,14 @@ function CartContent() {
 
   return (
     <div className="space-y-4">
-      {/* 页标题 + 跳转按钮 */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-bold text-gray-800">
-          {t("title")}
-          <span className="ml-2 text-base font-normal text-gray-400">
-            ({t("itemCount", { count: items.length })})
-          </span>
-        </h1>
-        <Link
-          href="/buyer/rfqs"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a]/30 px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
-        >
-          <FileText className="h-4 w-4" />
-          {t("viewRfqs")}
-        </Link>
+      {/* Tab 导航：询价篮 / 我的询价单 */}
+      <RfqTabNav />
+
+      {/* 商品数量提示 */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-500">
+          {t("itemCount", { count: items.length })}
+        </span>
       </div>
 
       {/* 商品列表 — 卡片式 */}
