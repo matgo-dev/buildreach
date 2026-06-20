@@ -129,6 +129,12 @@ function RfqListContent() {
   const renderActions = useCallback((rfq: { id: number; status: string }) => {
     const btns: React.ReactNode[] = [];
 
+    // 买方前台按钮样式：小型圆角 pill 按钮
+    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a] bg-[#00505a] px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b]";
+    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a]/40 px-3 py-1 text-xs font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10";
+    const btnDanger = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100";
+    const btnWarn = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:bg-amber-100";
+
     // QUOTED / ACCEPTED 可导出报价单
     if (rfq.status === "QUOTED" || rfq.status === "ACCEPTED") {
       btns.push(
@@ -140,7 +146,7 @@ function RfqListContent() {
             e.stopPropagation();
             handleExport(rfq.id);
           }}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[#00505a] hover:underline disabled:opacity-50"
+          className={`${btnOutline} disabled:opacity-50`}
         >
           {exportingId === rfq.id ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -161,7 +167,7 @@ function RfqListContent() {
             e.stopPropagation();
             router.push(`/${locale}/buyer/rfqs/${rfq.id}/edit`);
           }}
-          className="text-xs font-medium text-blue-600 hover:underline"
+          className={btnOutline}
         >
           {t("edit")}
         </button>,
@@ -173,7 +179,7 @@ function RfqListContent() {
             openConfirm(t("submitDraft"), t("submitDraftConfirm"), "primary", t("submitDraft"),
               () => execAction(() => submitRfq(rfq.id), t("submitDraftSuccess")));
           }}
-          className="text-xs font-medium text-[#00505a] hover:underline"
+          className={btnPrimary}
         >
           {t("submitDraft")}
         </button>,
@@ -188,7 +194,7 @@ function RfqListContent() {
             openConfirm(t("withdraw"), t("withdrawConfirm"), "primary", t("withdraw"),
               () => execAction(() => withdrawRfq(rfq.id), t("withdrawSuccess")));
           }}
-          className="text-xs font-medium text-amber-600 hover:underline"
+          className={btnWarn}
         >
           {t("withdraw")}
         </button>,
@@ -200,7 +206,7 @@ function RfqListContent() {
             openConfirm(t("cancel"), t("cancelConfirm"), "danger", t("cancel"),
               () => execAction(() => cancelRfq(rfq.id), t("cancelSuccess")));
           }}
-          className="text-xs font-medium text-red-600 hover:underline"
+          className={btnDanger}
         >
           {t("cancel")}
         </button>,
@@ -215,7 +221,7 @@ function RfqListContent() {
             openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "primary", tQ("accept"),
               () => execAction(() => acceptRfq(rfq.id), tQ("acceptSuccess")));
           }}
-          className="text-xs font-medium text-[#00505a] hover:underline"
+          className={btnPrimary}
         >
           {tQ("accept")}
         </button>,
@@ -227,14 +233,14 @@ function RfqListContent() {
             openConfirm(tQ("confirmRejectTitle"), tQ("confirmReject"), "danger", tQ("reject"),
               () => execAction(() => rejectRfq(rfq.id), tQ("rejectSuccess")));
           }}
-          className="text-xs font-medium text-red-600 hover:underline"
+          className={btnDanger}
         >
           {tQ("reject")}
         </button>,
       );
     }
 
-    return <div className="flex items-center justify-end gap-3">{btns}</div>;
+    return <div className="flex items-center justify-end gap-2 whitespace-nowrap">{btns}</div>;
   }, [t, tQ, locale, router, hasPermission, openConfirm, execAction, exportingId, handleExport]);
 
   return (
@@ -296,7 +302,7 @@ function RfqListContent() {
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {/* 表头 — 与询价篮表头对齐: px-5 py-3 bg-slate-50 */}
-        <div className="grid grid-cols-[1fr_80px_80px_100px_160px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+        <div className="grid grid-cols-[1fr_90px_100px_110px_300px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
           <span className="font-medium">{t("productSummary")}</span>
           <span className="text-center font-medium">{t("totalQty")}</span>
           <span className="text-center font-medium">{t("status")}</span>
@@ -322,7 +328,7 @@ function RfqListContent() {
                 <div
                   key={rfq.id}
                   onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
-                  className="grid grid-cols-[1fr_80px_80px_100px_160px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
+                  className="grid grid-cols-[1fr_90px_100px_110px_300px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
                 >
                   {/* 缩略图 + 商品信息 */}
                   <div className="flex items-center gap-4 min-w-0">
