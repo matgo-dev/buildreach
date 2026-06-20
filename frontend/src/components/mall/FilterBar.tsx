@@ -203,7 +203,7 @@ export function FilterBar({
         {categoryTree.map((cat) => (
           <button
             key={cat.code}
-            onClick={() => onCategoryChange(cat.code === activeCategoryCode ? "" : cat.code)}
+            onClick={() => { if (cat.code !== activeCategoryCode) onCategoryChange(cat.code); }}
             className={`h-7 rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               activeCategoryCode === cat.code
                 ? "bg-teal-900 text-white shadow-sm"
