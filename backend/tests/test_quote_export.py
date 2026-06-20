@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,6 +140,34 @@ def test_quote_export_image_key_uses_local_file_uri(tmp_path, monkeypatch):
 
     assert quote_export._image_key_to_file_uri("products/P-001/main.jpg") == image_path.as_uri()
     assert quote_export._image_key_to_file_uri("../secret.jpg") is None
+
+
+def test_quote_export_image_key_uses_cached_pdf_thumbnail(tmp_path, monkeypatch):
+    """PDF 渲染图片应使用小缩略图 data URI,避免每次解码原图。"""
+    upload_root = tmp_path / "uploads"
+    image_path = upload_root / "products" / "P-001" / "main.jpg"
+    image_path.parent.mkdir(parents=True)
+    Image.new("RGB", (1200, 900), (220, 80, 40)).save(
+        image_path,
+        format="JPEG",
+        quality=95,
+    )
+
+    monkeypatch.setattr(quote_export, "_UPLOADS_DIR", upload_root)
+
+    src = quote_export._image_key_to_pdf_src("products/P-001/main.jpg")
+    assert src is not None
+    assert src.startswith("data:image/jpeg;base64,")
+
+    thumbs = list((upload_root / ".quote_pdf_thumbs").glob("*.jpg"))
+    assert len(thumbs) == 1
+    assert thumbs[0].stat().st_size < image_path.stat().st_size
+
+    with Image.open(thumbs[0]) as thumb:
+        assert max(thumb.size) <= 96
+
+    assert quote_export._image_key_to_pdf_src("products/P-001/main.jpg") == src
+    assert quote_export._image_key_to_pdf_src("../secret.jpg") is None
 
 
 def test_quote_export_content_disposition_encodes_filename():

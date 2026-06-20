@@ -220,12 +220,12 @@ function RfqDetailContent() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 whitespace-nowrap">
           {canEdit && (
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/rfqs/${rfqId}/edit`)}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#00505a]/40 px-4 py-1.5 text-sm font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10"
             >
               <Pencil className="h-3.5 w-3.5" />
               {t("edit")}
@@ -235,7 +235,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setSubmitOpen(true)}
-              className="rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#00505a]/90"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a] bg-[#00505a] px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b]"
             >
               {t("submitDraft")}
             </button>
@@ -245,14 +245,14 @@ function RfqDetailContent() {
               <button
                 type="button"
                 onClick={() => setRejectOpen(true)}
-                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100"
               >
                 {tQ("reject")}
               </button>
               <button
                 type="button"
                 onClick={() => setAcceptOpen(true)}
-                className="rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#00505a]/90"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a] bg-[#00505a] px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b]"
               >
                 {tQ("accept")}
               </button>
@@ -262,7 +262,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setWithdrawOpen(true)}
-              className="rounded-lg border border-amber-200 px-4 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 px-4 py-1.5 text-sm font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:bg-amber-100"
             >
               {t("withdraw")}
             </button>
@@ -271,7 +271,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setCancelOpen(true)}
-              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100"
             >
               {t("cancel")}
             </button>
@@ -394,7 +394,7 @@ function RfqDetailContent() {
                 type="button"
                 onClick={() => setWithdrawOpen(false)}
                 disabled={withdrawing}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
               >
                 {tCommon("cancel")}
               </button>
@@ -402,7 +402,7 @@ function RfqDetailContent() {
                 type="button"
                 onClick={handleWithdraw}
                 disabled={withdrawing}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-200 bg-amber-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-700 active:bg-amber-800 disabled:opacity-60"
               >
                 {withdrawing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {tCommon("confirm")}
@@ -434,7 +434,7 @@ function RfqDetailContent() {
                 type="button"
                 onClick={() => { setCancelOpen(false); setCancelReason(""); }}
                 disabled={cancelling}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
               >
                 {tCommon("cancel")}
               </button>
@@ -442,7 +442,7 @@ function RfqDetailContent() {
                 type="button"
                 onClick={handleCancel}
                 disabled={cancelling}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-red-200 bg-red-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 active:bg-red-800 disabled:opacity-60"
               >
                 {cancelling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {tCommon("confirm")}
@@ -629,7 +629,7 @@ function QuoteCard({
               type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="inline-flex items-center gap-1 rounded-md border border-[#0D4D4D]/20 px-2.5 py-1 text-xs font-medium text-[#0D4D4D] transition-colors hover:bg-[#0D4D4D]/5 disabled:opacity-50"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a]/40 px-3 py-1 text-xs font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10 disabled:opacity-50"
             >
               {downloading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />

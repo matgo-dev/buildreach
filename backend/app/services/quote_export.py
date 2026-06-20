@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import logging
 import time
 from datetime import datetime
@@ -87,6 +89,53 @@ def _image_key_to_file_uri(image_key: str | None) -> str | None:
     return image_path.as_uri()
 
 
+def _image_key_to_pdf_src(image_key: str | None) -> str | None:
+    """Return a small cached data URI for product images embedded in quote PDFs."""
+    if not image_key:
+        return None
+
+    normalized = Path(image_key)
+    if normalized.is_absolute() or ".." in normalized.parts:
+        return None
+
+    uploads_root = _UPLOADS_DIR.resolve()
+    image_path = (_UPLOADS_DIR / normalized).resolve()
+    try:
+        relative_key = image_path.relative_to(uploads_root).as_posix()
+    except ValueError:
+        return None
+
+    if not image_path.is_file():
+        return None
+
+    try:
+        stat = image_path.stat()
+        cache_key = hashlib.sha256(
+            f"{relative_key}:{stat.st_size}:{stat.st_mtime_ns}".encode("utf-8")
+        ).hexdigest()
+        thumb_dir = _UPLOADS_DIR / ".quote_pdf_thumbs"
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        thumb_path = thumb_dir / f"{cache_key}.jpg"
+
+        if not thumb_path.is_file():
+            from PIL import Image, ImageOps
+
+            with Image.open(image_path) as img:
+                img = ImageOps.exif_transpose(img).convert("RGB")
+                img.thumbnail((96, 96), Image.LANCZOS)
+                img.save(thumb_path, format="JPEG", quality=72, optimize=True)
+
+        encoded = base64.b64encode(thumb_path.read_bytes()).decode("ascii")
+        return f"data:image/jpeg;base64,{encoded}"
+    except Exception:
+        logger.warning(
+            "quote PDF image thumbnail failed image_key=%s",
+            image_key,
+            exc_info=True,
+        )
+        return None
+
+
 def _download_filename(rfq_no: str, now: datetime) -> str:
     return f"{rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"
 
@@ -158,9 +207,9 @@ async def generate_quote_pdf(
             )
         )
         for pid, key in rows.all():
-            uri = _image_key_to_file_uri(key)
-            if uri:
-                image_map[pid] = uri
+            src = _image_key_to_pdf_src(key)
+            if src:
+                image_map[pid] = src
 
     subtotal_products = sum(
         (i.line_amount or Decimal("0")) for i in product_items

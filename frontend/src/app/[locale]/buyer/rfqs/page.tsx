@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Loader2, FileText, Package, ShoppingCart, Download } from "lucide-react";
+import { Loader2, FileText, Package, Download } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -21,8 +21,7 @@ import {
 import { acceptRfq, rejectRfq } from "@/lib/api/quotes";
 import { exportQuotePdf } from "@/lib/api/quote-export";
 import { formatRelativeTime } from "@/lib/formatters";
-import { useCartStore } from "@/stores/cartStore";
-import Link from "next/link";
+import { RfqTabNav } from "@/components/rfq/RfqTabNav";
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS = [
@@ -49,7 +48,6 @@ function RfqListContent() {
   const tError = useTranslations("error");
   const toast = useToast();
   const { hasPermission } = usePermissions();
-  const cartCount = useCartStore((s) => s.count);
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
@@ -129,6 +127,12 @@ function RfqListContent() {
   const renderActions = useCallback((rfq: { id: number; status: string }) => {
     const btns: React.ReactNode[] = [];
 
+    // 买方前台按钮样式：小型圆角 pill 按钮
+    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a] bg-[#00505a] px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b]";
+    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a]/40 px-3 py-1 text-xs font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10";
+    const btnDanger = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100";
+    const btnWarn = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:bg-amber-100";
+
     // QUOTED / ACCEPTED 可导出报价单
     if (rfq.status === "QUOTED" || rfq.status === "ACCEPTED") {
       btns.push(
@@ -140,7 +144,7 @@ function RfqListContent() {
             e.stopPropagation();
             handleExport(rfq.id);
           }}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[#00505a] hover:underline disabled:opacity-50"
+          className={`${btnOutline} disabled:opacity-50`}
         >
           {exportingId === rfq.id ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -161,7 +165,7 @@ function RfqListContent() {
             e.stopPropagation();
             router.push(`/${locale}/buyer/rfqs/${rfq.id}/edit`);
           }}
-          className="text-xs font-medium text-blue-600 hover:underline"
+          className={btnOutline}
         >
           {t("edit")}
         </button>,
@@ -173,7 +177,7 @@ function RfqListContent() {
             openConfirm(t("submitDraft"), t("submitDraftConfirm"), "primary", t("submitDraft"),
               () => execAction(() => submitRfq(rfq.id), t("submitDraftSuccess")));
           }}
-          className="text-xs font-medium text-[#00505a] hover:underline"
+          className={btnPrimary}
         >
           {t("submitDraft")}
         </button>,
@@ -188,7 +192,7 @@ function RfqListContent() {
             openConfirm(t("withdraw"), t("withdrawConfirm"), "primary", t("withdraw"),
               () => execAction(() => withdrawRfq(rfq.id), t("withdrawSuccess")));
           }}
-          className="text-xs font-medium text-amber-600 hover:underline"
+          className={btnWarn}
         >
           {t("withdraw")}
         </button>,
@@ -200,7 +204,7 @@ function RfqListContent() {
             openConfirm(t("cancel"), t("cancelConfirm"), "danger", t("cancel"),
               () => execAction(() => cancelRfq(rfq.id), t("cancelSuccess")));
           }}
-          className="text-xs font-medium text-red-600 hover:underline"
+          className={btnDanger}
         >
           {t("cancel")}
         </button>,
@@ -215,7 +219,7 @@ function RfqListContent() {
             openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "primary", tQ("accept"),
               () => execAction(() => acceptRfq(rfq.id), tQ("acceptSuccess")));
           }}
-          className="text-xs font-medium text-[#00505a] hover:underline"
+          className={btnPrimary}
         >
           {tQ("accept")}
         </button>,
@@ -227,76 +231,63 @@ function RfqListContent() {
             openConfirm(tQ("confirmRejectTitle"), tQ("confirmReject"), "danger", tQ("reject"),
               () => execAction(() => rejectRfq(rfq.id), tQ("rejectSuccess")));
           }}
-          className="text-xs font-medium text-red-600 hover:underline"
+          className={btnDanger}
         >
           {tQ("reject")}
         </button>,
       );
     }
 
-    return <div className="flex items-center justify-end gap-3">{btns}</div>;
+    return <div className="flex items-center justify-end gap-2 whitespace-nowrap">{btns}</div>;
   }, [t, tQ, locale, router, hasPermission, openConfirm, execAction, exportingId, handleExport]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-bold text-gray-800">{t("title")}</h1>
-        <Link
-          href={`/${locale}/buyer/cart`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#00505a]/30 px-3 py-1.5 text-sm font-medium text-[#00505a] transition-colors hover:bg-[#00505a] hover:text-white"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          {t("goToCart")}
-          {cartCount > 0 && (
-            <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00505a] px-1 text-xs text-white">
-              {cartCount}
-            </span>
-          )}
-        </Link>
-      </div>
+      {/* Tab 导航：询价篮 / 我的询价单 */}
+      <RfqTabNav />
 
-      {/* 筛选栏 */}
-      <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
-        {/* 范围 tab */}
-        <div className="flex rounded-lg border border-gray-200">
-          <button
-            type="button"
-            onClick={() => { setMineOnly(false); setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              !mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
-            }`}
+      {/* 列表卡片 */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {/* 筛选栏 */}
+        <div className="flex flex-wrap items-center gap-4 border-b border-gray-200 px-5 py-3">
+          {/* 范围 tab */}
+          <div className="flex rounded-lg border border-gray-200">
+            <button
+              type="button"
+              onClick={() => { setMineOnly(false); setPage(1); }}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                !mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {t("filterAll")}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMineOnly(true); setPage(1); }}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {t("filterMine")}
+            </button>
+          </div>
+
+          {/* 状态筛选 */}
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#00505a]"
           >
-            {t("filterAll")}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMineOnly(true); setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {t("filterMine")}
-          </button>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s ? t(`status_${s}` as Parameters<typeof t>[0]) : t("filterAll")}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* 状态筛选 */}
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#00505a]"
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {s ? t(`status_${s}` as Parameters<typeof t>[0]) : t("filterAll")}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* 列表 */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        {/* 表头 — 与询价篮表头对齐: px-5 py-3 bg-slate-50 */}
-        <div className="grid grid-cols-[1fr_80px_80px_100px_160px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+        {/* 表头 */}
+        <div className="grid grid-cols-[1fr_90px_100px_110px_380px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
           <span className="font-medium">{t("productSummary")}</span>
           <span className="text-center font-medium">{t("totalQty")}</span>
           <span className="text-center font-medium">{t("status")}</span>
@@ -322,7 +313,7 @@ function RfqListContent() {
                 <div
                   key={rfq.id}
                   onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
-                  className="grid grid-cols-[1fr_80px_80px_100px_160px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
+                  className="grid grid-cols-[1fr_90px_100px_110px_380px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
                 >
                   {/* 缩略图 + 商品信息 */}
                   <div className="flex items-center gap-4 min-w-0">
