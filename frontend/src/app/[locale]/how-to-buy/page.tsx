@@ -1,12 +1,13 @@
 "use client";
 
 import { Suspense, useCallback } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, useRouter, usePathname } from "@/i18n/navigation";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
+import { FulfillmentShowcase } from "@/components/how-to-buy/FulfillmentShowcase";
 
 /* ---------- step 配色 ---------- */
 
@@ -75,7 +76,6 @@ type TabKey = (typeof TABS)[number]["key"];
 
 function HowToBuyContent() {
   const t = useTranslations("howToBuy");
-  const locale = useLocale();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -150,15 +150,7 @@ function HowToBuyContent() {
       </div>
 
       {/* ===== 履约保障 Tab ===== */}
-      {activeTab === "fulfillment" && (
-        <div style={{ height: "calc(100vh - 10rem)" }}>
-          <iframe
-            src={`/demos/fulfillment-showcase.html?lang=${locale}`}
-            className="w-full h-full border-0"
-            title="Fulfillment Showcase"
-          />
-        </div>
-      )}
+      {activeTab === "fulfillment" && <FulfillmentShowcase />}
 
       {/* ===== 采购路径 Tab ===== */}
       {activeTab === "buy" && (
