@@ -94,6 +94,7 @@ services:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
     volumes:
       - uploads:/app/uploads
+      - private_uploads:/app/private_uploads
     ports:
       - "${BACKEND_HOST_PORT:-8001}:8000"
     logging: *default-logging
@@ -119,3 +120,6 @@ volumes:
   uploads:
     # 商品图片等用户上传文件，容器重建不丢
     name: overseas_platform_uploads
+  private_uploads:
+    # 附件等私有文件（鉴权下载），容器重建不丢
+    name: overseas_platform_private_uploads
