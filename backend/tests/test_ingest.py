@@ -537,8 +537,8 @@ class TestProductImport:
             "key_zh": "原产地",
             "selectable": False,
             "values": [
-                {"label_en": "Guangdong", "label_zh": "Guangdong"},
-                {"label_en": "China", "label_zh": "China"},
+                {"label_en": "Guangdong", "label_zh": "广东"},
+                {"label_en": "China", "label_zh": "中国"},
             ],
         })
         static_root = Path("/tmp/test_ingest_static")
@@ -556,7 +556,7 @@ class TestProductImport:
             select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
         ).scalar_one()
         assert product.origin_en == "Guangdong, China"
-        assert product.origin_zh == "Guangdong, China"
+        assert product.origin_zh == "广东, 中国"
         origin_attrs = db.execute(
             select(ProductAttr).where(
                 ProductAttr.product_id == product.id,
@@ -566,7 +566,7 @@ class TestProductImport:
         assert origin_attrs == []
 
     def test_color_swatch_image(self, prepared_db, cat_tree, offers, run_meta):
-        """色板图:label + swatch_image 同时有 → 属性 text + 图片 spec_value 绑定。"""
+        """色板图:label + swatch_image 同时有 → 属性 image + 图片 spec_value 绑定。"""
         db, slug_to_code, run = prepared_db
         offer = self._get_valid_offer(cat_tree, offers, run_meta)
         static_root = Path("/tmp/test_ingest_static")
@@ -592,7 +592,8 @@ class TestProductImport:
                 ProductAttr.attr_value_en == "Oak",
             )
         ).scalar_one()
-        assert oak_attr.value_type == "text"
+        # 有 swatch_image 时 value_type 被提升为 "image"(import_products.py L922-923)
+        assert oak_attr.value_type == "image"
         assert oak_attr.attr_value_zh == "橡木"
 
         # 色板图存在且绑定 spec_value

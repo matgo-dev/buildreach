@@ -100,6 +100,11 @@ AUDIT_EXEMPT_WRITE_ROUTES: set[tuple[str, str]] = {
     ("PATCH", "/api/v1/auth/me/language"),
     # 浏览偏好:个人设置,低风险
     ("PUT", "/api/v1/buyer/browse-preferences"),
+    # 买方浏览痕迹清理:个人隐私操作,低风险
+    ("DELETE", "/api/v1/buyer/events/recent-searches"),
+    ("DELETE", "/api/v1/buyer/events/recent-views/{product_id}"),
+    # 文件上传:通用上传端点,文件本身无业务决策
+    ("POST", "/api/v1/uploads/files"),
 }
 
 
