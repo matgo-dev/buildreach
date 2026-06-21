@@ -537,8 +537,8 @@ class TestProductImport:
             "key_zh": "原产地",
             "selectable": False,
             "values": [
-                {"label_en": "Guangdong", "label_zh": "Guangdong"},
-                {"label_en": "China", "label_zh": "China"},
+                {"label_en": "Guangdong", "label_zh": "广东"},
+                {"label_en": "China", "label_zh": "中国"},
             ],
         })
         static_root = Path("/tmp/test_ingest_static")
@@ -556,7 +556,7 @@ class TestProductImport:
             select(Product).where(Product.spu_code == f"P-{offer.offer_id}")
         ).scalar_one()
         assert product.origin_en == "Guangdong, China"
-        assert product.origin_zh == "Guangdong, China"
+        assert product.origin_zh == "广东, 中国"
         origin_attrs = db.execute(
             select(ProductAttr).where(
                 ProductAttr.product_id == product.id,
@@ -566,7 +566,7 @@ class TestProductImport:
         assert origin_attrs == []
 
     def test_color_swatch_image(self, prepared_db, cat_tree, offers, run_meta):
-        """色板图:label + swatch_image 同时有 → 属性 text + 图片 spec_value 绑定。"""
+        """色板图:label + swatch_image 同时有 → 属性 image + 图片 spec_value 绑定。"""
         db, slug_to_code, run = prepared_db
         offer = self._get_valid_offer(cat_tree, offers, run_meta)
         static_root = Path("/tmp/test_ingest_static")
@@ -592,19 +592,24 @@ class TestProductImport:
                 ProductAttr.attr_value_en == "Oak",
             )
         ).scalar_one()
-        assert oak_attr.value_type == "text"
+        # 有 swatch_image 时 value_type 被提升为 "image"(import_products.py L922-923)
+        assert oak_attr.value_type == "image"
         assert oak_attr.attr_value_zh == "橡木"
+        # swatch_image 列存储 image_key(products/<spu_code>/<filename>)
+        assert oak_attr.swatch_image is not None
+        assert "color_oak" in oak_attr.swatch_image
 
-        # 色板图存在且绑定 spec_value
-        swatch_imgs = db.execute(
-            select(ProductImage).where(
-                ProductImage.product_id == product.id,
-                ProductImage.spec_value.isnot(None),
+        # Walnut 色板同理
+        walnut_attr = db.execute(
+            select(ProductAttr).where(
+                ProductAttr.product_id == product.id,
+                ProductAttr.attr_key_en == "Color",
+                ProductAttr.attr_value_en == "Walnut",
             )
-        ).scalars().all()
-        spec_values = {img.spec_value for img in swatch_imgs}
-        assert "颜色:Oak" in spec_values
-        assert "颜色:Walnut" in spec_values
+        ).scalar_one()
+        assert walnut_attr.value_type == "image"
+        assert walnut_attr.swatch_image is not None
+        assert "color_walnut" in walnut_attr.swatch_image
 
     def test_images_main_gallery_detail(self, prepared_db, cat_tree, offers, run_meta):
         """图片类型:首张 MAIN,其余 GALLERY;description_images → DETAIL。"""

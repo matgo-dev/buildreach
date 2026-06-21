@@ -1,0 +1,33 @@
+{
+  "source": {
+    "offer_id": "TEST00000002",
+    "offer_url": "https://www.alibaba.com/product-detail/_TEST00000002.html",
+    "crawled_at": "2026-06-12T09:00:00Z"
+  },
+  "source_category_path": [
+    { "name_en": "Construction & Real Estate", "name_zh": "建筑及房地产" },
+    { "name_en": "Flooring", "name_zh": "地板" },
+    { "name_en": "Bamboo Flooring", "name_zh": "竹地板" }
+  ],
+  "product_name_en": "Bamboo Flooring Panel",
+  "product_name_zh": "竹地板面板",
+  "listing_title_en": "Natural Bamboo Flooring Panel",
+  "listing_title_zh": null,
+  "description_en": "Eco-friendly bamboo flooring.",
+  "description_zh": null,
+  "moq": { "value": 100, "unit": "sqm" },
+  "attributes": [
+    {
+      "group": "Key attributes",
+      "key_en": "Material",
+      "key_zh": "材质",
+      "selectable": false,
+      "values": [{ "label_en": "Bamboo", "label_zh": "竹" }]
+    }
+  ],
+  "gallery": [],
+  "description_images": [],
+  "packing": null,
+  "video_url": null,
+  "price_tiers": []
+}

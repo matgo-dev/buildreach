@@ -110,7 +110,8 @@
       "not_assigned_to_you": "Ombi hili halikupewa wewe",
       "min_one_item": "Angalau kipengee kimoja kinahitajika",
       "too_many_attachments": "Viambatisho vingi sana (upeo 6)",
-      "invalid_attachment_url": "URL ya kiambatisho si sahihi"
+      "invalid_attachment_url": "URL ya kiambatisho si sahihi",
+      "no_quote_to_export": "Hakuna nukuu ya kusafirisha"
     },
     "quote": {
       "rfq_state_invalid": "Operesheni ya nukuu hairuhusiwi kwa hali ya sasa ya RFQ",
