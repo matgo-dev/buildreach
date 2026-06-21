@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.constants.quote_terms import CurrencyCode, TradeTermCode
 from app.schemas.attachment import AttachmentPublic
@@ -67,10 +67,20 @@ class QuoteHeaderInput(BaseModel):
 
 
 class QuoteCreatePayload(BaseModel):
-    """创建/重报报价请求体。"""
+    """创建/重报报价请求体。lines 和 attachment_ids 至少一个非空。"""
     header: QuoteHeaderInput = QuoteHeaderInput()
-    lines: list[QuoteLineInput]
+    lines: list[QuoteLineInput] = []
     attachment_ids: list[int] | None = None
+
+    @model_validator(mode="after")
+    def _lines_or_attachments_required(self) -> "QuoteCreatePayload":
+        """报价行或附件至少一个非空——附件可作为完整报价文档。"""
+        has_lines = bool(self.lines)
+        has_attachments = bool(self.attachment_ids)
+        if not has_lines and not has_attachments:
+            from app.core.exceptions import QuoteLinesIncompleteError
+            raise QuoteLinesIncompleteError()
+        return self
 
 
 # ── 响应体:阶梯价(公共)──────────────────────────────────

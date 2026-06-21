@@ -1014,6 +1014,7 @@
     "skippedLabel": "Unavailable",
     "skipReasonPlaceholder": "Reason (optional)",
     "allSkippedError": "Cannot skip all line items",
+    "linesOrAttachmentsRequired": "Either quote lines or attachments is required",
     "lineType": "Type",
     "lineProduct": "Product",
     "lineFee": "Fee",

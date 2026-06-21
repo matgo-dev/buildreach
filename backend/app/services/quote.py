@@ -82,10 +82,9 @@ def _validate_quote_lines(
     rfq_item_map: dict[int, RfqItem],
     quote_lines: list[QuoteLineInput],
 ) -> None:
-    """校验报价行：至少一行、source 存在、PRODUCT 行必须有 product_id、必须有 unit_price。"""
-    if not quote_lines:
-        raise QuoteLinesIncompleteError()
-
+    """校验报价行：source 存在、PRODUCT 行必须有 product_id、必须有 unit_price。
+    lines 可为空（附件作为完整报价文档时），schema 层已校验 lines-or-attachments。
+    """
     for line in quote_lines:
         if line.line_type not in QuoteLineType.ALL:
             raise QuoteItemMismatchError()

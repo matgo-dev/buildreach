@@ -1014,6 +1014,7 @@
     "skippedLabel": "无法供应",
     "skipReasonPlaceholder": "原因（选填）",
     "allSkippedError": "不能跳过全部行项",
+    "linesOrAttachmentsRequired": "报价明细和报价附件至少填写一项",
     "lineType": "类型",
     "lineProduct": "商品",
     "lineFee": "费用",

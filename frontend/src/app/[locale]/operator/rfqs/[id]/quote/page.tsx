@@ -548,7 +548,10 @@ function QuoteBackfillContent() {
 
   // 提交
   const handleSubmit = useCallback(async () => {
-    if (lines.length === 0) { toast.error(t("allSkippedError")); return; }
+    // 报价行和附件至少一个非空
+    if (lines.length === 0 && quoteAttachments.length === 0) {
+      toast.error(t("linesOrAttachmentsRequired")); return;
+    }
 
     const hasEmpty = lines.some((l) => l.unit_price === "" || isNaN(parseFloat(l.unit_price)));
     if (hasEmpty) { setShowErrors(true); toast.error(t("unitPriceRequired")); return; }
