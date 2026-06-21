@@ -205,27 +205,27 @@ async def create_rfq(
         if existing_id is not None:
             return await _load_and_serialize(db, existing_id, is_operator=scope.is_operator)
 
-    # ── 1. 行项解析 ──
-    if not payload.items:
-        raise RfqNoValidItemsError()
-    _check_duplicate_items(payload.items)
-    item_rows = _resolve_direct_items(payload.items)
+    # ── 1. 行项解析（自由询价允许 items 为空，schema 层已校验 items-or-remark）──
+    item_rows: list[dict] = []
+    if payload.items:
+        _check_duplicate_items(payload.items)
+        item_rows = _resolve_direct_items(payload.items)
 
-    # ── 2. SPU 可用性校验 + 快照数据 ──
-    offending: list[int] = []
-    for row in item_rows:
-        product = await _get_viewable_product(db, row["product_id"])
-        if not product:
-            offending.append(row["product_id"])
-        else:
-            row["product_name_snapshot_zh"] = product.name_zh
-            row["product_name_snapshot_en"] = product.name_en
-            row["uom_snapshot"] = product.unit
-            row["variant_snapshot"] = await normalize_variants_to_en(
-                db, product.id, row["selected_variants"],
-            )
-    if offending:
-        raise RfqProductNotAvailableError(offending)
+        # ── 2. SPU 可用性校验 + 快照数据 ──
+        offending: list[int] = []
+        for row in item_rows:
+            product = await _get_viewable_product(db, row["product_id"])
+            if not product:
+                offending.append(row["product_id"])
+            else:
+                row["product_name_snapshot_zh"] = product.name_zh
+                row["product_name_snapshot_en"] = product.name_en
+                row["uom_snapshot"] = product.unit
+                row["variant_snapshot"] = await normalize_variants_to_en(
+                    db, product.id, row["selected_variants"],
+                )
+        if offending:
+            raise RfqProductNotAvailableError(offending)
 
     # ── 3. attachment_urls 校验 ──
     validate_attachment_urls(payload.attachment_urls)
@@ -886,25 +886,25 @@ async def update_rfq(
     if rfq.status != RfqStatus.DRAFT:
         raise RfqStateInvalidError(rfq.status)
 
-    if not payload.items:
-        raise RfqNoValidItemsError()
-    _check_duplicate_items(payload.items)
-
-    item_rows = _resolve_direct_items(payload.items)
-    offending: list[int] = []
-    for row in item_rows:
-        product = await _get_viewable_product(db, row["product_id"])
-        if not product:
-            offending.append(row["product_id"])
-        else:
-            row["product_name_snapshot_zh"] = product.name_zh
-            row["product_name_snapshot_en"] = product.name_en
-            row["uom_snapshot"] = product.unit
-            row["variant_snapshot"] = await normalize_variants_to_en(
-                db, product.id, row["selected_variants"],
-            )
-    if offending:
-        raise RfqProductNotAvailableError(offending)
+    # 自由询价允许 items 为空，schema 层已校验 items-or-remark
+    item_rows: list[dict] = []
+    if payload.items:
+        _check_duplicate_items(payload.items)
+        item_rows = _resolve_direct_items(payload.items)
+        offending: list[int] = []
+        for row in item_rows:
+            product = await _get_viewable_product(db, row["product_id"])
+            if not product:
+                offending.append(row["product_id"])
+            else:
+                row["product_name_snapshot_zh"] = product.name_zh
+                row["product_name_snapshot_en"] = product.name_en
+                row["uom_snapshot"] = product.unit
+                row["variant_snapshot"] = await normalize_variants_to_en(
+                    db, product.id, row["selected_variants"],
+                )
+        if offending:
+            raise RfqProductNotAvailableError(offending)
 
     # 硬删旧行项(草稿态配置数据，全量替换)
     await db.execute(delete(RfqItem).where(RfqItem.rfq_id == rfq.id))

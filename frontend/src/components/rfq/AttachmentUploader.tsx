@@ -30,6 +30,7 @@ export default function AttachmentUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [lightboxId, setLightboxId] = useState<number | null>(null);
 
   // blob URL 缓存(图片缩略图)
   const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({});
@@ -148,7 +149,8 @@ export default function AttachmentUploader({
                 <img
                   src={thumbUrls[att.id]}
                   alt={att.original_filename}
-                  className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
+                  className="h-20 w-20 cursor-pointer rounded-lg border border-gray-200 object-cover transition-shadow hover:shadow-md"
+                  onClick={() => setLightboxId(att.id)}
                 />
               ) : (
                 <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50">
@@ -214,6 +216,29 @@ export default function AttachmentUploader({
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
+
+      {/* Lightbox 图片预览 */}
+      {lightboxId !== null && thumbUrls[lightboxId] && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70"
+          onClick={() => setLightboxId(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxId(null)}
+            className="absolute right-4 top-4 rounded-full bg-white/20 p-2 text-white transition-colors hover:bg-white/40"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbUrls[lightboxId]}
+            alt={attachments.find((a) => a.id === lightboxId)?.original_filename ?? ""}
+            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

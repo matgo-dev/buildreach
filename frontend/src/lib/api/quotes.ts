@@ -4,6 +4,7 @@
 // 运营视角返回 RfqQuoteOperatorView
 
 import { api } from "../api";
+import type { AttachmentPublic } from "./attachments";
 
 // ---------- 枚举码镜像（与后端 quote_terms.py 同源）----------
 
@@ -63,6 +64,7 @@ export interface QuoteHeaderInput {
 export interface QuoteCreatePayload {
   header: QuoteHeaderInput;
   lines: QuoteLineInput[];
+  attachment_ids?: number[];
 }
 
 // ---------- 响应类型 ----------
@@ -106,6 +108,7 @@ export interface RfqQuoteBuyerPublic {
   eta_days: number | null;
   total_amount: number | null;
   items: QuoteItemBuyerPublic[];
+  attachments: AttachmentPublic[];
 }
 
 export interface RfqQuoteOperatorView {
@@ -124,6 +127,7 @@ export interface RfqQuoteOperatorView {
   total_amount: number | null;
   created_at: string | null;
   items: QuoteItemOperatorView[];
+  attachments: AttachmentPublic[];
 }
 
 export interface RfqDecisionResult {
