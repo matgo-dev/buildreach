@@ -104,8 +104,9 @@ docker compose -f "$COMPOSE_FILE" --env-file .env.production pull backend fronte
 
 # ---- 4. 记录旧镜像（回滚用）----
 echo "[deploy] [4/7] 记录当前运行镜像"
-OLD_BACKEND_IMAGE=$(docker compose -f "$COMPOSE_FILE" images backend --format '{{.Image}}:{{.Tag}}' 2>/dev/null | head -1 || true)
-OLD_FRONTEND_IMAGE=$(docker compose -f "$COMPOSE_FILE" images frontend --format '{{.Image}}:{{.Tag}}' 2>/dev/null | head -1 || true)
+# docker inspect 直接取镜像 ID，比 docker compose images --format 兼容性更好
+OLD_BACKEND_IMAGE=$(docker inspect --format '{{.Config.Image}}' "$(docker compose -f "$COMPOSE_FILE" ps -q backend 2>/dev/null)" 2>/dev/null || true)
+OLD_FRONTEND_IMAGE=$(docker inspect --format '{{.Config.Image}}' "$(docker compose -f "$COMPOSE_FILE" ps -q frontend 2>/dev/null)" 2>/dev/null || true)
 echo "[deploy]       旧 backend  → ${OLD_BACKEND_IMAGE:-首次部署}"
 echo "[deploy]       旧 frontend → ${OLD_FRONTEND_IMAGE:-首次部署}"
 
@@ -149,14 +150,25 @@ if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ]; then
         docker compose -f "$COMPOSE_FILE" logs --tail=30 frontend 2>&1 | sed 's/^/         /'
     fi
 
-    # 回滚:如果有旧镜像记录,回退到上一版本
+    # 回滚:如果有旧镜像记录,用旧镜像重启容器
     if [ -n "$OLD_BACKEND_IMAGE" ] && [ -n "$OLD_FRONTEND_IMAGE" ]; then
         echo "[deploy] 🔄 回滚到上一版本..."
+        echo "[deploy]    旧 backend  → $OLD_BACKEND_IMAGE"
+        echo "[deploy]    旧 frontend → $OLD_FRONTEND_IMAGE"
+        # 回退代码到上一版本（compose 文件、entrypoint 等都要匹配旧镜像）
         git reset --hard "$PREV_SHA"
-        docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --remove-orphans
+        # 用旧镜像重启（不再 pull，直接用本地缓存的旧镜像）
+        docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --no-pull --remove-orphans
         # 等回滚后的服务起来
-        sleep 10
-        if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
+        ROLLBACK_OK=0
+        for i in $(seq 1 15); do
+            if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
+                ROLLBACK_OK=1
+                break
+            fi
+            sleep 2
+        done
+        if [ "$ROLLBACK_OK" -eq 1 ]; then
             echo "[deploy] ✅ 回滚成功,服务已恢复到 $PREV_SHA"
         else
             echo "[deploy] ❌ 回滚后服务仍不健康,需人工介入"
