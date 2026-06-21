@@ -82,10 +82,9 @@ def _validate_quote_lines(
     rfq_item_map: dict[int, RfqItem],
     quote_lines: list[QuoteLineInput],
 ) -> None:
-    """校验报价行：至少一行、source 存在、PRODUCT 行必须有 product_id、必须有 unit_price。"""
-    if not quote_lines:
-        raise QuoteLinesIncompleteError()
-
+    """校验报价行：source 存在、PRODUCT 行必须有 product_id、必须有 unit_price。
+    lines 可为空（附件作为完整报价文档时），schema 层已校验 lines-or-attachments。
+    """
     for line in quote_lines:
         if line.line_type not in QuoteLineType.ALL:
             raise QuoteItemMismatchError()
@@ -289,6 +288,14 @@ async def create_quote(
             ))
 
     quote.total_amount = total_amount
+
+    # 附件关联（与报价写同事务）
+    if payload.attachment_ids:
+        from app.db.models.attachment import OwnerType
+        from app.services.attachment import validate_and_link_attachments
+        await validate_and_link_attachments(
+            db, user.id, OwnerType.QUOTE, quote.id, payload.attachment_ids,
+        )
 
     # 首报 / 被拒后重报 → QUOTED
     if is_first or is_rejected:
@@ -507,9 +514,17 @@ async def get_quotes(
 
     quotes = (await db.execute(quote_q)).scalars().all()
 
-    if scope.is_operator:
-        return [_serialize_quote_operator(q) for q in quotes]
-    return [_serialize_quote_buyer(q) for q in quotes]
+    from app.db.models.attachment import OwnerType
+    from app.services.attachment import list_attachments_for_owner
+
+    result = []
+    for q in quotes:
+        atts = await list_attachments_for_owner(db, OwnerType.QUOTE, q.id)
+        if scope.is_operator:
+            result.append(_serialize_quote_operator(q, attachments=atts))
+        else:
+            result.append(_serialize_quote_buyer(q, attachments=atts))
+    return result
 
 
 # ── 加载并序列化单个报价(运营) ─────────────────────────────
@@ -519,6 +534,9 @@ async def _load_and_serialize_quote(
     db: AsyncSession, quote_id: int,
 ) -> RfqQuoteOperatorView:
     """重新加载并序列化(运营全量)。"""
+    from app.db.models.attachment import OwnerType
+    from app.services.attachment import list_attachments_for_owner
+
     row = await db.execute(
         select(RfqQuote)
         .where(RfqQuote.id == quote_id)
@@ -528,7 +546,8 @@ async def _load_and_serialize_quote(
         )
     )
     quote = row.scalar_one()
-    return _serialize_quote_operator(quote)
+    attachments = await list_attachments_for_owner(db, OwnerType.QUOTE, quote.id)
+    return _serialize_quote_operator(quote, attachments=attachments)
 
 
 # ── 序列化 ──────────────────────────────────────────────
@@ -558,7 +577,10 @@ def _serialize_quote_item_buyer(qi: RfqQuoteItem) -> QuoteItemBuyerPublic:
     )
 
 
-def _serialize_quote_buyer(quote: RfqQuote) -> RfqQuoteBuyerPublic:
+def _serialize_quote_buyer(
+    quote: RfqQuote,
+    attachments: list | None = None,
+) -> RfqQuoteBuyerPublic:
     """买方 DTO:无 cost/supplier/quoted_by/版本。"""
     items = [
         _serialize_quote_item_buyer(qi)
@@ -576,10 +598,14 @@ def _serialize_quote_buyer(quote: RfqQuote) -> RfqQuoteBuyerPublic:
         eta_days=quote.eta_days,
         total_amount=quote.total_amount,
         items=items,
+        attachments=attachments or [],
     )
 
 
-def _serialize_quote_operator(quote: RfqQuote) -> RfqQuoteOperatorView:
+def _serialize_quote_operator(
+    quote: RfqQuote,
+    attachments: list | None = None,
+) -> RfqQuoteOperatorView:
     """运营 DTO:全量含成本层。"""
     items = []
     for qi in quote.items:
@@ -617,6 +643,7 @@ def _serialize_quote_operator(quote: RfqQuote) -> RfqQuoteOperatorView:
         total_amount=quote.total_amount,
         created_at=quote.created_at,
         items=items,
+        attachments=attachments or [],
     )
 
 
@@ -641,9 +668,19 @@ async def load_quote_for_rfq_detail(
 
     quotes = (await db.execute(quote_q)).scalars().all()
 
+    from app.db.models.attachment import OwnerType
+    from app.services.attachment import list_attachments_for_owner
+
     if is_operator:
-        return [_serialize_quote_operator(q) for q in quotes] if quotes else []
+        if not quotes:
+            return []
+        result = []
+        for q in quotes:
+            atts = await list_attachments_for_owner(db, OwnerType.QUOTE, q.id)
+            result.append(_serialize_quote_operator(q, attachments=atts))
+        return result
 
     if quotes:
-        return _serialize_quote_buyer(quotes[0])
+        atts = await list_attachments_for_owner(db, OwnerType.QUOTE, quotes[0].id)
+        return _serialize_quote_buyer(quotes[0], attachments=atts)
     return None

@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.attachment import AttachmentPublic
 
@@ -28,8 +28,8 @@ class RfqItemInput(BaseModel):
 
 
 class RfqCreate(BaseModel):
-    """创建询价单请求体。"""
-    items: list[RfqItemInput]          # 统一入参，必填，≥1 条
+    """创建询价单请求体。自由询价允许 items 为空，但 items 和 remark 至少一个非空。"""
+    items: list[RfqItemInput] = []     # 选填，自由询价可为空
     as_draft: bool = False             # True → 保存为草稿(DRAFT)，False → 直接提交(SUBMITTED)
 
     # 运营代客
@@ -49,10 +49,20 @@ class RfqCreate(BaseModel):
     attachment_ids: list[int] | None = None
     remark: str | None = None
 
+    @model_validator(mode="after")
+    def _items_or_remark_required(self) -> "RfqCreate":
+        """items 与 remark 至少一个非空；仅附件不算——附件辅助说明，不作唯一结构化内容。"""
+        has_items = bool(self.items)
+        has_remark = bool(self.remark and self.remark.strip())
+        if not has_items and not has_remark:
+            from app.core.exceptions import RfqItemsOrRemarkRequiredError
+            raise RfqItemsOrRemarkRequiredError()
+        return self
+
 
 class RfqUpdate(BaseModel):
-    """草稿态整单更新请求体。行项全量替换。"""
-    items: list[RfqItemInput]          # 全量替换，≥1 条
+    """草稿态整单更新请求体。行项全量替换。自由询价允许 items 为空。"""
+    items: list[RfqItemInput] = []     # 选填，自由询价可为空
 
     contact_name: str | None = None
     contact_phone: str | None = None
@@ -67,6 +77,16 @@ class RfqUpdate(BaseModel):
     attachment_urls: list[str] | None = None
     attachment_ids: list[int] | None = None
     remark: str | None = None
+
+    @model_validator(mode="after")
+    def _items_or_remark_required(self) -> "RfqUpdate":
+        """items 与 remark 至少一个非空。"""
+        has_items = bool(self.items)
+        has_remark = bool(self.remark and self.remark.strip())
+        if not has_items and not has_remark:
+            from app.core.exceptions import RfqItemsOrRemarkRequiredError
+            raise RfqItemsOrRemarkRequiredError()
+        return self
 
 
 class RfqCancelRequest(BaseModel):

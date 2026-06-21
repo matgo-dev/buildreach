@@ -846,8 +846,12 @@ function RfqCreateContent() {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
 
+  // 自由询价：items 和 remark 至少一个非空
+  const hasRemark = !!(draft.remark && draft.remark.trim());
+  const canSubmit = totalItemCount > 0 || hasRemark;
+
   const doCreate = useCallback(async (asDraft: boolean) => {
-    if (submitting || savingDraft || totalItemCount === 0) return;
+    if (submitting || savingDraft || !canSubmit) return;
     if (!idemRef.current) {
       idemRef.current = createClientId();
     }
@@ -880,7 +884,7 @@ function RfqCreateContent() {
         toast.error(t("productNotFound"));
       }
 
-      if (cartItems.length + availableManualItems.length === 0) {
+      if (cartItems.length + availableManualItems.length === 0 && !hasRemark) {
         setItemsWarning(t("itemsAllMissing"));
         return;
       }
@@ -961,7 +965,7 @@ function RfqCreateContent() {
       setSubmitting(false);
       setSavingDraft(false);
     }
-  }, [submitting, savingDraft, totalItemCount, cartItems, manualItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
+  }, [submitting, savingDraft, canSubmit, hasRemark, totalItemCount, cartItems, manualItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
 
   const handleSubmit = useCallback(() => doCreate(false), [doCreate]);
   const handleSaveDraft = useCallback(() => doCreate(true), [doCreate]);
@@ -1220,7 +1224,7 @@ function RfqCreateContent() {
               })}
 
               {/* 空状态 */}
-              {totalItemCount === 0 && (
+              {!canSubmit && (
                 <tr>
                   <td colSpan={4} className="px-5 py-12 text-center">
                     <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-gray-200" />
@@ -1435,10 +1439,10 @@ function RfqCreateContent() {
         </button>
         <button
           type="button"
-          disabled={savingDraft || submitting || totalItemCount === 0}
+          disabled={savingDraft || submitting || !canSubmit}
           onClick={handleSaveDraft}
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
-            savingDraft || submitting || totalItemCount === 0
+            savingDraft || submitting || !canSubmit
               ? "border-gray-200 text-gray-400 cursor-not-allowed"
               : "border-[#00505a] text-[#00505a] hover:bg-[#00505a]/5"
           }`}
@@ -1448,10 +1452,10 @@ function RfqCreateContent() {
         </button>
         <button
           type="button"
-          disabled={submitting || savingDraft || totalItemCount === 0}
+          disabled={submitting || savingDraft || !canSubmit}
           onClick={handleSubmit}
           className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
-            submitting || savingDraft || totalItemCount === 0
+            submitting || savingDraft || !canSubmit
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
               : "bg-[#00505a] text-white hover:bg-[#003f46]"
           }`}

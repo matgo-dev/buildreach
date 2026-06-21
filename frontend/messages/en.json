@@ -111,7 +111,8 @@
       "min_one_item": "At least one item is required",
       "too_many_attachments": "Too many attachments (max 6)",
       "invalid_attachment_url": "Invalid attachment URL",
-      "no_quote_to_export": "No quote available to export"
+      "no_quote_to_export": "No quote available to export",
+      "items_or_remark_required": "Either items or remark is required"
     },
     "attachment": {
       "too_many": "Too many attachments (maximum 6 allowed)",
@@ -941,6 +942,7 @@
     "submitDirectly": "Submit Directly",
     "buyerOrgRequired": "Please select a buyer organization",
     "itemsRequired": "Please add at least one item",
+    "itemsOrRemarkRequired": "Either items or remark is required",
     "createSuccess": "RFQ created successfully",
     "draftSaved": "Draft saved",
     "attachment": {
@@ -1012,6 +1014,7 @@
     "skippedLabel": "Unavailable",
     "skipReasonPlaceholder": "Reason (optional)",
     "allSkippedError": "Cannot skip all line items",
+    "linesOrAttachmentsRequired": "Either quote lines or attachments is required",
     "lineType": "Type",
     "lineProduct": "Product",
     "lineFee": "Fee",
@@ -1047,7 +1050,10 @@
     "confirmVariant": "Confirm",
     "noSelectableAttrs": "No selectable specs",
     "skuSpec": "Select Variant",
-    "moqFromTier": "Determined by first tier"
+    "moqFromTier": "Determined by first tier",
+    "quoteAttachments": "Quote Attachments",
+    "noItems": "No items (free-form inquiry)",
+    "buyerRemark": "Requirement Description"
   },
   "nav": {
     "mall": "Mall",

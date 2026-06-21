@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/Toast";
 import { RfqStatusBadge } from "@/components/rfq/RfqStatusBadge";
 import { ApiError } from "@/lib/api";
 import { getRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
+import AttachmentUploader from "@/components/rfq/AttachmentUploader";
+import type { AttachmentPublic } from "@/lib/api/attachments";
 import { listQuotes } from "@/lib/api/quotes";
 import {
   backfillQuote,
@@ -434,6 +436,7 @@ function QuoteBackfillContent() {
   const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [quoteAttachments, setQuoteAttachments] = useState<AttachmentPublic[]>([]);
 
   // 变体编辑
   const [expandedVariantIdx, setExpandedVariantIdx] = useState<number | null>(null);
@@ -545,7 +548,10 @@ function QuoteBackfillContent() {
 
   // 提交
   const handleSubmit = useCallback(async () => {
-    if (lines.length === 0) { toast.error(t("allSkippedError")); return; }
+    // 报价行和附件至少一个非空
+    if (lines.length === 0 && quoteAttachments.length === 0) {
+      toast.error(t("linesOrAttachmentsRequired")); return;
+    }
 
     const hasEmpty = lines.some((l) => l.unit_price === "" || isNaN(parseFloat(l.unit_price)));
     if (hasEmpty) { setShowErrors(true); toast.error(t("unitPriceRequired")); return; }
@@ -583,7 +589,11 @@ function QuoteBackfillContent() {
         return out;
       });
 
-      const payload: QuoteCreatePayload = { header: headerPayload, lines: quoteLines };
+      const payload: QuoteCreatePayload = {
+        header: headerPayload,
+        lines: quoteLines,
+        attachment_ids: quoteAttachments.length > 0 ? quoteAttachments.map((a) => a.id) : undefined,
+      };
       await backfillQuote(rfqId, payload);
       clearDraft(rfqId);
       toast.success(t("submitSuccess"));
@@ -596,7 +606,7 @@ function QuoteBackfillContent() {
         toast.error(err instanceof Error ? err.message : String(err));
       }
     } finally { setSubmitting(false); }
-  }, [rfqId, rfq, header, lines, router, locale, toast, t, tError]);
+  }, [rfqId, rfq, header, lines, quoteAttachments, router, locale, toast, t, tError]);
 
   // ── 拦截 / loading ─────────────────────────────────────
   if (rfq && rfq.status !== "PROCESSING" && rfq.status !== "QUOTED" && rfq.status !== "REJECTED") {
@@ -682,26 +692,37 @@ function QuoteBackfillContent() {
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-700">{t("rfqReference")}</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-4 py-2.5 font-medium">{t("product")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("spec")}</th>
-                <th className="px-4 py-2.5 font-medium text-right">{t("quantity")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rfq.items.map((item) => (
-                <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
-                  <td className="px-4 py-2.5 font-medium text-gray-800">{item.product_name_snapshot ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-gray-500">{item.variant_display ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-700">{item.quantity} {item.uom_snapshot}</td>
+        {rfq.items.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-left text-xs text-gray-500">
+                  <th className="px-4 py-2.5 font-medium">{t("product")}</th>
+                  <th className="px-4 py-2.5 font-medium">{t("spec")}</th>
+                  <th className="px-4 py-2.5 font-medium text-right">{t("quantity")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rfq.items.map((item) => (
+                  <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-medium text-gray-800">{item.product_name_snapshot ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{item.variant_display ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-right text-gray-700">{item.quantity} {item.uom_snapshot}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="px-5 py-4 text-sm text-gray-400">{t("noItems")}</div>
+        )}
+        {/* 自由询价：无行项时突出显示需求说明 */}
+        {rfq.remark && (
+          <div className="border-t border-gray-100 px-5 py-3">
+            <span className="text-xs text-gray-400">{t("buyerRemark")}</span>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
+          </div>
+        )}
       </div>
 
       {/* 区块2：报价明细（可编辑） */}
@@ -931,6 +952,15 @@ function QuoteBackfillContent() {
           <span className="text-sm text-gray-500">{t("totalAmount")}：</span>
           <span className="text-lg font-bold text-gray-800">{header.currency || "USD"} {totalAmount.toFixed(2)}</span>
         </div>
+      </div>
+
+      {/* 报价附件 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("quoteAttachments")}</h2>
+        <AttachmentUploader
+          attachments={quoteAttachments}
+          onChange={setQuoteAttachments}
+        />
       </div>
 
       {/* sticky 底栏 */}

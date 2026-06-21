@@ -111,7 +111,8 @@
       "min_one_item": "Angalau kipengee kimoja kinahitajika",
       "too_many_attachments": "Viambatisho vingi sana (upeo 6)",
       "invalid_attachment_url": "URL ya kiambatisho si sahihi",
-      "no_quote_to_export": "Hakuna nukuu ya kusafirisha"
+      "no_quote_to_export": "Hakuna nukuu ya kusafirisha",
+      "items_or_remark_required": "Bidhaa au maelezo yanahitajika"
     },
     "attachment": {
       "too_many": "Viambatisho vingi mno (upeo wa 6)",
@@ -941,6 +942,7 @@
     "submitDirectly": "Wasilisha Moja kwa Moja",
     "buyerOrgRequired": "Tafadhali chagua shirika la mnunuzi",
     "itemsRequired": "Tafadhali ongeza angalau bidhaa moja",
+    "itemsOrRemarkRequired": "Bidhaa au maelezo yanahitajika",
     "createSuccess": "Ombi limeundwa",
     "draftSaved": "Rasimu imehifadhiwa",
     "attachment": {
@@ -1012,6 +1014,7 @@
     "skippedLabel": "Haipatikani",
     "skipReasonPlaceholder": "Sababu (si lazima)",
     "allSkippedError": "Haiwezekani kuruka safu zote za vipande",
+    "linesOrAttachmentsRequired": "Safu za nukuu au viambatisho vinahitajika",
     "lineType": "Aina",
     "lineProduct": "Bidhaa",
     "lineFee": "Ada",
@@ -1047,7 +1050,10 @@
     "confirmVariant": "Thibitisha",
     "noSelectableAttrs": "Hakuna vipimo",
     "skuSpec": "Chagua Anuwai",
-    "moqFromTier": "Inaamuliwa na hatua ya kwanza"
+    "moqFromTier": "Inaamuliwa na hatua ya kwanza",
+    "quoteAttachments": "Viambatisho vya Nukuu",
+    "noItems": "Hakuna bidhaa (ulizo huru)",
+    "buyerRemark": "Maelezo ya Mahitaji"
   },
   "nav": {
     "mall": "Duka",

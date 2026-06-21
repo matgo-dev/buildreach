@@ -334,10 +334,19 @@ async def resolve_attachment_scope(
     if att.owner_type == OwnerType.RFQ:
         return await _check_rfq_scope(db, user_id, user_roles, att.owner_id)
 
-    # 3. QUOTE 归属 → 本期留接入点
+    # 3. QUOTE 归属 → 委托 quote→rfq_id→RFQ scope（买方 + 运营可见）
     if att.owner_type == OwnerType.QUOTE:
-        # TODO: 委托报价域 scope,本期不产生 QUOTE 数据
-        return False
+        from app.db.models.rfq_quote import RfqQuote
+        row = await db.execute(
+            select(RfqQuote.rfq_id).where(
+                RfqQuote.id == att.owner_id,
+                RfqQuote.deleted_at.is_(None),
+            )
+        )
+        rfq_id = row.scalar_one_or_none()
+        if rfq_id is None:
+            return False
+        return await _check_rfq_scope(db, user_id, user_roles, rfq_id)
 
     return False
 

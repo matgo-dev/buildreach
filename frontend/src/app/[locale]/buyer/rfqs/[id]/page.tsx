@@ -901,6 +901,14 @@ function QuoteCard({
           </tbody>
         </table>
       </div>
+
+      {/* 报价附件（买方可见） */}
+      {quote.attachments && quote.attachments.length > 0 && (
+        <div className="border-t border-gray-100 px-5 py-4">
+          <h3 className="mb-3 text-sm font-medium text-gray-700">{tQ("quoteAttachments")}</h3>
+          <AttachmentGallery attachments={quote.attachments} />
+        </div>
+      )}
     </div>
   );
 }
