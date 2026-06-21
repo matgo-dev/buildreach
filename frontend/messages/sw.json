@@ -1293,5 +1293,16 @@
     "boundaryIncluded": "Imejumuishwa",
     "boundaryExcluded": "Haijajumuishwa",
     "boundaryDesc": "BuildLink inatoa huduma kamili kutoka viwanda vya China hadi bandari ya Dar es Salaam, ikiwa ni pamoja na uchunguzi wa wasambazaji, ununuzi wa pamoja, ukaguzi wa ubora, ujumuishaji, tamko la forodha, usafirishaji wa baharini, na forodha ya marudio. Usafiri wa ndani (bandari hadi tovuti) unapangwa na mnunuzi au lojistiki ya ndani. Jukwaa halitoi mikopo ya kifedha, uwakala wa bima, au huduma nyingine za kifedha."
+  },
+  "noPermission": {
+    "title": "Ufikiaji Umekataliwa",
+    "subtitle": "Huna ruhusa ya kutazama ukurasa huu",
+    "description": "Tafadhali wasiliana na msimamizi wako kupata ufikiaji, au nenda kwenye ukurasa ulio na ruhusa ya kutazama.",
+    "reasonRole": "Jukumu la akaunti yako halina ufikiaji wa eneo hili",
+    "reasonPermission": "Unakosa ruhusa inayohitajika kwa ukurasa huu",
+    "goBack": "Rudi Nyuma",
+    "goDashboard": "Nenda Dashibodi",
+    "goLogin": "Ingia",
+    "notLoggedIn": "Hujaingia. Tafadhali ingia ili kuendelea."
   }
 }

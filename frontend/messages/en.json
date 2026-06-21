@@ -1293,5 +1293,16 @@
     "boundaryIncluded": "Included",
     "boundaryExcluded": "Not Included",
     "boundaryDesc": "BuildLink provides full-chain service from Chinese factories to Dar es Salaam port, including supplier screening, group procurement, QC inspection, consolidation, customs declaration, ocean freight, and destination clearance. Inland transport (port to site) is arranged by the buyer or local logistics. The platform does not provide financial lending, insurance brokerage, or other financial services."
+  },
+  "noPermission": {
+    "title": "Access Denied",
+    "subtitle": "You don't have permission to view this page",
+    "description": "Please contact your administrator for access, or navigate to a page you have permission to view.",
+    "reasonRole": "Your account role does not have access to this area",
+    "reasonPermission": "You are missing the required permission for this page",
+    "goBack": "Go Back",
+    "goDashboard": "Go to Dashboard",
+    "goLogin": "Sign In",
+    "notLoggedIn": "You are not signed in. Please sign in to continue."
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Search, Globe, ChevronRight } from "lucide-react";
+import { Search, Globe } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -200,12 +200,6 @@ function SuppliersInner() {
               <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
                 <Globe className="h-3.5 w-3.5" />
                 <span>{COUNTRY_NAME[s.country_code] ?? s.country_code}</span>
-              </div>
-              <div className="mt-4 border-t border-slate-100 pt-3 text-right">
-                {/* TODO: 供应商详情页待实现,本期占位不可点 */}
-                <span className="inline-flex cursor-not-allowed items-center gap-0.5 text-sm text-slate-300">
-                  查看详情 <ChevronRight className="h-4 w-4" />
-                </span>
               </div>
             </div>
           ))}
