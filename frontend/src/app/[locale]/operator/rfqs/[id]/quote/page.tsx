@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, Plus, Trash2, X, Search } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Plus, Trash2, X, Search, Save } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
@@ -968,11 +968,19 @@ function QuoteBackfillContent() {
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <button type="button" onClick={() => router.back()}
             className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">{t("cancel")}</button>
-          <button type="button" onClick={handleSubmit} disabled={submitting}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
-            {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {t("submit")}
-          </button>
+          <div className="flex items-center gap-3">
+            <button type="button"
+              onClick={() => { saveDraft(rfqId, header, lines); toast.success(t("draftSaved")); }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100">
+              <Save className="h-3.5 w-3.5" />
+              {t("saveDraft")}
+            </button>
+            <button type="button" onClick={handleSubmit} disabled={submitting}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {t("submit")}
+            </button>
+          </div>
         </div>
       </div>
 
