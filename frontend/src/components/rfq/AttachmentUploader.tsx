@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import {
   uploadAttachment,
   validateFile,
-  fetchAttachmentBlob,
+  fetchThumbnailBlob,
   isImageContentType,
   formatFileSize,
   MAX_ATTACHMENTS,
@@ -43,7 +43,7 @@ export default function AttachmentUploader({
 
     for (const att of imageAtts) {
       if (thumbUrls[att.id]) continue;
-      fetchAttachmentBlob(att.id)
+      fetchThumbnailBlob(att.id)
         .then((blob) => {
           if (cancelled) return;
           const url = URL.createObjectURL(blob);

@@ -18,6 +18,7 @@ import { getRfq, cancelRfq, withdrawRfq, submitRfq, type RfqBuyerPublic, type Rf
 import { exportQuotePdf } from "@/lib/api/quote-export";
 import {
   fetchAttachmentBlob,
+  fetchThumbnailBlob,
   downloadAttachment,
   isImageContentType,
   formatFileSize,
@@ -518,7 +519,7 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
     for (const att of attachments) {
       if (!isImageContentType(att.content_type)) continue;
       if (thumbUrls[att.id]) continue;
-      fetchAttachmentBlob(att.id)
+      fetchThumbnailBlob(att.id)
         .then((blob) => {
           if (cancelled) return;
           const url = URL.createObjectURL(blob);

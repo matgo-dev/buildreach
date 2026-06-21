@@ -14,6 +14,7 @@ export interface AttachmentPublic {
   content_type: string;
   size_bytes: number;
   download_url: string;
+  thumbnail_url: string | null;
 }
 
 // ── 前端校验(与后端允许族对齐) ──
@@ -62,6 +63,20 @@ export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
   }
   const json = await resp.json();
   return json.data as AttachmentPublic;
+}
+
+// ── 鉴权缩略图 ──
+
+export async function fetchThumbnailBlob(id: number): Promise<Blob> {
+  const token = getToken();
+  const resp = await fetch(`${API_BASE}/api/v1/attachments/${id}/thumbnail`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
+  });
+  if (!resp.ok) {
+    throw new Error(`Thumbnail failed: ${resp.status}`);
+  }
+  return resp.blob();
 }
 
 // ── 鉴权 blob 下载 ──

@@ -20,6 +20,7 @@ from typing import BinaryIO
 from urllib.parse import quote as url_quote
 
 import magic
+from PIL import Image
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -169,6 +170,30 @@ def _verify_xlsx_structure(file_bytes: bytes) -> bool:
         return False
 
 
+# ── 缩略图生成 ──────────────────────────────────────────
+
+THUMBNAIL_MAX_EDGE = 300
+THUMBNAIL_QUALITY = 80
+_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
+
+
+def generate_thumbnail(file_bytes: bytes) -> tuple[bytes, str, int] | None:
+    """为图片生成缩略图。返回 (thumb_bytes, content_type, size) 或 None。"""
+    try:
+        img = Image.open(BytesIO(file_bytes))
+        img.thumbnail((THUMBNAIL_MAX_EDGE, THUMBNAIL_MAX_EDGE), Image.LANCZOS)
+        # RGBA → RGB（JPEG 不支持 alpha 通道）
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGB")
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=THUMBNAIL_QUALITY, optimize=True)
+        thumb_bytes = buf.getvalue()
+        return thumb_bytes, "image/jpeg", len(thumb_bytes)
+    except Exception:
+        logger.warning("缩略图生成失败", exc_info=True)
+        return None
+
+
 # ── 上传 ──────────────────────────────────────────────────
 
 async def upload_attachment(
@@ -223,6 +248,19 @@ async def upload_attachment(
     storage = get_attachment_storage()
     storage.save(file_key, BytesIO(file_bytes))
 
+    # 图片类型:生成缩略图
+    thumbnail_key = None
+    thumbnail_content_type = None
+    thumbnail_size_bytes = None
+    if canonical_mime in _IMAGE_MIMES:
+        result = generate_thumbnail(file_bytes)
+        if result:
+            thumb_bytes, thumb_ct, thumb_size = result
+            thumbnail_key = f"thumbnail_{uuid.uuid4().hex}.jpg"
+            storage.save(thumbnail_key, BytesIO(thumb_bytes))
+            thumbnail_content_type = thumb_ct
+            thumbnail_size_bytes = thumb_size
+
     # 落库
     try:
         att = Attachment(
@@ -234,6 +272,9 @@ async def upload_attachment(
             owner_type=None,
             owner_id=None,
             first_linked_at=None,
+            thumbnail_key=thumbnail_key,
+            thumbnail_content_type=thumbnail_content_type,
+            thumbnail_size_bytes=thumbnail_size_bytes,
         )
         db.add(att)
         await db.flush()
@@ -422,6 +463,7 @@ def serialize_attachment(att: Attachment) -> AttachmentPublic:
         content_type=att.content_type,
         size_bytes=att.size_bytes,
         download_url=f"/api/v1/attachments/{att.id}/download",
+        thumbnail_url=f"/api/v1/attachments/{att.id}/thumbnail" if att.thumbnail_key else None,
     )
 
 
