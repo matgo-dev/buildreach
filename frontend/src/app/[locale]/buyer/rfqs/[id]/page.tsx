@@ -509,6 +509,7 @@ function RfqDetailContent() {
 function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] }) {
   const t = useTranslations("rfq");
   const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({});
+  const [thumbFailed, setThumbFailed] = useState<Set<number>>(new Set());
   const [lightboxId, setLightboxId] = useState<number | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxLoading, setLightboxLoading] = useState(false);
@@ -518,14 +519,16 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
     let cancelled = false;
     for (const att of attachments) {
       if (!isImageContentType(att.content_type)) continue;
-      if (thumbUrls[att.id]) continue;
+      if (thumbUrls[att.id] || thumbFailed.has(att.id)) continue;
       fetchThumbnailBlob(att.id)
         .then((blob) => {
           if (cancelled) return;
           const url = URL.createObjectURL(blob);
           setThumbUrls((prev) => ({ ...prev, [att.id]: url }));
         })
-        .catch(() => {});
+        .catch(() => {
+          if (!cancelled) setThumbFailed((prev) => new Set(prev).add(att.id));
+        });
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -598,7 +601,7 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
               />
             ) : (
               <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-shadow hover:shadow-md">
-                {isImageContentType(att.content_type) ? (
+                {isImageContentType(att.content_type) && !thumbFailed.has(att.id) ? (
                   <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
                 ) : (
                   <FileText className="h-6 w-6 text-gray-400" />
