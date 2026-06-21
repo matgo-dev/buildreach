@@ -984,6 +984,8 @@
     "submit": "Submit Quote",
     "cancel": "Cancel",
     "submitSuccess": "Quote submitted",
+    "saveDraft": "Save Draft",
+    "draftSaved": "Quote draft saved",
     "unitPriceRequired": "Unit price is required",
     "unitPriceHint": "Unit price is the quoted price; tiers are reference only",
     "notProcessing": "This RFQ is not open for quoting",

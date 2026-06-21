@@ -984,6 +984,8 @@
     "submit": "提交报价",
     "cancel": "取消",
     "submitSuccess": "报价已提交",
+    "saveDraft": "暂存",
+    "draftSaved": "报价草稿已暂存",
     "unitPriceRequired": "请填写单价",
     "unitPriceHint": "单价为本次报价价；阶梯为参考档",
     "notProcessing": "该询价单当前不可回填",
