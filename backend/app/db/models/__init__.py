@@ -1,4 +1,5 @@
 """集中导入所有模型,供 Alembic autogenerate 识别。"""
+from app.db.models.attachment import Attachment, OwnerType
 from app.db.models.audit_log import AuditLog
 from app.db.models.buyer_browse_preference import BuyerBrowsePreference
 from app.db.models.buyer_event import BuyerEvent
@@ -65,6 +66,9 @@ from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.user import User
 from app.db.models.user_role import UserRole
 __all__ = [
+    # attachment
+    "Attachment",
+    "OwnerType",
     # auth / rbac / org
     "User",
     "Role",

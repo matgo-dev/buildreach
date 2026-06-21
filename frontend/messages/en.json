@@ -110,7 +110,16 @@
       "not_assigned_to_you": "This inquiry is not assigned to you",
       "min_one_item": "At least one item is required",
       "too_many_attachments": "Too many attachments (max 6)",
-      "invalid_attachment_url": "Invalid attachment URL"
+      "invalid_attachment_url": "Invalid attachment URL",
+      "no_quote_to_export": "No active quote available for export"
+    },
+    "attachment": {
+      "too_many": "Too many attachments (maximum 6 allowed)",
+      "type_not_allowed": "Attachment type not allowed",
+      "too_large": "Attachment exceeds size limit",
+      "not_found": "Attachment not found or access denied",
+      "already_linked": "Attachment already linked to another object",
+      "orphan_quota": "Orphan attachment quota exceeded. Please submit or remove pending uploads."
     },
     "quote": {
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",
@@ -940,7 +949,8 @@
       "hint": "Supports JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Up to 6 files.",
       "maxReached": "Maximum 6 attachments allowed",
       "invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
-      "tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB"
+      "tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB",
+      "download": "Download"
     },
     "backToCartEdit": "Back to Basket",
     "onlyDraftEditable": "Only DRAFT RFQ can be edited",

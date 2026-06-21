@@ -110,7 +110,16 @@
       "not_assigned_to_you": "Ombi hili halikupewa wewe",
       "min_one_item": "Angalau kipengee kimoja kinahitajika",
       "too_many_attachments": "Viambatisho vingi sana (upeo 6)",
-      "invalid_attachment_url": "URL ya kiambatisho si sahihi"
+      "invalid_attachment_url": "URL ya kiambatisho si sahihi",
+      "no_quote_to_export": "Hakuna bei ya kuhamisha"
+    },
+    "attachment": {
+      "too_many": "Viambatisho vingi mno (upeo wa 6)",
+      "type_not_allowed": "Aina ya kiambatisho hairuhusiwi",
+      "too_large": "Kiambatisho kimezidi ukubwa unaoruhusiwa",
+      "not_found": "Kiambatisho hakipatikani au hakuna ruhusa",
+      "already_linked": "Kiambatisho tayari kimeshirikishwa na kitu kingine",
+      "orphan_quota": "Idadi ya viambatisho vinavyosubiri imezidi. Tafadhali wasilisha au ondoa vilivyopakiwa."
     },
     "quote": {
       "rfq_state_invalid": "Operesheni ya nukuu hairuhusiwi kwa hali ya sasa ya RFQ",
@@ -940,7 +949,8 @@
       "hint": "Inasaidia JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Hadi faili 6.",
       "maxReached": "Viambatisho 6 vinaruhusiwa tu",
       "invalidType": "Aina ya faili haihimiliwi. Inaruhusiwa: JPG, PNG, WEBP, PDF, XLSX",
-      "tooLarge": "Faili kubwa mno. Picha ≤5 MB, hati ≤10 MB"
+      "tooLarge": "Faili kubwa mno. Picha ≤5 MB, hati ≤10 MB",
+      "download": "Pakua"
     },
     "backToCartEdit": "Rudi kwenye Kikapu",
     "onlyDraftEditable": "Ombi la Manunuzi lenye hali ya RASIMU pekee linaweza kuhaririwa",

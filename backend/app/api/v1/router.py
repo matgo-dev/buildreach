@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin_audit,
     admin_users,
+    attachments,
     auth,
     buyer_events,
     buyer_prefs,
@@ -22,11 +23,12 @@ from app.api.v1 import (
     rfqs,
     suppliers,
     test_rbac,
-    # uploads,  # 禁用:附件安全版落地前暂停
+    # uploads,  # 禁用:已被 attachments 安全版取代
 )
 from app.core.config import settings
 
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(attachments.router)
 api_router.include_router(auth.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_audit.router)

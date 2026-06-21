@@ -4,6 +4,7 @@
 // 买方视角返回 RfqBuyerPublic（不含内部字段）
 
 import { api } from "../api";
+import type { AttachmentPublic } from "./attachments";
 
 // ---------- 请求类型 ----------
 
@@ -29,6 +30,7 @@ export interface RfqCreate {
   target_currency?: string;
   required_certifications?: string[];
   attachment_urls?: string[];
+  attachment_ids?: number[];
   remark?: string;
 }
 
@@ -44,6 +46,7 @@ export interface RfqUpdatePayload {
   target_currency?: string;
   required_certifications?: string[];
   attachment_urls?: string[];
+  attachment_ids?: number[];
   remark?: string;
 }
 
@@ -91,6 +94,7 @@ export interface RfqBuyerPublic {
   target_currency: string | null;
   required_certifications: string[] | null;
   attachment_urls: string[] | null;
+  attachments: AttachmentPublic[];
   created_at: string | null;
   updated_at: string | null;
   first_item_image: string | null; // 列表缩略图:首个有效行项主图

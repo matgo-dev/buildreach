@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package, Download } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package, Download, X } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -16,6 +16,13 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import { ApiError } from "@/lib/api";
 import { getRfq, cancelRfq, withdrawRfq, submitRfq, type RfqBuyerPublic, type RfqItemPublic } from "@/lib/api/rfqs";
 import { exportQuotePdf } from "@/lib/api/quote-export";
+import {
+  fetchAttachmentBlob,
+  downloadAttachment,
+  isImageContentType,
+  formatFileSize,
+  type AttachmentPublic,
+} from "@/lib/api/attachments";
 import {
   listBuyerQuotes, acceptRfq, rejectRfq,
   type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
@@ -354,7 +361,7 @@ function RfqDetailContent() {
       )}
 
       {/* 附加要求 */}
-      {((rfq.required_certifications && rfq.required_certifications.length > 0) || rfq.remark || (rfq.attachment_urls && rfq.attachment_urls.length > 0)) && (
+      {((rfq.required_certifications && rfq.required_certifications.length > 0) || rfq.remark || (rfq.attachments && rfq.attachments.length > 0)) && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("section_extra")}</h2>
           {rfq.required_certifications && rfq.required_certifications.length > 0 && (
@@ -378,7 +385,12 @@ function RfqDetailContent() {
               <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
             </div>
           )}
-          {/* 禁用:附件安全版落地前暂停,附件展示代码已移除,待安全版工单恢复 */}
+          {rfq.attachments && rfq.attachments.length > 0 && (
+            <div>
+              <span className="text-xs text-gray-400">{t("attachment.label")}</span>
+              <AttachmentGallery attachments={rfq.attachments} />
+            </div>
+          )}
         </div>
       )}
 
@@ -488,6 +500,173 @@ function RfqDetailContent() {
         onCancel={() => setRejectOpen(false)}
       />
     </div>
+  );
+}
+
+// ---- 附件展示 + 灯箱预览 ----
+
+function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] }) {
+  const t = useTranslations("rfq");
+  const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({});
+  const [lightboxId, setLightboxId] = useState<number | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxLoading, setLightboxLoading] = useState(false);
+
+  // 加载图片缩略图
+  useEffect(() => {
+    let cancelled = false;
+    for (const att of attachments) {
+      if (!isImageContentType(att.content_type)) continue;
+      if (thumbUrls[att.id]) continue;
+      fetchAttachmentBlob(att.id)
+        .then((blob) => {
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          setThumbUrls((prev) => ({ ...prev, [att.id]: url }));
+        })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments.map((a) => a.id).join(",")]);
+
+  // 清理缩略图 blob
+  useEffect(() => {
+    return () => {
+      Object.values(thumbUrls).forEach((u) => URL.revokeObjectURL(u));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 打开灯箱
+  const openLightbox = useCallback(async (att: AttachmentPublic) => {
+    if (!isImageContentType(att.content_type)) {
+      // 文档:直接下载
+      await downloadAttachment(att.id, att.original_filename);
+      return;
+    }
+    setLightboxId(att.id);
+    setLightboxLoading(true);
+    try {
+      const blob = await fetchAttachmentBlob(att.id);
+      const url = URL.createObjectURL(blob);
+      setLightboxUrl(url);
+    } catch {
+      setLightboxId(null);
+    } finally {
+      setLightboxLoading(false);
+    }
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    if (lightboxUrl) URL.revokeObjectURL(lightboxUrl);
+    setLightboxId(null);
+    setLightboxUrl(null);
+  }, [lightboxUrl]);
+
+  // Esc 关闭灯箱
+  useEffect(() => {
+    if (lightboxId === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [lightboxId, closeLightbox]);
+
+  const lightboxAtt = attachments.find((a) => a.id === lightboxId);
+
+  return (
+    <>
+      <div className="mt-2 flex flex-wrap gap-3">
+        {attachments.map((att) => (
+          <button
+            key={att.id}
+            type="button"
+            onClick={() => openLightbox(att)}
+            className="group relative cursor-pointer"
+            role="button"
+            aria-label={att.original_filename}
+          >
+            {isImageContentType(att.content_type) && thumbUrls[att.id] ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumbUrls[att.id]}
+                alt={att.original_filename}
+                className="h-20 w-20 rounded-lg border border-gray-200 object-cover transition-shadow hover:shadow-md"
+              />
+            ) : (
+              <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-shadow hover:shadow-md">
+                {isImageContentType(att.content_type) ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
+                ) : (
+                  <FileText className="h-6 w-6 text-gray-400" />
+                )}
+                <span className="mt-1 w-full truncate px-1 text-center text-[10px] text-gray-400">
+                  {att.original_filename.length > 12
+                    ? att.original_filename.slice(-12)
+                    : att.original_filename}
+                </span>
+                <span className="text-[9px] text-gray-300">
+                  {formatFileSize(att.size_bytes)}
+                </span>
+              </div>
+            )}
+            {/* 文档下载图标 */}
+            {!isImageContentType(att.content_type) && (
+              <Download className="absolute bottom-1 right-1 h-3.5 w-3.5 text-gray-400 opacity-0 group-hover:opacity-100" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* 灯箱 */}
+      {lightboxId !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={closeLightbox}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-[90vw] rounded-xl bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeLightbox}
+              className="absolute -right-2 -top-2 rounded-full bg-gray-800 p-1 text-white shadow hover:bg-gray-700"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            {lightboxLoading ? (
+              <div className="flex h-64 w-64 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : lightboxUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lightboxUrl}
+                alt={lightboxAtt?.original_filename ?? ""}
+                className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain"
+              />
+            ) : null}
+            {lightboxAtt && (
+              <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                <span className="truncate">{lightboxAtt.original_filename}</span>
+                <button
+                  type="button"
+                  onClick={() => downloadAttachment(lightboxAtt.id, lightboxAtt.original_filename)}
+                  className="ml-3 flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50"
+                >
+                  <Download className="h-3 w-3" />
+                  {t("attachment.download")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

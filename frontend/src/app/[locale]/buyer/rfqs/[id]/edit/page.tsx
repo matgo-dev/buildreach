@@ -22,7 +22,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
-// import AttachmentUploader from "@/components/rfq/AttachmentUploader";  // 禁用:附件安全版落地前暂停
+import AttachmentUploader from "@/components/rfq/AttachmentUploader";
+import type { AttachmentPublic } from "@/lib/api/attachments";
 
 const CURRENCIES = ["USD", "KES", "CNY"];
 
@@ -300,6 +301,7 @@ function RfqEditContent() {
   const [certifications, setCertifications] = useState<string[]>([]);
   const [remark, setRemark] = useState("");
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentPublic[]>([]);
 
   // 加载已有数据
   useEffect(() => {
@@ -332,6 +334,7 @@ function RfqEditContent() {
         setCertifications(rfq.required_certifications ?? []);
         setRemark(rfq.remark ?? "");
         setAttachmentUrls(rfq.attachment_urls ?? []);
+        setAttachments(rfq.attachments ?? []);
       })
       .catch(() => {
         toast.error(t("loadFailed"));
@@ -377,7 +380,8 @@ function RfqEditContent() {
     required_certifications: certifications.length > 0 ? certifications : undefined,
     remark: remark || undefined,
     attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
-  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark, attachmentUrls]);
+    attachment_ids: attachments.length > 0 ? attachments.map(a => a.id) : undefined,
+  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark, attachmentUrls, attachments]);
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -591,12 +595,10 @@ function RfqEditContent() {
             <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={3}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
           </div>
-          {/* 禁用:附件安全版落地前暂停
           <AttachmentUploader
-            urls={attachmentUrls}
-            onChange={setAttachmentUrls}
+            attachments={attachments}
+            onChange={setAttachments}
           />
-          */}
         </div>
       </div>
 
