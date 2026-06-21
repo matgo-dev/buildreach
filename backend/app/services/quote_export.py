@@ -5,6 +5,7 @@ import asyncio
 import base64
 import hashlib
 import logging
+import os
 import time
 from datetime import datetime
 from decimal import Decimal
@@ -18,7 +19,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.exceptions import RfqNoQuoteToExportError, RfqNotFoundError
+from app.db.base import _utcnow
 from app.db.models.product_image import ImageType, ProductImage
+from app.db.models.quote_document import QuoteDocument
 from app.schemas.quote import RfqQuoteBuyerPublic
 from app.services._rfq_loader import (
     _resolve_buyer_org_id,
@@ -31,6 +34,8 @@ from app.templates.quote_pdf.labels import get_labels
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "quote_pdf"
 _UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
 logger = logging.getLogger("app.quote_export")
+
+MAX_RETRIES = 3
 
 _jinja_env = Environment(
     loader=FileSystemLoader(str(_TEMPLATE_DIR)),
@@ -276,3 +281,220 @@ def _render_pdf(html_str: str) -> bytes:
     """同步 PDF 渲染，由线程池调用。懒加载 weasyprint 避免启动时缺库崩溃。"""
     from weasyprint import HTML
     return HTML(string=html_str).write_pdf()
+
+
+# ── 产物预生成 ────────────────────────────────────────────────
+
+
+async def _render_quote_pdf_bytes(
+    db: AsyncSession, rfq_id: int, locale: str,
+) -> bytes:
+    """渲染指定 locale 的报价单 PDF，返回 bytes。
+
+    复用 generate_quote_pdf 的全部渲染逻辑，但不做鉴权（后台任务无 user 上下文）。
+    """
+    rfq = await load_rfq(db, rfq_id)
+    if rfq is None:
+        raise RfqNotFoundError()
+
+    quote_data = await load_quote_for_rfq_detail(db, rfq_id, is_operator=False)
+    if quote_data is None:
+        raise RfqNoQuoteToExportError()
+
+    quote_view: RfqQuoteBuyerPublic = quote_data  # type: ignore[assignment]
+
+    product_items = [i for i in quote_view.items if i.line_type == "PRODUCT"]
+    fee_items = [i for i in quote_view.items if i.line_type == "FEE"]
+
+    product_ids = [i.product_id for i in product_items if i.product_id]
+    image_map: dict[int, str] = {}
+    if product_ids:
+        rows = await db.execute(
+            select(ProductImage.product_id, ProductImage.image_key)
+            .where(
+                ProductImage.product_id.in_(product_ids),
+                ProductImage.image_type == ImageType.MAIN,
+                ProductImage.deleted_at.is_(None),
+            )
+        )
+        for pid, key in rows.all():
+            src = _image_key_to_pdf_src(key)
+            if src:
+                image_map[pid] = src
+
+    subtotal_products = sum(
+        (i.line_amount or Decimal("0")) for i in product_items
+    )
+    subtotal_fees = sum(
+        (i.line_amount or Decimal("0")) for i in fee_items
+    )
+
+    buyer_org = rfq.contact_name or ""
+    labels = get_labels(locale)
+    now = datetime.utcnow()
+
+    if locale == "zh":
+        font_family = '"Noto Sans CJK SC", "Noto Sans", "Helvetica Neue", Arial, sans-serif'
+    else:
+        font_family = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
+    template = _jinja_env.get_template("quote.html")
+    html_str = template.render(
+        font_family=font_family,
+        L=labels,
+        locale=locale,
+        rfq=rfq,
+        quote=quote_view,
+        platform=_PLATFORM_INFO,
+        buyer_org=buyer_org,
+        product_items=product_items,
+        image_map=image_map,
+        fee_items=fee_items,
+        subtotal_products=subtotal_products,
+        subtotal_fees=subtotal_fees,
+        issue_date=_format_date(rfq.created_at, locale),
+        valid_until=_format_date(quote_view.valid_until, locale),
+        expected_delivery_date=_format_date(rfq.expected_delivery_date, locale),
+        generated_at=now.strftime("%Y-%m-%d %H:%M UTC"),
+        format_amount=_format_amount,
+    )
+
+    pdf_bytes = await asyncio.get_event_loop().run_in_executor(
+        None, partial(_render_pdf, html_str),
+    )
+    return pdf_bytes
+
+
+async def _ensure_document_record(
+    db: AsyncSession, quote_id: int, version: int, locale: str,
+) -> QuoteDocument:
+    """幂等创建产物记录。已存在则返回现有记录。"""
+    stmt = select(QuoteDocument).where(
+        QuoteDocument.quote_id == quote_id,
+        QuoteDocument.version == version,
+        QuoteDocument.locale == locale,
+    )
+    doc = (await db.execute(stmt)).scalar_one_or_none()
+    if doc is not None:
+        return doc
+
+    doc = QuoteDocument(
+        quote_id=quote_id,
+        version=version,
+        locale=locale,
+        status="PENDING",
+    )
+    db.add(doc)
+    return doc
+
+
+async def _get_document(
+    db: AsyncSession, quote_id: int, version: int, locale: str,
+) -> QuoteDocument | None:
+    stmt = select(QuoteDocument).where(
+        QuoteDocument.quote_id == quote_id,
+        QuoteDocument.version == version,
+        QuoteDocument.locale == locale,
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def _generate_single_document(
+    db: AsyncSession, quote_id: int, version: int, locale: str, rfq_id: int,
+) -> None:
+    """生成单个 locale 的 PDF 产物。"""
+    doc = await _get_document(db, quote_id, version, locale)
+    if doc is None or doc.status == "READY":
+        return
+
+    # 状态 → GENERATING
+    doc.transition_to("GENERATING")
+    await db.commit()
+
+    try:
+        pdf_bytes = await _render_quote_pdf_bytes(db, rfq_id, locale)
+
+        # 原子写入：tmp → rename
+        storage_key = f".quote_documents/{quote_id}/v{version}_{locale}.pdf"
+        abs_path = _UPLOADS_DIR / storage_key
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+
+        tmp_path = abs_path.with_name(
+            f".{abs_path.name}.{os.getpid()}.{time.time_ns()}.tmp"
+        )
+        tmp_path.write_bytes(pdf_bytes)
+        tmp_path.replace(abs_path)
+
+        # 状态 → READY
+        doc.transition_to("READY")
+        doc.storage_key = storage_key
+        doc.file_size = len(pdf_bytes)
+        doc.generated_at = _utcnow()
+        doc.error_message = None
+        await db.commit()
+
+    except Exception as e:
+        await db.rollback()
+        # 重新加载 doc（rollback 后 ORM 对象可能 detached）
+        doc = await _get_document(db, quote_id, version, locale)
+        if doc is not None and doc.status == "GENERATING":
+            doc.status = "FAILED"
+            doc.error_message = str(e)[:500]
+            doc.retry_count += 1
+            await db.commit()
+        logger.error(
+            "quote document generation failed quote_id=%s locale=%s: %s",
+            quote_id, locale, e, exc_info=True,
+        )
+
+
+async def generate_quote_documents(
+    quote_id: int, version: int, rfq_id: int,
+) -> None:
+    """为指定报价的所有支持语言生成 PDF 产物。BackgroundTask 入口。"""
+    from app.core.locale import SUPPORTED_LOCALES
+    from app.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        # 幂等创建 PENDING 记录
+        for locale in SUPPORTED_LOCALES:
+            await _ensure_document_record(db, quote_id, version, locale)
+        await db.commit()
+
+        # 串行生成，避免 WeasyPrint 并发吃爆内存
+        for locale in SUPPORTED_LOCALES:
+            await _generate_single_document(db, quote_id, version, locale, rfq_id)
+
+
+async def get_quote_documents_status(
+    db: AsyncSession, quote_id: int, version: int,
+) -> list[QuoteDocument]:
+    """查询指定报价版本的所有产物状态。"""
+    stmt = select(QuoteDocument).where(
+        QuoteDocument.quote_id == quote_id,
+        QuoteDocument.version == version,
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def retry_failed_documents(
+    db: AsyncSession, quote_id: int, version: int, rfq_id: int,
+) -> int:
+    """将 FAILED 产物重置为 PENDING 并重新触发生成。返回重试数量。"""
+    stmt = select(QuoteDocument).where(
+        QuoteDocument.quote_id == quote_id,
+        QuoteDocument.version == version,
+        QuoteDocument.status == "FAILED",
+        QuoteDocument.retry_count < MAX_RETRIES,
+    )
+    result = await db.execute(stmt)
+    docs = list(result.scalars().all())
+    if not docs:
+        return 0
+
+    for doc in docs:
+        doc.transition_to("PENDING")
+    await db.commit()
+
+    return len(docs)

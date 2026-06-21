@@ -115,13 +115,18 @@ function RfqListContent() {
   const handleExport = useCallback(async (rfqId: number) => {
     setExportingId(rfqId);
     try {
-      await exportQuotePdf(rfqId);
+      const result = await exportQuotePdf(rfqId);
+      if (result.status === "generating") {
+        toast.warning(tQ("documentGeneratingToast"));
+      } else if (result.status === "failed") {
+        toast.error(tQ("documentFailedToast"));
+      }
     } catch (err) {
       showError(err);
     } finally {
       setExportingId(null);
     }
-  }, [showError]);
+  }, [showError, toast, tQ]);
 
   // 按状态渲染操作按钮
   const renderActions = useCallback((rfq: { id: number; status: string }) => {

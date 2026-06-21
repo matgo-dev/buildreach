@@ -203,10 +203,52 @@ async def export_quote_pdf(
     current: CurrentUser = Depends(require_permission(Permissions.RFQ_READ)),
     db: AsyncSession = Depends(get_db),
 ):
-    """买方/运营下载买方版报价单 PDF。语言跟随用户当前 locale。"""
-    from fastapi.responses import Response
+    """买方/运营下载买方版报价单 PDF。
+
+    优先查产物表返回预生成文件；GENERATING 返回 202 JSON；
+    FAILED 返回 422 JSON；无记录兜底现场生成（过渡期）。
+    """
+    from fastapi.responses import JSONResponse, Response
+    from pathlib import Path
+
+    from app.db.models.quote_document import QuoteDocument
+    from app.services.quote import get_active_quote
+    from app.services.quote_export import _get_document, _UPLOADS_DIR
 
     locale = getattr(request.state, "locale", "en")
+
+    # 查 ACTIVE 报价的预生成产物
+    active_quote = await get_active_quote(db, rfq_id)
+    if active_quote is not None:
+        doc = await _get_document(db, active_quote.id, active_quote.version, locale)
+
+        if doc is not None and doc.status == "READY" and doc.storage_key:
+            file_path = _UPLOADS_DIR / doc.storage_key
+            if file_path.is_file():
+                pdf_bytes = file_path.read_bytes()
+                rfq = await _load_rfq_for_filename(db, rfq_id)
+                filename = _make_filename(rfq, locale)
+                return Response(
+                    content=pdf_bytes,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": build_content_disposition(filename),
+                    },
+                )
+
+        if doc is not None and doc.status in ("PENDING", "GENERATING"):
+            return JSONResponse(
+                status_code=202,
+                content={"code": 20201, "message": "quote_document_generating"},
+            )
+
+        if doc is not None and doc.status == "FAILED":
+            return JSONResponse(
+                status_code=422,
+                content={"code": 42210, "message": "quote_document_failed"},
+            )
+
+    # 兜底：产物记录不存在（历史数据 / 迁移过渡期）→ 现场生成
     pdf_bytes, filename = await generate_quote_pdf(db, rfq_id, current, locale)
 
     return Response(
@@ -216,3 +258,17 @@ async def export_quote_pdf(
             "Content-Disposition": build_content_disposition(filename),
         },
     )
+
+
+async def _load_rfq_for_filename(db: AsyncSession, rfq_id: int):
+    """轻量加载 RFQ 用于构建文件名。"""
+    from app.services._rfq_loader import load_rfq
+    return await load_rfq(db, rfq_id)
+
+
+def _make_filename(rfq, locale: str) -> str:
+    """根据 RFQ 信息构建下载文件名。"""
+    from datetime import datetime
+    rfq_no = getattr(rfq, "rfq_no", "quotation") if rfq else "quotation"
+    now = datetime.utcnow()
+    return f"{rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"

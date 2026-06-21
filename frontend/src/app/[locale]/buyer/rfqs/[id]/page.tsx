@@ -781,10 +781,16 @@ function QuoteCard({
   const canExport = EXPORTABLE_STATUSES.has(rfq.status);
   const [downloading, setDownloading] = useState(false);
 
+  const toast = useToast();
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await exportQuotePdf(rfq.id);
+      const result = await exportQuotePdf(rfq.id);
+      if (result.status === "generating") {
+        toast.warning(tQ("documentGeneratingToast"));
+      } else if (result.status === "failed") {
+        toast.error(tQ("documentFailedToast"));
+      }
     } catch (err: unknown) {
       onError(err);
     } finally {

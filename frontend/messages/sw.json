@@ -1055,7 +1055,13 @@
     "moqFromTier": "Inaamuliwa na hatua ya kwanza",
     "quoteAttachments": "Viambatisho vya Nukuu",
     "noItems": "Hakuna bidhaa (ulizo huru)",
-    "buyerRemark": "Maelezo ya Mahitaji"
+    "buyerRemark": "Maelezo ya Mahitaji",
+    "documentReady": "Pakua Nukuu",
+    "documentGenerating": "Nukuu inatengenezwa...",
+    "documentFailed": "Imeshindwa kutengeneza, wasiliana na msaada",
+    "documentRetry": "Jaribu tena",
+    "documentGeneratingToast": "Nukuu inatengenezwa, tafadhali jaribu tena baadaye",
+    "documentFailedToast": "Nukuu imeshindwa kutengenezwa, wasiliana na msaada"
   },
   "nav": {
     "mall": "Duka",
