@@ -59,6 +59,7 @@ from app.db.models.cart import Cart
 from app.db.models.cart_item import CartItem
 from app.db.models.rfq import Rfq, RfqSource, RfqStatus, QuoteStatus, TradeTerm
 from app.db.models.rfq_item import RfqItem
+from app.db.models.quote_document import QuoteDocument
 from app.db.models.rfq_quote import RfqQuote
 from app.db.models.rfq_quote_item import RfqQuoteItem
 from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
@@ -146,6 +147,7 @@ __all__ = [
     "RfqQuoteItemTier",
     "RfqQuoteItemCost",
     "QuoteStatus",
+    "QuoteDocument",
     # ingest
     "IngestRun",
     "IngestRunStatus",

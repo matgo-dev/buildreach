@@ -684,3 +684,13 @@ async def load_quote_for_rfq_detail(
         atts = await list_attachments_for_owner(db, OwnerType.QUOTE, quotes[0].id)
         return _serialize_quote_buyer(quotes[0], attachments=atts)
     return None
+
+
+async def get_active_quote(db: AsyncSession, rfq_id: int) -> RfqQuote | None:
+    """取 ACTIVE 报价 ORM 对象（仅需 id + version）。"""
+    stmt = select(RfqQuote).where(
+        RfqQuote.rfq_id == rfq_id,
+        RfqQuote.quote_status == QuoteStatus.ACTIVE,
+        RfqQuote.deleted_at.is_(None),
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()

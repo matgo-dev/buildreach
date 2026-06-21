@@ -1055,7 +1055,13 @@
     "moqFromTier": "由阶梯价第一档决定",
     "quoteAttachments": "报价附件",
     "noItems": "无商品行项（自由询价）",
-    "buyerRemark": "需求说明"
+    "buyerRemark": "需求说明",
+    "documentReady": "下载报价单",
+    "documentGenerating": "报价单生成中...",
+    "documentFailed": "生成失败，请联系客服",
+    "documentRetry": "重试",
+    "documentGeneratingToast": "报价单正在生成中，请稍后重试",
+    "documentFailedToast": "报价单生成失败，请联系客服"
   },
   "nav": {
     "mall": "严选商城",

@@ -1055,7 +1055,13 @@
     "moqFromTier": "Determined by first tier",
     "quoteAttachments": "Quote Attachments",
     "noItems": "No items (free-form inquiry)",
-    "buyerRemark": "Requirement Description"
+    "buyerRemark": "Requirement Description",
+    "documentReady": "Download Quotation",
+    "documentGenerating": "Generating quotation...",
+    "documentFailed": "Generation failed, please contact support",
+    "documentRetry": "Retry",
+    "documentGeneratingToast": "Quotation is being generated, please try again later",
+    "documentFailedToast": "Quotation generation failed, please contact support"
   },
   "nav": {
     "mall": "Mall",
