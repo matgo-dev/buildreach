@@ -34,6 +34,7 @@ export default function AttachmentUploader({
 
   // blob URL 缓存(图片缩略图)
   const [thumbUrls, setThumbUrls] = useState<Record<number, string>>({});
+  const [thumbFailed, setThumbFailed] = useState<Set<number>>(new Set());
 
   const isFull = attachments.length >= MAX_ATTACHMENTS;
 
@@ -43,7 +44,7 @@ export default function AttachmentUploader({
     const imageAtts = attachments.filter((a) => isImageContentType(a.content_type));
 
     for (const att of imageAtts) {
-      if (thumbUrls[att.id]) continue;
+      if (thumbUrls[att.id] || thumbFailed.has(att.id)) continue;
       fetchThumbnailBlob(att.id)
         .then((blob) => {
           if (cancelled) return;
@@ -51,7 +52,7 @@ export default function AttachmentUploader({
           setThumbUrls((prev) => ({ ...prev, [att.id]: url }));
         })
         .catch(() => {
-          // 静默失败,显示文件图标兜底
+          if (!cancelled) setThumbFailed((prev) => new Set(prev).add(att.id));
         });
     }
 
