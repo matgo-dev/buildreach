@@ -63,6 +63,8 @@ RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors
         libpangocairo-1.0-0 \
         libcairo2 \
         libgdk-pixbuf-2.0-0 \
+        # python-magic 运行时(附件 MIME 检测)
+        libmagic1 \
         # CJK 字体(中文不乱码)
         fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/* \
