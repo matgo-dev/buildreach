@@ -36,6 +36,7 @@ legacy-demo.sql.gz
 
 # ---- 用户上传文件(运行时产生,不入库)----
 backend/uploads/
+backend/private_uploads/
 
 # ---- 编辑器 / 系统 ----
 .DS_Store

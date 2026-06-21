@@ -672,6 +672,69 @@ class RfqInvalidAttachmentUrlError(BusinessError):
         )
 
 
+# ── 附件域 405xx ──────────────────────────────────────────
+
+
+class AttachmentTooManyError(BusinessError):
+    """40521 — 关联附件数超上限(6)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40521,
+            "Too many attachments, maximum 6 allowed",
+            message_key=MessageKey.ATTACHMENT_TOO_MANY,
+        )
+
+
+class AttachmentTypeNotAllowedError(BusinessError):
+    """40523 — 附件类型不允许(不落允许族)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40523,
+            "Attachment type not allowed",
+            message_key=MessageKey.ATTACHMENT_TYPE_NOT_ALLOWED,
+        )
+
+
+class AttachmentTooLargeError(BusinessError):
+    """40524 — 附件超大。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, 40524,
+            "Attachment too large",
+            message_key=MessageKey.ATTACHMENT_TOO_LARGE,
+        )
+
+
+class AttachmentNotFoundError(BusinessError):
+    """40525 — 附件不存在/无权/孤儿失效(不暴露存在性)。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_404_NOT_FOUND, 40525,
+            "Attachment not found",
+            message_key=MessageKey.ATTACHMENT_NOT_FOUND,
+        )
+
+
+class AttachmentAlreadyLinkedError(BusinessError):
+    """40526 — 附件已归属其他对象。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_409_CONFLICT, 40526,
+            "Attachment already linked to another object",
+            message_key=MessageKey.ATTACHMENT_ALREADY_LINKED,
+        )
+
+
+class AttachmentOrphanQuotaError(BusinessError):
+    """40528 — 孤儿附件配额超限。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40528,
+            "Orphan attachment quota exceeded",
+            message_key=MessageKey.ATTACHMENT_ORPHAN_QUOTA,
+        )
+
+
 class RfqNoQuoteToExportError(BusinessError):
     """40527 — 该 RFQ 无 ACTIVE 报价,无可导出单据。"""
     def __init__(self):

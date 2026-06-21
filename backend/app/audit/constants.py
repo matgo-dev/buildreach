@@ -19,6 +19,7 @@ class AuditResourceType(str, Enum):
     CART = "cart"
     RFQ = "rfq"
     QUOTE = "quote"
+    ATTACHMENT = "attachment"
     INGEST_RUN = "ingest_run"
 
 
@@ -62,5 +63,7 @@ class AuditAction(str, Enum):
     BACKFILL = "BACKFILL"
     REQUOTE = "REQUOTE"
     EXPIRE = "EXPIRE"
+    # attachment — 附件操作
+    UPLOAD = "UPLOAD"
     # ingest — 商品导入
     IMPORT = "IMPORT"

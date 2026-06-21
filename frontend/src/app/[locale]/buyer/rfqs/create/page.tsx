@@ -24,7 +24,8 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
-// import AttachmentUploader from "@/components/rfq/AttachmentUploader";  // 禁用:附件安全版落地前暂停
+import AttachmentUploader from "@/components/rfq/AttachmentUploader";
+import type { AttachmentPublic } from "@/lib/api/attachments";
 import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
@@ -85,6 +86,7 @@ interface DraftData {
   remark: string;
   manualItems: ManualItem[];
   attachment_urls: string[];
+  attachments: AttachmentPublic[];
 }
 
 function emptyDraft(): DraftData {
@@ -101,6 +103,7 @@ function emptyDraft(): DraftData {
     remark: "",
     manualItems: [],
     attachment_urls: [],
+    attachments: [],
   };
 }
 
@@ -659,6 +662,7 @@ function RfqCreateContent() {
           const parsed = JSON.parse(saved);
           if (!parsed.manualItems) parsed.manualItems = [];
           if (!parsed.attachment_urls) parsed.attachment_urls = [];
+          if (!parsed.attachments) parsed.attachments = [];
           return parsed;
         }
       } catch {}
@@ -912,6 +916,7 @@ function RfqCreateContent() {
             draft.certifications.length > 0 ? draft.certifications : undefined,
           remark: draft.remark || undefined,
           attachment_urls: draft.attachment_urls.length > 0 ? draft.attachment_urls : undefined,
+          attachment_ids: draft.attachments.length > 0 ? draft.attachments.map(a => a.id) : undefined,
         },
         idemRef.current,
       );
@@ -1412,12 +1417,10 @@ function RfqCreateContent() {
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
             />
           </div>
-          {/* 禁用:附件安全版落地前暂停
           <AttachmentUploader
-            urls={draft.attachment_urls}
-            onChange={(urls) => updateDraft("attachment_urls", urls)}
+            attachments={draft.attachments}
+            onChange={(atts) => updateDraft("attachments", atts)}
           />
-          */}
         </div>
       </div>
 

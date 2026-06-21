@@ -78,6 +78,8 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("PATCH", "/api/v1/rfqs/{rfq_id}/expire"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/accept"),
     ("PATCH", "/api/v1/rfqs/{rfq_id}/reject"),
+    # attachment — 上传写审计
+    ("POST", "/api/v1/attachments"),
 }
 
 

@@ -59,6 +59,10 @@ from app.schemas.rfq import (
 )
 from app.services import quote as quote_svc
 from app.services._rfq_loader import load_rfq, lock_rfq, resolve_rfq_scope
+from app.services.attachment import (
+    list_attachments_for_owner,
+    validate_and_link_attachments,
+)
 from app.services._variant_utils import (
     normalize_variants_to_en,
     variant_snapshot_to_display,
@@ -301,6 +305,13 @@ async def create_rfq(
             remark=row.get("remark"),
         ))
 
+    # ── 6.5 附件关联 ──
+    if payload.attachment_ids:
+        from app.db.models.attachment import OwnerType
+        await validate_and_link_attachments(
+            db, created_by_user_id, OwnerType.RFQ, rfq.id, payload.attachment_ids,
+        )
+
     # ── 7. 审计 + 单次 commit ──
     if source == RfqSource.OPERATOR_PROXY:
         audit_action = AuditAction.PROXY_CREATE
@@ -400,6 +411,7 @@ async def list_rfqs(
     )
     rows = (await db.execute(q)).scalars().all()
 
+    # 列表页不加载附件(性能优先,详情页才显示附件)
     serialized = [
         _serialize_rfq(r, is_operator=scope.is_operator, with_first_item_image=True)
         for r in rows
@@ -446,7 +458,11 @@ async def get_rfq(
         db, rfq.id, is_operator=scope.is_operator,
     )
 
-    return _serialize_rfq(rfq, is_operator=scope.is_operator, quote_data=quote_data, with_product=True)
+    # 附件
+    from app.db.models.attachment import OwnerType
+    att_list = await list_attachments_for_owner(db, OwnerType.RFQ, rfq.id)
+
+    return _serialize_rfq(rfq, is_operator=scope.is_operator, quote_data=quote_data, with_product=True, attachments=att_list)
 
 
 # ── 撤销 ──────────────────────────────────────────────
@@ -564,7 +580,12 @@ async def _load_and_serialize(
 
     if not rfq:
         raise RfqNotFoundError()
-    return _serialize_rfq(rfq, is_operator=is_operator, with_product=with_product)
+
+    # 加载附件
+    from app.db.models.attachment import OwnerType
+    att_list = await list_attachments_for_owner(db, OwnerType.RFQ, rfq.id)
+
+    return _serialize_rfq(rfq, is_operator=is_operator, with_product=with_product, attachments=att_list)
 
 
 def _serialize_item(
@@ -624,6 +645,7 @@ def _serialize_item(
 def _serialize_rfq(
     rfq: Rfq, *, is_operator: bool, quote_data: object = None,
     with_product: bool = False, with_first_item_image: bool = False,
+    attachments: list | None = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """按角色序列化询价单。quote_data 由详情接口传入(层叠报价)。"""
     active_items = [
@@ -638,6 +660,8 @@ def _serialize_rfq(
         p = active_items[0].product
         if p is not None and getattr(p, "deleted_at", None) is None:
             first_item_image = _resolve_main_image_from_product(p)
+
+    att_list = attachments or []
 
     if is_operator:
         result = RfqOperatorView(
@@ -661,6 +685,7 @@ def _serialize_rfq(
             target_currency=rfq.target_currency,
             required_certifications=rfq.required_certifications,
             attachment_urls=rfq.attachment_urls,
+            attachments=att_list,
             created_at=rfq.created_at,
             updated_at=rfq.updated_at,
             items=items,
@@ -685,6 +710,7 @@ def _serialize_rfq(
         target_currency=rfq.target_currency,
         required_certifications=rfq.required_certifications,
         attachment_urls=rfq.attachment_urls,
+        attachments=att_list,
         created_at=rfq.created_at,
         updated_at=rfq.updated_at,
         first_item_image=first_item_image,
@@ -898,6 +924,13 @@ async def update_rfq(
 
     # ── attachment_urls 校验 ──
     validate_attachment_urls(payload.attachment_urls)
+
+    # ── 附件关联 ──
+    if payload.attachment_ids is not None:
+        from app.db.models.attachment import OwnerType
+        await validate_and_link_attachments(
+            db, user.id, OwnerType.RFQ, rfq.id, payload.attachment_ids,
+        )
 
     rfq.contact_name = payload.contact_name
     rfq.contact_phone = payload.contact_phone
