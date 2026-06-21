@@ -72,3 +72,8 @@ class Attachment(Base, TimestampUpdateMixin, SoftDeleteMixin):
     first_linked_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True, default=None,
     )
+
+    # 缩略图(仅图片类型附件,上传时 Pillow 生成 300px JPEG)
+    thumbnail_key: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    thumbnail_content_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    thumbnail_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

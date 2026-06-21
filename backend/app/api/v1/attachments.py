@@ -121,3 +121,64 @@ async def download(
             "Content-Length": str(att.size_bytes),
         },
     )
+
+
+# ── 鉴权缩略图 ──────────────────────────────────────────
+
+@router.get("/{attachment_id}/thumbnail")
+async def thumbnail(
+    attachment_id: int,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """鉴权缩略图。有缩略图返回小文件,无则降级返回原图。"""
+    row = await db.execute(
+        select(Attachment).where(
+            Attachment.id == attachment_id,
+            Attachment.deleted_at.is_(None),
+        )
+    )
+    att = row.scalar_one_or_none()
+
+    if att is None:
+        raise AttachmentNotFoundError()
+
+    # scope 校验
+    user_roles = set(current.roles)
+    allowed = await resolve_attachment_scope(db, current.id, user_roles, att)
+    if not allowed:
+        raise AttachmentNotFoundError()
+
+    storage = get_attachment_storage()
+
+    # 优先返回缩略图,无则降级返回原图
+    if att.thumbnail_key:
+        try:
+            stream = storage.open(att.thumbnail_key)
+            return StreamingResponse(
+                stream,
+                media_type=att.thumbnail_content_type or "image/jpeg",
+                headers={
+                    "X-Content-Type-Options": "nosniff",
+                    "Content-Length": str(att.thumbnail_size_bytes or 0),
+                    "Cache-Control": "private, max-age=3600",
+                },
+            )
+        except FileNotFoundError:
+            logger.warning("缩略图文件缺失,降级返回原图: attachment_id=%d", att.id)
+
+    # 降级:返回原图
+    try:
+        stream = storage.open(att.file_key)
+    except FileNotFoundError:
+        raise AttachmentNotFoundError()
+
+    return StreamingResponse(
+        stream,
+        media_type=att.content_type,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Length": str(att.size_bytes),
+            "Cache-Control": "private, max-age=3600",
+        },
+    )

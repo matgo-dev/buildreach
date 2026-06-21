@@ -11,3 +11,4 @@ class AttachmentPublic(BaseModel):
     content_type: str
     size_bytes: int
     download_url: str
+    thumbnail_url: str | None = None
