@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Paperclip, X, FileText, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -218,28 +219,30 @@ export default function AttachmentUploader({
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      {/* Lightbox 图片预览 */}
-      {lightboxId !== null && thumbUrls[lightboxId] && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70"
-          onClick={() => setLightboxId(null)}
-        >
-          <button
-            type="button"
+      {/* Lightbox — Portal 到 body，避免父级 transform 破坏 fixed 定位 */}
+      {lightboxId !== null && thumbUrls[lightboxId] && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70"
             onClick={() => setLightboxId(null)}
-            className="absolute right-4 top-4 rounded-full bg-white/20 p-2 text-white transition-colors hover:bg-white/40"
           >
-            <X className="h-5 w-5" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={thumbUrls[lightboxId]}
-            alt={attachments.find((a) => a.id === lightboxId)?.original_filename ?? ""}
-            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setLightboxId(null)}
+              className="absolute right-4 top-4 rounded-full bg-white/20 p-2 text-white transition-colors hover:bg-white/40"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={thumbUrls[lightboxId]}
+              alt={attachments.find((a) => a.id === lightboxId)?.original_filename ?? ""}
+              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -984,6 +984,8 @@
     "submit": "Wasilisha Nukuu",
     "cancel": "Ghairi",
     "submitSuccess": "Nukuu imewasilishwa",
+    "saveDraft": "Hifadhi Rasimu",
+    "draftSaved": "Rasimu ya nukuu imehifadhiwa",
     "unitPriceRequired": "Bei ya kitengo inahitajika",
     "unitPriceHint": "Bei ya kitengo ndiyo bei iliyonukuliwa; viwango ni kumbukumbu tu",
     "notProcessing": "RFQ hii haiko wazi kwa kunukuu",
