@@ -745,5 +745,15 @@ class RfqNoQuoteToExportError(BusinessError):
         )
 
 
+class RfqItemsOrRemarkRequiredError(BusinessError):
+    """40529 — 询价单必须至少有行项或需求说明。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, 40529,
+            "Either items or remark is required",
+            message_key=MessageKey.RFQ_ITEMS_OR_REMARK_REQUIRED,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

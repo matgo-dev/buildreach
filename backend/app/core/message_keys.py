@@ -97,6 +97,7 @@ class MessageKey:
     RFQ_TOO_MANY_ATTACHMENTS = "error.rfq.too_many_attachments"
     RFQ_INVALID_ATTACHMENT_URL = "error.rfq.invalid_attachment_url"
     RFQ_NO_QUOTE_TO_EXPORT = "error.rfq.no_quote_to_export"
+    RFQ_ITEMS_OR_REMARK_REQUIRED = "error.rfq.items_or_remark_required"
 
     # attachment — 附件模块 405xx
     ATTACHMENT_TOO_MANY = "error.attachment.too_many"

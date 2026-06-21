@@ -111,7 +111,8 @@
       "min_one_item": "询价单至少保留一个行项",
       "too_many_attachments": "附件数超过上限(最多6个)",
       "invalid_attachment_url": "附件链接无效",
-      "no_quote_to_export": "没有可导出的报价"
+      "no_quote_to_export": "没有可导出的报价",
+      "items_or_remark_required": "商品清单和需求说明至少填写一项"
     },
     "attachment": {
       "too_many": "附件数超过上限（最多6个）",
@@ -941,6 +942,7 @@
     "submitDirectly": "直接提交",
     "buyerOrgRequired": "请选择买方组织",
     "itemsRequired": "请添加至少一个商品",
+    "itemsOrRemarkRequired": "商品清单和需求说明至少填写一项",
     "createSuccess": "询价单已创建",
     "draftSaved": "草稿已保存",
     "attachment": {
@@ -1047,7 +1049,10 @@
     "confirmVariant": "确认",
     "noSelectableAttrs": "该商品无可选规格",
     "skuSpec": "选择变体",
-    "moqFromTier": "由阶梯价第一档决定"
+    "moqFromTier": "由阶梯价第一档决定",
+    "quoteAttachments": "报价附件",
+    "noItems": "无商品行项（自由询价）",
+    "buyerRemark": "需求说明"
   },
   "nav": {
     "mall": "严选商城",

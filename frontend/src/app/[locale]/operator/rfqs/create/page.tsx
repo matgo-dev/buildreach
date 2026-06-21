@@ -25,6 +25,8 @@ import { operatorProductsApi, type ProductOperatorItem } from "@/lib/api/operato
 import { getProduct, type AttrItem } from "@/lib/api/products";
 import { searchBuyerOrgs, type BuyerOrgBrief } from "@/lib/api/operatorBuyers";
 import { useAuthStore } from "@/stores/authStore";
+import AttachmentUploader from "@/components/rfq/AttachmentUploader";
+import type { AttachmentPublic } from "@/lib/api/attachments";
 
 // ---------- 本地行项类型 ----------
 
@@ -75,6 +77,7 @@ interface OperatorRfqDraft {
   contactPhone: string;
   contactEmail: string;
   remark: string;
+  attachments: AttachmentPublic[];
 }
 
 function emptyDraft(): OperatorRfqDraft {
@@ -90,6 +93,7 @@ function emptyDraft(): OperatorRfqDraft {
     contactPhone: "",
     contactEmail: "",
     remark: "",
+    attachments: [],
   };
 }
 
@@ -577,6 +581,7 @@ function CreateOnBehalfContent() {
           contactPhone: rfq.contact_phone ?? "",
           contactEmail: rfq.contact_email ?? "",
           remark: rfq.remark ?? "",
+          attachments: rfq.attachments ?? [],
         });
         setEditLoaded(true);
       } catch {
@@ -742,18 +747,20 @@ function CreateOnBehalfContent() {
     [items],
   );
 
-  // 表单校验
+  // 表单校验：自由询价允许无 items，但 items 和 remark 至少一个非空
   const validate = useCallback((): boolean => {
     if (!selectedBuyerOrg) {
       toast.error(t("buyerOrgRequired"));
       return false;
     }
-    if (items.length === 0) {
-      toast.error(t("itemsRequired"));
+    const hasItems = items.length > 0;
+    const hasRemark = !!(draft.remark && draft.remark.trim());
+    if (!hasItems && !hasRemark) {
+      toast.error(t("itemsOrRemarkRequired"));
       return false;
     }
     return true;
-  }, [selectedBuyerOrg, items, toast, t]);
+  }, [selectedBuyerOrg, items, draft.remark, toast, t]);
 
   // 提交（草稿 or 直接提交）
   const handleSubmit = useCallback(async (asDraft: boolean) => {
@@ -778,14 +785,23 @@ function CreateOnBehalfContent() {
         remark: draft.remark.trim() || undefined,
       };
 
+      const attachmentIds = draft.attachments.length > 0
+        ? draft.attachments.map((a) => a.id)
+        : undefined;
+
       if (isEditMode) {
-        await updateRfq(editRfqId!, { items: itemsPayload, ...metaPayload });
+        await updateRfq(editRfqId!, {
+          items: itemsPayload,
+          ...metaPayload,
+          attachment_ids: attachmentIds,
+        });
       } else {
         await createRfq({
           buyer_org_id: selectedBuyerOrg!.id,
           as_draft: asDraft,
           items: itemsPayload,
           ...metaPayload,
+          attachment_ids: attachmentIds,
         });
       }
       toast.success(asDraft || isEditMode ? t("draftSaved") : t("createSuccess"));
@@ -1191,18 +1207,27 @@ function CreateOnBehalfContent() {
         </div>
       </div>
 
-      {/* ⑤ 备注 */}
+      {/* ⑤ 备注 + 附件 */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-3 text-sm font-semibold text-gray-700">
-          {t("remark")}
+          {t("section_extra")}
           <span className="ml-1.5 text-xs font-normal text-gray-400">（选填）</span>
         </h2>
-        <textarea
-          rows={3}
-          value={draft.remark}
-          onChange={(e) => updateDraft("remark", e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-        />
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t("remark")}</label>
+            <textarea
+              rows={3}
+              value={draft.remark}
+              onChange={(e) => updateDraft("remark", e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <AttachmentUploader
+            attachments={draft.attachments}
+            onChange={(atts) => updateDraft("attachments", atts)}
+          />
+        </div>
       </div>
 
       {/* 底部操作栏 */}

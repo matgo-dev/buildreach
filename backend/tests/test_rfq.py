@@ -265,15 +265,15 @@ async def test_direct_duplicate_product_variant_rejected(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_direct_empty_items_rejected(client, db_session):
-    """DIRECT 空行 → 40505。"""
+async def test_direct_empty_items_no_remark_rejected(client, db_session):
+    """items 和 remark 都为空 → 40529（自由询价校验：至少一个非空）。"""
     bh = await _buyer_headers(client)
 
     r = await client.post("/api/v1/rfqs", headers=bh, json={
         "items": [],
     })
     assert r.status_code == 422
-    assert r.json()["code"] == 40505
+    assert r.json()["code"] == 40529
 
 
 @pytest.mark.asyncio

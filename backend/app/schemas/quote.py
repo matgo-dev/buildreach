@@ -11,6 +11,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.constants.quote_terms import CurrencyCode, TradeTermCode
+from app.schemas.attachment import AttachmentPublic
 
 
 # ── 请求体 ──────────────────────────────────────────────
@@ -69,6 +70,7 @@ class QuoteCreatePayload(BaseModel):
     """创建/重报报价请求体。"""
     header: QuoteHeaderInput = QuoteHeaderInput()
     lines: list[QuoteLineInput]
+    attachment_ids: list[int] | None = None
 
 
 # ── 响应体:阶梯价(公共)──────────────────────────────────
@@ -142,6 +144,7 @@ class RfqQuoteBuyerPublic(BaseModel):
     eta_days: int | None = None
     total_amount: Decimal | None = None
     items: list[QuoteItemBuyerPublic] = []
+    attachments: list[AttachmentPublic] = []
 
 
 # ── 响应体:运营报价(全版本)────────────────────────────────
@@ -164,3 +167,4 @@ class RfqQuoteOperatorView(BaseModel):
     total_amount: Decimal | None = None
     created_at: datetime | None = None
     items: list[QuoteItemOperatorView] = []
+    attachments: list[AttachmentPublic] = []
