@@ -3,7 +3,7 @@
 # ECS 上的部署脚本
 # 调用方:GitHub Actions(SSH 后跑此脚本)/ 应急时人工 SSH 后跑
 #
-# 流程:备份 DB → 拉代码 → 拉镜像 → 启动容器 → 健康检查 → 清理
+# 流程:备份 DB → 拉代码 → 拉镜像 → 记录旧镜像 → 启动容器 → 健康检查(失败自动回滚) → 清理
 #
 # 镜像由 GitHub Actions 构建并推送到 ghcr.io，ECS 只拉取和重启。
 # 回退（ghcr.io 不可用时）:
@@ -102,47 +102,73 @@ if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
 fi
 docker compose -f "$COMPOSE_FILE" --env-file .env.production pull backend frontend
 
-# ---- 4. 启动容器 ----
-echo "[deploy] [4/6] 启动容器"
+# ---- 4. 记录旧镜像（回滚用）----
+echo "[deploy] [4/7] 记录当前运行镜像"
+OLD_BACKEND_IMAGE=$(docker compose -f "$COMPOSE_FILE" images backend --format '{{.Image}}:{{.Tag}}' 2>/dev/null | head -1 || true)
+OLD_FRONTEND_IMAGE=$(docker compose -f "$COMPOSE_FILE" images frontend --format '{{.Image}}:{{.Tag}}' 2>/dev/null | head -1 || true)
+echo "[deploy]       旧 backend  → ${OLD_BACKEND_IMAGE:-首次部署}"
+echo "[deploy]       旧 frontend → ${OLD_FRONTEND_IMAGE:-首次部署}"
+
+# ---- 5. 启动容器 ----
+echo "[deploy] [5/7] 启动容器"
 docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --remove-orphans
 
-# ---- 5. 健康检查 ----
-echo "[deploy] [5/6] 等待 backend 健康(最多 ${HEALTH_TIMEOUT_SECONDS}s)..."
-HEALTHY=0
+# ---- 6. 健康检查（前后端都通过才算成功，任一失败则回滚）----
+echo "[deploy] [6/7] 等待 backend 健康(最多 ${HEALTH_TIMEOUT_SECONDS}s)..."
+BACKEND_OK=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
     if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
         echo "[deploy]       backend healthy(第 ${i} 次,$((i * 2))s)"
-        HEALTHY=1
+        BACKEND_OK=1
         break
     fi
     sleep 2
 done
-if [ "$HEALTHY" -ne 1 ]; then
-    echo "[deploy] backend 健康检查超时"
-    echo "[deploy]    docker compose logs --tail=50 backend"
-    docker compose -f "$COMPOSE_FILE" logs --tail=50 backend
-    exit 1
-fi
 
-echo "[deploy] 等待 frontend 健康..."
-HEALTHY=0
+echo "[deploy] 等待 frontend 健康(最多 ${HEALTH_TIMEOUT_SECONDS}s)..."
+FRONTEND_OK=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
     if curl -fsS "http://localhost:${FRONTEND_HOST_PORT}" > /dev/null 2>&1; then
         echo "[deploy]       frontend healthy(第 ${i} 次,$((i * 2))s)"
-        HEALTHY=1
+        FRONTEND_OK=1
         break
     fi
     sleep 2
 done
-if [ "$HEALTHY" -ne 1 ]; then
-    echo "[deploy] frontend 健康检查超时"
-    echo "[deploy]    docker compose logs --tail=50 frontend"
-    docker compose -f "$COMPOSE_FILE" logs --tail=50 frontend
+
+# 任一服务不健康 → 回滚到旧镜像
+if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ]; then
+    echo "[deploy] ⚠️  健康检查失败(backend=$BACKEND_OK, frontend=$FRONTEND_OK)"
+    echo "[deploy]    最近日志:"
+    if [ "$BACKEND_OK" -ne 1 ]; then
+        echo "[deploy]    --- backend ---"
+        docker compose -f "$COMPOSE_FILE" logs --tail=30 backend 2>&1 | sed 's/^/         /'
+    fi
+    if [ "$FRONTEND_OK" -ne 1 ]; then
+        echo "[deploy]    --- frontend ---"
+        docker compose -f "$COMPOSE_FILE" logs --tail=30 frontend 2>&1 | sed 's/^/         /'
+    fi
+
+    # 回滚:如果有旧镜像记录,回退到上一版本
+    if [ -n "$OLD_BACKEND_IMAGE" ] && [ -n "$OLD_FRONTEND_IMAGE" ]; then
+        echo "[deploy] 🔄 回滚到上一版本..."
+        git reset --hard "$PREV_SHA"
+        docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --remove-orphans
+        # 等回滚后的服务起来
+        sleep 10
+        if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
+            echo "[deploy] ✅ 回滚成功,服务已恢复到 $PREV_SHA"
+        else
+            echo "[deploy] ❌ 回滚后服务仍不健康,需人工介入"
+        fi
+    else
+        echo "[deploy] ❌ 无旧镜像记录(首次部署),无法回滚,需人工介入"
+    fi
     exit 1
 fi
 
-# ---- 6. 清理 ----
-echo "[deploy] [6/6] 清理 dangling 镜像 + 构建缓存(保留 volume)"
+# ---- 7. 清理 ----
+echo "[deploy] [7/7] 清理 dangling 镜像 + 构建缓存(保留 volume)"
 # 注意:严禁 prune volumes!只清 dangling images + build cache
 docker image prune -f --filter "dangling=true" 2>&1 | tail -3 | sed 's/^/         /'
 docker builder prune -f --keep-storage=500MB 2>&1 | tail -3 | sed 's/^/         /'
