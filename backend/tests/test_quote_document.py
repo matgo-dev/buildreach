@@ -2,8 +2,8 @@
 
 覆盖:
 - QuoteDocument 状态机转换
-- generate_quote_documents 创建记录 + 生成文件
-- 下载端点优先查产物表
+- 产物记录创建（幂等）
+- 下载端点对产物状态的响应（READY/GENERATING/FAILED/兜底）
 - 运营查状态 + 重试端点
 """
 from __future__ import annotations
@@ -128,7 +128,6 @@ def test_quote_document_transitions_failed():
     doc.transition_to("GENERATING")
     doc.transition_to("FAILED")
     assert doc.status == "FAILED"
-    # FAILED → PENDING（重试）
     doc.transition_to("PENDING")
     assert doc.status == "PENDING"
 
@@ -136,7 +135,7 @@ def test_quote_document_transitions_failed():
 def test_quote_document_transitions_invalid():
     doc = QuoteDocument(quote_id=1, version=1, locale="en", status="PENDING")
     with pytest.raises(ValueError, match="not allowed"):
-        doc.transition_to("READY")  # PENDING 不能直接跳 READY
+        doc.transition_to("READY")
 
 
 def test_quote_document_transitions_ready_is_terminal():
@@ -145,103 +144,33 @@ def test_quote_document_transitions_ready_is_terminal():
         doc.transition_to("PENDING")
 
 
-# ── 产物生成集成测试 ────────────────────────────────────
+# ── 产物记录创建测试 ────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_create_quote_triggers_document_generation(
+async def test_ensure_document_record_idempotent(
     client: AsyncClient, db_session: AsyncSession,
 ):
-    """提交报价后，BackgroundTask 应异步生成产物记录。
+    """_ensure_document_record 幂等：重复调用不创建重复记录。"""
+    from app.services.quote_export import _ensure_document_record
 
-    注：FastAPI TestClient 的 BackgroundTask 在响应返回后同步执行，
-    所以提交后查库应能看到产物记录。
-    """
     bh = await _buyer_headers(client)
     op = await _op_headers(client)
     rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
 
-    # 查 quote_documents 表 — BackgroundTask 在测试中同步执行
-    stmt = select(QuoteDocument).where(
-        QuoteDocument.quote_id == quote_id,
-        QuoteDocument.version == version,
-    )
-    docs = (await db_session.execute(stmt)).scalars().all()
+    doc1 = await _ensure_document_record(db_session, quote_id, version, "en")
+    await db_session.commit()
+    assert doc1.status == "PENDING"
 
-    # 应为每个 SUPPORTED_LOCALE 创建了记录
-    from app.core.locale import SUPPORTED_LOCALES
-    assert len(docs) >= len(SUPPORTED_LOCALES)
+    doc2 = await _ensure_document_record(db_session, quote_id, version, "en")
+    assert doc2.id == doc1.id
 
-    # 检查状态：应为 READY 或 FAILED（取决于 weasyprint 是否可用）
-    for doc in docs:
-        assert doc.status in ("READY", "FAILED", "PENDING", "GENERATING")
+    doc3 = await _ensure_document_record(db_session, quote_id, version, "zh")
+    await db_session.commit()
+    assert doc3.id != doc1.id
 
 
-@pytest.mark.asyncio
-async def test_operator_list_quote_documents(
-    client: AsyncClient, db_session: AsyncSession,
-):
-    """运营查询报价文档状态。"""
-    bh = await _buyer_headers(client)
-    op = await _op_headers(client)
-    rfq_id, _, _ = await _create_quoted_rfq(client, bh, op, db_session)
-
-    r = await client.get(
-        f"/api/v1/rfqs/{rfq_id}/quote-documents",
-        headers=op,
-    )
-    assert r.status_code == 200, r.text
-    data = r.json()["data"]
-    assert isinstance(data, list)
-
-
-@pytest.mark.asyncio
-async def test_operator_retry_quote_documents(
-    client: AsyncClient, db_session: AsyncSession,
-):
-    """运营重试失败的文档生成。"""
-    bh = await _buyer_headers(client)
-    op = await _op_headers(client)
-    rfq_id, _, _ = await _create_quoted_rfq(client, bh, op, db_session)
-
-    r = await client.post(
-        f"/api/v1/rfqs/{rfq_id}/quote-documents/retry",
-        headers=op,
-    )
-    assert r.status_code == 200, r.text
-    data = r.json()["data"]
-    assert "retried" in data
-
-
-@pytest.mark.asyncio
-async def test_download_with_ready_document(
-    client: AsyncClient, db_session: AsyncSession,
-):
-    """当产物 READY 时，下载端点直接返回文件。"""
-    bh = await _buyer_headers(client)
-    op = await _op_headers(client)
-    rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
-
-    # 查看是否有 READY 的产物
-    stmt = select(QuoteDocument).where(
-        QuoteDocument.quote_id == quote_id,
-        QuoteDocument.version == version,
-        QuoteDocument.status == "READY",
-    )
-    ready_doc = (await db_session.execute(stmt)).scalar_one_or_none()
-
-    r = await client.get(
-        f"/api/v1/rfqs/{rfq_id}/quote/export",
-        headers=bh,
-    )
-    # 无论是否有 READY 产物，都应返回可用的响应
-    assert r.status_code in (200, 202, 422), r.text
-
-    if ready_doc is not None:
-        # 有 READY 产物 → 直接返回 PDF
-        assert r.status_code == 200
-        assert r.headers["content-type"] == "application/pdf"
-        assert r.content[:4] == b"%PDF"
+# ── 下载端点状态响应测试 ──────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -253,25 +182,19 @@ async def test_download_generating_returns_202(
     op = await _op_headers(client)
     rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
 
-    # 手动将一个产物改为 GENERATING
-    stmt = select(QuoteDocument).where(
-        QuoteDocument.quote_id == quote_id,
-        QuoteDocument.version == version,
-    ).limit(1)
-    doc = (await db_session.execute(stmt)).scalar_one_or_none()
-    if doc is not None:
-        doc.status = "GENERATING"
-        doc.storage_key = None
-        await db_session.commit()
+    doc = QuoteDocument(
+        quote_id=quote_id, version=version, locale="en", status="GENERATING",
+    )
+    db_session.add(doc)
+    await db_session.commit()
 
-        # 下载时应返回 202
-        r = await client.get(
-            f"/api/v1/rfqs/{rfq_id}/quote/export",
-            headers={**bh, "Accept-Language": doc.locale},
-        )
-        assert r.status_code == 202
-        body = r.json()
-        assert body["code"] == 20201
+    r = await client.get(
+        f"/api/v1/rfqs/{rfq_id}/quote/export",
+        headers={**bh, "Accept-Language": "en"},
+    )
+    assert r.status_code == 202
+    body = r.json()
+    assert body["code"] == 20201
 
 
 @pytest.mark.asyncio
@@ -283,22 +206,134 @@ async def test_download_failed_returns_422(
     op = await _op_headers(client)
     rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
 
-    # 手动将一个产物改为 FAILED
+    doc = QuoteDocument(
+        quote_id=quote_id, version=version, locale="en",
+        status="FAILED", error_message="test error",
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    r = await client.get(
+        f"/api/v1/rfqs/{rfq_id}/quote/export",
+        headers={**bh, "Accept-Language": "en"},
+    )
+    assert r.status_code == 422
+    body = r.json()
+    assert body["code"] == 42210
+
+
+@pytest.mark.asyncio
+async def test_download_no_record_falls_back(
+    client: AsyncClient, db_session: AsyncSession,
+):
+    """无产物记录时兜底现场生成（过渡期）。需 weasyprint 系统依赖。"""
+    try:
+        from weasyprint import HTML  # noqa: F401
+    except OSError:
+        pytest.skip("WeasyPrint system libs not available")
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, _, _ = await _create_quoted_rfq(client, bh, op, db_session)
+
+    r = await client.get(
+        f"/api/v1/rfqs/{rfq_id}/quote/export",
+        headers=bh,
+    )
+    assert r.status_code == 200
+    assert "application/pdf" in r.headers.get("content-type", "")
+
+
+# ── 运营端点测试 ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_operator_list_quote_documents(
+    client: AsyncClient, db_session: AsyncSession,
+):
+    """运营查询报价文档状态。"""
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
+
+    for locale in ("zh", "en"):
+        db_session.add(QuoteDocument(
+            quote_id=quote_id, version=version, locale=locale, status="READY",
+        ))
+    await db_session.commit()
+
+    r = await client.get(
+        f"/api/v1/rfqs/{rfq_id}/quote-documents",
+        headers=op,
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert isinstance(data, list)
+    assert len(data) >= 2
+
+
+@pytest.mark.asyncio
+async def test_operator_retry_resets_failed_status(
+    client: AsyncClient, db_session: AsyncSession,
+):
+    """运营重试：FAILED 记录应重置为 PENDING。
+
+    直接调用 service 函数验证状态重置逻辑，避免通过 API 触发
+    BackgroundTask（它会尝试加载 WeasyPrint 系统库导致卡死）。
+    """
+    from app.services.quote_export import retry_failed_documents
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
+
+    db_session.add(QuoteDocument(
+        quote_id=quote_id, version=version, locale="sw",
+        status="FAILED", error_message="font missing",
+    ))
+    await db_session.commit()
+
+    count = await retry_failed_documents(db_session, quote_id, version, rfq_id)
+    assert count == 1
+
+    # 验证状态已重置为 PENDING
     stmt = select(QuoteDocument).where(
         QuoteDocument.quote_id == quote_id,
-        QuoteDocument.version == version,
-    ).limit(1)
-    doc = (await db_session.execute(stmt)).scalar_one_or_none()
-    if doc is not None:
-        doc.status = "FAILED"
-        doc.error_message = "test error"
-        doc.storage_key = None
-        await db_session.commit()
+        QuoteDocument.locale == "sw",
+    )
+    doc = (await db_session.execute(stmt)).scalar_one()
+    assert doc.status == "PENDING"
 
-        r = await client.get(
-            f"/api/v1/rfqs/{rfq_id}/quote/export",
-            headers={**bh, "Accept-Language": doc.locale},
-        )
-        assert r.status_code == 422
-        body = r.json()
-        assert body["code"] == 42210
+
+@pytest.mark.asyncio
+async def test_operator_retry_api_returns_count(
+    client: AsyncClient, db_session: AsyncSession,
+):
+    """运营重试 API 返回重试数量。
+
+    注：retry API 会触发 BackgroundTask → generate_quote_documents
+    → WeasyPrint 渲染。本地 macOS 无 WeasyPrint 系统库时 BackgroundTask
+    会卡死（session 阻塞），跳过此测试。重试逻辑已在上面的 service 层测试覆盖。
+    """
+    try:
+        from weasyprint import HTML  # noqa: F401
+    except OSError:
+        pytest.skip("WeasyPrint system libs not available — retry API test skipped")
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id, quote_id, version = await _create_quoted_rfq(client, bh, op, db_session)
+
+    db_session.add(QuoteDocument(
+        quote_id=quote_id, version=version, locale="sw",
+        status="FAILED", error_message="font missing",
+    ))
+    await db_session.commit()
+
+    r = await client.post(
+        f"/api/v1/rfqs/{rfq_id}/quote-documents/retry",
+        headers=op,
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["retried"] >= 1

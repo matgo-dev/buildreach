@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import json
 import logging
 import os
 import time
@@ -34,6 +35,7 @@ from app.templates.quote_pdf.labels import get_labels
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "quote_pdf"
 _UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
 logger = logging.getLogger("app.quote_export")
+_PDF_CACHE_DIRNAME = ".quote_pdf_cache"
 
 MAX_RETRIES = 3
 
@@ -141,6 +143,136 @@ def _image_key_to_pdf_src(image_key: str | None) -> str | None:
         return None
 
 
+def _safe_upload_path(upload_key: str | None) -> Path | None:
+    if not upload_key:
+        return None
+
+    normalized = Path(upload_key)
+    if normalized.is_absolute() or ".." in normalized.parts:
+        return None
+
+    uploads_root = _UPLOADS_DIR.resolve()
+    path = (_UPLOADS_DIR / normalized).resolve()
+    try:
+        path.relative_to(uploads_root)
+    except ValueError:
+        return None
+    return path
+
+
+def _file_signature(path: Path) -> dict[str, int | str | bool]:
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        return {"path": path.name, "exists": False}
+    return {
+        "path": path.name,
+        "exists": True,
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+    }
+
+
+def _image_signature(image_key: str | None) -> dict[str, int | str | bool | None]:
+    path = _safe_upload_path(image_key)
+    if path is None:
+        return {"key": image_key, "exists": False}
+    signature = _file_signature(path)
+    signature["key"] = image_key
+    return signature
+
+
+def _jsonable(value: object) -> object:
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    return value
+
+
+def _quote_cache_payload(
+    *,
+    rfq: object,
+    quote: RfqQuoteBuyerPublic,
+    locale: str,
+    cache_date: str,
+    image_keys: dict[int, str],
+) -> dict[str, object]:
+    return {
+        "version": 1,
+        "locale": locale,
+        # The footer includes generated_at and the download filename uses the
+        # current date, so cache for the day instead of forever.
+        "cache_date": cache_date,
+        "template": _file_signature(_TEMPLATE_DIR / "quote.html"),
+        "labels": _file_signature(_TEMPLATE_DIR / "labels.py"),
+        "platform": _PLATFORM_INFO,
+        "rfq": {
+            "id": getattr(rfq, "id", None),
+            "rfq_no": getattr(rfq, "rfq_no", None),
+            "contact_name": getattr(rfq, "contact_name", None),
+            "contact_phone": getattr(rfq, "contact_phone", None),
+            "contact_email": getattr(rfq, "contact_email", None),
+            "requested_delivery_place": getattr(rfq, "requested_delivery_place", None),
+            "destination_port": getattr(rfq, "destination_port", None),
+            "expected_delivery_date": _jsonable(
+                getattr(rfq, "expected_delivery_date", None)
+            ),
+            "created_at": _jsonable(getattr(rfq, "created_at", None)),
+        },
+        "quote": quote.model_dump(mode="json"),
+        "images": {
+            str(product_id): _image_signature(image_key)
+            for product_id, image_key in sorted(image_keys.items())
+        },
+    }
+
+
+def _quote_pdf_cache_key(payload: dict[str, object]) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _quote_pdf_cache_path(cache_key: str) -> Path:
+    return _UPLOADS_DIR / _PDF_CACHE_DIRNAME / f"{cache_key}.pdf"
+
+
+def _read_cached_pdf(cache_key: str) -> bytes | None:
+    cache_path = _quote_pdf_cache_path(cache_key)
+    try:
+        return cache_path.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError:
+        logger.warning(
+            "quote PDF cache read failed cache_key=%s",
+            cache_key,
+            exc_info=True,
+        )
+        return None
+
+
+def _write_cached_pdf(cache_key: str, pdf_bytes: bytes) -> None:
+    cache_path = _quote_pdf_cache_path(cache_key)
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = cache_path.with_name(
+            f".{cache_path.name}.{os.getpid()}.{time.time_ns()}.tmp"
+        )
+        tmp_path.write_bytes(pdf_bytes)
+        tmp_path.replace(cache_path)
+    except OSError:
+        logger.warning(
+            "quote PDF cache write failed cache_key=%s",
+            cache_key,
+            exc_info=True,
+        )
+
+
 def _download_filename(rfq_no: str, now: datetime) -> str:
     return f"{rfq_no}_{now.strftime('%Y-%m-%d')}.pdf"
 
@@ -199,9 +331,9 @@ async def generate_quote_pdf(
     product_items = [i for i in quote.items if i.line_type == "PRODUCT"]
     fee_items = [i for i in quote.items if i.line_type == "FEE"]
 
-    # 批量查商品主图
+    # 批量查商品主图 key。缩略图生成放到缓存未命中之后,避免命中缓存时仍做图片 I/O。
     product_ids = [i.product_id for i in product_items if i.product_id]
-    image_map: dict[int, str] = {}
+    image_keys: dict[int, str] = {}
     if product_ids:
         rows = await db.execute(
             select(ProductImage.product_id, ProductImage.image_key)
@@ -212,9 +344,8 @@ async def generate_quote_pdf(
             )
         )
         for pid, key in rows.all():
-            src = _image_key_to_pdf_src(key)
-            if src:
-                image_map[pid] = src
+            if key:
+                image_keys[pid] = key
 
     subtotal_products = sum(
         (i.line_amount or Decimal("0")) for i in product_items
@@ -228,6 +359,34 @@ async def generate_quote_pdf(
 
     labels = get_labels(locale)
     now = datetime.utcnow()
+    cache_date = now.strftime("%Y-%m-%d")
+    cache_payload = _quote_cache_payload(
+        rfq=rfq,
+        quote=quote,
+        locale=locale,
+        cache_date=cache_date,
+        image_keys=image_keys,
+    )
+    cache_key = _quote_pdf_cache_key(cache_payload)
+    filename = _download_filename(rfq.rfq_no, now)
+
+    cached_pdf = _read_cached_pdf(cache_key)
+    if cached_pdf is not None:
+        logger.info(
+            "quote PDF cache hit rfq_id=%s locale=%s items=%d images=%d total_ms=%.1f",
+            rfq_id,
+            locale,
+            len(product_items),
+            len(image_keys),
+            (time.perf_counter() - started_at) * 1000,
+        )
+        return cached_pdf, filename
+
+    image_map: dict[int, str] = {}
+    for pid, key in image_keys.items():
+        src = _image_key_to_pdf_src(key)
+        if src:
+            image_map[pid] = src
 
     # CJK 字体 ~18MB，weasyprint 每次加载子集化需 3s+；en/sw 纯拉丁字母无需 CJK
     if locale == "zh":
@@ -262,19 +421,42 @@ async def generate_quote_pdf(
     pdf_bytes = await asyncio.get_event_loop().run_in_executor(
         None, partial(_render_pdf, html_str),
     )
+    _write_cached_pdf(cache_key, pdf_bytes)
 
     logger.info(
-        "quote PDF generated rfq_id=%s locale=%s items=%d images=%d render_ms=%.1f total_ms=%.1f",
+        "quote PDF generated rfq_id=%s locale=%s items=%d images=%d cache_key=%s render_ms=%.1f total_ms=%.1f",
         rfq_id,
         locale,
         len(product_items),
         len(image_map),
+        cache_key,
         (time.perf_counter() - render_started_at) * 1000,
         (time.perf_counter() - started_at) * 1000,
     )
 
-    filename = _download_filename(rfq.rfq_no, now)
     return pdf_bytes, filename
+
+
+async def prewarm_quote_pdf_cache(
+    rfq_id: int,
+    user: object,
+    locales: tuple[str, ...] = ("zh", "en"),
+) -> None:
+    """Best-effort background cache warmup after an operator submits a quote."""
+    from app.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        for locale in locales:
+            try:
+                await generate_quote_pdf(db, rfq_id, user, locale)
+            except Exception:
+                await db.rollback()
+                logger.warning(
+                    "quote PDF cache prewarm failed rfq_id=%s locale=%s",
+                    rfq_id,
+                    locale,
+                    exc_info=True,
+                )
 
 
 def _render_pdf(html_str: str) -> bytes:
@@ -455,15 +637,23 @@ async def generate_quote_documents(
     from app.core.locale import SUPPORTED_LOCALES
     from app.db.session import AsyncSessionLocal
 
-    async with AsyncSessionLocal() as db:
-        # 幂等创建 PENDING 记录
-        for locale in SUPPORTED_LOCALES:
-            await _ensure_document_record(db, quote_id, version, locale)
-        await db.commit()
+    try:
+        async with AsyncSessionLocal() as db:
+            # 幂等创建 PENDING 记录
+            for locale in SUPPORTED_LOCALES:
+                await _ensure_document_record(db, quote_id, version, locale)
+            await db.commit()
 
-        # 串行生成，避免 WeasyPrint 并发吃爆内存
-        for locale in SUPPORTED_LOCALES:
-            await _generate_single_document(db, quote_id, version, locale, rfq_id)
+            # 串行生成，避免 WeasyPrint 并发吃爆内存
+            for locale in SUPPORTED_LOCALES:
+                await _generate_single_document(db, quote_id, version, locale, rfq_id)
+    except Exception:
+        # BackgroundTask best-effort：独立 session 可能因事务隔离
+        # 看不到调用方的数据，此处静默失败不影响主流程
+        logger.warning(
+            "generate_quote_documents failed quote_id=%s version=%s",
+            quote_id, version, exc_info=True,
+        )
 
 
 async def get_quote_documents_status(
