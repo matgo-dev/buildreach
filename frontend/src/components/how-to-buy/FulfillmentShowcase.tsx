@@ -143,13 +143,13 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
         {/* 中轴线 */}
         <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 hidden md:block" />
 
-        <div className="space-y-8 md:space-y-12">
+        <div>
           {PROCESS_STEPS.map((step, i) => {
             const isLeft = i % 2 === 0;
             const isHighlight = step.highlight;
 
             return (
-              <div key={step.id} className="relative">
+              <div key={step.id} className={`relative ${i === 0 ? "" : "mt-8 md:-mt-12"}`}>
                 {/* 中间节点 — 桌面端 */}
                 <div className="absolute left-1/2 -translate-x-1/2 top-6 hidden md:flex z-10">
                   <div
