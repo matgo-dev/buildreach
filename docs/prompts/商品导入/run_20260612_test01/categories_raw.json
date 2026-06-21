@@ -1,0 +1,9 @@
+[
+  { "level": 1, "name_en": "Construction & Real Estate", "name_zh": "建筑及房地产", "parent_en": null },
+  { "level": 2, "name_en": "Flooring", "name_zh": "地板", "parent_en": "Construction & Real Estate" },
+  { "level": 3, "name_en": "Plastic Flooring", "name_zh": "塑料地板", "parent_en": "Flooring" },
+  { "level": 4, "name_en": "SPC Flooring", "name_zh": "SPC地板", "parent_en": "Plastic Flooring" },
+  { "level": 1, "name_en": "Home & Garden", "name_zh": "家居及园艺", "parent_en": null },
+  { "level": 2, "name_en": "Kitchen Fixtures", "name_zh": "厨房五金", "parent_en": "Home & Garden" },
+  { "level": 3, "name_en": "Kitchen Faucets", "name_zh": "厨房水龙头", "parent_en": "Kitchen Fixtures" }
+]

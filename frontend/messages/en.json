@@ -111,7 +111,7 @@
       "min_one_item": "At least one item is required",
       "too_many_attachments": "Too many attachments (max 6)",
       "invalid_attachment_url": "Invalid attachment URL",
-      "no_quote_to_export": "No active quote available for export"
+      "no_quote_to_export": "No quote available to export"
     },
     "attachment": {
       "too_many": "Too many attachments (maximum 6 allowed)",
