@@ -78,7 +78,8 @@ COPY --chown=appuser:appuser . .
 # entrypoint 需要可执行 + 创建上传目录（volume 挂载点）
 RUN chmod +x docker-entrypoint.sh \
     && mkdir -p /app/uploads \
-    && chown appuser:appuser /app/uploads
+    && mkdir -p /app/private_uploads/attachments \
+    && chown -R appuser:appuser /app/uploads /app/private_uploads
 
 USER appuser
 
