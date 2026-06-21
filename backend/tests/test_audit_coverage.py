@@ -109,14 +109,40 @@ AUDIT_EXEMPT_WRITE_ROUTES: set[tuple[str, str]] = {
 
 
 def _collect_write_routes() -> set[tuple[str, str]]:
-    """从 FastAPI app 枚举所有写类路由。"""
+    """从 FastAPI app 枚举所有写类路由。
+
+    FastAPI >= 0.115 用 _IncludedRouter 包装 include_router 注册的子路由,
+    不再直接暴露 methods/path;需要递归遍历 original_router.routes。
+    """
     write_methods = {"POST", "PUT", "PATCH", "DELETE"}
     routes: set[tuple[str, str]] = set()
+
+    def _walk(route_list: list, prefix: str = "") -> None:
+        for route in route_list:
+            tp = type(route).__name__
+            if tp == "APIRoute":
+                full_path = prefix + route.path
+                for method in route.methods:
+                    if method in write_methods:
+                        routes.add((method, full_path))
+            elif tp == "_IncludedRouter":
+                # 递归进入子路由,带上子路由器的 prefix
+                orig = route.original_router
+                _walk(orig.routes, prefix)
+            elif hasattr(route, "routes"):
+                _walk(route.routes, prefix + getattr(route, "path", ""))
+
+    # 顶层 app.routes 包含 _IncludedRouter(api_router)
     for route in app.routes:
-        if hasattr(route, "methods") and hasattr(route, "path"):
+        tp = type(route).__name__
+        if tp == "_IncludedRouter":
+            orig = route.original_router
+            _walk(orig.routes, orig.prefix or "")
+        elif hasattr(route, "methods") and hasattr(route, "path"):
             for method in route.methods:
                 if method in write_methods:
                     routes.add((method, route.path))
+
     return routes
 
 

@@ -595,17 +595,21 @@ class TestProductImport:
         # 有 swatch_image 时 value_type 被提升为 "image"(import_products.py L922-923)
         assert oak_attr.value_type == "image"
         assert oak_attr.attr_value_zh == "橡木"
+        # swatch_image 列存储 image_key(products/<spu_code>/<filename>)
+        assert oak_attr.swatch_image is not None
+        assert "color_oak" in oak_attr.swatch_image
 
-        # 色板图存在且绑定 spec_value
-        swatch_imgs = db.execute(
-            select(ProductImage).where(
-                ProductImage.product_id == product.id,
-                ProductImage.spec_value.isnot(None),
+        # Walnut 色板同理
+        walnut_attr = db.execute(
+            select(ProductAttr).where(
+                ProductAttr.product_id == product.id,
+                ProductAttr.attr_key_en == "Color",
+                ProductAttr.attr_value_en == "Walnut",
             )
-        ).scalars().all()
-        spec_values = {img.spec_value for img in swatch_imgs}
-        assert "颜色:Oak" in spec_values
-        assert "颜色:Walnut" in spec_values
+        ).scalar_one()
+        assert walnut_attr.value_type == "image"
+        assert walnut_attr.swatch_image is not None
+        assert "color_walnut" in walnut_attr.swatch_image
 
     def test_images_main_gallery_detail(self, prepared_db, cat_tree, offers, run_meta):
         """图片类型:首张 MAIN,其余 GALLERY;description_images → DETAIL。"""
