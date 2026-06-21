@@ -110,7 +110,8 @@
       "not_assigned_to_you": "This inquiry is not assigned to you",
       "min_one_item": "At least one item is required",
       "too_many_attachments": "Too many attachments (max 6)",
-      "invalid_attachment_url": "Invalid attachment URL"
+      "invalid_attachment_url": "Invalid attachment URL",
+      "no_quote_to_export": "No quote available to export"
     },
     "quote": {
       "rfq_state_invalid": "Quote operation not allowed for current RFQ state",

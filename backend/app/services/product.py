@@ -328,12 +328,14 @@ async def _add_attrs(
     for attr in attrs:
         tpl = template_map.get(attr.attr_key)
         if tpl is None:
-            # TODO: 品类模板完善后恢复为 raise AttrKeyNotInTemplateError
+            if template_map:
+                # 品类有模板定义,拒绝模板外的属性
+                raise AttrKeyNotInTemplateError(attr.attr_key, category_code)
+            # 品类无模板时仍保存属性,但无法填充 unit/sort_order/selectable
             logger.warning(
-                "属性 '%s' 不在品类 '%s' 模板中,跳过",
+                "属性 '%s' 不在品类 '%s' 模板中(品类无模板),允许保存",
                 attr.attr_key, category_code,
             )
-            # 无模板时仍保存属性,但无法填充 unit/sort_order/selectable
             db.add(ProductAttr(
                 product_id=product_id,
                 sku_id=sku_id,
