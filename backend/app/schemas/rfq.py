@@ -11,6 +11,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.schemas.attachment import AttachmentPublic
+
 
 # ── 请求体 ──────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ class RfqCreate(BaseModel):
     target_currency: str | None = None
     required_certifications: list[str] | None = None
     attachment_urls: list[str] | None = None
+    attachment_ids: list[int] | None = None
     remark: str | None = None
 
 
@@ -62,6 +65,7 @@ class RfqUpdate(BaseModel):
     target_currency: str | None = None
     required_certifications: list[str] | None = None
     attachment_urls: list[str] | None = None
+    attachment_ids: list[int] | None = None
     remark: str | None = None
 
 
@@ -137,6 +141,7 @@ class RfqBuyerPublic(BaseModel):
     target_currency: str | None = None
     required_certifications: list[str] | None = None
     attachment_urls: list[str] | None = None
+    attachments: list[AttachmentPublic] = []
 
     # 时间
     created_at: datetime | None = None
@@ -182,6 +187,7 @@ class RfqOperatorView(BaseModel):
     target_currency: str | None = None
     required_certifications: list[str] | None = None
     attachment_urls: list[str] | None = None
+    attachments: list[AttachmentPublic] = []
 
     # 时间
     created_at: datetime | None = None

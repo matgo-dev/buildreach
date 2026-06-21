@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin_audit,
     admin_users,
+    attachments,
     auth,
     buyer_events,
     buyer_prefs,
@@ -27,6 +28,7 @@ from app.api.v1 import (
 from app.core.config import settings
 
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(attachments.router)
 api_router.include_router(auth.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_audit.router)
