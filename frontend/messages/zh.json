@@ -1293,5 +1293,16 @@
     "boundaryIncluded": "服务范围内",
     "boundaryExcluded": "服务范围外",
     "boundaryDesc": "BuildLink 提供从中国工厂到达累斯萨拉姆港的全链条服务，包含供应商筛选、集采、质检、拼柜、报关、海运及目的港清关。内陆运输（港口到工地）由买方自行安排或委托当地物流。平台不提供金融贷款、保险代理等金融服务。"
+  },
+  "noPermission": {
+    "title": "无权访问",
+    "subtitle": "您没有权限访问此页面",
+    "description": "请联系管理员获取访问权限，或返回您有权访问的页面。",
+    "reasonRole": "您的账户角色无法访问此区域",
+    "reasonPermission": "您缺少访问此页面所需的权限",
+    "goBack": "返回上一页",
+    "goDashboard": "回到工作台",
+    "goLogin": "去登录",
+    "notLoggedIn": "您尚未登录，请先登录后再试。"
   }
 }
