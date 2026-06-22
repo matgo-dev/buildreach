@@ -38,42 +38,44 @@ const CERT_BADGES = ["PVoC", "CoC", "ISO 9001", "SGS", "BBS", "KEBS"];
 /** Hero 区域 */
 function HeroSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
-    <section
-      className="relative overflow-hidden"
-      style={{
-        background: "linear-gradient(135deg, #00505a 0%, #003a40 100%)",
-      }}
-    >
-      {/* 动画光晕 */}
-      <div
-        className="absolute inset-0 opacity-20"
+    <div className="mx-auto max-w-mall px-6 pt-6">
+      <section
+        className="relative overflow-hidden rounded-2xl"
         style={{
-          background:
-            "radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 70%)",
-          animation: "pulse 4s ease-in-out infinite",
+          background: "linear-gradient(135deg, #00505a 0%, #003a40 100%)",
         }}
-      />
-      <div className="relative mx-auto max-w-5xl px-6 py-16 md:py-20 text-center">
-        {/* 路线徽章 */}
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm text-white/90 mb-6">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          {t("heroTag")}
-        </span>
-        <h1 className="text-2xl md:text-4xl font-bold text-white mb-4 leading-tight">
-          {t("heroTitle")}
-        </h1>
-        <p className="text-sm md:text-base text-white/70 max-w-2xl mx-auto leading-relaxed">
-          {t("heroSub")}
-        </p>
-      </div>
-      {/* pulse 动画 keyframes */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.15; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
-    </section>
+      >
+        {/* 动画光晕 */}
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            background:
+              "radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 70%)",
+            animation: "pulse 4s ease-in-out infinite",
+          }}
+        />
+        <div className="relative mx-auto max-w-5xl px-6 py-7 text-center">
+          {/* 路线徽章 */}
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm text-white/90 mb-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            {t("heroTag")}
+          </span>
+          <h1 className="text-xl md:text-2xl font-bold text-white mb-1.5 leading-tight">
+            {t("heroTitle")}
+          </h1>
+          <p className="text-[13px] text-white/65 max-w-2xl mx-auto leading-relaxed">
+            {t("heroSub")}
+          </p>
+        </div>
+        {/* pulse 动画 keyframes */}
+        <style jsx>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 0.15; }
+            50% { opacity: 0.3; }
+          }
+        `}</style>
+      </section>
+    </div>
   );
 }
 
