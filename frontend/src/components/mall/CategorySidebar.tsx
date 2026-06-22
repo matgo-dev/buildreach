@@ -90,7 +90,7 @@ export function CategorySidebar({
   return (
     <aside
       ref={asideRef}
-      className={`relative hidden w-[240px] shrink-0 lg:block ${
+      className={`relative hidden w-[220px] shrink-0 lg:block ${
         isSticky ? "sticky top-[148px] z-30 self-start" : "self-stretch"
       }`}
       onMouseLeave={() => setHoveredRowIdx(null)}

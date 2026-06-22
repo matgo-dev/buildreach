@@ -29,7 +29,7 @@ export default function HomePage() {
   return (
     <PublicLayout>
       {/* ===== 顶部三栏等高区域(品类 + 轮播 + 信息栏) ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_280px] gap-4 items-stretch mb-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_220px] gap-4 items-stretch mb-5 lg:h-[420px] xl:h-[460px]">
         {/* 左侧品类导航 — home 模式不 sticky */}
         <CategorySidebar variant="home" />
 

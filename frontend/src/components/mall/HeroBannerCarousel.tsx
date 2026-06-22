@@ -164,7 +164,7 @@ export function HeroBannerCarousel() {
 
   return (
     <div
-      className="relative w-full h-full min-h-[320px] rounded-xl overflow-hidden group"
+      className="relative w-full h-full rounded-xl overflow-hidden group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

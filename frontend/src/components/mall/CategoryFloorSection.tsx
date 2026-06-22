@@ -8,21 +8,18 @@ import { Loader2, PackageOpen } from "lucide-react";
 import { listProducts, type ProductPublic } from "@/lib/api/products";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { ProductCardCompact } from "./ProductCardCompact";
+import { MOCK_FLOOR_PRODUCTS } from "./floorMockData";
 
 /** 楼层配置项 */
 export interface FloorConfig {
   id: string;             // DOM id，供电梯锚点用
-  nameKey: string;        // i18n key (如 "floorToolsConsumables")
-  categoryCode: string;   // L1 品类 code（如 "01"）
-  gradient: string;       // 左区背景渐变
-  bgImage: string;        // 背景图 URL
+  nameKey: string;        // i18n key
+  categoryCode: string;   // L1 品类 code
+  bgImage: string;        // 左区背景图 URL（竖长图，底部有产品实物）
 }
 
 const FLOOR_PRODUCT_SIZE = 8;
 
-/**
- * 单个品类楼层：左区(品类信息) + 右区(商品网格)。
- */
 export function CategoryFloorSection({
   config,
   categoryTree,
@@ -33,39 +30,40 @@ export function CategoryFloorSection({
   const t = useTranslations("mall");
   const router = useRouter();
 
-  // 从品类树中找到该 L1 品类节点
   const l1Node = categoryTree.find((c) => c.code === config.categoryCode);
   const l2Children = l1Node?.children ?? [];
 
-  // 拉取该品类下 8 个商品（精选优先 → 最新）
   const { data, isLoading } = useSWR(
     `floor-products-${config.categoryCode}`,
     async () => {
-      // 先拉精选
-      const featured = await listProducts({
-        category_code: config.categoryCode,
-        featured: true,
-        size: FLOOR_PRODUCT_SIZE,
-        sort: "newest",
-      });
-      if (featured.items.length >= FLOOR_PRODUCT_SIZE) {
-        return featured.items.slice(0, FLOOR_PRODUCT_SIZE);
+      try {
+        const featured = await listProducts({
+          category_code: config.categoryCode,
+          featured: true,
+          size: FLOOR_PRODUCT_SIZE,
+          sort: "newest",
+        });
+        if (featured.items.length >= FLOOR_PRODUCT_SIZE) {
+          return featured.items.slice(0, FLOOR_PRODUCT_SIZE);
+        }
+        const rest = await listProducts({
+          category_code: config.categoryCode,
+          size: FLOOR_PRODUCT_SIZE,
+          sort: "newest",
+        });
+        const seenIds = new Set(featured.items.map((p) => p.id));
+        const extra = rest.items.filter((p) => !seenIds.has(p.id));
+        return [...featured.items, ...extra].slice(0, FLOOR_PRODUCT_SIZE);
+      } catch {
+        return []; // API 错误时返回空，由 Mock 兜底
       }
-      // 精选不足，补充非精选
-      const rest = await listProducts({
-        category_code: config.categoryCode,
-        size: FLOOR_PRODUCT_SIZE - featured.items.length,
-        sort: "newest",
-      });
-      // 去重合并
-      const seenIds = new Set(featured.items.map((p) => p.id));
-      const extra = rest.items.filter((p) => !seenIds.has(p.id));
-      return [...featured.items, ...extra].slice(0, FLOOR_PRODUCT_SIZE);
     },
     { revalidateOnFocus: false },
   );
 
-  const products: ProductPublic[] = data ?? [];
+  // 真实数据 >= 4 个才用真实数据，否则用 Mock（TODO: 数据入库后移除）
+  const mockProducts = (MOCK_FLOOR_PRODUCTS[config.categoryCode] ?? []) as ProductPublic[];
+  const products: ProductPublic[] = (data && data.length >= 4) ? data : mockProducts;
 
   return (
     <section
@@ -73,34 +71,36 @@ export function CategoryFloorSection({
       className="rounded-xl overflow-hidden border border-line bg-white"
       style={{ boxShadow: "0 1px 4px rgba(16,36,65,.05)" }}
     >
-      {/* ── 移动端品类标题横条（flex 外，仅小屏显示） ── */}
+      {/* ── 移动端品类标题横条 ── */}
       <div
-        className="md:hidden px-4 py-3 text-white font-bold text-sm"
-        style={{ background: config.gradient }}
+        className="md:hidden px-4 py-3 text-white font-bold text-sm bg-gray-700"
       >
         {t(config.nameKey)}
       </div>
 
-      <div className="flex min-h-[280px] md:min-h-[360px]">
-        {/* ── 左区：品类信息（仅 md+ 显示）—— 鑫方盛风格 ── */}
-        <div
-          className="hidden md:flex w-[220px] shrink-0 flex-col justify-between p-5 text-white relative overflow-hidden"
-          style={{ background: config.gradient }}
-        >
-          <div className="relative z-10">
-            {/* 品类名 */}
-            <h3 className="text-xl font-black mb-4">
+      <div className="flex">
+        {/* ── 左区：鑫方盛风格（图片自带色调，上半纯色放文字，下半产品图） ── */}
+        <div className="hidden md:block w-[220px] shrink-0 relative overflow-hidden rounded-l-xl">
+          {/* 背景图铺满，图片本身上半部分是纯色、下半部分是产品图 */}
+          <img
+            src={config.bgImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+
+          {/* 文字直接叠在图片的纯色区域上 */}
+          <div className="relative z-10 p-5">
+            <h3 className="text-xl font-black text-white mb-4">
               {t(config.nameKey)}
             </h3>
 
-            {/* L2 子分类链接（2列） */}
             {l2Children.length > 0 && (
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 {l2Children.slice(0, 10).map((l2) => (
                   <button
                     key={l2.code}
                     onClick={() => router.push(`/mall?cat=${l2.code}`)}
-                    className="text-left text-[13px] font-medium text-white/90 hover:text-white hover:underline transition-colors truncate"
+                    className="text-left text-[13px] font-bold text-white/90 hover:text-white hover:underline transition-colors truncate"
                   >
                     {l2.name}
                   </button>
@@ -108,12 +108,6 @@ export function CategoryFloorSection({
               </div>
             )}
           </div>
-
-          {/* 底部品类装饰图 — 鑫方盛风格，占左区下部 */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-[45%] bg-contain bg-bottom bg-no-repeat opacity-30"
-            style={{ backgroundImage: `url(${config.bgImage})` }}
-          />
         </div>
 
         {/* ── 右区：商品网格 ── */}

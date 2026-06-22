@@ -10,15 +10,36 @@ export interface FloorItem {
 }
 
 /**
- * 楼层电梯 — 左侧占位式导航，sticky 跟随滚动。
- * 通过 IntersectionObserver 检测当前可见楼层并高亮。
+ * 楼层电梯 — 鑫方盛风格。
+ *
+ * - fixed 定位在页面左侧，不占楼层内容宽度
+ * - 第一个楼层快滚完、第二个楼层露出时才出现
+ * - 楼层区域完全滚过后隐藏
  */
 export function FloorElevator({ floors }: { floors: FloorItem[] }) {
   const t = useTranslations("mall");
   const [activeId, setActiveId] = useState(floors[0]?.id ?? "");
+  const [visible, setVisible] = useState(false);
   const ratioMap = useRef<Map<string, number>>(new Map());
 
-  // 高亮当前可见楼层
+  // ── 显隐：第一个楼层底部接近视口顶部时出现，楼层区完全滚过后隐藏 ──
+  useEffect(() => {
+    const firstFloor = floors[0] ? document.getElementById(floors[0].id) : null;
+    const container = document.getElementById("category-floors-container");
+    if (!firstFloor || !container) return;
+
+    const onScroll = () => {
+      const firstRect = firstFloor.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      setVisible(firstRect.bottom < 150 && containerRect.bottom > 200);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [floors]);
+
+  // ── 高亮：追踪每个楼层的可见比例 ──
   useEffect(() => {
     const map = ratioMap.current;
     map.clear();
@@ -71,9 +92,16 @@ export function FloorElevator({ floors }: { floors: FloorItem[] }) {
   }, []);
 
   return (
-    <div className="hidden lg:block sticky top-[140px] z-30 self-start w-[80px] shrink-0">
+    <div
+      className={`hidden lg:block fixed z-30 transition-all duration-300 ${
+        visible
+          ? "opacity-100 translate-x-0"
+          : "opacity-0 -translate-x-4 pointer-events-none"
+      }`}
+      style={{ top: "50%", left: "max(8px, calc((100vw - 1280px) / 2 - 90px))", transform: `translateY(-50%) ${visible ? "" : "translateX(-16px)"}` }}
+    >
       <div
-        className="flex flex-col rounded-lg border border-line bg-white overflow-hidden"
+        className="flex flex-col rounded-lg border border-line bg-white overflow-hidden w-[76px]"
         style={{ boxShadow: "0 2px 8px rgba(16,36,65,.08)" }}
       >
         {floors.map((floor) => {

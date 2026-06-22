@@ -1,6 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-  <rect width="400" height="400" fill="none"/>
-  <circle cx="200" cy="180" r="60" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  <circle cx="200" cy="180" r="90" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-  <circle cx="200" cy="180" r="120" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="200" viewBox="0 0 220 200" fill="none">
+  <g opacity="0.15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 螺栓 -->
+    <rect x="40" y="70" width="16" height="80" rx="2"/>
+    <rect x="34" y="60" width="28" height="14" rx="2"/>
+    <line x1="40" y1="80" x2="56" y2="80"/>
+    <line x1="40" y1="90" x2="56" y2="90"/>
+    <line x1="40" y1="100" x2="56" y2="100"/>
+    <line x1="40" y1="110" x2="56" y2="110"/>
+    <!-- 螺母（六角） -->
+    <polygon points="120,80 140,70 160,80 160,100 140,110 120,100"/>
+    <circle cx="140" cy="90" r="12"/>
+    <!-- 垫片 -->
+    <circle cx="170" cy="150" r="20"/>
+    <circle cx="170" cy="150" r="10"/>
+    <!-- 管道 -->
+    <rect x="50" y="160" width="60" height="14" rx="7"/>
+  </g>
 </svg>
