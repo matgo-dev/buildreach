@@ -9,8 +9,8 @@ type MockProduct = Pick<ProductPublic, "id" | "spu_code" | "name" | "main_image"
 function mp(id: number, name: string, seed: string, moq: number, unit: string, categoryCode: string): MockProduct {
   return {
     id, spu_code: `MOCK-${id}`, name,
-    // picsum.photos — 可靠的占位图服务，seed 保证同一商品始终同一张图
-    main_image: `https://picsum.photos/seed/${seed}/400/400`,
+    // 本地 SVG 占位图，不依赖外网
+    main_image: `/images/mock-products/${seed}.svg`,
     moq, moq_unit: unit, unit, category_code: categoryCode,
     category_name: "", description: null, origin: "China",
     brand: null, certifications: null, is_featured: true,

@@ -38,13 +38,13 @@ const FLOOR_CONFIGS: FloorConfig[] = [
     id: "floor-doors",
     nameKey: "floorDoorsWindowsHardware",
     categoryCode: "05",
-    bgImage: "/images/floors/decoration.png", // 暂用装饰建材图，待替换
+    bgImage: "/images/floors/doors.png",
   },
   {
     id: "floor-decoration",
     nameKey: "floorDecorationBuilding",
     categoryCode: "06",
-    bgImage: "/images/floors/electrical.png", // 暂复用工控配电图，待替换
+    bgImage: "/images/floors/decoration.png",
   },
 ];
 

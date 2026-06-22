@@ -71,31 +71,31 @@ export function CategoryFloorSection({
       className="rounded-xl overflow-hidden border border-line bg-white"
       style={{ boxShadow: "0 1px 4px rgba(16,36,65,.05)" }}
     >
-      {/* ── 移动端品类标题横条 ── */}
-      <div
-        className="md:hidden px-4 py-3 text-white font-bold text-sm bg-gray-700"
-      >
+      {/* ── 移动端品类标题横条(md 以上由左区背景图代替) ── */}
+      <div className="md:hidden px-4 py-3 text-white font-bold text-sm bg-gray-700">
         {t(config.nameKey)}
       </div>
 
-      <div className="flex">
-        {/* ── 左区：鑫方盛风格（图片自带色调，上半纯色放文字，下半产品图） ── */}
-        <div className="hidden md:block w-[220px] shrink-0 relative overflow-hidden rounded-l-xl">
-          {/* 背景图铺满，图片本身上半部分是纯色、下半部分是产品图 */}
-          <img
-            src={config.bgImage}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+      <div className="flex min-h-0">
+        {/* ── 左区：独立圆角背景卡，图片铺满并随圆角裁切 ── */}
+        <div
+          className="relative hidden w-[220px] shrink-0 overflow-hidden rounded-xl bg-gray-700 bg-center bg-no-repeat md:flex md:flex-col"
+          style={{
+            backgroundImage: `url(${config.bgImage})`,
+            backgroundSize: "auto 108%",
+          }}
+        >
+          {/* 半透明遮罩保证文字可读 */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/15" />
 
-          {/* 文字直接叠在图片的纯色区域上 */}
-          <div className="relative z-10 p-5">
-            <h3 className="text-xl font-black text-white mb-4">
+          {/* 文字叠在遮罩上 */}
+          <div className="relative z-10 p-5 flex-1 flex flex-col">
+            <h3 className="text-xl font-black text-white mb-5">
               {t(config.nameKey)}
             </h3>
 
             {l2Children.length > 0 && (
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
                 {l2Children.slice(0, 10).map((l2) => (
                   <button
                     key={l2.code}
