@@ -40,6 +40,11 @@ export default function HomePage() {
         <RightSidebar variant="home" />
       </div>
 
+      {/* ===== 品类楼层区 ===== */}
+      <div className="mb-5">
+        <CategoryFloors />
+      </div>
+
       {/* ===== 下方内容区 ===== */}
       <div className="space-y-5">
         {/* ── 平台核心能力 ── */}
