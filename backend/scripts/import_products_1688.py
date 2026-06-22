@@ -3,10 +3,10 @@
 用法
 ----
     # 导入一个 raw 批次目录
-    python scripts/import_products.py --batch ../data/alibaba_2026-06-10
+    python scripts/import_products_1688.py --batch ../data/alibaba_2026-06-10
 
     # 只跑校验 + 打印差异,不写库
-    python scripts/import_products.py --batch ../data/alibaba_2026-06-10 --dry-run
+    python scripts/import_products_1688.py --batch ../data/alibaba_2026-06-10 --dry-run
 
 设计要点
 --------
@@ -1233,7 +1233,7 @@ def write_audit_sync(
         resource_id=str(resource_id) if resource_id is not None else None,
         action=action,
         method="CLI",
-        path="scripts/import_products.py",
+        path="scripts/import_products_1688.py",
         ip=None,
         user_agent=None,
         status=status,
