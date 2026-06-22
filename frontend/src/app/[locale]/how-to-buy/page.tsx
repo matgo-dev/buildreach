@@ -156,8 +156,8 @@ function HowToBuyContent() {
       {activeTab === "buy" && (
       <>
       {/* ===== Hero — 紧凑全宽 ===== */}
-      <div className="bg-gradient-to-r from-[#00505a] to-[#003a40]">
-        <div className="mx-auto max-w-mall px-6 py-7">
+      <div className="mx-auto max-w-mall px-6 pt-6">
+        <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-6 py-7">
           {/* 上：标题 + stats 同一行 */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
             <div>
