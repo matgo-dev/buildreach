@@ -39,6 +39,8 @@ class Category(Base, TimestampUpdateMixin, I18nMixin):
     name_zh: Mapped[str] = mapped_column(String(128), nullable=False)
     name_en: Mapped[str | None] = mapped_column(String(128), nullable=True)
     name_sw: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # 导航栏简称(仅一级品类有,如"动力"对应"动力工具"),前端导航用
+    short_name: Mapped[str | None] = mapped_column(String(20), nullable=True)
     level: Mapped[int] = mapped_column(Integer, nullable=False)
     # 自关联:引用父节点的 code(不引用 id);L1 时为 NULL
     parent_code: Mapped[str | None] = mapped_column(
