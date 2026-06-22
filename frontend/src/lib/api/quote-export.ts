@@ -65,8 +65,8 @@ export async function exportQuotePdf(rfqId: number): Promise<ExportResult> {
     if (ct.includes("application/json")) {
       const body = await resp.json();
       const err = new Error(body.message || `Export failed: ${resp.status}`);
-      (err as Record<string, unknown>).messageKey = body.message_key;
-      (err as Record<string, unknown>).code = body.code;
+      (err as unknown as Record<string, unknown>).messageKey = body.message_key;
+      (err as unknown as Record<string, unknown>).code = body.code;
       throw err;
     }
     throw new Error(`Export failed: ${resp.status}`);
