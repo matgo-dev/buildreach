@@ -40,7 +40,7 @@ from app.core.exceptions import (
 from app.core.message_keys import MessageKey
 from app.core.i18n_write import apply_i18n_create, apply_i18n_edit
 from app.core.i18n_registry import get_i18n_fields
-from app.core.locale import SUPPORTED_LOCALES
+from app.core.locale import SUPPORTED_LOCALES, get_current_locale
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
 from app.db.models.product import Product, ProductStatus, SupplyMode
@@ -490,6 +490,19 @@ async def _batch_main_images(
     return {pid: f"{base}/{key}" for pid, key in rows}
 
 
+def _build_keyword_filter(keyword: str):
+    """按当前请求 locale 构建 keyword 搜索过滤（名称 + 品牌 + SPU 编码）。"""
+    kw = f"%{keyword}%"
+    locale = get_current_locale()
+    name_col = getattr(Product, f"name_{locale}", Product.name_en)
+    brand_col = getattr(Product, f"brand_{locale}", Product.brand_en)
+    return or_(
+        name_col.ilike(kw),
+        brand_col.ilike(kw),
+        Product.spu_code.ilike(kw),
+    )
+
+
 async def list_products_operator(
     db: AsyncSession,
     *,
@@ -517,15 +530,9 @@ async def list_products_operator(
         q = q.where(Product.supply_mode == supply_mode)
         count_q = count_q.where(Product.supply_mode == supply_mode)
     if keyword:
-        kw = f"%{keyword}%"
-        # 搜索对各语言列做 OR 匹配
-        keyword_filter = or_(
-            Product.name_zh.ilike(kw),
-            Product.name_en.ilike(kw),
-            Product.spu_code.ilike(kw),
-        )
-        q = q.where(keyword_filter)
-        count_q = count_q.where(keyword_filter)
+        kf = _build_keyword_filter(keyword)
+        q = q.where(kf)
+        count_q = count_q.where(kf)
 
     total = (await db.execute(count_q)).scalar() or 0
     q = q.order_by(Product.created_at.desc()).offset((page - 1) * size).limit(size)
@@ -580,14 +587,9 @@ async def list_products_public(
         q = q.where(cert_filter)
         count_q = count_q.where(cert_filter)
     if keyword:
-        kw = f"%{keyword}%"
-        keyword_filter = or_(
-            Product.name_zh.ilike(kw),
-            Product.name_en.ilike(kw),
-            Product.spu_code.ilike(kw),
-        )
-        q = q.where(keyword_filter)
-        count_q = count_q.where(keyword_filter)
+        kf = _build_keyword_filter(keyword)
+        q = q.where(kf)
+        count_q = count_q.where(kf)
 
     # 排序分支
     if sort in ("price_asc", "price_desc"):

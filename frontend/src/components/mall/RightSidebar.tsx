@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck } from "lucide-react";
-import { useCartStore } from "@/stores/cartStore";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { MallButton } from "./MallButton";
 import { MallCard } from "./MallCard";
@@ -12,7 +11,6 @@ import { MallCard } from "./MallCard";
  */
 export function RightSidebar() {
   const t = useTranslations("mall");
-  const cartCount = useCartStore((s) => s.count);
   const wa = useWhatsApp();
 
   return (
@@ -39,12 +37,6 @@ export function RightSidebar() {
         <MallCard>
           <h3 className="text-navy text-base font-black mb-1">{t("rfqCart")}</h3>
           <p className="text-muted text-xs mb-3">{t("rfqCartHint")}</p>
-          <div className="rounded-lg bg-[#f7fafb] border border-[#e4edf2] p-3 mb-3">
-            <div className="flex justify-between text-xs text-muted">
-              <span>{t("rfqItems")}</span>
-              <strong className="text-navy">{cartCount}</strong>
-            </div>
-          </div>
           <MallButton variant="teal" block href="/buyer/cart">
             {t("submitRfq")}
           </MallButton>

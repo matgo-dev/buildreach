@@ -376,7 +376,7 @@
     "nextPage": "Next"
   },
   "mall": {
-    "searchPlaceholder": "Search products, specs, brands...",
+    "searchPlaceholder": "Search by name, brand, code...",
     "sortNewest": "Newest",
     "sortPriceAsc": "Price: Low to High",
     "sortPriceDesc": "Price: High to Low",
