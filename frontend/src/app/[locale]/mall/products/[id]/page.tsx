@@ -489,7 +489,7 @@ function ProductDetailContent() {
     return (
       <PublicLayout>
         <div className="flex flex-col lg:flex-row gap-5">
-          <CategorySidebar />
+          <CategorySidebar variant="mall" />
           <div className="flex flex-1 min-h-[400px] items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
           </div>
@@ -502,7 +502,7 @@ function ProductDetailContent() {
     return (
       <PublicLayout>
         <div className="flex flex-col lg:flex-row gap-5">
-          <CategorySidebar />
+          <CategorySidebar variant="mall" />
           <div className="flex-1">
             <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
               <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300" />
@@ -532,7 +532,7 @@ function ProductDetailContent() {
   return (
     <PublicLayout>
       <div className="flex flex-col lg:flex-row gap-5">
-        <CategorySidebar activeCategoryCode={product.category_code} />
+        <CategorySidebar variant="mall" activeCategoryCode={product.category_code} />
         <div className="flex-1 min-w-0">
 
       {/* 面包屑 */}

@@ -3,48 +3,46 @@
 import { useRef, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronRight } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { LetterIcon } from "./LetterIcon";
-import { MallButton } from "./MallButton";
 
-function categoryContainsCode(category: CategoryTreeNode, code: string): boolean {
-  if (category.code === code) return true;
-  return (category.children || []).some((child) => categoryContainsCode(child, code));
+// 每行显示的 L1 品类数
+const CATS_PER_ROW = 4;
+
+/** 将 L1 品类按 CATS_PER_ROW 分组 */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
 }
 
-/** 取品类英文名首字母(用于图标显示) */
-function getInitialLetter(name: string): string {
-  // 尝试提取英文部分(如 "照明电气 Lighting & Electrical" → L)
-  const enMatch = name.match(/[A-Za-z]/);
-  if (enMatch) return enMatch[0].toUpperCase();
-  // 纯中文取第一个字
-  return name[0] || "?";
+/** 取品类显示短名: short_name → name 前2字截取 */
+function getShortName(cat: CategoryTreeNode): string {
+  if (cat.short_name) return cat.short_name;
+  // fallback: 取 name 前2个字符
+  return cat.name.slice(0, 2);
 }
 
 /**
- * 商城左侧品类导航侧栏 — 深青风格 + 首字母圆角图标。
- * 参考 HTML .side-card + .category-list
+ * 商城左侧品类导航侧栏 — 鑫方盛风格：每行4个短名，hover 展开子品类。
  *
- * prefCodes: 买方的经营品类偏好 codes，有值时默认只显示这些 L1 品类
- * showAllCategories: 是否展开显示全部品类
- * onToggleAllCategories: 切换展开/收起
+ * variant:
+ * - "home" (默认): 首页模式，不 sticky，参与三栏等高
+ * - "mall": 商城列表页模式，sticky 定位
  */
 export function CategorySidebar({
   activeCategoryCode = "",
-  showQuickLinks = false,
-  showFeatured = false,
-  onFeaturedToggle,
+  variant = "home",
   prefCodes,
   showAllCategories = false,
   onToggleAllCategories,
 }: {
   activeCategoryCode?: string;
-  showQuickLinks?: boolean;
-  showFeatured?: boolean;
-  onFeaturedToggle?: () => void;
+  variant?: "home" | "mall";
   prefCodes?: string[];
   showAllCategories?: boolean;
   onToggleAllCategories?: () => void;
@@ -54,145 +52,154 @@ export function CategorySidebar({
   const t = useTranslations("mall");
   const { tree: categoryTree, isLoading: loadingCategories } = useCategoryTree();
 
-  const [hoveredLevel1, setHoveredLevel1] = useState("");
+  const [hoveredRowIdx, setHoveredRowIdx] = useState<number | null>(null);
   const [flyoutTop, setFlyoutTop] = useState(0);
   const asideRef = useRef<HTMLElement>(null);
-  const hoveredCategory = categoryTree.find((cat) => cat.code === hoveredLevel1);
 
-  // 当有偏好且未展开全部时，只显示偏好品类
+  // 偏好过滤
   const hasPref = !!prefCodes && prefCodes.length > 0;
   const filteredTree =
     hasPref && !showAllCategories
       ? categoryTree.filter((cat) => prefCodes!.includes(cat.code))
       : categoryTree;
 
-  const handleCategoryClick = (code: string, closeHover = true) => {
+  // 分组为行
+  const rows = chunkArray(filteredTree, CATS_PER_ROW);
+  const hoveredRow = hoveredRowIdx !== null ? rows[hoveredRowIdx] : null;
+
+  const handleCategoryClick = (code: string) => {
     const next = activeCategoryCode === code ? "" : code;
     router.push(`/${locale}/mall${next ? `?cat=${next}` : ""}`, { scroll: false });
-    if (closeHover) setHoveredLevel1("");
+    setHoveredRowIdx(null);
   };
 
-  const handleAllCategoriesClick = () => {
-    router.push(`/${locale}/mall`, { scroll: false });
-    setHoveredLevel1("");
-  };
-
-  const handleLevel1MouseEnter = (
-    code: string,
-    event: MouseEvent<HTMLButtonElement>,
+  const handleRowMouseEnter = (
+    rowIdx: number,
+    event: MouseEvent<HTMLDivElement>,
   ) => {
-    setHoveredLevel1(code);
+    setHoveredRowIdx(rowIdx);
     const asideTop = asideRef.current?.getBoundingClientRect().top ?? 0;
-    const buttonTop = event.currentTarget.getBoundingClientRect().top - asideTop;
+    const rowTop = event.currentTarget.getBoundingClientRect().top - asideTop;
+    // flyout 最大高度约 480px，避免超出视口
     const maxTop = Math.max(0, window.innerHeight - asideTop - 500);
-    setFlyoutTop(Math.min(Math.max(buttonTop, 0), maxTop));
+    setFlyoutTop(Math.min(Math.max(rowTop, 0), maxTop));
   };
+
+  const isSticky = variant === "mall";
 
   return (
     <aside
       ref={asideRef}
-      className="sticky top-[148px] z-30 hidden w-[240px] shrink-0 self-start lg:block"
-      onMouseLeave={() => setHoveredLevel1("")}
+      className={`relative hidden w-[240px] shrink-0 lg:block ${
+        isSticky ? "sticky top-[148px] z-30 self-start" : "self-stretch"
+      }`}
+      onMouseLeave={() => setHoveredRowIdx(null)}
     >
       <div
-        className="rounded-xl border border-line bg-white p-4"
+        className={`rounded-xl border border-line bg-white ${isSticky ? "" : "h-full"}`}
         style={{
-          maxHeight: "calc(100vh - 164px)",
-          overflowY: "auto",
-          boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)",
+          ...(isSticky
+            ? { maxHeight: "calc(100vh - 164px)", overflowY: "auto" as const }
+            : {}),
+          boxShadow:
+            "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)",
         }}
       >
-        {/* 标题 */}
-        <div className="pb-2.5 mb-2.5 border-b-2 border-gold">
-          <span className="text-teal-900 text-sm font-black">
-            {t("categoryNav")}
-          </span>
+        {/* 头部 */}
+        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-800 text-white">
+          <LayoutGrid className="w-4 h-4" />
+          <span className="text-sm font-bold">{t("allCategoryNav")}</span>
         </div>
 
-        {/* 品类列表 */}
-        <div className="relative">
-          <ul className="space-y-0.5">
-            <li>
-              <button
-                onClick={handleAllCategoriesClick}
-                onMouseEnter={() => setHoveredLevel1("")}
-                className={`w-full rounded-lg px-2.5 py-2 text-left transition-all grid grid-cols-[30px_1fr_auto] gap-2.5 items-center min-h-[46px] ${
-                  !activeCategoryCode
-                    ? "bg-teal-50 text-teal-900"
-                    : "text-ink-2 hover:bg-teal-50 hover:text-teal-900"
-                }`}
-              >
-                <LetterIcon letter={t("allCategories").slice(0, 1)} active={!activeCategoryCode} />
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-extrabold leading-tight truncate">
-                    {t("allCategories")}
-                  </span>
-                </span>
-              </button>
-            </li>
-            {loadingCategories ? (
-              <li className="px-3 py-2 text-xs text-muted">{t("loadError")}...</li>
-            ) : (
-              filteredTree.map((cat) => {
-                const isActive = activeCategoryCode === cat.code ||
-                  (activeCategoryCode && categoryContainsCode(cat, activeCategoryCode));
-                const isHovered = hoveredLevel1 === cat.code;
-                const letter = getInitialLetter(cat.name);
-                // 展开全部时，对偏好品类加小圆点标记
-                const isPref = hasPref && showAllCategories && prefCodes!.includes(cat.code);
+        {/* 品类行列表 */}
+        <div className="relative py-1">
+          {loadingCategories ? (
+            <div className="px-4 py-3 text-xs text-muted">{t("loadError")}...</div>
+          ) : (
+            rows.map((row, rowIdx) => {
+              const isHovered = hoveredRowIdx === rowIdx;
+              const hasActiveChild = row.some(
+                (cat) =>
+                  activeCategoryCode === cat.code ||
+                  cat.children?.some(
+                    (c2) =>
+                      c2.code === activeCategoryCode ||
+                      c2.children?.some((c3) => c3.code === activeCategoryCode),
+                  ),
+              );
 
-                return (
-                  <li key={cat.code} className="relative">
-                    <button
-                      onClick={() => handleCategoryClick(cat.code)}
-                      onMouseEnter={(event) => handleLevel1MouseEnter(cat.code, event)}
-                      className={`w-full rounded-lg px-2.5 py-2 text-left transition-all grid grid-cols-[30px_1fr_auto] gap-2.5 items-center min-h-[46px] ${
-                        isActive || isHovered
-                          ? "bg-teal-50 text-teal-900"
-                          : "text-ink-2 hover:bg-teal-50 hover:text-teal-900"
+              return (
+                <div
+                  key={rowIdx}
+                  onMouseEnter={(e) => handleRowMouseEnter(rowIdx, e)}
+                  className={`relative flex items-center px-4 py-2.5 cursor-pointer transition-colors ${
+                    isHovered || hasActiveChild
+                      ? "bg-teal-50"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  {/* 左侧竖线指示器 */}
+                  {(isHovered || hasActiveChild) && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full bg-teal-700" />
+                  )}
+
+                  {/* 品类短名 */}
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`text-[13px] leading-relaxed whitespace-nowrap ${
+                        isHovered || hasActiveChild
+                          ? "text-teal-800 font-bold"
+                          : "text-gray-700"
                       }`}
                     >
-                      {/* 首字母图标 */}
-                      <LetterIcon letter={letter} active={!!isActive} />
-
-                      {/* 品类名 */}
-                      <span className="min-w-0 relative">
-                        <span className="block text-[13px] font-extrabold leading-tight truncate">
-                          {cat.name}
-                          {/* 偏好品类小圆点标记 */}
-                          {isPref && (
-                            <span
-                              className="inline-block ml-1.5 w-1.5 h-1.5 rounded-full bg-teal-500 align-middle"
-                              title={t("myCategories")}
-                            />
+                      {row.map((cat, i) => (
+                        <span key={cat.code}>
+                          {i > 0 && (
+                            <span className="mx-1 text-gray-300">/</span>
                           )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCategoryClick(cat.code);
+                            }}
+                            className={`hover:text-teal-900 transition-colors ${
+                              activeCategoryCode === cat.code
+                                ? "text-teal-900 font-bold"
+                                : ""
+                            }`}
+                          >
+                            {getShortName(cat)}
+                          </button>
                         </span>
-                        {cat.children && cat.children.length > 0 && (
-                          <span className="block text-[11px] text-muted mt-0.5 truncate">
-                            {cat.children.slice(0, 2).map((c) => c.name).join(" / ")}
-                          </span>
-                        )}
-                      </span>
+                      ))}
+                    </span>
+                  </div>
 
-                      {/* 箭头 */}
-                      {(cat.children?.length || 0) > 0 && (
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-current" />
-                      )}
-                    </button>
-
-                  </li>
-                );
-              })
-            )}
-          </ul>
+                  {/* 右侧箭头 */}
+                  {row.some((cat) => (cat.children?.length || 0) > 0) && (
+                    <svg
+                      className={`w-3 h-3 shrink-0 transition-colors ${
+                        isHovered ? "text-teal-700" : "text-gray-300"
+                      }`}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
-        {/* 偏好品类筛选提示 + 展开/收起切换链接 */}
+        {/* 偏好品类筛选提示 */}
         {hasPref && onToggleAllCategories && (
-          <div className="mt-2 px-1">
+          <div className="px-4 py-2 border-t border-gray-100 text-center">
             {!showAllCategories ? (
-              // 当前只显示偏好品类 — 提示 + "查看全部品类"链接
-              <div className="text-center">
+              <>
                 <span className="block text-[11px] text-muted mb-1">
                   {t("prefFilterActive", { count: prefCodes!.length })}
                 </span>
@@ -202,80 +209,92 @@ export function CategorySidebar({
                 >
                   {t("viewAllCategories")}
                 </button>
-              </div>
+              </>
             ) : (
-              // 当前显示全部 — "仅看我的品类"折叠链接
-              <div className="text-center">
-                <button
-                  onClick={onToggleAllCategories}
-                  className="text-[12px] text-teal-600 hover:text-teal-800 hover:underline transition-colors"
-                >
-                  {t("myCategories")}
-                </button>
-              </div>
+              <button
+                onClick={onToggleAllCategories}
+                className="text-[12px] text-teal-600 hover:text-teal-800 hover:underline transition-colors"
+              >
+                {t("myCategories")}
+              </button>
             )}
           </div>
         )}
-
-        {/* 底部 CTA */}
-        <div
-          className="mt-3.5 p-4 rounded-xl text-white"
-          style={{ background: "linear-gradient(135deg, #006773, #07808b)" }}
-        >
-          <strong className="block text-sm mb-1">{t("quickSourcing")}</strong>
-          <p className="text-[12.5px] text-[#bfe1e0] mb-3">{t("quickSourcingHint")}</p>
-          <MallButton
-            variant="gold"
-            block
-            onClick={() => router.push(`/${locale}/buyer/cart`)}
-          >
-            {t("requestQuote")}
-          </MallButton>
-        </div>
       </div>
 
-      {/* 二级飞出面板放在滚动卡片外，避免裁剪，同时不影响左侧列表滚动 */}
-      {hoveredCategory && (hoveredCategory.children?.length || 0) > 0 && (
+      {/* 二级飞出面板 — 展示该行所有 L1 品类的子品类 */}
+      {hoveredRow && hoveredRow.some((cat) => (cat.children?.length || 0) > 0) && (
         <div
           className="absolute left-full z-40 w-[600px] max-w-[calc(100vw-20rem)] rounded-xl border border-line bg-white p-5"
           style={{
             top: flyoutTop,
-            boxShadow: "0 8px 20px rgba(16,36,65,.08), 0 28px 60px rgba(16,36,65,.12)",
+            boxShadow:
+              "0 8px 20px rgba(16,36,65,.08), 0 28px 60px rgba(16,36,65,.12)",
           }}
+          onMouseEnter={() => {}} // 保持 hover 状态
+          onMouseLeave={() => setHoveredRowIdx(null)}
         >
           <div className="max-h-[480px] overflow-y-auto pr-2 space-y-5">
-            {hoveredCategory.children?.map((level2) => (
-              <div
-                key={level2.code}
-                className="border-b border-dashed border-gray-100 pb-4 last:border-b-0 last:pb-0"
-              >
-                <button
-                  onClick={() => handleCategoryClick(level2.code)}
-                  className={`mb-2 block text-left text-sm font-bold leading-6 transition-colors ${
-                    activeCategoryCode && categoryContainsCode(level2, activeCategoryCode)
-                      ? "text-teal-900"
-                      : "text-navy hover:text-teal-900"
-                  }`}
-                >
-                  {level2.name}
-                </button>
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {(level2.children || []).map((level3) => (
-                    <button
-                      key={level3.code}
-                      onClick={() => handleCategoryClick(level3.code)}
-                      className={`text-left text-sm leading-6 transition-colors ${
-                        activeCategoryCode === level3.code
-                          ? "font-semibold text-teal-900"
-                          : "text-muted hover:text-teal-900"
-                      }`}
-                    >
-                      {level3.name}
-                    </button>
-                  ))}
+            {hoveredRow.map((l1Cat) => {
+              if (!l1Cat.children || l1Cat.children.length === 0) return null;
+              return (
+                <div key={l1Cat.code}>
+                  {/* L1 完整名称作为分组标题 */}
+                  <button
+                    onClick={() => handleCategoryClick(l1Cat.code)}
+                    className="mb-2.5 text-[15px] font-bold text-teal-900 hover:text-teal-700 transition-colors"
+                  >
+                    {l1Cat.name}
+                  </button>
+
+                  <div className="space-y-3">
+                    {l1Cat.children.map((l2) => (
+                      <div
+                        key={l2.code}
+                        className="flex items-start gap-3"
+                      >
+                        {/* L2 品类名 */}
+                        <button
+                          onClick={() => handleCategoryClick(l2.code)}
+                          className={`shrink-0 text-sm font-medium leading-6 transition-colors whitespace-nowrap ${
+                            activeCategoryCode === l2.code
+                              ? "text-teal-900 font-bold"
+                              : "text-gray-600 hover:text-teal-900"
+                          }`}
+                        >
+                          {l2.name}
+                        </button>
+
+                        {/* 分隔符 */}
+                        {l2.children && l2.children.length > 0 && (
+                          <span className="text-gray-300 leading-6 select-none">&gt;</span>
+                        )}
+
+                        {/* L3 品类链接 */}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {(l2.children || []).map((l3) => (
+                            <button
+                              key={l3.code}
+                              onClick={() => handleCategoryClick(l3.code)}
+                              className={`text-sm leading-6 transition-colors ${
+                                activeCategoryCode === l3.code
+                                  ? "font-semibold text-teal-900"
+                                  : "text-gray-500 hover:text-teal-900"
+                              }`}
+                            >
+                              {l3.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* L1 间分隔线 */}
+                  <div className="mt-4 border-b border-dashed border-gray-100 last:border-b-0" />
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

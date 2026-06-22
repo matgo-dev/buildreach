@@ -36,6 +36,7 @@ async def list_flat(
     for r in rows:
         node = CategoryNode.model_validate(r)
         node.name = get_localized(r, "name")
+        node.short_name = get_localized(r, "short_name")
         nodes.append(node)
     return nodes
 
@@ -66,6 +67,7 @@ async def get_tree(
             name_zh=r.name_zh,
             name_en=r.name_en,
             name=get_localized(r, "name"),
+            short_name=get_localized(r, "short_name"),
             level=r.level,
             is_leaf=r.is_leaf,
             children=[],

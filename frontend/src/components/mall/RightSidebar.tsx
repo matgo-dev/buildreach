@@ -7,16 +7,22 @@ import { MallButton } from "./MallButton";
 import { MallCard } from "./MallCard";
 
 /**
- * 商城右侧栏 — WhatsApp 客服 + RFQ 购物车摘要。
+ * 商城右侧栏 — WhatsApp 客服 + RFQ 购物车摘要 + 信任标识。
+ *
+ * variant:
+ * - "home": 首页模式，不 sticky，参与三栏等高
+ * - "mall" (默认): 商城列表页，sticky 定位
  */
-export function RightSidebar() {
+export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }) {
   const t = useTranslations("mall");
   const wa = useWhatsApp();
 
+  const isSticky = variant === "mall";
+
   return (
-    <aside className="w-[300px] shrink-0 hidden xl:block">
-      <div className="sticky top-[148px] space-y-3.5">
-        {/* 专属客服 — 号码未配置时隐藏整个卡片 */}
+    <aside className={`w-[280px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch"}`}>
+      <div className={`space-y-3.5 ${isSticky ? "sticky top-[148px]" : ""}`}>
+        {/* 专属客服 */}
         {wa.configured && (
         <MallCard>
           <h3 className="text-navy text-base font-black mb-1">{t("customerSupport")}</h3>

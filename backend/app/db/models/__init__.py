@@ -6,6 +6,7 @@ from app.db.models.buyer_event import BuyerEvent
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_org_image import BuyerOrgImage, BuyerOrgImageType
 from app.db.models.buyer_organization import BuyerOrganization
+from app.db.models.banner_slide import BannerSlide
 from app.db.models.category import Category, CategoryLevel
 from app.db.models.ingest_run import IngestRun, IngestRunStatus
 from app.db.models.credit_ai_conversation import CreditAiConversation
@@ -84,6 +85,8 @@ __all__ = [
     "BuyerMember",
     "SupplierMember",
     "AuditLog",
+    # banner
+    "BannerSlide",
     # category
     "Category",
     "CategoryLevel",

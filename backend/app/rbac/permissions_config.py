@@ -91,6 +91,9 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.CREDIT_READ,
         Permissions.CREDIT_WRITE,
         Permissions.CREDIT_RECOMPUTE,
+        # 轮播 Banner 管理
+        Permissions.BANNER_READ,
+        Permissions.BANNER_WRITE,
         # 运营分析(热门商品/转化漏斗)
         Permissions.ANALYTICS_READ,
     ],
