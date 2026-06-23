@@ -9,7 +9,7 @@
     "selectAll": "Select All"
   },
   "brand": {
-    "name": "BuildLink East Africa",
+    "name": "BuildReach",
     "tagline": "B2B Supply Chain for Overseas EPC Projects",
     "full_title": "JIJIAN SELECT - B2B Supply Chain for Overseas EPC Projects",
     "description": "B2B industrial supply chain platform for Chinese SOE overseas EPC projects"
@@ -444,8 +444,8 @@
     "trustPriceDesc": "Factory direct, volume discount tiers",
     "trustDelivery": "Fast Delivery",
     "trustDeliveryDesc": "Shared container shipping direct to Dar es Salaam",
-    "brandName": "East Africa Building Materials",
-    "brandNameSub": "Procurement Platform",
+    "brandName": "BuildReach",
+    "brandNameSub": "China Building Materials for East Africa",
     "roleBuyer": "Buyer",
     "roleSupplier": "Supplier",
     "roleOperator": "Operator",
@@ -521,7 +521,7 @@
     "headerAccountSub": "Akaunti Yangu",
     "stripAnnouncement": "East Africa Building Materials Platform | Dar es Salaam first, sourcing from verified China supply chain.",
     "helpCenter": "Help Center",
-    "welcomeGuest": "Welcome to BuildLink",
+    "welcomeGuest": "Welcome to BuildReach",
     "welcomeBack": "Welcome back",
     "registerNow": "Register",
     "signIn": "Sign In",
@@ -602,7 +602,7 @@
     "noMoreProducts": "— No more products —",
     "floatWaTitle": "Customer Support",
     "floatWaHint": "Fast response online",
-    "floatWaAgent": "BuildLink Support",
+    "floatWaAgent": "BuildReach Support",
     "floatWaPowered": "Chat with us on WhatsApp",
     "floatWaTab": "Chat",
     "floatWaCta": "Tell us what you need",
@@ -1213,7 +1213,7 @@
   },
   "howToBuy": {
     "heroTitle": "How to Buy — Your Complete Sourcing Guide",
-    "heroDesc": "BuildLink connects East African buyers with verified Chinese building material suppliers. We handle sourcing, quality inspection, and consolidated shipping — so you can buy Chinese building materials as easily as local ones.",
+    "heroDesc": "BuildReach connects East African buyers with verified Chinese building material suppliers. We handle sourcing, quality inspection, and consolidated shipping — so you can buy Chinese building materials as easily as local ones.",
     "ctaBrowse": "Browse Products",
     "ctaRfq": "Start RFQ Now",
     "stepsTitle": "7 Steps to Cross-Border Procurement",
@@ -1238,7 +1238,7 @@
     "step7Title": "Step 7: Receive & Complete",
     "step7Desc": "Pay the remaining 70% balance before port arrival. We assist with destination customs clearance. Confirm receipt to complete the order.",
     "step7Detail": "Need import permits (e.g. TBS certification)? Let us know in your RFQ and we can help prepare the required documents.",
-    "advantagesTitle": "Why BuildLink?",
+    "advantagesTitle": "Why BuildReach?",
     "adv1Icon": "🏭",
     "adv1Title": "Factory Direct",
     "adv1Desc": "Source directly from Chinese factories, cutting middlemen for factory prices",
@@ -1336,7 +1336,7 @@
     "boundaryTitle": "Service Boundary",
     "boundaryIncluded": "Included",
     "boundaryExcluded": "Not Included",
-    "boundaryDesc": "BuildLink provides full-chain service from Chinese factories to Dar es Salaam port, including supplier screening, group procurement, QC inspection, consolidation, customs declaration, ocean freight, and destination clearance. Inland transport (port to site) is arranged by the buyer or local logistics. The platform does not provide financial lending, insurance brokerage, or other financial services."
+    "boundaryDesc": "BuildReach provides full-chain service from Chinese factories to Dar es Salaam port, including supplier screening, group procurement, QC inspection, consolidation, customs declaration, ocean freight, and destination clearance. Inland transport (port to site) is arranged by the buyer or local logistics. The platform does not provide financial lending, insurance brokerage, or other financial services."
   },
   "noPermission": {
     "title": "Access Denied",

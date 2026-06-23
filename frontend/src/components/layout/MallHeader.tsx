@@ -84,22 +84,18 @@ export function MallHeader() {
           className="flex items-center gap-3.5 group"
           aria-label={BRAND.name}
         >
-          {/* Logo 建筑图标 — 暖金渐变底 */}
-          <span
-            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white font-black text-lg"
-            style={{
-              background: "linear-gradient(135deg, #e3a615, #a36900)",
-              boxShadow: "0 4px 12px rgba(216,139,0,0.3)",
-            }}
-          >
-            {BRAND.logoChar}
-          </span>
+          {/* Logo mark */}
+          <img
+            src={BRAND.logoMark}
+            alt={BRAND.name}
+            className="h-11 w-11 shrink-0 rounded-xl object-cover"
+          />
           <span className="min-w-0">
             <strong className="block text-[17px] leading-tight font-black text-white">
-              {t("brandName")}
+              {BRAND.name} <span className="text-gold">{BRAND.nameZh}</span>
             </strong>
-            <span className="block mt-1 text-[13px] text-[#bfe1e0] truncate">
-              {t("brandNameSub")}
+            <span className="block mt-1 text-[11px] text-[#bfe1e0] truncate">
+              {BRAND.nameEn}
             </span>
           </span>
         </Link>
