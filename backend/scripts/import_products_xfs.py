@@ -304,7 +304,7 @@ def validate_batch(
         # attributes 校验(鑫方盛:扁平 {key, value, group})
         attributes = data.get("attributes", [])
         if not attributes:
-            offer_errs.append("attributes 为空")
+            result.warnings.append(f"[{offer.product_id}] attributes 为空(规格参数缺失)")
         for i, attr in enumerate(attributes):
             if not attr.get("key"):
                 offer_errs.append(f"attributes[{i}] 缺少 key")

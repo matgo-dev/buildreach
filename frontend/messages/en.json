@@ -1402,6 +1402,9 @@
     "msPortArrival": "Port Arrival",
     "msCustomsImport": "Import Customs",
     "msLocalDelivery": "Local Delivery",
-    "msDelivered": "Delivered"
+    "msDelivered": "Delivered",
+    "emptyTitle": "No Orders Yet",
+    "emptyDesc": "You don't have any orders yet. Browse our mall to get started.",
+    "emptyBrowse": "Browse Mall"
   }
 }
