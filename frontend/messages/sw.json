@@ -1402,6 +1402,9 @@
     "msPortArrival": "Kufika Bandarini",
     "msCustomsImport": "Forodha ya Kuingiza",
     "msLocalDelivery": "Uwasilishaji wa Ndani",
-    "msDelivered": "Imefikishwa"
+    "msDelivered": "Imefikishwa",
+    "emptyTitle": "Hakuna Maagizo Bado",
+    "emptyDesc": "Bado huna maagizo yoyote. Vinjari duka letu kuanza.",
+    "emptyBrowse": "Vinjari Duka"
   }
 }

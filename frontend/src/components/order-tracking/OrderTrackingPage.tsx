@@ -23,7 +23,13 @@ import {
   PackageCheck,
   FileCheck,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
 import { MOCK_ORDERS, type MockOrder, type Shipment, type Milestone, MILESTONE_KEYS } from "./mockOrders";
+
+// demo 账号邮箱 — 只有这些用户能看到 mock 订单数据
+const DEMO_EMAILS = new Set([
+  "buyer@cscec3b.local",
+]);
 
 // 节点图标映射
 const MILESTONE_ICONS: Record<string, React.ElementType> = {
@@ -40,17 +46,23 @@ const MILESTONE_ICONS: Record<string, React.ElementType> = {
   msDelivered: PackageCheck,
 };
 
-/** 订单追踪页 — 列表 + 详情双视图 */
+/** 订单追踪页 — demo 用户看 mock 数据，真实用户看空状态 */
 export function OrderTrackingPage() {
   const t = useTranslations("orderTracking");
+  const user = useAuthStore((s) => s.user);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedOrder = MOCK_ORDERS.find((o) => o.id === selectedId);
+
+  const isDemo = user?.email ? DEMO_EMAILS.has(user.email) : false;
+  // TODO: 后续接真实 API 后，真实用户从后端拉订单数据
+  const orders = isDemo ? MOCK_ORDERS : [];
+
+  const selectedOrder = orders.find((o) => o.id === selectedId);
 
   if (selectedOrder) {
     return <OrderDetail order={selectedOrder} onBack={() => setSelectedId(null)} />;
   }
 
-  return <OrderList orders={MOCK_ORDERS} onSelect={setSelectedId} />;
+  return <OrderList orders={orders} onSelect={setSelectedId} />;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -73,18 +85,32 @@ function OrderList({
 
       {/* 状态统计卡片 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Package} label={t("statTotal")} value="3" color="text-teal-700 bg-teal-50" />
-        <StatCard icon={Ship} label={t("statInTransit")} value="1" color="text-blue-700 bg-blue-50" />
-        <StatCard icon={Clock} label={t("statClearance")} value="1" color="text-amber-700 bg-amber-50" />
-        <StatCard icon={CheckCircle2} label={t("statDelivered")} value="1" color="text-green-700 bg-green-50" />
+        <StatCard icon={Package} label={t("statTotal")} value={String(orders.length)} color="text-teal-700 bg-teal-50" />
+        <StatCard icon={Ship} label={t("statInTransit")} value={String(orders.filter(o => o.statusKey === "statusInTransit").length)} color="text-blue-700 bg-blue-50" />
+        <StatCard icon={Clock} label={t("statClearance")} value={String(orders.filter(o => o.statusKey === "statusCustomsClearance").length)} color="text-amber-700 bg-amber-50" />
+        <StatCard icon={CheckCircle2} label={t("statDelivered")} value={String(orders.filter(o => o.statusKey === "statusDelivered").length)} color="text-green-700 bg-green-50" />
       </div>
 
-      {/* 订单卡片列表 */}
-      <div className="space-y-4">
-        {orders.map((order) => (
-          <OrderCard key={order.id} order={order} onClick={() => onSelect(order.id)} />
-        ))}
-      </div>
+      {/* 订单卡片列表 / 空状态 */}
+      {orders.length > 0 ? (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <OrderCard key={order.id} order={order} onClick={() => onSelect(order.id)} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-line bg-white p-16 text-center">
+          <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-navy mb-2">{t("emptyTitle")}</h3>
+          <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
+          <a
+            href="/mall"
+            className="inline-flex items-center gap-2 rounded-full bg-teal-800 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
+          >
+            {t("emptyBrowse")}
+          </a>
+        </div>
+      )}
     </div>
   );
 }
