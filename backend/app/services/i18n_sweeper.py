@@ -39,41 +39,48 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
     for model_cls, spec in registry.items():
         table_name = getattr(model_cls, "__tablename__", model_cls.__name__)
         try:
-            async with AsyncSessionLocal() as session:
-                # 走索引: i18n_pending_at IS NOT NULL
-                stmt = (
-                    select(model_cls)
-                    .where(model_cls.i18n_pending_at.isnot(None))
-                    .order_by(model_cls.i18n_pending_at)
-                    .limit(limit)
-                )
-                result = await session.execute(stmt)
-                rows = result.scalars().all()
+            # 循环分批,一次触发处理完该模型所有待译行
+            while True:
+                async with AsyncSessionLocal() as session:
+                    stmt = (
+                        select(model_cls)
+                        .where(model_cls.i18n_pending_at.isnot(None))
+                        .order_by(model_cls.i18n_pending_at)
+                        .limit(limit)
+                    )
+                    result = await session.execute(stmt)
+                    rows = result.scalars().all()
 
-                if not rows:
-                    continue
+                    if not rows:
+                        break
 
-                logger.info("sweep: %s 发现 %d 行待译", table_name, len(rows))
+                    logger.info("sweep: %s 发现 %d 行待译", table_name, len(rows))
 
-                for row in rows:
-                    stats["scanned"] += 1
-                    try:
-                        await process_pending_translations(row)
-                        # 判断是否译完(i18n_pending_at 被清空)
-                        if getattr(row, "i18n_pending_at", None) is None:
-                            stats["translated"] += 1
-                        else:
+                    batch_failed = 0
+                    for row in rows:
+                        stats["scanned"] += 1
+                        try:
+                            await process_pending_translations(row)
+                            if getattr(row, "i18n_pending_at", None) is None:
+                                stats["translated"] += 1
+                            else:
+                                stats["failed"] += 1
+                                batch_failed += 1
+                        except Exception:
+                            logger.warning(
+                                "sweep: %s#%s 翻译异常",
+                                table_name, getattr(row, "id", "?"),
+                                exc_info=True,
+                            )
                             stats["failed"] += 1
-                    except Exception:
-                        logger.warning(
-                            "sweep: %s#%s 翻译异常",
-                            table_name, getattr(row, "id", "?"),
-                            exc_info=True,
-                        )
-                        stats["failed"] += 1
+                            batch_failed += 1
 
-                # 批量提交
-                await session.commit()
+                    await session.commit()
+
+                    # 本批全部失败则停止,避免死循环重试同一批
+                    if batch_failed == len(rows):
+                        logger.warning("sweep: %s 本批 %d 行全部失败,停止循环", table_name, len(rows))
+                        break
 
         except Exception:
             logger.error("sweep: %s 批次异常", table_name, exc_info=True)
