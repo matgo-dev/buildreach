@@ -55,7 +55,7 @@ export function CategorySidebar({
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("mall");
-  const { tree: categoryTree, isLoading: loadingCategories } = useCategoryTree();
+  const { tree: categoryTree, isLoading: loadingCategories, error: categoryError } = useCategoryTree();
 
   const [hoveredRowIdx, setHoveredRowIdx] = useState<number | null>(null);
   const [flyoutTop, setFlyoutTop] = useState(0);
@@ -127,7 +127,9 @@ export function CategorySidebar({
         {/* 品类行列表 — 首页露出稳定快捷入口,列表页保留完整滚动 */}
         <div className={`relative py-1 min-h-0 flex-1 ${isHome ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
           {loadingCategories ? (
-            <div className="px-4 py-3 text-xs text-muted">{t("loadError")}...</div>
+            <div className="px-4 py-3 text-xs text-muted">{t("loading")}</div>
+          ) : categoryError ? (
+            <div className="px-4 py-3 text-xs text-red-500">{t("loadError")}</div>
           ) : (
             visibleRows.map((row, rowIdx) => {
               const isHovered = hoveredRowIdx === rowIdx;

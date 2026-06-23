@@ -40,10 +40,11 @@ export const categoriesApi = {
     const q = qs.toString();
     return api.get<CategoryNode[]>(`/api/v1/categories${q ? `?${q}` : ""}`);
   },
-  /** 三层嵌套树;is_active 默认 true。 */
-  tree: (params?: { is_active?: boolean }) => {
+  /** 嵌套树;is_active 默认 true, max_depth 限制层级深度。 */
+  tree: (params?: { is_active?: boolean; max_depth?: number }) => {
     const qs = new URLSearchParams();
     if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active));
+    if (params?.max_depth !== undefined) qs.set("max_depth", String(params.max_depth));
     const q = qs.toString();
     return api.get<CategoryTreeNode[]>(`/api/v1/categories/tree${q ? `?${q}` : ""}`);
   },
