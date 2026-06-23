@@ -11,9 +11,7 @@ import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { listProducts, listCertificationOptions, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
 import { ProductGrid } from "@/components/mall/ProductGrid";
 import { FilterBar } from "@/components/mall/FilterBar";
-import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { RecentViews } from "@/components/mall/RecentViews";
-import { RightSidebar } from "@/components/mall/RightSidebar";
 import { useAuthStore } from "@/stores/authStore";
 import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
 import { Loader2 } from "lucide-react";
@@ -43,7 +41,7 @@ function MallContent() {
     { revalidateOnFocus: false },
   );
 
-  // 品类侧栏展开状态
+  // 偏好品类展示全部
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   // URL 参数读取
@@ -180,73 +178,58 @@ function MallContent() {
 
   return (
     <PublicLayout>
-      {/* 三栏布局:左品类(240) + 中内容(auto) + 右客服/RFQ(300) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px] gap-5">
-        {/* 左侧品类导航 */}
-        <CategorySidebar
+      {/* 全宽单栏布局 */}
+      <div className="space-y-4">
+        {/* 最近浏览 */}
+        {isBuyer && <RecentViews />}
+
+        <FilterBar
+          keyword={urlKeyword}
+          sort={urlSort}
+          featured={urlFeatured}
+          supplyMode={urlSupplyMode}
+          certification={urlCertification}
+          certificationOptions={certOptions ?? []}
+          total={totalCount}
           activeCategoryCode={urlCat}
-          variant="mall"
-          prefCodes={urlCat ? undefined : prefCodes}
-          showAllCategories={showAllCategories || !!urlCat}
-          onToggleAllCategories={() => setShowAllCategories((v) => !v)}
+          categoryTree={categoryTree}
+          onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
+          onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
+          onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+          onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
+          onCertificationChange={(cert) => updateParams({ certification: cert || undefined })}
+          onCategoryChange={(code) => updateParams({ cat: code || undefined })}
+          onClearAll={clearAll}
+          hasActiveFilters={hasActiveFilters}
         />
 
-        {/* 主内容区 */}
-        <div className="min-w-0 space-y-4">
-          {/* 最近浏览 */}
-          {isBuyer && <RecentViews />}
+        <ProductGrid
+          products={allProducts}
+          categoryTree={categoryTree}
+          isLoading={isLoading && allProducts.length === 0}
+          error={error}
+          onRetry={() => mutate()}
+          onClearFilters={clearAll}
+        />
 
-          <FilterBar
-            keyword={urlKeyword}
-            sort={urlSort}
-            featured={urlFeatured}
-            supplyMode={urlSupplyMode}
-            certification={urlCertification}
-            certificationOptions={certOptions ?? []}
-            total={totalCount}
-            activeCategoryCode={urlCat}
-            categoryTree={categoryTree}
-            onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
-            onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
-            onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
-            onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
-            onCertificationChange={(cert) => updateParams({ certification: cert || undefined })}
-            onCategoryChange={(code) => updateParams({ cat: code || undefined })}
-            onClearAll={clearAll}
-            hasActiveFilters={hasActiveFilters}
-          />
+        {/* 触底哨兵 + 加载状态 */}
+        {hasMore && (
+          <div ref={sentinelRef} className="flex items-center justify-center py-6">
+            {isLoadingMore && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{t("loadingMore")}</span>
+              </div>
+            )}
+          </div>
+        )}
 
-          <ProductGrid
-            products={allProducts}
-            categoryTree={categoryTree}
-            isLoading={isLoading && allProducts.length === 0}
-            error={error}
-            onRetry={() => mutate()}
-            onClearFilters={clearAll}
-          />
-
-          {/* 触底哨兵 + 加载状态 */}
-          {hasMore && (
-            <div ref={sentinelRef} className="flex items-center justify-center py-6">
-              {isLoadingMore && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{t("loadingMore")}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 全部加载完毕提示 */}
-          {!hasMore && allProducts.length > PAGE_SIZE && (
-            <div className="py-4 text-center text-xs text-gray-400">
-              {t("noMoreProducts")}
-            </div>
-          )}
-        </div>
-
-        {/* 右侧栏 */}
-        <RightSidebar />
+        {/* 全部加载完毕提示 */}
+        {!hasMore && allProducts.length > PAGE_SIZE && (
+          <div className="py-4 text-center text-xs text-gray-400">
+            {t("noMoreProducts")}
+          </div>
+        )}
       </div>
     </PublicLayout>
   );

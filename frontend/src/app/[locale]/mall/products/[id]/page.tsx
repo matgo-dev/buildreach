@@ -18,7 +18,6 @@ import Link from "next/link";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
-import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
@@ -501,11 +500,8 @@ function ProductDetailContent() {
   if (isLoading) {
     return (
       <PublicLayout>
-        <div className="flex flex-col lg:flex-row gap-5">
-          <CategorySidebar variant="mall" />
-          <div className="flex flex-1 min-h-[400px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
-          </div>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
         </div>
       </PublicLayout>
     );
@@ -514,22 +510,17 @@ function ProductDetailContent() {
   if (error || !product) {
     return (
       <PublicLayout>
-        <div className="flex flex-col lg:flex-row gap-5">
-          <CategorySidebar variant="mall" />
-          <div className="flex-1">
-            <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
-              <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-              <h2 className="text-lg font-semibold text-gray-700">{t("detail.notFound")}</h2>
-              <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
-              <button
-                onClick={() => router.push(`/${locale}/mall`)}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00505a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                {t("detail.backToList")}
-              </button>
-            </div>
-          </div>
+        <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+          <h2 className="text-lg font-semibold text-gray-700">{t("detail.notFound")}</h2>
+          <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
+          <button
+            onClick={() => router.push(`/${locale}/mall`)}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00505a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("detail.backToList")}
+          </button>
         </div>
       </PublicLayout>
     );
@@ -544,10 +535,6 @@ function ProductDetailContent() {
 
   return (
     <PublicLayout>
-      <div className="flex flex-col lg:flex-row gap-5">
-        <CategorySidebar variant="mall" activeCategoryCode={product.category_code} />
-        <div className="flex-1 min-w-0">
-
       {/* 面包屑 */}
       <nav className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
         <Link
@@ -709,9 +696,6 @@ function ProductDetailContent() {
         <div ref={(el) => { sectionRefs.current.description = el; }} className="scroll-mt-14 p-5">
           <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabDescription")}</h3>
           <DescriptionTab product={product} />
-        </div>
-      </div>
-
         </div>
       </div>
     </PublicLayout>
