@@ -128,10 +128,16 @@ if [[ -d "${DATA_SRC}" ]]; then
   done
 
   # 轮播图（只复制图片文件）
-  if [[ -d "${DATA_SRC}/banners" ]]; then
+  # 优先从 data/banners/，fallback 到 frontend/public/banners/
+  BANNER_SRC="${DATA_SRC}/banners"
+  if [[ ! -d "$BANNER_SRC" ]] || [[ -z "$(ls -A "$BANNER_SRC" 2>/dev/null)" ]]; then
+    BANNER_SRC="${PROJECT_ROOT}/frontend/public/banners"
+  fi
+  if [[ -d "$BANNER_SRC" ]]; then
     mkdir -p "${DATA_DST}/banners"
-    find "${DATA_SRC}/banners" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) \
+    find "${BANNER_SRC}" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) \
       -exec cp {} "${DATA_DST}/banners/" \;
+    echo "  轮播图来源: ${BANNER_SRC}"
   fi
 
   # XFS 商品批次（排除垃圾文件）

@@ -119,7 +119,7 @@ from app.core.config import settings
 from app.db.url import prepare_sync_url
 engine = create_engine(prepare_sync_url(str(settings.DATABASE_URL)))
 with engine.connect() as conn:
-    r = conn.execute(text('SELECT COUNT(*) FROM categories WHERE deleted_at IS NULL'))
+    r = conn.execute(text('SELECT COUNT(*) FROM categories WHERE is_active = true'))
     print(r.scalar())
 " 2>/dev/null || echo "0")
 
@@ -176,7 +176,7 @@ from app.db.url import prepare_sync_url
 engine = create_engine(prepare_sync_url(str(settings.DATABASE_URL)))
 with engine.connect() as conn:
     tables = {
-        '品类':          'SELECT COUNT(*) FROM categories WHERE deleted_at IS NULL',
+        '品类':          'SELECT COUNT(*) FROM categories WHERE is_active = true',
         '属性模板':      'SELECT COUNT(*) FROM category_attr_templates',
         '轮播图':        'SELECT COUNT(*) FROM banner_slides',
         '商品(SPU)':     'SELECT COUNT(*) FROM products WHERE deleted_at IS NULL',
