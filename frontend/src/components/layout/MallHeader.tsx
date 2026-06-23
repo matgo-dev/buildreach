@@ -77,7 +77,7 @@ export function MallHeader() {
         boxShadow: "0 12px 30px rgba(0,63,70,.22)",
       }}
     >
-      <div className="mx-auto max-w-mall px-6 grid grid-cols-[260px_minmax(400px,1fr)_auto] items-center gap-5 min-h-[96px]">
+      <div className="mx-auto max-w-mall px-6 grid grid-cols-[200px_minmax(400px,1fr)_auto] items-center gap-5 min-h-[96px]">
         {/* 左:品牌 */}
         <Link
           href="/"
@@ -94,9 +94,6 @@ export function MallHeader() {
             <strong className="block text-[17px] leading-tight font-black text-white">
               {BRAND.name} <span className="text-gold">{BRAND.nameZh}</span>
             </strong>
-            <span className="block mt-1 text-[11px] text-[#bfe1e0] truncate">
-              {BRAND.nameEn}
-            </span>
           </span>
         </Link>
 
@@ -135,9 +132,9 @@ export function MallHeader() {
           )}
         </form>
 
-        {/* 右:操作区 */}
+        {/* 右:购物车 + 语言切换(账号入口已移至 TopStrip) */}
         <div className="flex items-center gap-1.5">
-          {/* 询价车 — 仅图标 */}
+          {/* 询价车 */}
           <Link
             href={user ? "/buyer/cart" : "/login"}
             className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
@@ -156,24 +153,8 @@ export function MallHeader() {
             </div>
           </Link>
 
-          {/* 语言切换 — 深色风格,始终可见 */}
+          {/* 语言切换 */}
           <HeaderLocaleSwitcher />
-
-          {/* 用户 */}
-          {user ? (
-            <UserMenu />
-          ) : (
-            <Link
-              href="/login"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
-            >
-              <User className="h-5 w-5" />
-              <span className="text-xs hidden lg:block">
-                <strong className="block text-[13.5px] leading-tight font-black">{t("headerMyAccount")}</strong>
-                {t("headerAccountSub")}
-              </span>
-            </Link>
-          )}
         </div>
       </div>
     </header>
