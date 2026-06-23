@@ -255,6 +255,21 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                     meta["short_name_sw"] = "manual"
                     existing.trans_meta = meta
                     changed = True
+            # 补标 i18n:已有品类如果缺翻译且未标 pending,补上标记
+            if not existing.name_en or not existing.name_sw:
+                if existing.i18n_pending_at is None:
+                    meta = dict(existing.trans_meta or {})
+                    if not meta.get("name_zh"):
+                        meta["name_zh"] = "src"
+                    if not existing.name_en and meta.get("name_en") != "pending":
+                        meta["name_en"] = "pending"
+                    if not existing.name_sw and meta.get("name_sw") != "pending":
+                        meta["name_sw"] = "pending"
+                    existing.trans_meta = meta
+                    existing.source_lang = existing.source_lang or "zh"
+                    existing.i18n_pending_at = _utcnow()
+                    changed = True
+
             if changed:
                 existing.updated_at = _utcnow()
                 updated += 1

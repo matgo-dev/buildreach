@@ -512,8 +512,10 @@ async def _reload_cart(db: AsyncSession, cart_id: int) -> CartPublic:
 
 def _serialize_cart(cart: Cart) -> CartPublic:
     """将 ORM Cart 转为 CartPublic DTO。"""
+    # 后加入的排最上面
+    sorted_items = sorted(cart.items, key=lambda ci: ci.created_at, reverse=True)
     items = []
-    for ci in cart.items:
+    for ci in sorted_items:
         product = ci.product
 
         is_purchasable, unavailable_reason = _check_purchasable_product(product)

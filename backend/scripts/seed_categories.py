@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """手动执行：种入品类树 + 属性模板。
 
+⚠️ DEPRECATED — 生产品类数据已切换为鑫方盛数据源,请使用 scripts/import_categories_xfs.py。
+本脚本仅保留给测试/历史参考,线上不应再调用。
+
 用法：
     cd backend
     python scripts/seed_categories.py           # 执行 upsert
