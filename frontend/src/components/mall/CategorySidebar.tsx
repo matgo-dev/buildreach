@@ -8,8 +8,9 @@ import { LayoutGrid } from "lucide-react";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 
-// 每行显示的 L1 品类数
-const CATS_PER_ROW = 4;
+// 每行显示的 L1 品类数:中文 4 个,英文/斯瓦希里 3 个(词长)
+const CATS_PER_ROW_ZH = 4;
+const CATS_PER_ROW_OTHER = 3;
 
 /** 将 L1 品类按 CATS_PER_ROW 分组 */
 function chunkArray<T>(arr: T[], size: number): T[][] {
@@ -20,11 +21,14 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
-/** 取品类显示短名: short_name → name 前2字截取 */
-function getShortName(cat: CategoryTreeNode): string {
+/** 取品类显示短名: short_name → name 截取(中文2字,英文8字符) */
+function getShortName(cat: CategoryTreeNode, locale: string): string {
   if (cat.short_name) return cat.short_name;
-  // fallback: 取 name 前2个字符
-  return cat.name.slice(0, 2);
+  // fallback: 中文取前 2 字,英文/斯瓦希里取前 8 字符
+  const limit = locale === "zh" ? 2 : 8;
+  const name = cat.name;
+  if (name.length <= limit) return name;
+  return name.slice(0, limit) + "…";
 }
 
 /**
@@ -63,8 +67,9 @@ export function CategorySidebar({
       ? categoryTree.filter((cat) => prefCodes!.includes(cat.code))
       : categoryTree;
 
-  // 分组为行
-  const rows = chunkArray(filteredTree, CATS_PER_ROW);
+  // 分组为行:按语言调整每行数量
+  const catsPerRow = locale === "zh" ? CATS_PER_ROW_ZH : CATS_PER_ROW_OTHER;
+  const rows = chunkArray(filteredTree, catsPerRow);
   const hoveredRow = hoveredRowIdx !== null ? rows[hoveredRowIdx] : null;
 
   const handleCategoryClick = (code: string) => {
@@ -90,29 +95,29 @@ export function CategorySidebar({
   return (
     <aside
       ref={asideRef}
-      className={`relative hidden w-[220px] shrink-0 lg:block ${
+      className={`relative hidden w-[260px] shrink-0 lg:block ${
         isSticky ? "sticky top-[148px] z-30 self-start" : "self-stretch"
       }`}
       onMouseLeave={() => setHoveredRowIdx(null)}
     >
       <div
-        className={`rounded-xl border border-line bg-white ${isSticky ? "" : "h-full"}`}
+        className={`rounded-xl border border-line bg-white flex flex-col ${isSticky ? "" : "h-full"}`}
         style={{
           ...(isSticky
-            ? { maxHeight: "calc(100vh - 164px)", overflowY: "auto" as const }
+            ? { maxHeight: "calc(100vh - 164px)" }
             : {}),
           boxShadow:
             "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)",
         }}
       >
-        {/* 头部 */}
-        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-800 text-white">
+        {/* 头部 — 固定不滚动 */}
+        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-800 text-white shrink-0">
           <LayoutGrid className="w-4 h-4" />
           <span className="text-sm font-bold">{t("allCategoryNav")}</span>
         </div>
 
-        {/* 品类行列表 */}
-        <div className="relative py-1">
+        {/* 品类行列表 — 超出时滚动 */}
+        <div className="relative py-1 overflow-y-auto min-h-0 flex-1">
           {loadingCategories ? (
             <div className="px-4 py-3 text-xs text-muted">{t("loadError")}...</div>
           ) : (
@@ -146,7 +151,7 @@ export function CategorySidebar({
                   {/* 品类短名 */}
                   <div className="flex-1 min-w-0">
                     <span
-                      className={`text-[13px] leading-relaxed whitespace-nowrap ${
+                      className={`text-[13px] leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis block ${
                         isHovered || hasActiveChild
                           ? "text-teal-800 font-bold"
                           : "text-gray-700"
@@ -168,7 +173,7 @@ export function CategorySidebar({
                                 : ""
                             }`}
                           >
-                            {getShortName(cat)}
+                            {getShortName(cat, locale)}
                           </button>
                         </span>
                       ))}
