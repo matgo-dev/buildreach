@@ -1,135 +1,51 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Search, X, ListFilter } from "lucide-react";
-import { useCallback, useState } from "react";
-import { mutate } from "swr";
+import { X, ListFilter } from "lucide-react";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { useAuthStore } from "@/stores/authStore";
-import { MallButton } from "./MallButton";
-import { RecentSearches } from "./RecentSearches";
 
 interface Props {
-  keyword: string;
   sort: string;
   featured: boolean;
   supplyMode: string;
-  certification: string;
-  certificationOptions: string[];
   total: number;
   activeCategoryCode: string;
   categoryTree: CategoryTreeNode[];
-  onKeywordChange: (keyword: string) => void;
   onSortChange: (sort: string) => void;
   onFeaturedToggle: () => void;
   onSupplyModeChange: (mode: string) => void;
-  onCertificationChange: (cert: string) => void;
   onCategoryChange: (code: string) => void;
   onClearAll: () => void;
   hasActiveFilters: boolean;
 }
 
 /**
- * 统一筛选栏 — 搜索 + 品类 + 排序/筛选/商品数 三行合一。
+ * 统一筛选栏 — 品类 chips + 排序/筛选/商品数。
  *
- * 行1: 搜索框 | 认证下拉 | 筛选按钮
- * 行2: 品类 chips
- * 行3: 最新上架 | 精选推荐 | 集采 | 直供 | 清除筛选 ... 共N件商品
+ * 行1: 品类 chips
+ * 行2: 最新上架 | 精选推荐 | 集采 | 直供 | 清除筛选 ... 共N件商品
  */
 export function FilterBar({
-  keyword,
   sort,
   featured,
   supplyMode,
-  certification,
-  certificationOptions,
   total,
   activeCategoryCode,
   categoryTree,
-  onKeywordChange,
   onSortChange,
   onFeaturedToggle,
   onSupplyModeChange,
-  onCertificationChange,
   onCategoryChange,
   onClearAll,
   hasActiveFilters,
 }: Props) {
   const t = useTranslations("mall");
-  const [inputValue, setInputValue] = useState(keyword);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onKeywordChange(inputValue.trim());
-    setSearchFocused(false);
-    if (inputValue.trim()) {
-      setTimeout(() => mutate("buyer-recent-searches"), 1500);
-    }
-  };
-
-  const handleSelectSearch = useCallback((kw: string) => {
-    setInputValue(kw);
-    onKeywordChange(kw);
-    setSearchFocused(false);
-  }, [onKeywordChange]);
 
   return (
     <div className="rounded-xl border border-line bg-white shadow-mall-sm">
-      {/* 行1: 搜索框 + 认证下拉 + 筛选按钮 */}
-      <form onSubmit={handleSearchSubmit} className="px-5 pt-4 pb-3">
-        <div className="grid grid-cols-[1fr_minmax(130px,0.5fr)_auto] gap-2.5 items-center">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-            <input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onClick={() => setSearchFocused(true)}
-              placeholder={t("searchPlaceholder")}
-              className="h-[40px] w-full rounded-lg border border-line-strong bg-white pl-9 pr-3 text-[14px] text-ink placeholder-muted outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14]"
-            />
-            {keyword && (
-              <button
-                type="button"
-                onClick={() => { setInputValue(""); onKeywordChange(""); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-            {isBuyer && (
-              <RecentSearches
-                visible={searchFocused}
-                onSelect={handleSelectSearch}
-                onClose={() => setSearchFocused(false)}
-              />
-            )}
-          </div>
-
-          <select
-            value={certification}
-            onChange={(e) => onCertificationChange(e.target.value)}
-            className={`h-[40px] rounded-lg border border-line-strong bg-white px-3 text-[13px] outline-none transition-colors focus:border-teal-700 focus:ring-[3px] focus:ring-teal-700/[.14] ${
-              certification ? "text-ink" : "text-muted"
-            }`}
-          >
-            <option value="">{t("filterCertAll")}</option>
-            {certificationOptions.map((cert) => (
-              <option key={cert} value={cert}>{cert}</option>
-            ))}
-          </select>
-
-          <MallButton type="submit" variant="teal" className="h-[40px] shrink-0">
-            {t("filterSearch")}
-          </MallButton>
-        </div>
-      </form>
-
-      {/* 行2: 品类 chips */}
-      <div className="px-5 pb-3 flex flex-wrap gap-1.5">
+      {/* 行1: 品类 chips */}
+      <div className="px-5 pt-3 pb-3 flex flex-wrap gap-1.5">
         <button
           onClick={() => onCategoryChange("")}
           className={`h-[30px] rounded-full px-3 text-[12px] font-semibold transition-all ${
@@ -158,7 +74,7 @@ export function FilterBar({
       {/* 分隔线 */}
       <div className="border-t border-line" />
 
-      {/* 行3: 排序 + 快筛 + 清除 | 商品总数 */}
+      {/* 行2: 排序 + 快筛 + 清除 | 商品总数 */}
       <div className="px-5 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <ListFilter className="h-3.5 w-3.5 text-muted mr-0.5" />
