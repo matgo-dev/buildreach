@@ -35,7 +35,7 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
 
     返回 {scanned, translated, failed}。
     独立 session,按模型分批查询走 i18n_pending_at 索引。
-    一次触发处理完所有待译行(while 循环分批)。
+    每批 limit 行(默认 100),翻完立即 commit 入库,循环取下一批直到清空。
     """
     if limit is None:
         limit = settings.I18N_SWEEP_BATCH_LIMIT
