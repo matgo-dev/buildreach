@@ -152,8 +152,8 @@ export default function RegisterPage() {
         router.replace(targetPath);
       }
     } catch {
-      // me 失败:降级跳商城首页
-      router.replace("/mall");
+      // me 失败:降级跳首页
+      router.replace("/");
     }
   }, [locale, router]);
 

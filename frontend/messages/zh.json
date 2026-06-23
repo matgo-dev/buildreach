@@ -1402,6 +1402,9 @@
     "msPortArrival": "到达目的港",
     "msCustomsImport": "目的港清关",
     "msLocalDelivery": "本地配送",
-    "msDelivered": "签收确认"
+    "msDelivered": "签收确认",
+    "emptyTitle": "暂无订单",
+    "emptyDesc": "您还没有任何订单，去商城看看吧",
+    "emptyBrowse": "浏览商城"
   }
 }
