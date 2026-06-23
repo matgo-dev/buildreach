@@ -65,7 +65,7 @@ def _register_product_domain() -> None:
         domain="product",
     ))
     register_i18n(Category, I18nSpec(
-        fields=("name",),
+        fields=("name", "short_name"),
         domain="category",
     ))
     register_i18n(ProductAttr, I18nSpec(
