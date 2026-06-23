@@ -17,7 +17,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/how-to-buy",  labelKey: "navHowToBuy" },
   { href: "/mall",        labelKey: "navMall" },
   { href: "/buyer/cart",  labelKey: "navQuoteRequest" },
-  { href: "#",            labelKey: "navMyOrders",      disabled: true },
+  { href: "/order-tracking", labelKey: "navMyOrders" },
 ];
 
 export function MallNavRow() {
