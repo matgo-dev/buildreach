@@ -201,7 +201,7 @@ function UserMenu() {
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  const displayName = user.username || user.email;
+  const displayName = user.name || user.username || user.email;
   const initial = (displayName?.[0] ?? "U").toUpperCase();
   const primaryRole = user.roles[0];
   const dashboardHref = workspaceDashboardOf(user.roles);

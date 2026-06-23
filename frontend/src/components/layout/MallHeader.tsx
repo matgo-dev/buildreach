@@ -11,7 +11,6 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
-  MapPin,
   Search,
   Settings,
   ShoppingCart,
@@ -78,7 +77,7 @@ export function MallHeader() {
         boxShadow: "0 12px 30px rgba(0,63,70,.22)",
       }}
     >
-      <div className="mx-auto max-w-mall px-6 grid grid-cols-[320px_minmax(360px,1fr)_auto] items-center gap-6 min-h-[80px]">
+      <div className="mx-auto max-w-mall px-6 grid grid-cols-[260px_minmax(400px,1fr)_auto] items-center gap-5 min-h-[96px]">
         {/* 左:品牌 */}
         <Link
           href="/"
@@ -142,33 +141,23 @@ export function MallHeader() {
 
         {/* 右:操作区 */}
         <div className="flex items-center gap-1.5">
-          {/* 收货地 — 纯展示 */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-2 text-white/70">
-            <MapPin className="h-4 w-4 shrink-0" />
-            <span className="text-xs">
-              <strong className="block text-[13px] leading-tight font-bold text-white/90">{BRAND.deliverTo}</strong>
-              {t("headerDeliverTo")}
-            </span>
-          </div>
-
-          {/* 询价车 */}
+          {/* 询价车 — 仅图标 */}
           <Link
             href={user ? "/buyer/cart" : "/login"}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
+            className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
+            title={t("headerRfqCart")}
           >
             <div className="relative" data-cart-icon>
               <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
               <span
                 className="absolute -right-2.5 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full text-[11px] font-black text-white border-2 border-teal-900"
                 style={{ background: "#e3a615" }}
               >
                 {cartCount}
               </span>
+              )}
             </div>
-            <span className="text-xs hidden lg:block">
-              <strong className="block text-[13.5px] leading-tight font-black">{t("headerQuoteByCS")}</strong>
-              {t("headerRfqCart")}
-            </span>
           </Link>
 
           {/* 语言切换 — 深色风格,始终可见 */}
@@ -222,7 +211,7 @@ function UserMenu() {
     return () => document.removeEventListener("keydown", h);
   }, [open]);
 
-  const displayName = user.username || user.email;
+  const displayName = user.name || user.username || user.email;
   const initial = (displayName?.[0] ?? "U").toUpperCase();
   const dashboardHref = workspaceDashboardOf(user.roles);
 

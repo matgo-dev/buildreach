@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="200" viewBox="0 0 220 200" fill="none">
+  <g opacity="0.15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 闪电 -->
+    <polygon points="100,50 80,105 100,105 85,160 130,95 105,95 120,50"/>
+    <!-- 开关面板 -->
+    <rect x="145" y="70" width="40" height="60" rx="4"/>
+    <circle cx="165" cy="90" r="8"/>
+    <line x1="165" y1="100" x2="165" y2="120"/>
+    <!-- 电线 -->
+    <path d="M40 140 Q60 120 80 140 Q100 160 120 140 Q140 120 160 140"/>
+    <!-- 插头 -->
+    <rect x="40" y="70" width="30" height="40" rx="4"/>
+    <line x1="48" y1="70" x2="48" y2="55"/>
+    <line x1="62" y1="70" x2="62" y2="55"/>
+  </g>
+</svg>
