@@ -12,9 +12,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="relative z-10 w-full max-w-md">
         {/* 品牌区 */}
         <div className="mb-8 text-center">
-          <div className="relative mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-lg backdrop-blur-sm">
-            <span className="text-2xl font-black text-white">{BRAND.logoChar}</span>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0D4D4D] bg-[#FF6B35]" />
+          <div className="relative mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-lg backdrop-blur-sm overflow-hidden">
+            <img src={BRAND.logoMark} alt={BRAND.name} className="h-10 w-10 object-contain" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">{t("name")}</h1>
           <p className="mt-2 text-sm text-white/60">{t("tagline")}</p>

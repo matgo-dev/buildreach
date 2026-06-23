@@ -1,11 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#003366"/>
-      <stop offset="100%" stop-color="#0F4C81"/>
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#g)"/>
-  <text x="16" y="23" font-family="-apple-system,'PingFang SC','Microsoft YaHei','Heiti SC',system-ui,sans-serif" font-weight="900" font-size="20" fill="#ffffff" text-anchor="middle">基</text>
-  <circle cx="26" cy="26" r="3.5" fill="#FF6B35" stroke="#ffffff" stroke-width="1"/>
+  <rect width="32" height="32" rx="7" fill="#006466"/>
+  <g transform="translate(3.5 3.6) scale(0.049)">
+    <path d="M189.9 117.8 A174.1 174.1 0 1 0 419.7 300.0" stroke="#ffffff" stroke-width="54" stroke-linecap="round"/>
+    <path d="M326.2 172.8 A87.0 87.0 0 1 1 199.8 322.6" stroke="#ffffff" stroke-width="54" stroke-linecap="round"/>
+    <circle cx="181.0" cy="299.7" r="25" fill="#DB9E00"/>
+  </g>
 </svg>
