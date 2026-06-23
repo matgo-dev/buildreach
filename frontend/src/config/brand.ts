@@ -23,6 +23,9 @@ export const BRAND = {
   /** Logo 横版图片路径 */
   logoHorizontal: "/logos/logo-horizontal.png",
 
+  /** Logo icon 路径(favicon / apple-touch-icon) */
+  logoIcon: "/logos/buildreach-icon.png",
+
   /** 长定位语:平台属性短句(slogan) */
   tagline:
     "China Building Materials for East Africa · 中国建材直采服务东非市场",
