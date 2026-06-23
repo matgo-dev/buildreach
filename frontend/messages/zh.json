@@ -9,10 +9,10 @@
     "selectAll": "全选"
   },
   "brand": {
-    "name": "东非建材采购平台",
-    "tagline": "央企海外 EPC 供应链平台",
-    "full_title": "基建严选 - 央企海外EPC供应链平台",
-    "description": "面向中国央企海外 EPC 项目的 B2B 工业品供应链平台"
+    "name": "BuildReach 筑达",
+    "tagline": "中国建材直采服务东非市场",
+    "full_title": "BuildReach 筑达 - China Building Materials for East Africa",
+    "description": "面向坦桑尼亚本地门店、批发商、承包商和项目客户的 B2B 建材采购平台"
   },
   "auth": {
     "login": {
@@ -376,6 +376,7 @@
     "nextPage": "下一页"
   },
   "mall": {
+    "loading": "加载中...",
     "searchPlaceholder": "搜索商品名称、品牌、编码...",
     "sortNewest": "最新上架",
     "sortPriceAsc": "价格从低到高",
@@ -519,8 +520,12 @@
     "headerRfqCart": "询价篮",
     "headerMyAccount": "我的账户",
     "headerAccountSub": "个人中心",
-    "stripAnnouncement": "东非建材采购平台 | Dar es Salaam first, sourcing from verified China supply chain.",
+    "stripAnnouncement": "BuildReach 筑达 | Dar es Salaam first, sourcing from verified China supply chain.",
     "helpCenter": "帮助中心 Help Center",
+    "headerLogin": "登录",
+    "headerRegister": "免费注册",
+    "stripProfile": "个人资料",
+    "stripPersonalCenter": "个人中心",
     "welcomeGuest": "欢迎来到 BuildReach",
     "welcomeBack": "欢迎回来",
     "registerNow": "注册",
