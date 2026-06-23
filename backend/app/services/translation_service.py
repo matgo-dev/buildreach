@@ -143,6 +143,118 @@ async def _translate_google(
         raise
 
 
+# ---- 批量翻译入口 ----
+
+# Google v2 单次最多 128 段文本
+_GOOGLE_BATCH_SIZE = 100
+
+
+async def translate_texts_batch(
+    texts: list[str],
+    source_locale: str,
+    target_locale: str,
+    domain: str = "general",
+) -> list[dict]:
+    """批量翻译,返回与输入严格等长等序的结果列表。
+
+    Google v2: 利用 q 数组一次请求多条,按 _GOOGLE_BATCH_SIZE 分片。
+    阿里云: 不支持批量,退化为逐条调用。
+    """
+    if not texts:
+        return []
+
+    provider = settings.TRANSLATION_PROVIDER.lower()
+
+    # 先过术语表精确匹配
+    glossary = GlossaryCache.get(source_locale, target_locale)
+    results: list[dict | None] = [None] * len(texts)
+    pending_indices: list[int] = []
+    pending_texts: list[str] = []
+
+    for i, text in enumerate(texts):
+        if text in glossary:
+            results[i] = {"translated": glossary[text], "status": "glossary"}
+        elif not text:
+            results[i] = {"translated": "", "status": "skipped"}
+        else:
+            pending_indices.append(i)
+            pending_texts.append(text)
+
+    if not pending_texts:
+        return results  # type: ignore[return-value]
+
+    if provider == "google" and settings.GOOGLE_TRANSLATE_API_KEY:
+        batch_results = await _translate_google_batch(
+            pending_texts, source_locale, target_locale,
+        )
+    else:
+        # 阿里云/mock/none: 逐条调用
+        batch_results = []
+        for text in pending_texts:
+            batch_results.append(await translate_text(text, source_locale, target_locale, domain))
+
+    # 按原始位置写回
+    for idx, res in zip(pending_indices, batch_results):
+        results[idx] = res
+
+    return results  # type: ignore[return-value]
+
+
+async def _translate_google_batch(
+    texts: list[str],
+    source_locale: str,
+    target_locale: str,
+) -> list[dict]:
+    """Google v2 批量翻译,按 _GOOGLE_BATCH_SIZE 分片,严格保序。"""
+    import httpx
+
+    api_key = settings.GOOGLE_TRANSLATE_API_KEY
+    source_lang = _GOOGLE_LANG_MAP.get(source_locale, source_locale)
+    target_lang = _GOOGLE_LANG_MAP.get(target_locale, target_locale)
+
+    all_results: list[dict] = []
+
+    async with httpx.AsyncClient(timeout=settings.GOOGLE_TRANSLATE_TIMEOUT_SECONDS) as client:
+        for start in range(0, len(texts), _GOOGLE_BATCH_SIZE):
+            chunk = texts[start:start + _GOOGLE_BATCH_SIZE]
+            try:
+                resp = await client.post(
+                    _GOOGLE_V2_URL,
+                    params={"key": api_key},
+                    json={
+                        "q": chunk,
+                        "source": source_lang,
+                        "target": target_lang,
+                        "format": "text",
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                translations = data["data"]["translations"]
+
+                # 严格校验返回数量与输入一致
+                if len(translations) != len(chunk):
+                    raise ValueError(
+                        f"Google 返回 {len(translations)} 条,期望 {len(chunk)} 条"
+                    )
+
+                for t in translations:
+                    all_results.append({
+                        "translated": t["translatedText"],
+                        "status": "nmt",
+                    })
+            except Exception as e:
+                logger.error(
+                    "Google 批量翻译失败 (chunk %d-%d): %s",
+                    start, start + len(chunk), e,
+                )
+                # 本片全部标失败,不影响其他片
+                for _ in chunk:
+                    all_results.append({"translated": "", "status": "failed"})
+
+    return all_results
+
+
 # ---- 阿里云实现 ----
 
 async def _translate_aliyun(
