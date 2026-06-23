@@ -70,23 +70,17 @@ export function AppHeader({
         {/* 左:品牌 — 已登录切换侧边栏,未登录跳首页 */}
         {user ? (
           <button onClick={toggleSidebar} className="group flex shrink-0 items-center gap-3 cursor-pointer" aria-label={`${BRAND.name} 菜单`}>
-            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-teal-900 transition-transform duration-300 group-hover:scale-105">
-              <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-gold" />
-            </span>
+            <img src={BRAND.logoMark} alt={BRAND.name} className="h-9 w-9 shrink-0 rounded object-contain transition-transform duration-300 group-hover:scale-105" />
             <span className="leading-none text-left">
-              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name}</span>
+              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name} <span className="text-[#006466]">{BRAND.nameZh}</span></span>
               <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
             </span>
           </button>
         ) : (
           <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
-            <span className="relative flex h-8 w-8 items-center justify-center rounded bg-teal-900 transition-transform duration-300 group-hover:scale-105">
-              <span className="select-none text-sm font-black leading-none text-white">{BRAND.logoChar}</span>
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-gold" />
-            </span>
+            <img src={BRAND.logoMark} alt={BRAND.name} className="h-9 w-9 shrink-0 rounded object-contain transition-transform duration-300 group-hover:scale-105" />
             <span className="leading-none">
-              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name}</span>
+              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name} <span className="text-[#006466]">{BRAND.nameZh}</span></span>
               <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
             </span>
           </Link>

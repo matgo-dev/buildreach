@@ -10,6 +10,15 @@ import { BRAND } from "@/config/brand";
 export const metadata: Metadata = {
   title: BRAND.fullTitle,
   description: BRAND.description,
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      { url: BRAND.logoIcon, type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: BRAND.logoIcon,
+  },
 };
 
 export default async function LocaleLayout({

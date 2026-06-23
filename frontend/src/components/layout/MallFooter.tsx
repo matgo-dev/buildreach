@@ -53,14 +53,14 @@ export function MallFooter() {
           <div className="space-y-2 text-[13px]">
             <p>Dar es Salaam, Tanzania</p>
             {wa.number && <p>{wa.number}</p>}
-            <p>info@buildlink.co.tz</p>
+            <p>info@buildreach.co.tz</p>
           </div>
         </div>
       </div>
 
       {/* 底部版权 */}
       <div className="border-t border-white/10 py-3.5 px-6 text-center text-[12px] text-[#b4d7d5]">
-        © {new Date().getFullYear()} BuildLink East Africa. All rights reserved.
+        © {new Date().getFullYear()} BuildReach. All rights reserved.
       </div>
     </footer>
   );
