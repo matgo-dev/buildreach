@@ -64,10 +64,9 @@ class Settings(BaseSettings):
 
     # ---- 翻译(i18n)----
     # aliyun / google / mock / none;缺凭据时自动降级为 none
-    TRANSLATION_PROVIDER: str = "mock"
-    # Google Cloud Translation
-    GOOGLE_TRANSLATE_PROJECT_ID: str = ""
-    GOOGLE_TRANSLATE_LOCATION: str = "global"
+    TRANSLATION_PROVIDER: str = "google"
+    # Google Cloud Translation v2 Basic (API Key)
+    GOOGLE_TRANSLATE_API_KEY: str = ""
     GOOGLE_TRANSLATE_TIMEOUT_SECONDS: float = 10.0
     # 阿里云机器翻译
     ALIYUN_TRANSLATE_ACCESS_KEY_ID: str = ""
