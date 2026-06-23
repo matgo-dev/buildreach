@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="200" viewBox="0 0 220 200" fill="none">
+  <g opacity="0.15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 安全帽 -->
+    <path d="M60 100 C60 65 120 65 120 100"/>
+    <rect x="50" y="100" width="80" height="10" rx="3"/>
+    <line x1="90" y1="65" x2="90" y2="55"/>
+    <!-- 防护眼镜 -->
+    <ellipse cx="55" cy="145" rx="18" ry="12"/>
+    <ellipse cx="95" cy="145" rx="18" ry="12"/>
+    <line x1="73" y1="145" x2="77" y2="145"/>
+    <line x1="37" y1="140" x2="30" y2="135"/>
+    <line x1="113" y1="140" x2="120" y2="135"/>
+    <!-- 盾牌 -->
+    <path d="M165 70 L190 80 L190 110 C190 130 165 145 165 145 C165 145 140 130 140 110 L140 80 Z"/>
+    <polyline points="155,110 165,120 180,100"/>
+  </g>
+</svg>

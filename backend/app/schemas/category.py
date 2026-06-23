@@ -19,6 +19,10 @@ class CategoryNode(BaseModel):
     name_en: str | None = None
     name_sw: str | None = None
     name: str = ""  # 按请求 locale 填充的本地化名称
+    short_name_zh: str | None = None
+    short_name_en: str | None = None
+    short_name_sw: str | None = None
+    short_name: str | None = None  # 按请求 locale 填充
     level: int
     parent_code: str | None = None
     sort_order: int
@@ -34,6 +38,7 @@ class CategoryTreeNode(BaseModel):
     name_en: str | None = None
     name_sw: str | None = None
     name: str = ""  # 按请求 locale 填充的本地化名称
+    short_name: str | None = None  # 按请求 locale 填充
     level: int
     is_leaf: bool = True
     children: List["CategoryTreeNode"] = []

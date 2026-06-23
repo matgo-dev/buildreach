@@ -8,6 +8,7 @@ from app.api.v1 import (
     admin_users,
     attachments,
     auth,
+    banners,
     buyer_events,
     buyer_prefs,
     cart,
@@ -16,6 +17,7 @@ from app.api.v1 import (
     credit,
     debug,
     operator_analytics,
+    operator_banners,
     operator_buyers,
     operator_products,
     products,
@@ -33,10 +35,12 @@ api_router.include_router(auth.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_audit.router)
 api_router.include_router(test_rbac.router)
+api_router.include_router(banners.router)
 api_router.include_router(categories.router)
 api_router.include_router(contact.router)
 api_router.include_router(credit.router)
 api_router.include_router(products.router)
+api_router.include_router(operator_banners.router)
 api_router.include_router(operator_buyers.router)
 api_router.include_router(operator_products.router)
 api_router.include_router(suppliers.router)

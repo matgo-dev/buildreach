@@ -185,9 +185,7 @@ function MallContent() {
         {/* 左侧品类导航 */}
         <CategorySidebar
           activeCategoryCode={urlCat}
-          showQuickLinks
-          showFeatured={urlFeatured}
-          onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
+          variant="mall"
           prefCodes={urlCat ? undefined : prefCodes}
           showAllCategories={showAllCategories || !!urlCat}
           onToggleAllCategories={() => setShowAllCategories((v) => !v)}

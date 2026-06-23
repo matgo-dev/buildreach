@@ -71,6 +71,10 @@ class Permissions:
     # ----- 业务-买方:buyer_event -----
     BUYER_EVENT_READ = "buyer_event:read"
 
+    # ----- 业务-运营:banner -----
+    BANNER_READ = "banner:read"
+    BANNER_WRITE = "banner:write"
+
     # ----- 业务-运营:analytics -----
     ANALYTICS_READ = "analytics:read"
 
@@ -152,6 +156,9 @@ PERMISSION_META: dict[str, dict[str, str]] = {
     Permissions.BUYER_PREF_WRITE: {"name": "管理浏览偏好", "module": ModuleLabel.BIZ_TRADE},
 
     Permissions.BUYER_EVENT_READ: {"name": "查看买方行为记录", "module": ModuleLabel.BIZ_TRADE},
+    Permissions.BANNER_READ: {"name": "查看轮播 Banner", "module": ModuleLabel.BIZ_OPERATION},
+    Permissions.BANNER_WRITE: {"name": "管理轮播 Banner", "module": ModuleLabel.BIZ_OPERATION},
+
     Permissions.ANALYTICS_READ: {"name": "查看运营分析数据", "module": ModuleLabel.BIZ_OPERATION},
 
     Permissions.RISK_READ: {"name": "风控驾驶舱", "module": ModuleLabel.BIZ_OPERATION},
