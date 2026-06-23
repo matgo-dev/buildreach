@@ -74,6 +74,43 @@ class RunMeta:
     operator: str | None = None
 
 
+# L1 品类 short_name 三语映射(人工校对,不走机器翻译)
+# key = short_name_zh, value = (en, sw)
+_L1_SHORT_NAME_I18N: dict[str, tuple[str, str]] = {
+    "劳保": ("Safety", "Kinga"),
+    "手动": ("Hand Tools", "Zana"),
+    "紧固": ("Fastener", "Bolta"),
+    "安防": ("Security", "Ulinzi"),
+    "粘胶": ("Adhesive", "Gundi"),
+    "气动": ("Pneumatic", "Hewa"),
+    "磨具": ("Abrasive", "Sanifu"),
+    "机电": ("Electro", "Umeme"),
+    "五金": ("Hardware", "Vifaa"),
+    "电器": ("Appliance", "Kifaa"),
+    "灯具": ("Lighting", "Taa"),
+    "电缆": ("Cable", "Kebo"),
+    "电力": ("Conduit", "Njia"),
+    "工控": ("Automate", "Kiwanda"),
+    "电辅": ("Wiring", "Nyaya"),
+    "保温": ("Insulate", "Joto"),
+    "防水": ("Waterproof", "Sifongo"),
+    "涂料": ("Paint", "Rangi"),
+    "装饰": ("Decor", "Mapambo"),
+    "门窗": ("Door&Win", "Milango"),
+    "土建": ("Civil", "Ujenzi"),
+    "临建": ("Temp Build", "Kambi"),
+    "装配": ("Precast", "Paneli"),
+    "暖通": ("HVAC", "HVAC"),
+    "水暖": ("Plumbing", "Paipu"),
+    "消防": ("Fire", "Zimamoto"),
+    "陶瓷": ("Sanitary", "Vyoo"),
+    "管道": ("Piping", "Mirija"),
+    "量具": ("Measure", "Kipimo"),
+    "金属": ("Metal", "Metali"),
+    "配电": ("Switchgear", "Gridi"),
+}
+
+
 @dataclass
 class CategoryNode:
     """categories_raw.json 中的一个分类节点。
@@ -523,6 +560,22 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
             if node.short_name and existing.short_name_zh != node.short_name:
                 existing.short_name_zh = node.short_name
                 changed = True
+            # 补齐 L1 short_name en/sw(人工映射表）
+            if node.short_name and node.short_name in _L1_SHORT_NAME_I18N:
+                sn_en, sn_sw = _L1_SHORT_NAME_I18N[node.short_name]
+                if existing.short_name_en != sn_en:
+                    existing.short_name_en = sn_en
+                    changed = True
+                if existing.short_name_sw != sn_sw:
+                    existing.short_name_sw = sn_sw
+                    changed = True
+                # 标记为 manual,翻译器不会覆盖
+                meta = dict(existing.trans_meta or {})
+                if meta.get("short_name_en") != "manual" or meta.get("short_name_sw") != "manual":
+                    meta["short_name_en"] = "manual"
+                    meta["short_name_sw"] = "manual"
+                    existing.trans_meta = meta
+                    changed = True
             if changed:
                 existing.updated_at = _utcnow()
                 updated += 1
@@ -534,13 +587,20 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
             code = _make_code(parent_code, seq, node.level)
 
             now = _utcnow()
+            # L1 short_name 从人工映射表取,不走机器翻译
+            sn_en, sn_sw = None, None
+            sn_en_status, sn_sw_status = "pending", "pending"
+            if node.short_name and node.short_name in _L1_SHORT_NAME_I18N:
+                sn_en, sn_sw = _L1_SHORT_NAME_I18N[node.short_name]
+                sn_en_status, sn_sw_status = "manual", "manual"
+
             cat = Category(
                 code=code,
                 name_zh=node.name_zh,
                 name_en=None,  # 鑫方盛无英文,等翻译管道补译
-                short_name_zh=node.short_name,  # 导航栏简称,仅一级有
-                short_name_en=None,  # 等翻译管道补译
-                short_name_sw=None,  # 等翻译管道补译
+                short_name_zh=node.short_name,
+                short_name_en=sn_en,
+                short_name_sw=sn_sw,
                 level=node.level,
                 parent_code=parent_code,
                 sort_order=0,
@@ -553,8 +613,8 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                     "name_en": "pending",
                     "name_sw": "pending",
                     "short_name_zh": "src" if node.short_name else None,
-                    "short_name_en": "pending" if node.short_name else None,
-                    "short_name_sw": "pending" if node.short_name else None,
+                    "short_name_en": sn_en_status if node.short_name else None,
+                    "short_name_sw": sn_sw_status if node.short_name else None,
                 },
                 i18n_pending_at=now,
             )
