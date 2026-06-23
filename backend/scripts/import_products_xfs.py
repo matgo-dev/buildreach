@@ -491,8 +491,8 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
             if not existing.is_active:
                 existing.is_active = True
                 changed = True
-            if node.short_name and existing.short_name != node.short_name:
-                existing.short_name = node.short_name
+            if node.short_name and existing.short_name_zh != node.short_name:
+                existing.short_name_zh = node.short_name
                 changed = True
             if changed:
                 existing.updated_at = _utcnow()
@@ -509,7 +509,9 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                 code=code,
                 name_zh=node.name_zh,
                 name_en=None,  # 鑫方盛无英文,等翻译管道补译
-                short_name=node.short_name,  # 导航栏简称,仅一级有
+                short_name_zh=node.short_name,  # 导航栏简称,仅一级有
+                short_name_en=None,  # 等翻译管道补译
+                short_name_sw=None,  # 等翻译管道补译
                 level=node.level,
                 parent_code=parent_code,
                 sort_order=0,
@@ -521,6 +523,9 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
                     "name_zh": "src",
                     "name_en": "pending",
                     "name_sw": "pending",
+                    "short_name_zh": "src" if node.short_name else None,
+                    "short_name_en": "pending" if node.short_name else None,
+                    "short_name_sw": "pending" if node.short_name else None,
                 },
                 i18n_pending_at=now,
             )
