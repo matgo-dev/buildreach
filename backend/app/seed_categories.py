@@ -1,5 +1,9 @@
 """品类 + 属性模板种子：以 CSV 为唯一数据源,upsert 模式。
 
+⚠️ DEPRECATED — 生产品类数据已切换为鑫方盛数据源,使用 scripts/import_categories_xfs.py。
+本文件仅保留给测试 conftest 使用(测试需要品类数据初始化)。
+线上/部署不应再调用此脚本。
+
 数据源:
 - data/categories.csv — 每行一个 L3,带所属 L1/L2 名,853 行
 - data/attr_templates.csv — 每行一个 L1 下的属性,44 行
@@ -21,10 +25,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
+from app.core.i18n_write import apply_i18n_create
 
 logger = logging.getLogger(__name__)
 
 _DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+
+
+def _needs_translation(cat: "Category") -> bool:
+    """判断品类是否缺少翻译(en 或 sw 为空)。"""
+    return not cat.name_en or not cat.name_sw
+
+
+async def _mark_i18n_pending(cat: "Category", name_zh: str) -> None:
+    """为品类的 name 字段初始化 i18n 标记,让 sweeper 发现并翻译。"""
+    await apply_i18n_create(cat, "name", name_zh, "zh", domain="category")
 
 
 def _load_en_names() -> dict[str, str]:
@@ -159,7 +174,7 @@ async def seed_categories(db: AsyncSession) -> None:
     attr_rows = _parse_attr_templates_csv(l1_map)
 
     # upsert 品类(L1→L2→L3,父先于子,JSON 已保证 FK 安全)
-    cat_created, cat_updated = 0, 0
+    cat_created, cat_updated, cat_i18n_marked = 0, 0, 0
     for item in cat_rows:
         row = await db.execute(
             select(Category).where(Category.code == item["code"])
@@ -172,9 +187,13 @@ async def seed_categories(db: AsyncSession) -> None:
             existing.parent_code = item["parent_code"]
             existing.sort_order = item["sort_order"]
             existing.is_active = True
+            # 补标 i18n:已有记录如果缺翻译且未标 pending,补上标记
+            if existing.i18n_pending_at is None and _needs_translation(existing):
+                await _mark_i18n_pending(existing, item["name_zh"])
+                cat_i18n_marked += 1
             cat_updated += 1
         else:
-            db.add(Category(
+            cat = Category(
                 code=item["code"],
                 name_zh=item["name_zh"],
                 name_en=item.get("name_en"),
@@ -182,7 +201,11 @@ async def seed_categories(db: AsyncSession) -> None:
                 parent_code=item["parent_code"],
                 sort_order=item["sort_order"],
                 is_active=True,
-            ))
+            )
+            # 初始化 i18n 标记,让 sweeper 能发现并翻译
+            await _mark_i18n_pending(cat, item["name_zh"])
+            cat_i18n_marked += 1
+            db.add(cat)
             cat_created += 1
 
     await db.flush()
@@ -236,7 +259,7 @@ async def seed_categories(db: AsyncSession) -> None:
     l2_count = sum(1 for r in cat_rows if r["level"] == 2)
     l3_count = sum(1 for r in cat_rows if r["level"] == 3)
     logger.warning(
-        "Seed: categories L1=%d L2=%d L3=%d (total %d, +%d/~%d), attr_templates=%d (+%d/~%d).",
+        "Seed: categories L1=%d L2=%d L3=%d (total %d, +%d/~%d, i18n_marked=%d), attr_templates=%d (+%d/~%d).",
         l1_count, l2_count, l3_count, len(cat_rows),
-        cat_created, cat_updated, len(attr_rows), attr_created, attr_updated,
+        cat_created, cat_updated, cat_i18n_marked, len(attr_rows), attr_created, attr_updated,
     )
