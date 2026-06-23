@@ -23,7 +23,7 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
     >
       {/* 图片区 */}
       <div
-        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-[#edf2f5] p-1.5"
+        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-[#edf2f5] p-1"
         style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
       >
         {product.main_image ? (
@@ -39,7 +39,7 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
       </div>
 
       {/* 信息区 */}
-      <div className="p-2.5 space-y-1.5">
+      <div className="p-2 space-y-1">
         <h3 className="text-[13px] font-bold leading-tight text-navy line-clamp-1 group-hover:text-teal-900">
           {product.name}
         </h3>
