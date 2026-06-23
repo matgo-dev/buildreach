@@ -144,13 +144,13 @@ def build_category_tree(raw: list) -> list[CategoryNode]:
     """从 categories_raw.json 构建分类树。
 
     鑫方盛约定:扁平数组,每行 {level, name_zh, path_zh, parent_zh, short_name?}。
-    靠 parent_zh(父节点的 name_zh)挂父子。L1 的 parent_zh 为 null。
-    path_zh 为唯一标识,用于防同名歧义。
+    path_zh 是唯一标识(从根到当前用 / 分隔),优先用 path_zh 推断父子关系。
 
-    兼容:如果 parent_zh 全部缺失,按 level 顺序推断父子关系——
-    遍历时维护一个 level→最近节点的栈,L(N+1) 节点挂到最近的 L(N) 节点下。
+    父子挂载策略(按优先级):
+    1. path_zh 截取:从 path_zh 去掉最后一段得到父 path → 精确匹配,无歧义
+    2. parent_zh + nodes_by_name:兼容无 path_zh 的数据(同名会取最后一个)
+    3. level 栈式推断:兜底,当 parent_zh 全部缺失时
     """
-    # 用 path_zh 作为主键(唯一),name_zh 作为辅助
     nodes_by_path: dict[str, CategoryNode] = {}
     nodes_by_name: dict[str, CategoryNode] = {}
     all_nodes: list[CategoryNode] = []
@@ -170,11 +170,36 @@ def build_category_tree(raw: list) -> list[CategoryNode]:
         nodes_by_name[name_zh] = node
         all_nodes.append(node)
 
+    # 自动检测 path_zh 分隔符:优先 ">"(新版),兼容 "/"(旧版)
+    _sep = ">"
+    if not any(">" in (n.path_zh or "") for n in all_nodes):
+        _sep = "/"
+    has_path_zh = any(n.path_zh and _sep in n.path_zh for n in all_nodes)
     has_parent_refs = any(n.parent_name_zh for n in all_nodes)
 
     roots: list[CategoryNode] = []
 
-    if has_parent_refs:
+    if has_path_zh:
+        # 优先策略:从 path_zh 截取父路径,精确匹配
+        orphans: list[CategoryNode] = []
+        for node in all_nodes:
+            if _sep not in node.path_zh:
+                roots.append(node)
+            else:
+                parent_path = node.path_zh.rsplit(_sep, 1)[0]
+                parent = nodes_by_path.get(parent_path)
+                if parent:
+                    parent.children.append(node)
+                else:
+                    orphans.append(node)
+        if orphans:
+            log.error("以下 %d 个品类节点无法通过 path_zh 找到父节点(可能 name_zh 含 '/'):", len(orphans))
+            for o in orphans[:20]:
+                log.error("  path_zh=%s  name_zh=%s  parent_zh=%s", o.path_zh, o.name_zh, o.parent_name_zh)
+            raise ValueError(
+                f"{len(orphans)} 个品类 path_zh 解析失败,请检查数据中 name_zh 是否含 '/' 等歧义字符"
+            )
+    elif has_parent_refs:
         for node in all_nodes:
             if node.parent_name_zh and node.parent_name_zh in nodes_by_name:
                 parent = nodes_by_name[node.parent_name_zh]
@@ -460,10 +485,12 @@ def _make_code(parent_code: str | None, seq: int, level: int) -> str:
 
 
 def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, str]:
-    """将 categories_raw.json 全层存入 categories 表,返回 name_zh → code 映射。
+    """将 categories_raw.json 全层存入 categories 表,返回 path_zh → code 映射。
 
-    算法沿用 import_categories.py:按 (name_zh, parent_code) 匹配现有节点,
-    沿用 code;新节点取空号生成稳定 code。append-only,永不物理删。
+    算法:按 (name_zh, parent_code) 匹配现有节点,沿用 code;
+    新节点取空号生成稳定 code。append-only,永不物理删。
+
+    返回值优先用 path_zh 做 key(防同名歧义),name_zh 仅在无冲突时写入做兼容。
     """
     existing_by_natural: dict[tuple[str, str | None], Category] = {}
     used_seq_by_parent: dict[str | None, set[int]] = {}
@@ -472,7 +499,9 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
         existing_by_natural[(c.name_zh, c.parent_code)] = c
         used_seq_by_parent.setdefault(c.parent_code, set()).add(_split_seq(c.code))
 
-    name_to_code: dict[str, str] = {}
+    path_to_code: dict[str, str] = {}
+    # name_zh → code 兼容映射,同名时标记为冲突不写入
+    _name_codes: dict[str, str | None] = {}  # None = 冲突,不可用
     inserted = 0
     updated = 0
 
@@ -534,7 +563,15 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
             existing_by_natural[natural_key] = cat
             inserted += 1
 
-        name_to_code[node.name_zh] = code
+        # path_zh 做主 key(唯一,无歧义)
+        if node.path_zh:
+            path_to_code[node.path_zh] = code
+        # name_zh 做兼容 key:首次写入;再遇同名标记冲突
+        if node.name_zh in _name_codes:
+            if _name_codes[node.name_zh] != code:
+                _name_codes[node.name_zh] = None  # 冲突
+        else:
+            _name_codes[node.name_zh] = code
         node.db_code = code
 
         for child in node.children:
@@ -545,6 +582,11 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
     for root in cat_tree:
         _upsert_node(root, None)
 
+    # 把无冲突的 name_zh 也写入 path_to_code,方便兼容查找
+    for name, code in _name_codes.items():
+        if code is not None and name not in path_to_code:
+            path_to_code[name] = code
+
     # 全量刷新 is_leaf:有 active 子节点的品类为非叶子
     all_cats = db.execute(select(Category)).scalars().all()
     parent_codes_with_active_children: set[str] = set()
@@ -554,8 +596,8 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
     for c in all_cats:
         c.is_leaf = c.code not in parent_codes_with_active_children
 
-    log.info("  分类导入: 新增=%d, 更新=%d, 总映射=%d", inserted, updated, len(name_to_code))
-    return name_to_code
+    log.info("  分类导入: 新增=%d, 更新=%d, 总映射=%d (path_zh)", inserted, updated, len(path_to_code))
+    return path_to_code
 
 
 # ────────────────────── 商品导入 ──────────────────────
@@ -581,12 +623,22 @@ def import_offer(
     product_id = offer.product_id
     spu_code = f"P-XFS-{product_id}"
 
-    # ── 1. 归类:source_category_path 叶子 name_zh → DB code ──
+    # ── 1. 归类:source_category_path → DB code ──
+    # 优先用 path_zh(全路径,无歧义),回退到叶子 name_zh
+    # path_to_code 的 key 分隔符取决于 categories_raw.json(可能是 ">" 或 "/"),两种都试
     src_path = data.get("source_category_path", [])
     leaf_name = _extract_leaf_name(src_path)
-    category_code = name_to_code.get(leaf_name or "")
+    category_code = None
+    if src_path:
+        parts = [str(s) for s in src_path]
+        category_code = (
+            name_to_code.get(">".join(parts))
+            or name_to_code.get("/".join(parts))
+        )
     if not category_code:
-        raise ValueError(f"分类 '{leaf_name}' 无法映射到 DB code")
+        category_code = name_to_code.get(leaf_name or "")
+    if not category_code:
+        raise ValueError(f"分类 '{path_zh or leaf_name}' 无法映射到 DB code")
 
     # ── 1.5 来源溯源 ──
     source_obj = data.get("source", {})
@@ -700,7 +752,7 @@ def import_offer(
             source=run_meta.source,
             source_meta=source_meta or None,
             last_ingest_run_id=run.id,
-            status=ProductStatus.DRAFT,
+            status=ProductStatus.ACTIVE,  # 爬虫数据已人工审核,直接上架
             source_lang="zh",
             trans_meta=_trans_meta,
             i18n_pending_at=_utcnow(),
@@ -748,9 +800,9 @@ def import_offer(
             product_id=product.id,
             sku_id=None,
             attr_key_zh=key[:50],
-            attr_key_en=None,  # 等翻译管道补译
+            attr_key_en=key[:50],  # NOT NULL + 唯一约束,先用中文填充,等翻译管道补译
             attr_value_zh=value[:500],
-            attr_value_en=None,  # 等翻译管道补译
+            attr_value_en=value[:500],  # NOT NULL + 唯一约束,先用中文填充,等翻译管道补译
             attr_group=group[:100] if group else None,
             value_type="text",
             sort_order=attr_sort,
