@@ -23,13 +23,13 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
   const isSticky = variant === "mall";
 
   return (
-    <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch overflow-hidden"}`}>
-      <div className={`space-y-2.5 ${isSticky ? "sticky top-[148px]" : ""}`}>
+    <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch"}`}>
+      <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-3"}>
         {/* 未登录时：注册/登录引导（loaded 前不渲染，避免刷新闪烁） */}
         {loaded && !user && (
-        <MallCard padding="p-3">
-          <div className="flex items-center gap-2 mb-2.5">
-            <UserCircle2 className="w-6 h-6 text-slate-300 shrink-0" />
+        <MallCard padding="p-2.5">
+          <div className="flex items-center gap-2 mb-2">
+            <UserCircle2 className="w-5 h-5 text-slate-300 shrink-0" />
             <p className="text-navy text-[13px] font-black">{t("welcomeGuest")}</p>
           </div>
           <div className="flex gap-2">
@@ -45,10 +45,10 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
 
         {/* 专属客服 — 标题+说明+电话+绿色按钮 */}
         {wa.configured && (
-        <MallCard padding="p-3.5">
-          <h3 className="text-navy text-base font-black mb-1">{t("customerSupport")}</h3>
-          <p className="text-muted text-[13px] mb-3">{t("customerSupportHint")}</p>
-          <p className="text-navy text-xl font-black mb-3">{wa.number}</p>
+        <MallCard padding="p-2.5">
+          <h3 className="text-navy text-[15px] font-black mb-0.5">{t("customerSupport")}</h3>
+          <p className="text-muted text-[12px] mb-2">{t("customerSupportHint")}</p>
+          <p className="text-navy text-lg font-black mb-2">{wa.number}</p>
           <MallButton variant="whatsapp" block href={wa.link!}>
             <MessageCircle className="h-4 w-4" />
             {t("chatOnWhatsApp")}
@@ -56,22 +56,22 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
         </MallCard>
         )}
 
-        {/* 平台保障 */}
-        <MallCard padding="p-3">
-          <p className="text-navy text-[13px] font-black mb-2">{t("trustMarks")}</p>
-          <ul className="space-y-2">
+        {/* 平台保障 — home 模式下拉伸填满剩余空间 */}
+        <MallCard padding="p-2.5" className={isSticky ? "" : "flex min-h-0 flex-1 flex-col"}>
+          <p className="text-navy text-[13px] font-black mb-1.5">{t("trustMarks")}</p>
+          <ul className={isSticky ? "space-y-1.5" : "flex flex-1 flex-col justify-between"}>
             {[
               { icon: ShieldCheck, title: t("trustVerified"), desc: t("trustVerifiedDesc") },
               { icon: FileCheck,   title: t("trustCertified"), desc: t("trustCertifiedDesc") },
               { icon: CreditCard,  title: t("trustPrice"),    desc: t("trustPriceDesc") },
               { icon: Truck,       title: t("trustDelivery"), desc: t("trustDeliveryDesc") },
             ].map(({ icon: Icon, title, desc }) => (
-              <li key={title} className="grid grid-cols-[20px_1fr] gap-2 items-start">
-                <span className="w-5 h-5 rounded-full grid place-items-center text-whatsapp shrink-0" style={{ background: "#e5f7ee" }}>
+              <li key={title} className="grid grid-cols-[18px_1fr] gap-1.5 items-start">
+                <span className="w-[18px] h-[18px] rounded-full grid place-items-center text-whatsapp shrink-0" style={{ background: "#e5f7ee" }}>
                   <Icon className="h-2.5 w-2.5" />
                 </span>
                 <span>
-                  <strong className="block text-[12px] text-navy">{title}</strong>
+                  <strong className="block text-[11px] text-navy leading-tight">{title}</strong>
                   <span className="text-[10px] text-muted leading-tight">{desc}</span>
                 </span>
               </li>
