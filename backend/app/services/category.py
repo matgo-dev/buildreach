@@ -45,11 +45,18 @@ async def get_tree(
     db: AsyncSession,
     *,
     is_active: bool | None = True,
+    max_depth: int | None = None,
 ) -> list[CategoryTreeNode]:
-    """三层嵌套树,按 (sort_order, code) 排序。"""
+    """三层嵌套树,按 (sort_order, code) 排序。
+
+    max_depth: 限制返回层级深度(1=只返回 L1, 2=L1+L2, None=全部)。
+    """
     stmt = select(Category)
     if is_active is not None:
         stmt = stmt.where(Category.is_active == is_active)
+    # 按 max_depth 截断查询，减少数据量
+    if max_depth is not None:
+        stmt = stmt.where(Category.level <= max_depth)
     stmt = stmt.order_by(
         Category.level, Category.parent_code, Category.sort_order, Category.code
     )
@@ -61,6 +68,8 @@ async def get_tree(
     pending_children: list[tuple[str, CategoryTreeNode]] = []
 
     for r in rows:
+        # max_depth 截断时，最深层标记为叶子节点
+        is_leaf = r.is_leaf if max_depth is None else (r.level >= max_depth or r.is_leaf)
         node = CategoryTreeNode(
             id=r.id,
             code=r.code,
@@ -69,7 +78,7 @@ async def get_tree(
             name=get_localized(r, "name"),
             short_name=get_localized(r, "short_name"),
             level=r.level,
-            is_leaf=r.is_leaf,
+            is_leaf=is_leaf,
             children=[],
         )
         nodes_by_code[r.code] = node
