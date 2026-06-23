@@ -1,9 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck, UserCircle2 } from "lucide-react";
+import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck } from "lucide-react";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
-import { useAuthStore } from "@/stores/authStore";
 import { MallButton } from "./MallButton";
 import { MallCard } from "./MallCard";
 
@@ -17,31 +16,11 @@ import { MallCard } from "./MallCard";
 export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }) {
   const t = useTranslations("mall");
   const wa = useWhatsApp();
-  const user = useAuthStore((s) => s.user);
-  const loaded = useAuthStore((s) => s.loaded);
-
   const isSticky = variant === "mall";
 
   return (
     <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch"}`}>
-      <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-3"}>
-        {/* 未登录时：注册/登录引导（loaded 前不渲染，避免刷新闪烁） */}
-        {loaded && !user && (
-        <MallCard padding="p-2.5">
-          <div className="flex items-center gap-2 mb-2">
-            <UserCircle2 className="w-5 h-5 text-slate-300 shrink-0" />
-            <p className="text-navy text-[13px] font-black">{t("welcomeGuest")}</p>
-          </div>
-          <div className="flex gap-2">
-            <MallButton variant="teal" size="sm" block href="/register">
-              {t("registerNow")}
-            </MallButton>
-            <MallButton variant="outline" size="sm" block href="/login">
-              {t("signIn")}
-            </MallButton>
-          </div>
-        </MallCard>
-        )}
+      <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-2 overflow-hidden"}>
 
         {/* 专属客服 — 标题+说明+电话+绿色按钮 */}
         {wa.configured && (
