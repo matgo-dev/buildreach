@@ -1,7 +1,7 @@
 "use client";
 import {
   ShoppingBag, Globe, Shield,
-  Truck,
+  Truck, MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -14,6 +14,7 @@ import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { RightSidebar } from "@/components/mall/RightSidebar";
 import { HeroBannerCarousel } from "@/components/mall/HeroBannerCarousel";
 import { CategoryFloors } from "@/components/mall/CategoryFloors";
+import { useAuthStore } from "@/stores/authStore";
 
 // ─── 能力卡片 ───
 const CAPABILITIES: { icon: LucideIcon; titleKey: string; descKey: string; color: string }[] = [
@@ -65,17 +66,52 @@ export default function HomePage() {
         </MallCard>
 
         {/* ── 底部 CTA ── */}
-        <div className="rounded-xl p-10 text-center text-white" style={{
-          background: "linear-gradient(120deg, #003f46, #00505a 60%, #006773)",
-        }}>
+        <BottomCta />
+      </div>
+    </PublicLayout>
+  );
+}
+
+/** 底部 CTA — 未登录：注册引导 / 已登录：采购动作 + WhatsApp */
+function BottomCta() {
+  const t = useTranslations("mall");
+  const user = useAuthStore((s) => s.user);
+
+  return (
+    <div className="rounded-xl p-10 text-center text-white" style={{
+      background: "linear-gradient(120deg, #003f46, #00505a 60%, #006773)",
+    }}>
+      {user ? (
+        <>
+          <h2 className="text-xl font-black mb-2">{t("ctaLoggedInTitle")}</h2>
+          <p className="text-white/50 text-sm mb-5">{t("ctaLoggedInDesc")}</p>
+          <div className="flex justify-center gap-3 flex-wrap">
+            <MallButton variant="gold" href="/mall">{t("ctaBrowseMall")}</MallButton>
+            <MallButton variant="outline" href="/buyer/cart">{t("ctaStartRfq")}</MallButton>
+            <MallButton variant="outline" href="/order-tracking">{t("ctaTrackOrder")}</MallButton>
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+            <a
+              href="https://wa.me/255000000000"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {t("ctaWhatsApp")}
+            </a>
+          </div>
+        </>
+      ) : (
+        <>
           <h2 className="text-xl font-black mb-2">{t("ctaTitle")}</h2>
           <p className="text-white/50 text-sm mb-5">{t("ctaDesc")}</p>
           <div className="flex justify-center gap-3">
             <MallButton variant="gold" href="/register">{t("ctaRegister")}</MallButton>
             <MallButton variant="outline" href="/how-to-buy">{t("ctaLearnMore")}</MallButton>
           </div>
-        </div>
-      </div>
-    </PublicLayout>
+        </>
+      )}
+    </div>
   );
 }
