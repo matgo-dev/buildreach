@@ -23,8 +23,8 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
   const isSticky = variant === "mall";
 
   return (
-    <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-start"}`}>
-      <div className={`space-y-2 ${isSticky ? "sticky top-[148px]" : ""}`}>
+    <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch"}`}>
+      <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-3"}>
         {/* 未登录时：注册/登录引导（loaded 前不渲染，避免刷新闪烁） */}
         {loaded && !user && (
         <MallCard padding="p-2.5">
@@ -57,9 +57,9 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
         )}
 
         {/* 平台保障 — home 模式下拉伸填满剩余空间 */}
-        <MallCard padding="p-2.5">
+        <MallCard padding="p-2.5" className={isSticky ? "" : "flex min-h-0 flex-1 flex-col"}>
           <p className="text-navy text-[13px] font-black mb-1.5">{t("trustMarks")}</p>
-          <ul className="space-y-1.5">
+          <ul className={isSticky ? "space-y-1.5" : "flex flex-1 flex-col justify-between"}>
             {[
               { icon: ShieldCheck, title: t("trustVerified"), desc: t("trustVerifiedDesc") },
               { icon: FileCheck,   title: t("trustCertified"), desc: t("trustCertifiedDesc") },
