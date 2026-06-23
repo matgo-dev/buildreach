@@ -45,9 +45,9 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
 
     for model_cls, spec in registry.items():
         table_name = getattr(model_cls, "__tablename__", model_cls.__name__)
-        try:
-            # 循环分批,一次触发处理完该模型所有待译行
-            while True:
+        # 循环分批,一次触发处理完该模型所有待译行
+        while True:
+            try:
                 async with AsyncSessionLocal() as session:
                     stmt = (
                         select(model_cls)
@@ -66,14 +66,18 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
                     batch_failed = await _batch_translate_rows(rows, spec.fields, stats)
 
                     await session.commit()
+                    logger.info("sweep: %s 本批 %d 行已提交", table_name, len(rows))
 
                     # 本批全部失败则停止,避免死循环重试同一批
                     if batch_failed == len(rows):
                         logger.warning("sweep: %s 本批 %d 行全部失败,停止循环", table_name, len(rows))
                         break
 
-        except Exception:
-            logger.error("sweep: %s 批次异常", table_name, exc_info=True)
+            except Exception:
+                logger.error("sweep: %s 本批异常,跳过继续下一批", table_name, exc_info=True)
+                # commit 失败(如字段超长),这批数据回滚,继续下一批
+                # 但如果是同一批数据反复报错会死循环,所以直接 break
+                break
 
     logger.info(
         "sweep 完成: scanned=%d translated=%d failed=%d",
@@ -149,13 +153,32 @@ async def _batch_translate_rows(
             res = results[i]
             meta = _get_meta(row)
             if res["status"] == "skipped":
-                # 无 provider,保持 pending
                 continue
             if res["status"] == "failed" or not res.get("translated"):
                 meta[meta_key] = "failed"
                 _set_meta(row, meta)
                 continue
-            setattr(row, f"{field}_{target_locale}", res["translated"])
+            translated = res["translated"]
+            # 防御:截断到列长度,避免 commit 时 VARCHAR 报错
+            col = getattr(row.__class__, f"{field}_{target_locale}", None)
+            if col is not None:
+                col_len = getattr(col.type, "length", None) if hasattr(col, "type") else None
+                if col_len is None:
+                    # 从 mapped_column 的 property 取
+                    try:
+                        col_len = col.property.columns[0].type.length
+                    except Exception:
+                        pass
+                if col_len and len(translated) > col_len:
+                    logger.warning(
+                        "sweep: %s#%s %s_%s 翻译结果 %d 字符超过列长 %d,截断",
+                        row.__class__.__tablename__,
+                        getattr(row, "id", "?"),
+                        field, target_locale,
+                        len(translated), col_len,
+                    )
+                    translated = translated[:col_len]
+            setattr(row, f"{field}_{target_locale}", translated)
             meta[meta_key] = "auto" if res["status"] != "mock" else "mock"
             _set_meta(row, meta)
 
