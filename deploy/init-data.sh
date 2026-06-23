@@ -81,14 +81,14 @@ fi
 if [[ "$SKIP_BANNERS" == "false" ]]; then
   echo ""
   echo "=== [3/5] 初始化轮播图 ==="
-  if [[ -d "${DATA_DIR}/banners" ]] && ls "${DATA_DIR}"/banners/*.{png,jpg,jpeg,webp} &>/dev/null; then
+  BANNER_FILES=$(find "${DATA_DIR}/banners" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) 2>/dev/null)
+  if [[ -n "$BANNER_FILES" ]]; then
     docker exec "${BACKEND_CONTAINER}" mkdir -p /app/uploads/banners
     BANNER_COUNT=0
-    for img in "${DATA_DIR}"/banners/*.{png,jpg,jpeg,webp}; do
-      [[ ! -f "$img" ]] && continue
+    while IFS= read -r img; do
       docker cp "$img" "${BACKEND_CONTAINER}:/app/uploads/banners/"
       BANNER_COUNT=$((BANNER_COUNT + 1))
-    done
+    done <<< "$BANNER_FILES"
     echo "  轮播图文件已复制: ${BANNER_COUNT} 个"
 
     # 运行 seed_banners.py（如果存在）
@@ -119,7 +119,7 @@ from app.core.config import settings
 from app.db.url import prepare_sync_url
 engine = create_engine(prepare_sync_url(str(settings.DATABASE_URL)))
 with engine.connect() as conn:
-    r = conn.execute(text('SELECT COUNT(*) FROM categories WHERE deleted_at IS NULL'))
+    r = conn.execute(text('SELECT COUNT(*) FROM categories WHERE is_active = true'))
     print(r.scalar())
 " 2>/dev/null || echo "0")
 
@@ -174,20 +174,20 @@ from app.core.config import settings
 from app.db.url import prepare_sync_url
 
 engine = create_engine(prepare_sync_url(str(settings.DATABASE_URL)))
-with engine.connect() as conn:
-    tables = {
-        '品类':          'SELECT COUNT(*) FROM categories WHERE deleted_at IS NULL',
-        '属性模板':      'SELECT COUNT(*) FROM category_attr_templates',
-        '轮播图':        'SELECT COUNT(*) FROM banner_slides',
-        '商品(SPU)':     'SELECT COUNT(*) FROM products WHERE deleted_at IS NULL',
-        '商品图片':      'SELECT COUNT(*) FROM product_images WHERE deleted_at IS NULL',
-    }
-    for label, sql in tables.items():
-        try:
+tables = {
+    '品类':          'SELECT COUNT(*) FROM categories WHERE is_active = true',
+    '属性模板':      'SELECT COUNT(*) FROM category_attr_templates',
+    '轮播图':        'SELECT COUNT(*) FROM banner_slides',
+    '商品(SPU)':     'SELECT COUNT(*) FROM products WHERE deleted_at IS NULL',
+    '商品图片':      'SELECT COUNT(*) FROM product_images WHERE deleted_at IS NULL',
+}
+for label, sql in tables.items():
+    try:
+        with engine.connect() as conn:
             r = conn.execute(text(sql))
             print(f'  {label}: {r.scalar()}')
-        except Exception as e:
-            print(f'  {label}: 查询失败 ({e})')
+    except Exception:
+        print(f'  {label}: -')
 " 2>/dev/null || echo "  统计查询失败（数据库可能未就绪）"
 
 echo ""
