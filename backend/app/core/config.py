@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     # ---- i18n 自动补译 ----
     I18N_AUTO_TRANSLATE_ENABLED: bool = True       # 总开关
     I18N_SWEEP_INTERVAL_SECONDS: int = 300          # 调度扫描周期(5 分钟)
-    I18N_SWEEP_BATCH_LIMIT: int = 5000             # 单轮每模型最多处理行数
+    I18N_SWEEP_BATCH_LIMIT: int = 100              # 每批提交行数(翻完即 commit,循环取下一批)
 
     # CORS(逗号分隔,运行时拆为列表)
     CORS_ORIGINS_RAW: str = Field(
