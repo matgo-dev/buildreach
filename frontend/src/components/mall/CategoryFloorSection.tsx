@@ -88,7 +88,7 @@ export function CategoryFloorSection({
           style={{
             backgroundImage: `url(${config.bgImage})`,
             backgroundPosition: "center bottom",
-            backgroundSize: "auto 116%",
+            backgroundSize: "cover",
           }}
         >
           {/* 半透明遮罩保证文字可读 */}
