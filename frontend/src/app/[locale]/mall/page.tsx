@@ -8,7 +8,7 @@ import useSWR from "swr";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
-import { listProducts, listCertificationOptions, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
+import { listProducts, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
 import { ProductGrid } from "@/components/mall/ProductGrid";
 import { FilterBar } from "@/components/mall/FilterBar";
 import { RecentViews } from "@/components/mall/RecentViews";
@@ -34,13 +34,6 @@ function MallContent() {
     { revalidateOnFocus: false },
   );
 
-  // 认证筛选选项
-  const { data: certOptions } = useSWR<string[]>(
-    "product-certification-options",
-    () => listCertificationOptions(),
-    { revalidateOnFocus: false },
-  );
-
   // 偏好品类展示全部
   const [showAllCategories, setShowAllCategories] = useState(false);
 
@@ -50,7 +43,6 @@ function MallContent() {
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
   const urlSupplyMode = searchParams.get("supply_mode") || "";
-  const urlCertification = searchParams.get("certification") || "";
 
   // 更新 URL 参数的统一方法
   const updateParams = useCallback(
@@ -78,8 +70,8 @@ function MallContent() {
 
   // 筛选条件变化时的 fingerprint，用于检测重置
   const filterFingerprint = useMemo(
-    () => JSON.stringify({ urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, prefCodes, showAllCategories }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, prefCodes, showAllCategories]
+    () => JSON.stringify({ urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, prefCodes, showAllCategories }),
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, prefCodes, showAllCategories]
   );
 
   // 首页请求参数（page=1）
@@ -90,14 +82,13 @@ function MallContent() {
       sort: urlSort as ProductListParams["sort"],
       featured: urlFeatured || undefined,
       supply_mode: urlSupplyMode || undefined,
-      certification: urlCertification || undefined,
       page: 1,
       size: PAGE_SIZE,
       ...(prefCodes && prefCodes.length > 0 && !urlCat
         ? { all_categories: showAllCategories || undefined }
         : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlCertification, prefCodes, showAllCategories]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -171,7 +162,7 @@ function MallContent() {
 
   const hasMore = currentPage < totalPages;
 
-  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlCertification || urlSort !== "newest");
+  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };
@@ -184,20 +175,15 @@ function MallContent() {
         {isBuyer && <RecentViews />}
 
         <FilterBar
-          keyword={urlKeyword}
           sort={urlSort}
           featured={urlFeatured}
           supplyMode={urlSupplyMode}
-          certification={urlCertification}
-          certificationOptions={certOptions ?? []}
           total={totalCount}
           activeCategoryCode={urlCat}
           categoryTree={categoryTree}
-          onKeywordChange={(kw) => updateParams({ keyword: kw || undefined })}
           onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
           onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
           onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
-          onCertificationChange={(cert) => updateParams({ certification: cert || undefined })}
           onCategoryChange={(code) => updateParams({ cat: code || undefined })}
           onClearAll={clearAll}
           hasActiveFilters={hasActiveFilters}
