@@ -14,7 +14,7 @@ import { MOCK_FLOOR_PRODUCTS } from "./floorMockData";
 export interface FloorConfig {
   id: string;             // DOM id，供电梯锚点用
   nameKey: string;        // i18n key
-  categoryCode: string;   // L1 品类 code
+  categoryCodes: string[];// 多个 L1 品类 code，合并展示其下 L2 子品类
   bgImage: string;        // 左区背景图 URL（竖长图，底部有产品实物）
 }
 
@@ -30,15 +30,19 @@ export function CategoryFloorSection({
   const t = useTranslations("mall");
   const router = useRouter();
 
-  const l1Node = categoryTree.find((c) => c.code === config.categoryCode);
-  const l2Children = l1Node?.children ?? [];
+  // 合并多个 L1 下的 L2 子品类
+  const l2Children = config.categoryCodes.flatMap(
+    (code) => categoryTree.find((c) => c.code === code)?.children ?? []
+  );
 
+  // 商品查询：用第一个 L1 code 查询（API 暂不支持多 code）
+  const primaryCode = config.categoryCodes[0];
   const { data, isLoading } = useSWR(
-    `floor-products-${config.categoryCode}`,
+    `floor-products-${config.categoryCodes.join(",")}`,
     async () => {
       try {
         const featured = await listProducts({
-          category_code: config.categoryCode,
+          category_code: primaryCode,
           featured: true,
           size: FLOOR_PRODUCT_SIZE,
           sort: "newest",
@@ -47,7 +51,7 @@ export function CategoryFloorSection({
           return featured.items.slice(0, FLOOR_PRODUCT_SIZE);
         }
         const rest = await listProducts({
-          category_code: config.categoryCode,
+          category_code: primaryCode,
           size: FLOOR_PRODUCT_SIZE,
           sort: "newest",
         });
@@ -62,7 +66,8 @@ export function CategoryFloorSection({
   );
 
   // 真实数据 >= 4 个才用真实数据，否则用 Mock（TODO: 数据入库后移除）
-  const mockProducts = (MOCK_FLOOR_PRODUCTS[config.categoryCode] ?? []) as ProductPublic[];
+  // mock 按楼层 id 匹配（不依赖品类 code，初始化数据后 code 可能变化）
+  const mockProducts = (MOCK_FLOOR_PRODUCTS[config.id] ?? []) as ProductPublic[];
   const products: ProductPublic[] = (data && data.length >= 4) ? data : mockProducts;
 
   return (
