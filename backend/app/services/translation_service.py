@@ -1,7 +1,7 @@
 """翻译服务 — 四态 provider:aliyun / google / mock / none。
 
 aliyun:调阿里云机器翻译通用版
-google:调 Google Cloud Translation v3 NMT
+google:调 Google Cloud Translation v2 Basic (API Key)
 mock:返回源文,status="mock"(开发用)
 none:短路返回,status="skipped"(未配置/降级)
 """
@@ -27,35 +27,6 @@ _ALIYUN_LANG_MAP: dict[str, str] = {
     "en": "en",
     "sw": "sw",
 }
-
-# ---- Google 客户端(延迟初始化) ----
-
-_google_client = None
-_google_available = None  # None=未检测, True/False=已检测
-
-
-def _get_google_client():
-    """延迟初始化 Google Translate 客户端,缺凭据降级为 None。"""
-    global _google_client, _google_available
-    if _google_available is not None:
-        return _google_client
-
-    if not settings.GOOGLE_TRANSLATE_PROJECT_ID:
-        logger.warning("GOOGLE_TRANSLATE_PROJECT_ID 未配置,翻译降级为 none")
-        _google_available = False
-        return None
-
-    try:
-        from google.cloud import translate_v3  # noqa: F811
-        _google_client = translate_v3.TranslationServiceClient()
-        _google_available = True
-        logger.info("Google Translation v3 客户端初始化成功")
-    except Exception as e:
-        logger.warning("Google Translation 客户端初始化失败,降级为 none: %s", e)
-        _google_available = False
-        _google_client = None
-
-    return _google_client
 
 
 # ---- 阿里云客户端(延迟初始化) ----
@@ -131,43 +102,44 @@ async def translate_text(
     return {"translated": text, "status": "skipped"}
 
 
-# ---- Google 实现 ----
+# ---- Google 实现 (v2 Basic, API Key) ----
+
+_GOOGLE_V2_URL = "https://translation.googleapis.com/language/translate/v2"
+
 
 async def _translate_google(
     text: str,
     source_locale: str,
     target_locale: str,
 ) -> dict:
-    """调 Google Cloud Translation v3 NMT。"""
-    client = _get_google_client()
-    if client is None:
+    """调 Google Cloud Translation v2 Basic REST API。"""
+    api_key = settings.GOOGLE_TRANSLATE_API_KEY
+    if not api_key:
+        logger.warning("GOOGLE_TRANSLATE_API_KEY 未配置,翻译降级为 none")
         return {"translated": text, "status": "skipped"}
 
     source_lang = _GOOGLE_LANG_MAP.get(source_locale, source_locale)
     target_lang = _GOOGLE_LANG_MAP.get(target_locale, target_locale)
 
-    parent = f"projects/{settings.GOOGLE_TRANSLATE_PROJECT_ID}/locations/{settings.GOOGLE_TRANSLATE_LOCATION}"
-
     try:
-        import asyncio
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: client.translate_text(
-                request={
-                    "parent": parent,
-                    "contents": [text],
-                    "source_language_code": source_lang,
-                    "target_language_code": target_lang,
-                    "mime_type": "text/plain",
+        import httpx
+        async with httpx.AsyncClient(timeout=settings.GOOGLE_TRANSLATE_TIMEOUT_SECONDS) as client:
+            resp = await client.post(
+                _GOOGLE_V2_URL,
+                params={"key": api_key},
+                json={
+                    "q": text,
+                    "source": source_lang,
+                    "target": target_lang,
+                    "format": "text",
                 },
-                timeout=settings.GOOGLE_TRANSLATE_TIMEOUT_SECONDS,
-            ),
-        )
-        translated = response.translations[0].translated_text
-        return {"translated": translated, "status": "nmt"}
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            translated = data["data"]["translations"][0]["translatedText"]
+            return {"translated": translated, "status": "nmt"}
     except Exception as e:
-        logger.error("Google Translation 调用失败: %s→%s, error=%s", source_locale, target_locale, e)
+        logger.error("Google Translation v2 调用失败: %s→%s, error=%s", source_locale, target_locale, e)
         raise
 
 
