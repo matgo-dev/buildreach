@@ -5,6 +5,7 @@ import { TopStrip } from "./TopStrip";
 import { MallHeader } from "./MallHeader";
 import { MallNavRow } from "./MallNavRow";
 import { MallFooter } from "./MallFooter";
+import { FloatingWhatsApp } from "@/components/mall/FloatingWhatsApp";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 import { getCart } from "@/lib/api/cart";
@@ -43,6 +44,7 @@ export function PublicLayout({
         )}
       </main>
       <MallFooter />
+      <FloatingWhatsApp />
     </div>
   );
 }
