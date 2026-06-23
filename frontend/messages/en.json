@@ -10,9 +10,9 @@
   },
   "brand": {
     "name": "BuildReach",
-    "tagline": "B2B Supply Chain for Overseas EPC Projects",
-    "full_title": "JIJIAN SELECT - B2B Supply Chain for Overseas EPC Projects",
-    "description": "B2B industrial supply chain platform for Chinese SOE overseas EPC projects"
+    "tagline": "China Building Materials for East Africa",
+    "full_title": "BuildReach - China Building Materials for East Africa",
+    "description": "B2B building materials procurement platform for Tanzania retailers, wholesalers, contractors and project buyers"
   },
   "auth": {
     "login": {
@@ -376,6 +376,7 @@
     "nextPage": "Next"
   },
   "mall": {
+    "loading": "Loading...",
     "searchPlaceholder": "Search by name, brand, code...",
     "sortNewest": "Newest",
     "sortPriceAsc": "Price: Low to High",
@@ -519,8 +520,12 @@
     "headerRfqCart": "Inquiry Basket",
     "headerMyAccount": "My Account",
     "headerAccountSub": "Akaunti Yangu",
-    "stripAnnouncement": "East Africa Building Materials Platform | Dar es Salaam first, sourcing from verified China supply chain.",
+    "stripAnnouncement": "BuildReach | Dar es Salaam first, sourcing from verified China supply chain.",
     "helpCenter": "Help Center",
+    "headerLogin": "Sign In",
+    "headerRegister": "Register Free",
+    "stripProfile": "My Profile",
+    "stripPersonalCenter": "My Account",
     "welcomeGuest": "Welcome to BuildReach",
     "welcomeBack": "Welcome back",
     "registerNow": "Register",

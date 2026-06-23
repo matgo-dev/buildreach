@@ -9,10 +9,10 @@
     "selectAll": "Chagua Zote"
   },
   "brand": {
-    "name": "Jukwaa la Vifaa vya Ujenzi",
-    "tagline": "Mnyororo wa Usambazaji B2B kwa Miradi ya EPC Nje ya Nchi",
-    "full_title": "JIJIAN SELECT - Mnyororo wa Usambazaji B2B kwa Miradi ya EPC Nje ya Nchi",
-    "description": "Jukwaa la mnyororo wa usambazaji wa viwanda B2B kwa miradi ya EPC ya kampuni za serikali za China nje ya nchi"
+    "name": "BuildReach",
+    "tagline": "Vifaa vya Ujenzi kutoka China kwa Afrika Mashariki",
+    "full_title": "BuildReach - Vifaa vya Ujenzi kutoka China kwa Afrika Mashariki",
+    "description": "Jukwaa la ununuzi wa vifaa vya ujenzi B2B kwa maduka, wauzaji wa jumla, wakandarasi na wanunuzi wa miradi Tanzania"
   },
   "auth": {
     "login": {
@@ -376,6 +376,7 @@
     "nextPage": "Inayofuata"
   },
   "mall": {
+    "loading": "Inapakia...",
     "searchPlaceholder": "Tafuta kwa jina, chapa, msimbo...",
     "sortNewest": "Mpya Zaidi",
     "sortPriceAsc": "Bei: Chini hadi Juu",
@@ -519,8 +520,12 @@
     "headerRfqCart": "Kikapu cha Maombi",
     "headerMyAccount": "Akaunti Yangu",
     "headerAccountSub": "Akaunti Yangu",
-    "stripAnnouncement": "Jukwaa la Vifaa vya Ujenzi Afrika Mashariki | Dar es Salaam kwanza, kutoka kwa ugavi wa China uliothitishwa.",
+    "stripAnnouncement": "BuildReach | Dar es Salaam kwanza, kutoka kwa ugavi wa China uliothitishwa.",
     "helpCenter": "Kituo cha Msaada",
+    "headerLogin": "Ingia",
+    "headerRegister": "Jisajili Bure",
+    "stripProfile": "Wasifu Wangu",
+    "stripPersonalCenter": "Akaunti Yangu",
     "welcomeGuest": "Karibu BuildReach",
     "welcomeBack": "Karibu tena",
     "registerNow": "Jisajili",
