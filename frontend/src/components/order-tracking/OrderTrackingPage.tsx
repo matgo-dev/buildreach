@@ -539,265 +539,58 @@ function FulfillmentHeroBanner() {
   const t = useTranslations("orderTracking");
 
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl"
-      style={{
-        background: "linear-gradient(135deg, #0A2540 0%, #0D4D4D 35%, #1A6B6B 60%, #0D4D4D 100%)",
-      }}
-    >
-      {/* 背景装饰：网格 + 光晕 */}
-      <div className="absolute inset-0 opacity-[0.07]" style={{
-        backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-        backgroundSize: "32px 32px",
-      }} />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-10"
-        style={{ background: "radial-gradient(circle, #2A9D9D 0%, transparent 70%)" }} />
-      <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] rounded-full opacity-[0.06]"
-        style={{ background: "radial-gradient(circle, #D4A853 0%, transparent 70%)" }} />
+    <div className="relative overflow-hidden rounded-2xl min-h-[260px]">
+      {/* 真实港口照片背景 */}
+      <img
+        src="/images/fulfillment/hero-port.jpg"
+        alt="Container port"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      {/* 渐变遮罩 — 左侧深色保证文字可读，右侧半透明露出照片 */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "linear-gradient(to right, rgba(10,37,64,0.92) 0%, rgba(13,77,77,0.85) 45%, rgba(13,77,77,0.5) 70%, rgba(13,77,77,0.3) 100%)",
+        }}
+      />
+      {/* 底部暖金色边线 */}
+      <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(90deg, #e3a615, #D4A853, transparent)" }} />
 
-      <div className="relative flex items-center gap-8 px-8 py-8 md:py-10">
+      <div className="relative flex items-center gap-8 px-8 py-10 md:py-12">
         {/* 左侧文案 */}
         <div className="flex-1 min-w-0 z-10">
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-xs font-medium text-teal-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-1 text-xs font-medium text-white/90">
               <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
               {t("heroBadge")}
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+          <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight drop-shadow-lg">
             {t("heroTitle")}
           </h1>
-          <p className="mt-2.5 text-sm md:text-base text-teal-200/80 leading-relaxed max-w-lg">
+          <p className="mt-2.5 text-sm md:text-base text-white/75 leading-relaxed max-w-lg drop-shadow">
             {t("heroSubtitle")}
           </p>
 
           {/* 关键指标 */}
-          <div className="mt-5 flex gap-6 flex-wrap">
+          <div className="mt-6 flex gap-8 flex-wrap">
             {[
               { value: "25-30", unit: t("heroDays"), label: t("heroTransitTime") },
               { value: "11", unit: t("heroSteps"), label: t("heroMilestones") },
               { value: "100%", unit: "", label: t("heroVisibility") },
             ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <p className="text-xl md:text-2xl font-bold text-white">
+              <div key={i}>
+                <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
                   {stat.value}
-                  {stat.unit && <span className="text-sm font-normal text-teal-300 ml-1">{stat.unit}</span>}
+                  {stat.unit && <span className="text-sm font-medium text-amber-300 ml-1">{stat.unit}</span>}
                 </p>
-                <p className="text-[11px] text-teal-300/70">{stat.label}</p>
+                <p className="text-[11px] text-white/60 mt-0.5">{stat.label}</p>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* 右侧 SVG 插画 — 海运场景 */}
-        <div className="hidden md:block w-[380px] shrink-0">
-          <ShippingIllustration />
         </div>
       </div>
     </div>
   );
 }
 
-/** 海运场景 SVG 插画 — 集装箱船 + 港口起重机 + 海浪 + 航线 */
-function ShippingIllustration() {
-  return (
-    <svg viewBox="0 0 400 260" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-      {/* 天空渐变 */}
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0D4D4D" stopOpacity="0" />
-          <stop offset="100%" stopColor="#1A6B6B" stopOpacity="0.3" />
-        </linearGradient>
-        <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0e5e6b" />
-          <stop offset="100%" stopColor="#062a30" />
-        </linearGradient>
-        <linearGradient id="ship-hull" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1a3a5c" />
-          <stop offset="100%" stopColor="#0f2440" />
-        </linearGradient>
-        <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#e3a615" />
-          <stop offset="100%" stopColor="#D4A853" />
-        </linearGradient>
-        <linearGradient id="container1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#e74c3c" />
-          <stop offset="100%" stopColor="#c0392b" />
-        </linearGradient>
-        <linearGradient id="container2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3498db" />
-          <stop offset="100%" stopColor="#2980b9" />
-        </linearGradient>
-        <linearGradient id="container3" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2ecc71" />
-          <stop offset="100%" stopColor="#27ae60" />
-        </linearGradient>
-        <linearGradient id="container4" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f39c12" />
-          <stop offset="100%" stopColor="#e67e22" />
-        </linearGradient>
-        {/* 航线虚线动画 */}
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      {/* 海面 */}
-      <rect x="0" y="155" width="400" height="105" fill="url(#ocean)" />
-
-      {/* 海浪 — 三层，不同速度 */}
-      <g opacity="0.4">
-        <path d="M0 170 Q20 162 40 170 Q60 178 80 170 Q100 162 120 170 Q140 178 160 170 Q180 162 200 170 Q220 178 240 170 Q260 162 280 170 Q300 178 320 170 Q340 162 360 170 Q380 178 400 170" stroke="#3DB8B8" strokeWidth="1.5" fill="none">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-40,0;0,0" dur="6s" repeatCount="indefinite" />
-        </path>
-      </g>
-      <g opacity="0.25">
-        <path d="M0 180 Q25 173 50 180 Q75 187 100 180 Q125 173 150 180 Q175 187 200 180 Q225 173 250 180 Q275 187 300 180 Q325 173 350 180 Q375 187 400 180" stroke="#6FD1D1" strokeWidth="1" fill="none">
-          <animateTransform attributeName="transform" type="translate" values="0,0;30,0;0,0" dur="8s" repeatCount="indefinite" />
-        </path>
-      </g>
-      <g opacity="0.15">
-        <path d="M0 195 Q30 189 60 195 Q90 201 120 195 Q150 189 180 195 Q210 201 240 195 Q270 189 300 195 Q330 201 360 195 Q390 189 400 195" stroke="#A1E3E3" strokeWidth="0.8" fill="none">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-20,0;0,0" dur="10s" repeatCount="indefinite" />
-        </path>
-      </g>
-
-      {/* 远景：月亮/太阳 */}
-      <circle cx="340" cy="50" r="22" fill="#D4A853" opacity="0.15" />
-      <circle cx="340" cy="50" r="18" fill="#e3a615" opacity="0.08" />
-
-      {/* 远景：小云朵 */}
-      <g opacity="0.12" fill="white">
-        <ellipse cx="60" cy="40" rx="30" ry="8" />
-        <ellipse cx="50" cy="36" rx="18" ry="7" />
-        <ellipse cx="75" cy="37" rx="16" ry="6" />
-      </g>
-      <g opacity="0.08" fill="white">
-        <ellipse cx="280" cy="30" rx="24" ry="6" />
-        <ellipse cx="268" cy="27" rx="14" ry="5" />
-      </g>
-
-      {/* ── 港口起重机（左侧） ── */}
-      <g transform="translate(20, 90)">
-        {/* 支柱 */}
-        <rect x="8" y="20" width="5" height="66" fill="#3a5068" />
-        <rect x="25" y="20" width="5" height="66" fill="#3a5068" />
-        {/* 横梁 */}
-        <rect x="0" y="15" width="60" height="5" rx="1" fill="#4a6078" />
-        {/* 吊臂 */}
-        <rect x="28" y="0" width="3" height="20" fill="#4a6078" />
-        <rect x="15" y="0" width="20" height="3" fill="#D4A853" />
-        {/* 吊钩 */}
-        <line x1="18" y1="3" x2="18" y2="18" stroke="#D4A853" strokeWidth="1" />
-        <rect x="14" y="18" width="8" height="5" rx="1" fill="#e3a615" />
-        {/* 底座 */}
-        <rect x="2" y="86" width="34" height="4" rx="1" fill="#2a3a50" />
-      </g>
-
-      {/* ── 集装箱船（中央主体） ── */}
-      <g transform="translate(100, 95)">
-        <animateTransform attributeName="transform" type="translate" values="100,95;100,98;100,95" dur="4s" repeatCount="indefinite" />
-
-        {/* 船体 */}
-        <path d="M0 55 L15 70 L185 70 L200 55 L195 40 L5 40 Z" fill="url(#ship-hull)" />
-        {/* 水线 */}
-        <path d="M15 62 L185 62" stroke="#c0392b" strokeWidth="2.5" opacity="0.7" />
-        {/* 甲板 */}
-        <rect x="10" y="35" width="180" height="8" rx="1" fill="#2a4a6a" />
-
-        {/* 集装箱 — 第一层 */}
-        <rect x="25" y="12" width="28" height="22" rx="1.5" fill="url(#container1)" />
-        <rect x="56" y="12" width="28" height="22" rx="1.5" fill="url(#container2)" />
-        <rect x="87" y="12" width="28" height="22" rx="1.5" fill="url(#container3)" />
-        <rect x="118" y="12" width="28" height="22" rx="1.5" fill="url(#container4)" />
-        <rect x="149" y="12" width="28" height="22" rx="1.5" fill="url(#container1)" />
-
-        {/* 集装箱 — 第二层 */}
-        <rect x="40" y="-10" width="28" height="20" rx="1.5" fill="url(#container3)" />
-        <rect x="71" y="-10" width="28" height="20" rx="1.5" fill="url(#container4)" />
-        <rect x="102" y="-10" width="28" height="20" rx="1.5" fill="url(#container2)" />
-        <rect x="133" y="-10" width="28" height="20" rx="1.5" fill="url(#container1)" />
-
-        {/* 集装箱纹理线 */}
-        {[25, 56, 87, 118, 149].map((x) => (
-          <line key={x} x1={x + 14} y1="14" x2={x + 14} y2="32" stroke="rgba(0,0,0,0.15)" strokeWidth="0.5" />
-        ))}
-
-        {/* 驾驶舱 */}
-        <rect x="160" y="-22" width="22" height="30" rx="2" fill="#1a3a5c" />
-        <rect x="163" y="-18" width="16" height="10" rx="1" fill="#3DB8B8" opacity="0.5" />
-        {/* 烟囱 */}
-        <rect x="167" y="-32" width="8" height="12" rx="1" fill="#2a4a6a" />
-        <rect x="167" y="-32" width="8" height="3" rx="1" fill="#D4A853" />
-        {/* 烟雾 */}
-        <g opacity="0.15">
-          <circle cx="171" cy="-38" r="3" fill="white">
-            <animate attributeName="cy" values="-38;-52;-38" dur="3s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.2;0;0.2" dur="3s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="174" cy="-42" r="2" fill="white">
-            <animate attributeName="cy" values="-42;-55;-42" dur="3.5s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.15;0;0.15" dur="3.5s" repeatCount="indefinite" />
-          </circle>
-        </g>
-
-        {/* 船头浪花 */}
-        <g opacity="0.35">
-          <path d="M-5 58 Q-15 52 -8 46" stroke="white" strokeWidth="1.5" fill="none" />
-          <path d="M-2 62 Q-12 58 -6 52" stroke="white" strokeWidth="1" fill="none" />
-        </g>
-      </g>
-
-      {/* ── 航线标记 ── */}
-      <g filter="url(#glow)">
-        <path d="M50 220 Q130 200 200 210 Q280 220 370 215" stroke="#D4A853" strokeWidth="1.5" strokeDasharray="8 4" fill="none" opacity="0.6">
-          <animate attributeName="stroke-dashoffset" values="0;-24" dur="2s" repeatCount="indefinite" />
-        </path>
-      </g>
-
-      {/* 航线节点：中国 */}
-      <g transform="translate(40, 215)">
-        <circle cx="0" cy="0" r="5" fill="#D4A853" />
-        <circle cx="0" cy="0" r="8" fill="none" stroke="#D4A853" strokeWidth="1" opacity="0.4">
-          <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite" />
-        </circle>
-        <text x="0" y="16" textAnchor="middle" fill="#D4A853" fontSize="9" fontWeight="600">CHINA</text>
-      </g>
-
-      {/* 航线节点：达累斯萨拉姆 */}
-      <g transform="translate(370, 210)">
-        <circle cx="0" cy="0" r="5" fill="#3DB8B8" />
-        <circle cx="0" cy="0" r="8" fill="none" stroke="#3DB8B8" strokeWidth="1" opacity="0.4">
-          <animate attributeName="r" values="8;14;8" dur="2.5s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.4;0;0.4" dur="2.5s" repeatCount="indefinite" />
-        </circle>
-        <text x="0" y="16" textAnchor="middle" fill="#3DB8B8" fontSize="8" fontWeight="600">DAR ES SALAAM</text>
-      </g>
-
-      {/* 移动中的货物小点 */}
-      <circle r="3" fill="#e3a615">
-        <animateMotion dur="5s" repeatCount="indefinite" path="M50 220 Q130 200 200 210 Q280 220 370 215" />
-      </circle>
-      <circle r="2" fill="#e3a615" opacity="0.5">
-        <animateMotion dur="5s" repeatCount="indefinite" begin="1.5s" path="M50 220 Q130 200 200 210 Q280 220 370 215" />
-      </circle>
-
-      {/* ── 港口起重机（右侧/远景） ── */}
-      <g transform="translate(340, 110)" opacity="0.4">
-        <rect x="5" y="15" width="3" height="45" fill="#3a5068" />
-        <rect x="15" y="15" width="3" height="45" fill="#3a5068" />
-        <rect x="0" y="12" width="35" height="3" rx="1" fill="#4a6078" />
-        <rect x="2" y="60" width="20" height="3" rx="1" fill="#2a3a50" />
-      </g>
-
-      {/* ── 右下角：小飞机（空运暗示） ── */}
-      <g opacity="0.12">
-        <path d="M320 25 L330 22 L340 25 L335 26 L340 30 L333 27 L330 30 L331 26 L325 28 Z" fill="white">
-          <animateTransform attributeName="transform" type="translate" values="0,0;50,-15;0,0" dur="12s" repeatCount="indefinite" />
-        </path>
-      </g>
-    </svg>
-  );
-}
