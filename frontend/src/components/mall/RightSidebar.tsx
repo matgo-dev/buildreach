@@ -43,33 +43,16 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
         </MallCard>
         )}
 
-        {/* 专属客服 — 与悬浮卡片同风格 */}
+        {/* 专属客服 — 标题+说明+电话+绿色按钮 */}
         {wa.configured && (
-        <MallCard padding="p-0">
-          <div className="bg-[#075e54] px-3.5 py-2.5 rounded-t-xl">
-            <p className="text-white text-[13px] font-bold">{t("floatWaTitle")}</p>
-            <p className="text-white/70 text-[11px]">{t("floatWaHint")}</p>
-          </div>
-          <div className="p-3">
-            <a
-              href={wa.link!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2.5 rounded-lg bg-[#f0f2f5] p-2.5 hover:bg-[#e4e6eb] transition-colors"
-            >
-              <span className="w-9 h-9 rounded-full bg-whatsapp grid place-items-center shrink-0">
-                <MessageCircle className="h-4 w-4 text-white" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-bold text-navy">{t("floatWaAgent")}</p>
-                <p className="text-[11px] text-muted truncate">{wa.number}</p>
-              </div>
-            </a>
-            <div className="mt-2 rounded-md bg-teal-50 px-2.5 py-2">
-              <p className="text-[11px] font-semibold text-teal-900">{t("floatWaCta")}</p>
-              <p className="text-[10px] text-teal-800/70 mt-0.5">{t("floatWaCtaHint")}</p>
-            </div>
-          </div>
+        <MallCard padding="p-3.5">
+          <h3 className="text-navy text-base font-black mb-1">{t("customerSupport")}</h3>
+          <p className="text-muted text-[13px] mb-3">{t("customerSupportHint")}</p>
+          <p className="text-navy text-xl font-black mb-3">{wa.number}</p>
+          <MallButton variant="whatsapp" block href={wa.link!}>
+            <MessageCircle className="h-4 w-4" />
+            {t("chatOnWhatsApp")}
+          </MallButton>
         </MallCard>
         )}
 
