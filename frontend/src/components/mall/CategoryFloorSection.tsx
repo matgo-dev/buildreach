@@ -79,10 +79,11 @@ export function CategoryFloorSection({
       <div className="flex min-h-0">
         {/* ── 左区：独立圆角背景卡，图片铺满并随圆角裁切 ── */}
         <div
-          className="relative hidden w-[220px] shrink-0 overflow-hidden rounded-xl bg-gray-700 bg-center bg-no-repeat md:flex md:flex-col"
+          className="relative hidden w-[220px] shrink-0 self-stretch overflow-hidden rounded-xl bg-gray-700 bg-no-repeat md:flex md:flex-col"
           style={{
             backgroundImage: `url(${config.bgImage})`,
-            backgroundSize: "auto 108%",
+            backgroundPosition: "center bottom",
+            backgroundSize: "auto 116%",
           }}
         >
           {/* 半透明遮罩保证文字可读 */}
@@ -90,17 +91,17 @@ export function CategoryFloorSection({
 
           {/* 文字叠在遮罩上 */}
           <div className="relative z-10 p-5 flex-1 flex flex-col">
-            <h3 className="text-xl font-black text-white mb-5">
+            <h3 className="mb-5 text-xl font-black leading-snug text-white">
               {t(config.nameKey)}
             </h3>
 
             {l2Children.length > 0 && (
-              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4">
                 {l2Children.slice(0, 10).map((l2) => (
                   <button
                     key={l2.code}
                     onClick={() => router.push(`/mall?cat=${l2.code}`)}
-                    className="text-left text-[13px] font-bold text-white/90 hover:text-white hover:underline transition-colors truncate"
+                    className="truncate text-left text-[13px] font-bold leading-relaxed text-white/90 transition-colors hover:text-white hover:underline"
                   >
                     {l2.name}
                   </button>

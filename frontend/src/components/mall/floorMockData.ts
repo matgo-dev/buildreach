@@ -2,15 +2,15 @@
  * 品类楼层 Mock 商品数据 — 当 API 无数据时用于首页展示。
  * TODO: 真实商品数据入库后移除此文件。
  */
-import type { ProductPublic } from "@/lib/api/products";
+import type { ProductPublic, ProductPublicDetail } from "@/lib/api/products";
 
 type MockProduct = Pick<ProductPublic, "id" | "spu_code" | "name" | "main_image" | "moq" | "moq_unit" | "unit" | "category_code" | "category_name" | "description" | "origin" | "brand" | "certifications" | "is_featured" | "supply_mode">;
 
 function mp(id: number, name: string, seed: string, moq: number, unit: string, categoryCode: string): MockProduct {
   return {
     id, spu_code: `MOCK-${id}`, name,
-    // 本地 SVG 占位图，不依赖外网
-    main_image: `/images/mock-products/${seed}.svg`,
+    // 本地真实商品图，仅用于首页兜底展示。
+    main_image: `/images/mock-products-real/${seed}.webp`,
     moq, moq_unit: unit, unit, category_code: categoryCode,
     category_name: "", description: null, origin: "China",
     brand: null, certifications: null, is_featured: true,
@@ -86,3 +86,63 @@ export const MOCK_FLOOR_PRODUCTS: Record<string, MockProduct[]> = {
     mp(958, "生态板 E1 18mm",              "mdfboard",   10, "SHEET", "06"),
   ],
 };
+
+const CATEGORY_NAMES: Record<string, string> = {
+  "01": "工具耗材",
+  "02": "劳保安防",
+  "03": "紧固密封",
+  "04": "工控配电",
+  "05": "门窗五金",
+  "06": "装饰建材",
+};
+
+export function getMockFloorProductDetail(id: number): ProductPublicDetail | null {
+  const product = Object.values(MOCK_FLOOR_PRODUCTS).flat().find((item) => item.id === id);
+  if (!product) return null;
+
+  const unit = product.unit ?? product.moq_unit ?? "PCS";
+  const image = product.main_image ?? "";
+
+  return {
+    ...product,
+    category_name: CATEGORY_NAMES[product.category_code] ?? product.category_name,
+    detail_description: `${product.name}，适用于工程采购与项目现场备货。图片为本地样例素材，真实商品参数以后端上架数据为准。`,
+    hs_code: null,
+    selling_points: "工程常用品类，适合批量询价与集中采购。",
+    unit,
+    attribute_groups: [
+      {
+        group: "basic",
+        items: [
+          {
+            key: "采购单位",
+            unit: null,
+            selectable: false,
+            values: [{ value: unit, value_type: "text", swatch_image: null }],
+          },
+          {
+            key: "最小起订量",
+            unit,
+            selectable: false,
+            values: [{ value: String(product.moq ?? 1), value_type: "text", swatch_image: null }],
+          },
+        ],
+      },
+    ],
+    images: image
+      ? [
+          {
+            id: product.id * 10,
+            image_key: image,
+            full_url: image,
+            image_type: "MAIN",
+            sort_order: 0,
+            sku_id: null,
+            width: null,
+            height: null,
+            file_size: null,
+          },
+        ]
+      : [],
+  };
+}

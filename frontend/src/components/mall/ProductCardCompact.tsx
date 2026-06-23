@@ -14,6 +14,7 @@ import { MallButton } from "./MallButton";
 export function ProductCardCompact({ product }: { product: ProductPublic }) {
   const t = useTranslations("mall");
   const router = useRouter();
+  const isMockProduct = product.spu_code.startsWith("MOCK-");
 
   return (
     <Link
@@ -59,7 +60,7 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            router.push(`/buyer/rfqs/create?product_id=${product.id}`);
+            router.push(isMockProduct ? "/buyer/rfqs/create" : `/buyer/rfqs/create?product_id=${product.id}`);
           }}
         >
           {t("startInquiry")}

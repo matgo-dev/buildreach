@@ -27,6 +27,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { getMockFloorProductDetail } from "@/components/mall/floorMockData";
 
 // ---- 面包屑 ----
 
@@ -357,7 +358,15 @@ function ProductDetailContent() {
 
   const { data: product, error, isLoading } = useSWR(
     id ? `/api/v1/products/${id}?locale=${locale}` : null,
-    () => getProduct(id),
+    async () => {
+      try {
+        return await getProduct(id);
+      } catch (err) {
+        const mockProduct = getMockFloorProductDetail(id);
+        if (mockProduct) return mockProduct;
+        throw err;
+      }
+    },
     { revalidateOnFocus: false }
   );
 
@@ -409,6 +418,10 @@ function ProductDetailContent() {
   const prevCountRef = useRef(0);
   const handleAddToCart = useCallback(async () => {
     if (!product) return;
+    if (product.spu_code.startsWith("MOCK-")) {
+      router.push(`/${locale}/buyer/rfqs/create`);
+      return;
+    }
     setAddingToCart(true);
     prevCountRef.current = useCartStore.getState().count;
     try {
@@ -444,7 +457,7 @@ function ProductDetailContent() {
     } finally {
       setAddingToCart(false);
     }
-  }, [product, specSelection, syncFromCart, toast, t]);
+  }, [product, router, locale, specSelection, syncFromCart, toast, t]);
 
   // 点选/取消规格值(单选:每个 key 选一个值)
   const handleSpecSelect = useCallback((key: string, value: string) => {
