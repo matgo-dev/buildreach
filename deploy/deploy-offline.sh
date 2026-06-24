@@ -32,6 +32,35 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   exit 1
 fi
 
+get_env_value() {
+  local key="$1"
+  grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || true
+}
+
+require_env_value() {
+  local key="$1"
+  local value
+  value="$(get_env_value "$key")"
+  if [[ -z "$value" || "$value" == CHANGEME* || "$value" == *YOUR_* ]]; then
+    echo "错误: ${key} 未填写真实值"
+    exit 1
+  fi
+}
+
+for key in RELEASE_TAG POSTGRES_PASSWORD JWT_SECRET_KEY SUPER_ADMIN_EMAIL SUPER_ADMIN_INITIAL_PASSWORD NEXT_PUBLIC_API_BASE_URL CORS_ORIGINS IMAGE_BASE_URL; do
+  require_env_value "$key"
+done
+
+if [[ "$(get_env_value SEED_DEMO_ACCOUNTS)" == "true" ]]; then
+  echo "错误: 生产离线部署不允许 SEED_DEMO_ACCOUNTS=true"
+  exit 1
+fi
+
+if [[ "$(get_env_value NEXT_PUBLIC_API_BASE_URL)" == https://* && "$(get_env_value REFRESH_COOKIE_SECURE)" != "true" ]]; then
+  echo "错误: HTTPS 公网入口必须设置 REFRESH_COOKIE_SECURE=true"
+  exit 1
+fi
+
 echo ""
 echo "=========================================="
 echo " BuildLink EA 离线部署"
@@ -89,6 +118,8 @@ FRONTEND_PORT="${FRONTEND_PORT:-3001}"
 FRONTEND_CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${FRONTEND_PORT}" 2>/dev/null || echo "000")
 echo "  前端: HTTP ${FRONTEND_CODE} (http://localhost:${FRONTEND_PORT})"
 
+PUBLIC_ORIGIN="$(get_env_value CORS_ORIGINS | cut -d, -f1)"
+
 echo ""
 echo "=== 容器状态 ==="
 docker compose -f docker-compose.offline.yml ps
@@ -97,8 +128,10 @@ echo ""
 echo "=========================================="
 echo " 部署完成"
 echo "=========================================="
-echo "  前台首页:   http://<IP>:${FRONTEND_PORT}"
-echo "  运营后台:   http://<IP>:${FRONTEND_PORT}/zh/operator"
-echo "  API 文档:   http://<IP>:${BACKEND_PORT}/docs"
-echo "  健康检查:   http://<IP>:${BACKEND_PORT}/healthz"
+echo "  公网首页:   ${PUBLIC_ORIGIN}"
+echo "  运营后台:   ${PUBLIC_ORIGIN}/zh/operator"
+echo "  健康检查:   ${PUBLIC_ORIGIN}/healthz"
+echo "  本机前端:   http://localhost:${FRONTEND_PORT}"
+echo "  本机后端:   http://localhost:${BACKEND_PORT}/healthz"
+echo "  本机 API:   http://localhost:${BACKEND_PORT}/docs"
 echo "=========================================="
