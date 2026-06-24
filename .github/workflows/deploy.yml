@@ -134,7 +134,7 @@ jobs:
             ${{ env.ACR_IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.image_tag }}
             ${{ env.ACR_IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.backend_port }}
+            NEXT_PUBLIC_API_BASE_URL=http://${{ secrets.ECS_HOST }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
