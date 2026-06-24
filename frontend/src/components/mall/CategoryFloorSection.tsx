@@ -87,8 +87,8 @@ export function CategoryFloorSection({
           className="relative hidden w-[220px] shrink-0 self-stretch overflow-hidden rounded-xl bg-gray-700 bg-no-repeat md:flex md:flex-col"
           style={{
             backgroundImage: `url(${config.bgImage})`,
-            backgroundPosition: "center bottom",
-            backgroundSize: "100% 100%",
+            backgroundPosition: "center center",
+            backgroundSize: "108% 108%",
           }}
         >
           {/* 半透明遮罩保证文字可读 */}
