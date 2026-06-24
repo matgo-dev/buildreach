@@ -152,7 +152,7 @@ function ProductSearchModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+      <div className="mx-4 flex h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <h3 className="text-base font-semibold text-gray-800">{t("searchProduct")}</h3>
           <button type="button" onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
@@ -266,6 +266,17 @@ function ProductSearchModal({
               })}
             </div>
           )}
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="flex items-center justify-end border-t border-gray-200 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
+          >
+            {t("doneSelection")}
+          </button>
         </div>
       </div>
     </div>
@@ -385,9 +396,12 @@ function RfqEditContent() {
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // 自由询价：items 或 remark 至少一个非空
+  const hasRemark = !!(remark && remark.trim());
+  const canSubmit = items.length > 0 || hasRemark;
 
   const handleSave = useCallback(async () => {
-    if (saving || submitting || items.length === 0) return;
+    if (saving || submitting || !canSubmit) return;
     setSaving(true);
     try {
       await updateRfq(rfqId, buildPayload());
@@ -399,10 +413,10 @@ function RfqEditContent() {
         try { toast.error(tError(key, (err.messageParams ?? {}) as Record<string, string>)); } catch { toast.error(err.message); }
       } else { toast.error(err instanceof Error ? err.message : String(err)); }
     } finally { setSaving(false); }
-  }, [saving, submitting, items, rfqId, buildPayload, toast, t, tError, router, locale]);
+  }, [saving, submitting, canSubmit, rfqId, buildPayload, toast, t, tError, router, locale]);
 
   const handleSubmitDraft = useCallback(async () => {
-    if (saving || submitting || items.length === 0) return;
+    if (saving || submitting || !canSubmit) return;
     setSubmitting(true);
     try {
       // 先保存再提交
@@ -476,9 +490,6 @@ function RfqEditContent() {
                   </td>
                 </tr>
               ))}
-              {items.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-400">{t("noSearchResult")}</td></tr>
-              )}
               <tr className="border-t border-gray-100">
                 <td colSpan={4} className="px-5 py-3">
                   <button type="button" onClick={() => setShowSearch(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]">
@@ -608,17 +619,17 @@ function RfqEditContent() {
           className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
           {t("cancel")}
         </button>
-        <button type="button" disabled={saving || submitting || items.length === 0} onClick={handleSave}
+        <button type="button" disabled={saving || submitting || !canSubmit} onClick={handleSave}
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
-            saving || submitting || items.length === 0 ? "border-gray-200 text-gray-400 cursor-not-allowed" : "border-[#00505a] text-[#00505a] hover:bg-[#00505a]/5"
+            saving || submitting || !canSubmit ? "border-gray-200 text-gray-400 cursor-not-allowed" : "border-[#00505a] text-[#00505a] hover:bg-[#00505a]/5"
           }`}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           {!saving && <Save className="h-4 w-4" />}
           {t("saveDraft")}
         </button>
-        <button type="button" disabled={submitting || saving || items.length === 0} onClick={handleSubmitDraft}
+        <button type="button" disabled={submitting || saving || !canSubmit} onClick={handleSubmitDraft}
           className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
-            submitting || saving || items.length === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-[#00505a] text-white hover:bg-[#003f46]"
+            submitting || saving || !canSubmit ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-[#00505a] text-white hover:bg-[#003f46]"
           }`}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {t("submitDraft")}
