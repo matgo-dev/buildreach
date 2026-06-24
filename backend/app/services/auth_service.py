@@ -434,7 +434,7 @@ async def change_password(
     old_password: str,
     new_password: str,
     request: Request | None = None,
-) -> None:
+) -> dict:
     user = await db.get(User, user_id)
     if user is None:
         raise NotFoundError("User not found")
@@ -455,7 +455,7 @@ async def change_password(
 
     user.password_hash = hash_password(new_password)
     user.must_change_password = False
-    # 吊销该用户所有旧 token(当前会话也随之失效,需重新登录)
+    # 吊销旧 token，随后签发新 token（改密后自动续登，无需重新输入凭证）
     user.token_version += 1
 
     await write_audit(
@@ -468,6 +468,16 @@ async def change_password(
         commit=False,
     )
     await db.commit()
+
+    # 基于新 token_version 签发，当前会话无缝续登
+    access_token, expires_in = create_access_token(user.id, user.email, user.token_version)
+    refresh_token = create_refresh_token(user.id, user.email, user.token_version)
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "Bearer",
+        "expires_in": expires_in,
+    }
 
 
 async def logout(

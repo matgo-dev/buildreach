@@ -520,21 +520,27 @@ async def logout(
     return success(None)
 
 
-@router.post("/change-password", summary="修改自己密码")
+@router.post("/change-password", summary="修改自己密码(成功后自动签发新 token)")
 async def change_password(
     body: ChangePasswordIn,
     request: Request,
+    response: Response,
     current: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await auth_service.change_password(
+    tokens = await auth_service.change_password(
         db,
         user_id=current.id,
         old_password=body.old_password,
         new_password=body.new_password,
         request=request,
     )
-    return success(None)
+    _set_refresh_cookie(response, tokens["refresh_token"])
+    return success(TokenOut(
+        access_token=tokens["access_token"],
+        token_type=tokens["token_type"],
+        expires_in=tokens["expires_in"],
+    ).model_dump())
 
 
 # ----- 自助资料管理 -----
