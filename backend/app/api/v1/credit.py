@@ -255,7 +255,7 @@ async def get_company_detail(
     # AI 评价**不在详情接口里同步生成**:LLM 慢/联网/可能失败,绝不阻塞页面渲染。
     # 改由评分后台任务(registration_hook / harvest_task)异步生成并落库;
     # 详情接口只读库,ai_summary 未就绪则返回 null,前端显示"AI 评价生成中"。
-    # 详见 CLAUDE.md「外部慢调用(LLM/网络)不得阻塞请求路径」。
+    # 外部慢调用(LLM/网络)不得阻塞请求路径。
 
     # 12 条 score_detail
     detail_stmt = (
@@ -384,7 +384,7 @@ async def generate_ai_summary(
     - LLM 失败(generate_for_snapshot 返回 None)→ 503
 
     审计:所有调用(成功/缓存命中/失败)都记一条 audit_log,记 user_id + snapshot_id,
-    便于 LLM 成本归因与异常排查(CLAUDE.md「任何业务写操作必记 audit」)。
+    便于 LLM 成本归因与异常排查。
     """
     company = await _verify_company_access(db, current, company_id)
 
