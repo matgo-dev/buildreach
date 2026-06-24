@@ -7,8 +7,8 @@ import { ShoppingCart, FileText } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 
 /**
- * 询价申请子 Tab 导航 — 询价篮 / 我的询价单
- * 放在 cart 和 rfqs 两个页面顶部，提供稳定的互切入口。
+ * 询价申请子 Tab 导航 — 询价篮 / 询价管理
+ * pill 高亮激活态，全宽贴合下方内容。
  */
 export function RfqTabNav() {
   const locale = useLocale();
@@ -21,6 +21,7 @@ export function RfqTabNav() {
     {
       key: "cart",
       href: `/${locale}/buyer/cart`,
+      match: "/buyer/cart",
       label: tCart("title"),
       icon: ShoppingCart,
       badge: cartCount > 0 ? cartCount : null,
@@ -28,6 +29,7 @@ export function RfqTabNav() {
     {
       key: "rfqs",
       href: `/${locale}/buyer/rfqs`,
+      match: "/buyer/rfqs",
       label: tRfq("title"),
       icon: FileText,
       badge: null,
@@ -35,24 +37,29 @@ export function RfqTabNav() {
   ];
 
   return (
-    <div className="flex items-center rounded-xl border border-gray-200 bg-white px-2">
+    <div className="flex items-center gap-1 border-b border-gray-200 bg-white rounded-t-xl px-4 py-2">
       {tabs.map((tab) => {
-        const isActive = pathname.startsWith(tab.href);
+        // pathname 可能带或不带 locale 前缀，两种都匹配
+        const isActive = pathname.startsWith(tab.href) || pathname.startsWith(tab.match);
         const Icon = tab.icon;
         return (
           <Link
             key={tab.key}
             href={tab.href}
-            className={`relative inline-flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${
               isActive
-                ? "text-[#00505a] after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2.5px] after:rounded-full after:bg-[#00505a]"
-                : "text-gray-400 hover:text-gray-600"
+                ? "bg-[#00505a] text-white font-semibold shadow-sm"
+                : "text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-700"
             }`}
           >
             <Icon className="h-4 w-4" />
             {tab.label}
             {tab.badge != null && (
-              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00505a] px-1.5 text-xs font-medium text-white">
+              <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-medium ${
+                isActive
+                  ? "bg-white/20 text-white"
+                  : "bg-[#00505a] text-white"
+              }`}>
                 {tab.badge}
               </span>
             )}

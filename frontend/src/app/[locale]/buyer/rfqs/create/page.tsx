@@ -312,7 +312,7 @@ function ProductSearchModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+      <div className="mx-4 flex h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
         {/* 标题 */}
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <h3 className="text-base font-semibold text-gray-800">{t("searchProduct")}</h3>
@@ -538,6 +538,17 @@ function ProductSearchModal({
               })}
             </div>
           )}
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="flex items-center justify-end border-t border-gray-200 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
+          >
+            {t("doneSelection")}
+          </button>
         </div>
       </div>
     </div>
@@ -1033,10 +1044,31 @@ function RfqCreateContent() {
         </div>
       )}
 
-      {/* 区块 1：商品清单 */}
+      {/* 区块 0：需求描述 + 附件（主要输入） */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_description")}</h2>
+        <div className="space-y-4">
+          <div>
+            <textarea
+              value={draft.remark}
+              onChange={(e) => updateDraft("remark", e.target.value)}
+              rows={4}
+              placeholder={t("descriptionPlaceholder")}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+            />
+          </div>
+          <AttachmentUploader
+            attachments={draft.attachments}
+            onChange={(atts) => updateDraft("attachments", atts)}
+          />
+        </div>
+      </div>
+
+      {/* 区块 1：商品清单（可选） */}
       <div className="rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-5 py-3">
+        <div className="border-b border-gray-100 px-5 py-3 flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
+          <span className="text-xs text-gray-400">{t("optional")}</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -1223,24 +1255,7 @@ function RfqCreateContent() {
                 );
               })}
 
-              {/* 空状态 */}
-              {!canSubmit && (
-                <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center">
-                    <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-                    <p className="text-sm text-gray-400">{t("itemsAllMissing")}</p>
-                    <button
-                      type="button"
-                      onClick={() => router.push(`/${locale}/buyer/cart`)}
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
-                    >
-                      {t("backToCart")}
-                    </button>
-                  </td>
-                </tr>
-              )}
-
-              {/* 添加商品按钮：篮子路径和直询路径不显示 */}
+              {/* 添加商品按钮 — 始终显示（篮子路径和直询路径除外） */}
               {!isCartPath && !isDirectPath && (
                 <tr className="border-t border-gray-100">
                   <td colSpan={4} className="px-5 py-3">
@@ -1409,21 +1424,6 @@ function RfqCreateContent() {
             value={draft.certifications}
             onChange={(v) => updateDraft("certifications", v)}
             label={t("certifications")}
-          />
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              {t("remark")}
-            </label>
-            <textarea
-              value={draft.remark}
-              onChange={(e) => updateDraft("remark", e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
-            />
-          </div>
-          <AttachmentUploader
-            attachments={draft.attachments}
-            onChange={(atts) => updateDraft("attachments", atts)}
           />
         </div>
       </div>

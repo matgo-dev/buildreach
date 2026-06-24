@@ -776,7 +776,8 @@ async def submit_rfq(
         raise RfqStateInvalidError(rfq.status)
 
     active_items = [it for it in rfq.items if getattr(it, "deleted_at", None) is None]
-    if not active_items:
+    # 自由询价：没有行项目但有 remark 也允许提交
+    if not active_items and not rfq.remark:
         raise RfqNoValidItemsError()
 
     # 二次校验：草稿保存后商品可能被下架/删除，提交前重新确认
