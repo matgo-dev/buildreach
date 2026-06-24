@@ -1,0 +1,71 @@
+# ============================================================
+# BuildReach / BuildLink EA — 宿主机 Nginx 示例配置
+#
+# 使用场景:
+#   Docker Compose 只在本机 127.0.0.1 暴露 frontend/backend 端口,
+#   宿主机 Nginx 作为唯一公网入口。
+#
+# 默认端口:
+#   frontend: 127.0.0.1:3001
+#   backend:  127.0.0.1:8001
+#
+# HTTPS 证书、server_name、日志路径可由运维按服务器实际情况调整。
+# ============================================================
+
+upstream buildreach_frontend {
+    server 127.0.0.1:3001;
+}
+
+upstream buildreach_backend {
+    server 127.0.0.1:8001;
+}
+
+server {
+    listen 80;
+    server_name YOUR_DOMAIN;
+
+    # 如已配置 HTTPS,通常在这里跳转到 443:
+    # return 301 https://$host$request_uri;
+
+    client_max_body_size 20m;
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    gzip on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+    gzip_vary on;
+
+    location /static/ {
+        proxy_pass http://buildreach_backend;
+        expires 7d;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
+    location /api/ {
+        proxy_pass http://buildreach_backend;
+        proxy_read_timeout 120s;
+        proxy_buffering off;
+    }
+
+    location = /healthz {
+        proxy_pass http://buildreach_backend;
+        access_log off;
+    }
+
+    location /_next/static/ {
+        proxy_pass http://buildreach_frontend;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location / {
+        proxy_pass http://buildreach_frontend;
+        proxy_read_timeout 120s;
+    }
+}

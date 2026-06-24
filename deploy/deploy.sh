@@ -93,6 +93,17 @@ else
     git log --oneline "$PREV_SHA..$NEW_SHA" | sed 's/^/         /'
 fi
 
+# ---- 2.5 同步 banner 图片到 data/banners(Nginx 直接 serve,不依赖前端镜像) ----
+BANNER_SRC="$APP_DIR/frontend/public/banners"
+BANNER_DST="$APP_DIR/data/banners"
+if [ -d "$BANNER_SRC" ]; then
+    mkdir -p "$BANNER_DST"
+    cp -f "$BANNER_SRC"/*.jpg "$BANNER_DST/" 2>/dev/null || true
+    cp -f "$BANNER_SRC"/*.png "$BANNER_DST/" 2>/dev/null || true
+    cp -f "$BANNER_SRC"/*.webp "$BANNER_DST/" 2>/dev/null || true
+    echo "[deploy]       banner 同步完成($(ls "$BANNER_DST" | wc -l) 个文件)"
+fi
+
 # ---- 3. 拉取镜像 ----
 echo "[deploy] [3/6] 拉取镜像(IMAGE_TAG=$IMAGE_TAG)"
 # 登录阿里云 ACR（凭证从 .env.production 读取）

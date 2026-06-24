@@ -3,7 +3,7 @@
 # 离线部署包打包脚本（在打包机运行，需要外网）
 #
 # 用法:
-#   bash deploy/package-offline.sh --api-url http://114.55.135.216:8001 --tag 20260623
+#   bash deploy/package-offline.sh --api-url https://your-domain.com --tag 20260623
 #
 # 产出:
 #   buildlink-offline-<TAG>.tar.gz
@@ -28,13 +28,16 @@ done
 # ── 参数校验 ──
 if [[ -z "$NEXT_PUBLIC_API_BASE_URL" ]]; then
   echo "错误: 必须指定 --api-url"
-  echo "用法: bash deploy/package-offline.sh --api-url http://1.2.3.4:8001 --tag 20260623"
+  echo "用法: bash deploy/package-offline.sh --api-url https://your-domain.com --tag 20260623"
   exit 1
 fi
 if [[ -z "$RELEASE_TAG" ]]; then
   echo "错误: 必须指定 --tag"
-  echo "用法: bash deploy/package-offline.sh --api-url http://1.2.3.4:8001 --tag 20260623"
+  echo "用法: bash deploy/package-offline.sh --api-url https://your-domain.com --tag 20260623"
   exit 1
+fi
+if [[ "$NEXT_PUBLIC_API_BASE_URL" =~ :[0-9]+$ ]]; then
+  echo "警告: --api-url 带端口。若今晚走 Nginx/HTTPS 单域名入口,建议传 https://your-domain.com"
 fi
 
 BACKEND_IMAGE="buildlink-backend:${RELEASE_TAG}"
@@ -49,6 +52,21 @@ ARCHIVE_NAME="buildlink-offline-${RELEASE_TAG}.tar.gz"
 for cmd in docker git tar; do
   if ! command -v "$cmd" &>/dev/null; then
     echo "错误: 缺少必要工具: $cmd"
+    exit 1
+  fi
+done
+
+# ── 前端静态资产检查 ──
+BANNER_PUBLIC_DIR="${PROJECT_ROOT}/frontend/public/banners"
+FLOOR_PUBLIC_DIR="${PROJECT_ROOT}/frontend/public/images/floors"
+BANNER_COUNT=$(find "$BANNER_PUBLIC_DIR" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$BANNER_COUNT" == "0" ]]; then
+  echo "错误: 未找到首页轮播图: ${BANNER_PUBLIC_DIR}"
+  exit 1
+fi
+for f in tools.png safety.png fasteners.png electrical.png doors.png decoration.png; do
+  if [[ ! -f "${FLOOR_PUBLIC_DIR}/${f}" ]]; then
+    echo "错误: 缺少首页楼层背景图: ${FLOOR_PUBLIC_DIR}/${f}"
     exit 1
   fi
 done
@@ -112,12 +130,12 @@ mkdir -p "${OUTPUT_DIR}/deploy" "${OUTPUT_DIR}/data" "${OUTPUT_DIR}/logs"
 # 部署文件
 cp "${PROJECT_ROOT}/docker-compose.offline.yml"  "${OUTPUT_DIR}/"
 cp "${PROJECT_ROOT}/.env.production.example"      "${OUTPUT_DIR}/"
-for f in load-images.sh deploy-offline.sh init-data.sh; do
+for f in load-images.sh deploy-offline.sh init-data.sh nginx-host.conf.example; do
   [[ -f "${PROJECT_ROOT}/deploy/${f}" ]] && cp "${PROJECT_ROOT}/deploy/${f}" "${OUTPUT_DIR}/deploy/"
 done
 [[ -f "${PROJECT_ROOT}/deploy/README-deploy.md" ]] && cp "${PROJECT_ROOT}/deploy/README-deploy.md" "${OUTPUT_DIR}/deploy/"
 
-# 白名单复制 data/ — 排除 .venv、.DS_Store、__pycache__
+# 白名单复制轻量 data/ — 大体积商品批次不进入应用离线包。
 DATA_SRC="${PROJECT_ROOT}/data"
 DATA_DST="${OUTPUT_DIR}/data"
 
@@ -127,29 +145,10 @@ if [[ -d "${DATA_SRC}" ]]; then
     [[ -f "${DATA_SRC}/${f}" ]] && cp "${DATA_SRC}/${f}" "${DATA_DST}/"
   done
 
-  # 轮播图（只复制图片文件）
-  # 优先从 data/banners/，fallback 到 frontend/public/banners/
-  BANNER_SRC="${DATA_SRC}/banners"
-  if [[ ! -d "$BANNER_SRC" ]] || [[ -z "$(ls -A "$BANNER_SRC" 2>/dev/null)" ]]; then
-    BANNER_SRC="${PROJECT_ROOT}/frontend/public/banners"
-  fi
-  if [[ -d "$BANNER_SRC" ]]; then
-    mkdir -p "${DATA_DST}/banners"
-    find "${BANNER_SRC}" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) \
-      -exec cp {} "${DATA_DST}/banners/" \;
-    echo "  轮播图来源: ${BANNER_SRC}"
-  fi
-
-  # XFS 商品批次（排除垃圾文件）
-  if [[ -d "${DATA_SRC}/xfs" ]]; then
-    # 用 rsync 排除不需要的文件；没有 rsync 则用 cp
-    if command -v rsync &>/dev/null; then
-      rsync -a --exclude='.DS_Store' --exclude='__pycache__' --exclude='.venv' \
-        "${DATA_SRC}/xfs/" "${DATA_DST}/xfs/"
-    else
-      cp -r "${DATA_SRC}/xfs" "${DATA_DST}/"
-      find "${DATA_DST}/xfs" -name '.DS_Store' -o -name '__pycache__' | xargs rm -rf 2>/dev/null || true
-    fi
+  # 品类导入脚本依赖 categories_full_tree.json;商品批次 output_xfs_* 单独打资产包上传。
+  if [[ -f "${DATA_SRC}/xfs/categories_full_tree.json" ]]; then
+    mkdir -p "${DATA_DST}/xfs"
+    cp "${DATA_SRC}/xfs/categories_full_tree.json" "${DATA_DST}/xfs/"
   fi
 else
   echo "  警告: ${DATA_SRC} 不存在，跳过数据复制"
@@ -158,10 +157,6 @@ fi
 # 生成 manifest.json
 GIT_SHA="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-DATA_BATCH=""
-if [[ -d "${DATA_DST}/xfs" ]]; then
-  DATA_BATCH="$(ls -1 "${DATA_DST}/xfs/" 2>/dev/null | head -1)"
-fi
 
 cat > "${OUTPUT_DIR}/manifest.json" <<MANIFEST
 {
@@ -174,7 +169,17 @@ cat > "${OUTPUT_DIR}/manifest.json" <<MANIFEST
     "backend": "${BACKEND_IMAGE}",
     "frontend": "${FRONTEND_IMAGE}"
   },
-  "data_batch": "${DATA_BATCH}"
+  "included_data": [
+    "data/categories.csv",
+    "data/attr_templates.csv",
+    "data/category_names_en.json",
+    "data/floor_category_mapping.csv",
+    "data/xfs/categories_full_tree.json"
+  ],
+  "external_data_required": [
+    "data/xfs/output_xfs_YYYYMMDD_HHMMSS/"
+  ],
+  "nginx_template": "deploy/nginx-host.conf.example"
 }
 MANIFEST
 
@@ -195,4 +200,5 @@ ls -lh "${PROJECT_ROOT}/${ARCHIVE_NAME}" | awk '{print "  大小: "$5}'
 echo ""
 echo "  下一步:"
 echo "    scp ${ARCHIVE_NAME} user@server:/opt/"
+echo "    # 服务器上 .env.production 的 RELEASE_TAG 必须填: ${RELEASE_TAG}"
 echo "=========================================="
