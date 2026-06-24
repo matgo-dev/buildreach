@@ -396,9 +396,10 @@ def validate_batch(
                     f"在分类树中但不是叶子节点"
                 )
             else:
-                offer_errs.append(
-                    f"source_category_path 叶子 '{leaf_name}' "
-                    f"在 categories_raw.json 中未找到"
+                # 品类不在 categories_raw.json 中，降级为警告（导入时会自动创建）
+                result.warnings.append(
+                    f"[{offer.product_id}] source_category_path 叶子 '{leaf_name}' "
+                    f"在 categories_raw.json 中未找到，导入时将自动创建"
                 )
 
         # 归类校验(软):source_category_path 逐层与 categories_raw.json 对比
@@ -663,6 +664,81 @@ def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, st
 # ────────────────────── 商品导入 ──────────────────────
 
 
+def ensure_category_chain(
+    db: Session,
+    src_path: list,
+    name_to_code: dict[str, str],
+) -> str:
+    """按 source_category_path 逐层查找/创建品类，返回叶子节点的 code。
+
+    如果路径中某一层在 DB 里不存在，就自动创建。
+    复用 _make_code / _next_seq 生成稳定 code。
+    """
+    # 加载已有品类的 (name_zh, parent_code) → Category 映射和已用序号
+    existing_by_natural: dict[tuple[str, str | None], Category] = {}
+    used_seq_by_parent: dict[str | None, set[int]] = {}
+    for c in db.execute(select(Category)).scalars().all():
+        existing_by_natural[(c.name_zh, c.parent_code)] = c
+        used_seq_by_parent.setdefault(c.parent_code, set()).add(_split_seq(c.code))
+
+    parent_code: str | None = None
+    leaf_code: str | None = None
+    path_parts = [str(s) for s in src_path]
+
+    for i, name_zh in enumerate(path_parts):
+        level = i + 1
+        natural_key = (name_zh, parent_code)
+        existing = existing_by_natural.get(natural_key)
+
+        if existing:
+            parent_code = existing.code
+            leaf_code = existing.code
+        else:
+            # 自动创建
+            used = used_seq_by_parent.setdefault(parent_code, set())
+            seq = _next_seq(used)
+            used.add(seq)
+            code = _make_code(parent_code, seq, level)
+            now = _utcnow()
+
+            cat = Category(
+                code=code,
+                name_zh=name_zh,
+                name_en=None,
+                level=level,
+                parent_code=parent_code,
+                sort_order=0,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+                source_lang="zh",
+                trans_meta={
+                    "name_zh": "src",
+                    "name_en": "pending",
+                    "name_sw": "pending",
+                },
+                i18n_pending_at=now,
+            )
+            db.add(cat)
+            db.flush()
+            existing_by_natural[natural_key] = cat
+            log.info("  自动创建品类: L%d %s → code=%s (parent=%s)", level, name_zh, code, parent_code)
+
+            parent_code = code
+            leaf_code = code
+
+        # 更新 name_to_code 映射，后续 offer 可直接命中
+        # 用 > 分隔的路径做 key
+        partial_path = ">".join(path_parts[:i + 1])
+        name_to_code[partial_path] = leaf_code  # type: ignore[assignment]
+        # 叶子节点的 name_zh 也写入（无冲突时）
+        if name_zh not in name_to_code:
+            name_to_code[name_zh] = leaf_code  # type: ignore[assignment]
+
+    assert leaf_code is not None, f"ensure_category_chain 失败: {src_path}"
+    return leaf_code
+
+
 def import_offer(
     db: Session,
     offer: OfferFile,
@@ -698,7 +774,12 @@ def import_offer(
     if not category_code:
         category_code = name_to_code.get(leaf_name or "")
     if not category_code:
-        raise ValueError(f"分类 '{path_zh or leaf_name}' 无法映射到 DB code")
+        # 品类路径在 DB 中不存在，按路径逐层自动创建
+        if src_path:
+            category_code = ensure_category_chain(db, src_path, name_to_code)
+            log.info("  品类自动创建完成: %s → code=%s", " > ".join(str(s) for s in src_path), category_code)
+        else:
+            raise ValueError(f"分类路径为空，无法归类")
 
     # ── 1.5 来源溯源 ──
     source_obj = data.get("source", {})
