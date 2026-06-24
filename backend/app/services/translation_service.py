@@ -14,6 +14,11 @@ from app.services.glossary_cache import GlossaryCache
 
 logger = logging.getLogger("app.translation")
 
+
+def _sanitize(text: str) -> str:
+    """清理翻译 API 返回的异常前缀符号（如阿里云偶尔返回的 '* '）。"""
+    return text.lstrip("*").strip()
+
 # 平台 locale → Google 语言码
 _GOOGLE_LANG_MAP: dict[str, str] = {
     "zh": "zh-CN",
@@ -214,7 +219,7 @@ async def _translate_google_batch(
                     raise ValueError(f"Google 返回 {len(translations)} 条,期望 {len(chunk)} 条")
 
                 for t in translations:
-                    all_results.append({"translated": t["translatedText"], "status": "nmt"})
+                    all_results.append({"translated": _sanitize(t["translatedText"]), "status": "nmt"})
             except Exception as e:
                 logger.error("Google 批量翻译失败 (chunk %d-%d): %s", start, start + len(chunk), e)
                 for _ in chunk:
@@ -254,7 +259,7 @@ async def _translate_aliyun_single(
         None, lambda: client.do_action_with_exception(request),
     )
     result = json.loads(response)
-    return {"translated": result["Data"]["Translated"], "status": "nmt"}
+    return {"translated": _sanitize(result["Data"]["Translated"]), "status": "nmt"}
 
 
 def _chunk_by_char_limit(texts: list[str], max_chars: int) -> list[list[str]]:
@@ -328,7 +333,7 @@ async def _translate_aliyun_batch(
             # 校验拆回条数
             if len(parts) == len(chunk):
                 for p in parts:
-                    all_results.append({"translated": p.strip(), "status": "nmt"})
+                    all_results.append({"translated": _sanitize(p), "status": "nmt"})
             else:
                 # 条数不匹配,降级逐条重试
                 logger.warning(
