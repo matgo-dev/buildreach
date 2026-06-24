@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-  <rect width="400" height="400" fill="#f8fafc"/>
-  <rect x="80" y="80" width="240" height="240" rx="24" fill="#b45309" opacity="0.1"/>
-  <text x="200" y="210" text-anchor="middle" fill="#b45309" font-size="20" font-weight="700" font-family="system-ui">Pull</text>
-  <text x="200" y="240" text-anchor="middle" fill="#b45309" font-size="12" opacity="0.5" font-family="system-ui">Mock Product</text>
-</svg>
