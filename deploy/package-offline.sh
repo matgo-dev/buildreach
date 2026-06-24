@@ -158,9 +158,23 @@ fi
 # 生成 manifest.json
 GIT_SHA="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-DATA_BATCH=""
+DATA_BATCHES_JSON="[]"
 if [[ -d "${DATA_DST}/xfs" ]]; then
-  DATA_BATCH="$(ls -1 "${DATA_DST}/xfs/" 2>/dev/null | head -1)"
+  DATA_BATCHES_JSON="["
+  FIRST_BATCH=true
+  while IFS= read -r batch_dir; do
+    batch_name="$(basename "$batch_dir")"
+    if [[ "$FIRST_BATCH" == "true" ]]; then
+      FIRST_BATCH=false
+    else
+      DATA_BATCHES_JSON+=", "
+    fi
+    DATA_BATCHES_JSON+="\"${batch_name}\""
+  done < <(
+    find "${DATA_DST}/xfs" -maxdepth 2 -mindepth 1 -type d -name 'output_xfs_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]' \
+      | sort
+  )
+  DATA_BATCHES_JSON+="]"
 fi
 
 cat > "${OUTPUT_DIR}/manifest.json" <<MANIFEST
@@ -174,7 +188,7 @@ cat > "${OUTPUT_DIR}/manifest.json" <<MANIFEST
     "backend": "${BACKEND_IMAGE}",
     "frontend": "${FRONTEND_IMAGE}"
   },
-  "data_batch": "${DATA_BATCH}"
+  "data_batches": ${DATA_BATCHES_JSON}
 }
 MANIFEST
 

@@ -8,7 +8,8 @@
 #   bash deploy/init-data.sh --skip-banners            # 跳过轮播图
 #   bash deploy/init-data.sh --skip-categories         # 跳过品类
 #   bash deploy/init-data.sh --yes                     # 商品导入跳过确认
-#   bash deploy/init-data.sh --batch data/xfs/<批次>   # 指定商品批次目录
+#   bash deploy/init-data.sh --batch data/xfs/<批次>   # 指定商品批次目录(可重复)
+#   bash deploy/init-data.sh --batch-dir data/xfs      # 显式导入目录下所有 output_xfs_* 批次
 #   bash deploy/init-data.sh --compose-file docker-compose.yml
 # ============================================================
 set -euo pipefail
@@ -20,7 +21,8 @@ PACK_ROOT="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="${PACK_ROOT}/docker-compose.offline.yml"
 ENV_FILE="${PACK_ROOT}/.env.production"
 DATA_DIR="${PACK_ROOT}/data"
-BATCH_DIR=""
+BATCH_DIRS=()
+BATCH_PARENT_DIR=""
 SKIP_CATEGORIES=false
 SKIP_BANNERS=false
 SKIP_PRODUCTS=false
@@ -33,12 +35,57 @@ while [[ $# -gt 0 ]]; do
     --skip-banners)     SKIP_BANNERS=true; shift ;;
     --skip-products)    SKIP_PRODUCTS=true; shift ;;
     --yes)              AUTO_YES=true; shift ;;
-    --batch)            BATCH_DIR="$2"; shift 2 ;;
+    --batch)            BATCH_DIRS+=("$2"); shift 2 ;;
+    --batch-dir)        BATCH_PARENT_DIR="$2"; shift 2 ;;
     --compose-file)     COMPOSE_FILE="$2"; shift 2 ;;
     --env-file)         ENV_FILE="$2"; shift 2 ;;
     *)                  echo "未知参数: $1"; exit 1 ;;
   esac
 done
+
+resolve_batch_path() {
+  local batch_dir="$1"
+  if [[ ! -d "$batch_dir" ]]; then
+    echo "  [错误] 商品批次目录不存在: $batch_dir" >&2
+    exit 1
+  fi
+
+  local data_abs batch_abs rel
+  data_abs="$(cd "$DATA_DIR" && pwd -P)"
+  batch_abs="$(cd "$batch_dir" && pwd -P)"
+  case "${batch_abs}/" in
+    "${data_abs}/"*)
+      rel="${batch_abs#${data_abs}/}"
+      ;;
+    *)
+      echo "  [错误] 商品批次目录必须位于 data/ 下: $batch_dir" >&2
+      exit 1
+      ;;
+  esac
+  echo "/data/${rel}"
+}
+
+append_batch_dir_candidates() {
+  local parent_dir="$1"
+  if [[ ! -d "$parent_dir" ]]; then
+    echo "  [错误] --batch-dir 目录不存在: $parent_dir" >&2
+    exit 1
+  fi
+
+  local found=false
+  while IFS= read -r dir; do
+    found=true
+    BATCH_DIRS+=("$dir")
+  done < <(
+    find "$parent_dir" -maxdepth 1 -mindepth 1 -type d -name 'output_xfs_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]' \
+      | sort
+  )
+
+  if [[ "$found" == "false" ]]; then
+    echo "  [错误] --batch-dir 未找到符合 output_xfs_YYYYMMDD_HHMMSS 规则的批次目录: $parent_dir" >&2
+    exit 1
+  fi
+}
 
 # compose 命令前缀
 DC="docker compose -f ${COMPOSE_FILE} --env-file ${ENV_FILE}"
@@ -129,36 +176,48 @@ with engine.connect() as conn:
   fi
   echo "  品类检查通过（${CAT_COUNT} 条）"
 
-  # 确定批次目录
-  if [[ -z "$BATCH_DIR" ]]; then
-    BATCH_DIR=$(find "${DATA_DIR}/xfs" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -1)
+  if [[ -n "$BATCH_PARENT_DIR" ]]; then
+    append_batch_dir_candidates "$BATCH_PARENT_DIR"
   fi
-  if [[ -z "$BATCH_DIR" || ! -d "$BATCH_DIR" ]]; then
-    echo "  跳过: 未找到商品批次目录"
-  else
-    BATCH_NAME="$(basename "$BATCH_DIR")"
-    echo "  批次目录: ${BATCH_NAME}"
 
-    # dry-run 预检
-    echo "  运行 dry-run 预检..."
-    docker exec "${BACKEND_CONTAINER}" python scripts/import_products_xfs.py \
-      --batch "/data/xfs/${BATCH_NAME}" --dry-run 2>&1 | tail -10
+  if [[ "${#BATCH_DIRS[@]}" -eq 0 ]]; then
+    echo "  [错误] 商品导入必须显式指定批次，禁止自动选择目录。"
+    echo "        单批次: bash deploy/init-data.sh --batch data/xfs/output_xfs_YYYYMMDD_HHMMSS"
+    echo "        多批次: bash deploy/init-data.sh --batch data/xfs/output_xfs_A --batch data/xfs/output_xfs_B"
+    echo "        扫目录: bash deploy/init-data.sh --batch-dir data/xfs"
+    exit 1
+  fi
 
-    # 确认
-    if [[ "$AUTO_YES" == "false" ]]; then
-      echo ""
-      read -rp "  确认正式导入？(y/N) " CONFIRM
-      if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-        echo "  已取消商品导入"
-        SKIP_PRODUCTS=true
-      fi
+  echo "  将导入以下 ${#BATCH_DIRS[@]} 个商品批次:"
+  for batch_dir in "${BATCH_DIRS[@]}"; do
+    echo "    - $(basename "$batch_dir")"
+  done
+
+  if [[ "$AUTO_YES" == "false" ]]; then
+    echo ""
+    read -rp "  确认按以上顺序导入？(y/N) " CONFIRM
+    if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+      echo "  已取消商品导入"
+      SKIP_PRODUCTS=true
     fi
+  fi
 
-    if [[ "$SKIP_PRODUCTS" == "false" ]]; then
+  if [[ "$SKIP_PRODUCTS" == "false" ]]; then
+    for BATCH_DIR in "${BATCH_DIRS[@]}"; do
+      BATCH_NAME="$(basename "$BATCH_DIR")"
+      CONTAINER_BATCH_DIR="$(resolve_batch_path "$BATCH_DIR")"
+      echo ""
+      echo "  批次目录: ${BATCH_NAME}"
+
+      # dry-run 预检
+      echo "  运行 dry-run 预检..."
+      docker exec "${BACKEND_CONTAINER}" python scripts/import_products_xfs.py \
+        --batch "${CONTAINER_BATCH_DIR}" --dry-run 2>&1 | tail -10
+
       echo "  正式导入..."
       docker exec "${BACKEND_CONTAINER}" python scripts/import_products_xfs.py \
-        --batch "/data/xfs/${BATCH_NAME}" 2>&1
-    fi
+        --batch "${CONTAINER_BATCH_DIR}" 2>&1
+    done
   fi
 else
   echo ""

@@ -220,3 +220,24 @@ CI 会自动拦截含 `drop_column` / `drop_table` 等的 migration。
 | `docker system prune --volumes` | 同上 |
 | 第 5 步迁移老数据时的 TRUNCATE | 仅首次部署可跑,日常部署严禁 |
 | ECS 用户 sudo 权限 | 不需要给 root 也行,Docker daemon 走 docker group |
+
+## 离线商品批次初始化
+
+商品导入必须显式指定批次，脚本不会自动选择 `data/xfs` 下的第一个目录。
+
+```bash
+# 单批次
+bash deploy/init-data.sh --skip-categories --skip-banners \
+  --batch data/xfs/output_xfs_YYYYMMDD_HHMMSS
+
+# 多批次，按参数顺序逐个 dry-run、逐个导入；任一批失败会停止
+bash deploy/init-data.sh --skip-categories --skip-banners \
+  --batch data/xfs/output_xfs_20260623_023104 \
+  --batch data/xfs/output_xfs_20260624_101500
+
+# 显式扫描目录，仅匹配 output_xfs_YYYYMMDD_HHMMSS 命名
+bash deploy/init-data.sh --skip-categories --skip-banners \
+  --batch-dir data/xfs
+```
+
+`--yes` 只跳过交互确认，不跳过 dry-run 预检。
