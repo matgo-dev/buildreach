@@ -376,6 +376,7 @@
     "nextPage": "下一页"
   },
   "mall": {
+    "home": "首页",
     "loading": "加载中...",
     "searchPlaceholder": "搜索商品名称、品牌、编码...",
     "sortNewest": "最新上架",
@@ -955,6 +956,7 @@
     "edit": "编辑",
     "updateSuccess": "询价已更新",
     "addProduct": "添加商品",
+    "productUnavailable": "商品已失效",
     "doneSelection": "完成选择",
     "searchProduct": "搜索商品",
     "searchPlaceholder": "输入商品名称搜索...",

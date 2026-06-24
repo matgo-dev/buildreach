@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
+import { CategoryBreadcrumb } from "@/components/mall/CategoryBreadcrumb";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { listProducts, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
 import { ProductGrid } from "@/components/mall/ProductGrid";
@@ -170,6 +171,14 @@ function MallContent() {
     <PublicLayout>
       {/* 全宽单栏布局 */}
       <div className="space-y-4">
+        {/* 品类面包屑（有选中品类时显示） */}
+        {urlCat && (
+          <CategoryBreadcrumb
+            categoryCode={urlCat}
+            categoryTree={categoryTree}
+          />
+        )}
+
         {/* 最近浏览 */}
         {isBuyer && <RecentViews />}
 

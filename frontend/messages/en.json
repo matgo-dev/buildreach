@@ -376,6 +376,7 @@
     "nextPage": "Next"
   },
   "mall": {
+    "home": "Home",
     "loading": "Loading...",
     "searchPlaceholder": "Search by name, brand, code...",
     "sortNewest": "Newest",
@@ -955,6 +956,7 @@
     "edit": "Edit",
     "updateSuccess": "RFQ updated",
     "addProduct": "Add Product",
+    "productUnavailable": "Product unavailable",
     "doneSelection": "Done",
     "searchProduct": "Search Products",
     "searchPlaceholder": "Search by product name...",

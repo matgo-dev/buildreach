@@ -6,8 +6,6 @@ import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import {
   ArrowLeft,
-  ChevronRight,
-  Home,
   ShoppingCart,
   MessageCircle,
   AlertCircle,
@@ -17,8 +15,8 @@ import {
 import Link from "next/link";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
+import { CategoryBreadcrumb } from "@/components/mall/CategoryBreadcrumb";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
-import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
 import { addCartItem } from "@/lib/api/cart";
 import { useToast } from "@/components/ui/Toast";
@@ -28,25 +26,6 @@ import { ProductGallery } from "@/components/mall/ProductGallery";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { getMockFloorProductDetail } from "@/components/mall/floorMockData";
 
-// ---- 面包屑 ----
-
-function buildBreadcrumb(
-  tree: CategoryTreeNode[],
-  categoryCode: string
-): { code: string; name: string }[] {
-  const path: { code: string; name: string }[] = [];
-  function dfs(nodes: CategoryTreeNode[]): boolean {
-    for (const node of nodes) {
-      path.push({ code: node.code, name: node.name });
-      if (node.code === categoryCode) return true;
-      if (node.children && dfs(node.children)) return true;
-      path.pop();
-    }
-    return false;
-  }
-  dfs(tree);
-  return path;
-}
 
 // ---- 色板缩略图（点击可放大预览） ----
 
@@ -477,10 +456,6 @@ function ProductDetailContent() {
     });
   }, []);
 
-  const breadcrumb = useMemo(() => {
-    if (!product || !categoryTree.length) return [];
-    return buildBreadcrumb(categoryTree, product.category_code);
-  }, [product, categoryTree]);
 
   // Gallery 图片列表（稳定引用，避免每次渲染 filter 产生新数组导致主图重置）
   const galleryImages = useMemo(() => {
@@ -542,28 +517,13 @@ function ProductDetailContent() {
   return (
     <PublicLayout>
       {/* 面包屑 */}
-      <nav className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
-        <Link
-          href={`/${locale}/mall`}
-          className="flex items-center gap-1 text-[#00505a] transition-colors hover:underline"
-        >
-          <Home className="h-3 w-3" />
-          Home
-        </Link>
-        {breadcrumb.map((crumb) => (
-          <React.Fragment key={crumb.code}>
-            <ChevronRight className="h-3 w-3" />
-            <Link
-              href={`/${locale}/mall?cat=${crumb.code}`}
-              className="text-[#00505a] transition-colors hover:underline"
-            >
-              {crumb.name}
-            </Link>
-          </React.Fragment>
-        ))}
-        <ChevronRight className="h-3 w-3" />
-        <span className="font-medium text-gray-700">{product.name}</span>
-      </nav>
+      <div className="mb-4">
+        <CategoryBreadcrumb
+          categoryCode={product.category_code}
+          categoryTree={categoryTree}
+          tail={product.name}
+        />
+      </div>
 
       {/* ===== 主体:左图 + 右信息(与旧版一致) ===== */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">

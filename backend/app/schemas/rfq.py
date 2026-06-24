@@ -130,6 +130,9 @@ class RfqItemPublic(BaseModel):
     target_unit_price: Decimal | None = None
     remark: str | None = None
 
+    # 商品可用性（ACTIVE + 未软删 = True；详情页填充，列表页默认 True）
+    product_available: bool = True
+
     # 读时 JOIN 增强字段（详情页填充，列表页为 None）
     main_image: str | None = None
     spu_code: str | None = None

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ArrowLeft,
+  AlertTriangle,
   Loader2,
   Send,
   Trash2,
@@ -34,6 +35,7 @@ interface EditItem {
   variant_display: string;
   unit: string;
   quantity: number;
+  product_available: boolean;
 }
 
 // ---------- 变体轴类型 ----------
@@ -141,6 +143,7 @@ function ProductSearchModal({
       variant_display,
       unit: unit || product.unit || "PCS",
       quantity: 1,
+      product_available: true,
     });
   }, [onAdd]);
 
@@ -332,6 +335,7 @@ function RfqEditContent() {
             variant_display: it.variant_display ?? "\u2014",
             unit: it.uom_snapshot ?? "PCS",
             quantity: Number(it.quantity),
+            product_available: it.product_available !== false,
           })),
         );
         setContactName(rfq.contact_name ?? "");
@@ -377,9 +381,10 @@ function RfqEditContent() {
   const existingKeys = useMemo(() => new Set(items.map((i) => makeKey(i.product_id, i.selected_variants))), [items, makeKey]);
   const [showSearch, setShowSearch] = useState(false);
 
-  // 构建请求体
+  // 构建请求体（排除失效商品行）
+  const availableItems = useMemo(() => items.filter((i) => i.product_available), [items]);
   const buildPayload = useCallback(() => ({
-    items: items.map((i) => ({ product_id: i.product_id, selected_variants: i.selected_variants, quantity: i.quantity })),
+    items: availableItems.map((i) => ({ product_id: i.product_id, selected_variants: i.selected_variants, quantity: i.quantity })),
     contact_name: contactName || undefined,
     contact_phone: contactPhone || undefined,
     contact_email: contactEmail || undefined,
@@ -392,13 +397,13 @@ function RfqEditContent() {
     remark: remark || undefined,
     attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
     attachment_ids: attachments.length > 0 ? attachments.map(a => a.id) : undefined,
-  }), [items, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark, attachmentUrls, attachments]);
+  }), [availableItems, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark, attachmentUrls, attachments]);
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  // 自由询价：items 或 remark 至少一个非空
+  // 自由询价：可用行项 或 remark 至少一个非空
   const hasRemark = !!(remark && remark.trim());
-  const canSubmit = items.length > 0 || hasRemark;
+  const canSubmit = availableItems.length > 0 || hasRemark;
 
   const handleSave = useCallback(async () => {
     if (saving || submitting || !canSubmit) return;
@@ -471,17 +476,33 @@ function RfqEditContent() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item, idx) => (
-                <tr key={`${item.product_id}-${idx}`} className="border-t border-gray-100 even:bg-slate-50/50">
-                  <td className="px-5 py-3 font-medium text-gray-800">{item.product_name}</td>
-                  <td className="px-5 py-3 text-gray-500">{item.variant_display}</td>
+              {items.map((item, idx) => {
+                const unavailable = !item.product_available;
+                return (
+                <tr key={`${item.product_id}-${idx}`} className={`border-t border-gray-100 ${unavailable ? "bg-gray-50" : "even:bg-slate-50/50"}`}>
+                  <td className={`px-5 py-3 font-medium ${unavailable ? "text-gray-400" : "text-gray-800"}`}>
+                    <div className="flex items-center gap-1.5">
+                      {item.product_name}
+                      {unavailable && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                          <AlertTriangle className="h-3 w-3" />
+                          {t("productUnavailable")}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className={`px-5 py-3 ${unavailable ? "text-gray-300 line-through" : "text-gray-500"}`}>{item.variant_display}</td>
                   <td className="px-5 py-3 text-right">
+                    {unavailable ? (
+                      <span className="text-sm text-gray-300">{item.quantity} {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
+                    ) : (
                     <div className="inline-flex items-center gap-1.5">
                       <input type="number" value={item.quantity}
                         onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) handleQtyChange(idx, v); }}
                         min={1} className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
                       <span className="text-xs text-gray-500">{tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
                     </div>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-center">
                     <button type="button" onClick={() => handleRemoveItem(idx)} className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
@@ -489,7 +510,8 @@ function RfqEditContent() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               <tr className="border-t border-gray-100">
                 <td colSpan={4} className="px-5 py-3">
                   <button type="button" onClick={() => setShowSearch(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]">
