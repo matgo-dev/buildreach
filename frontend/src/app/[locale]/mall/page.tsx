@@ -6,7 +6,6 @@ import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { listProducts, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
 import { ProductGrid } from "@/components/mall/ProductGrid";
@@ -223,10 +222,8 @@ function MallContent() {
 
 export default function MallPage() {
   return (
-    <RouteGuard allowRoles={["BUYER", "OPERATOR"]}>
-      <Suspense fallback={null}>
-        <MallContent />
-      </Suspense>
-    </RouteGuard>
+    <Suspense fallback={null}>
+      <MallContent />
+    </Suspense>
   );
 }
