@@ -55,6 +55,23 @@ def _make_pdf() -> bytes:
     )
 
 
+async def _upload_product_image(
+    client: AsyncClient, headers: dict, product_id: int,
+) -> int:
+    from PIL import Image as PILImage
+
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=headers,
+        files={"file": ("test.png", buf, "image/png")},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["data"]["id"]
+
+
 # ── 上传测试 ──────────────────────────────────────────────
 
 
@@ -228,6 +245,7 @@ async def test_rfq_create_with_attachments(client: AsyncClient, db_session: Asyn
     })
     assert r.status_code == 200, r.text
     product_id = r.json()["data"]["id"]
+    await _upload_product_image(client, op_hdr, product_id)
 
     r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
@@ -290,11 +308,13 @@ async def test_rfq_update_keeps_attachments(client: AsyncClient, db_session: Asy
         "currency": "TZS",
     })
     product_id = r.json()["data"]["id"]
-    await client.patch(
+    await _upload_product_image(client, op_hdr, product_id)
+    r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
         headers=op_hdr,
         json={"status": "ACTIVE"},
     )
+    assert r.status_code == 200, r.text
 
     # 创建 RFQ 为草稿
     r = await client.post("/api/v1/rfqs", headers=hdr, json={

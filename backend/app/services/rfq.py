@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -39,7 +38,6 @@ from app.core.exceptions import (
     RfqNoValidItemsError,
     RfqNotFoundError,
     RfqStateInvalidError,
-    RfqTooManyAttachmentsError,
 )
 from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
@@ -76,18 +74,11 @@ _RFQ_NO_MAX_RETRIES = 5
 
 # ── attachment_urls 校验 ─────────────────────────────
 
-_ATTACHMENT_URL_PATTERN = re.compile(r"^/static/rfq-attachments/[0-9a-f\-]{36}\.\w{2,5}$")
-_MAX_ATTACHMENTS = 6
-
 def validate_attachment_urls(urls: list[str] | None) -> None:
-    """校验附件 URL：路径白名单 + 数量上限。"""
+    """拒绝旧版公开附件 URL；RFQ 附件必须走私有 attachment_ids。"""
     if not urls:
         return
-    if len(urls) > _MAX_ATTACHMENTS:
-        raise RfqTooManyAttachmentsError()
-    for url in urls:
-        if not _ATTACHMENT_URL_PATTERN.match(url):
-            raise RfqInvalidAttachmentUrlError()
+    raise RfqInvalidAttachmentUrlError()
 
 
 # ── 组织解析 ───────────────────────────────────────────

@@ -80,6 +80,12 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("PATCH", "/api/v1/rfqs/{rfq_id}/reject"),
     # attachment — 上传写审计
     ("POST", "/api/v1/attachments"),
+    # banner — 运营 Banner 配置写操作
+    ("POST", "/api/v1/operator/banners"),
+    ("PUT", "/api/v1/operator/banners/{banner_id}"),
+    ("DELETE", "/api/v1/operator/banners/{banner_id}"),
+    # quote document — 报价 PDF 产物重试触发
+    ("POST", "/api/v1/rfqs/{rfq_id}/quote-documents/retry"),
 }
 
 
@@ -105,8 +111,6 @@ AUDIT_EXEMPT_WRITE_ROUTES: set[tuple[str, str]] = {
     # 买方浏览痕迹清理:个人隐私操作,低风险
     ("DELETE", "/api/v1/buyer/events/recent-searches"),
     ("DELETE", "/api/v1/buyer/events/recent-views/{product_id}"),
-    # 文件上传:通用上传端点,文件本身无业务决策
-    ("POST", "/api/v1/uploads/files"),
 }
 
 

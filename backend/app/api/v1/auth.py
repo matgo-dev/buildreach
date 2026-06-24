@@ -214,7 +214,7 @@ async def register_buyer(
 ):
     from app.services._buyer_utils import (
         validate_active_level1_categories,
-        save_uploaded_image,
+        save_uploaded_private_image,
         ALLOWED_EXTENSIONS,
         MAX_IMAGE_SIZE,
     )
@@ -286,7 +286,7 @@ async def register_buyer(
             content = await f.read()
             if len(content) > MAX_IMAGE_SIZE:
                 raise MultipleValidationError([{"field": "storefront_images", "code": 42207, "message": "图片超过 5MB"}])
-            result = save_uploaded_image(content, f.filename or "img.jpg", "buyer_orgs", square=False)
+            result = save_uploaded_private_image(content, f.filename or "img.jpg", "buyer_orgs", square=False)
             saved_storefront.append(result)
             saved_files.append(result[0])
 
@@ -298,7 +298,7 @@ async def register_buyer(
             ext = os.path.splitext(f.filename or "")[1].lower()
             if ext not in ALLOWED_EXTENSIONS:
                 raise MultipleValidationError([{"field": "license_images", "code": 42210, "message": f"证照图片格式不支持: {ext}"}])
-            result = save_uploaded_image(content, f.filename or "img.jpg", "buyer_orgs", square=False)
+            result = save_uploaded_private_image(content, f.filename or "img.jpg", "buyer_orgs", square=False)
             saved_license.append(result)
             saved_files.append(result[0])
 
@@ -321,10 +321,10 @@ async def register_buyer(
         )
     except Exception:
         # 事务失败:best-effort 清理已落盘图片
-        from app.services._buyer_utils import UPLOAD_BASE_DIR
+        from app.services._buyer_utils import PRIVATE_UPLOAD_BASE_DIR
         for key in saved_files:
             try:
-                (UPLOAD_BASE_DIR / key).unlink(missing_ok=True)
+                (PRIVATE_UPLOAD_BASE_DIR / key).unlink(missing_ok=True)
             except Exception:
                 pass
         raise

@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Super admin 种子(始终种入,生产唯一保留)
     SUPER_ADMIN_EMAIL: str = "superadmin@platform.local"
-    SUPER_ADMIN_INITIAL_PASSWORD: str = "Aa123456789"
+    SUPER_ADMIN_INITIAL_PASSWORD: str = "CHANGEME_set_strong_initial_password"
 
     # demo seed 开关:控制是否种入中建三局 BuyerOrg 与 admin/operator/buyer demo 账号
     # 本地开发推荐 true;**生产部署务必 false**
@@ -92,8 +92,8 @@ class Settings(BaseSettings):
     # 图片 CDN / 静态文件基础 URL
     IMAGE_BASE_URL: str = "http://localhost:8000/static"
 
-    # 调试 API(/api/_debug/*)是否开启;生产应关闭
-    ENABLE_DEBUG_API: bool = True
+    # 调试 API(/api/_debug/*)是否开启;默认关闭,需要时显式打开
+    ENABLE_DEBUG_API: bool = False
 
     # Trace ID:仅当前置可信反向代理(由网关设置并覆盖 X-Trace-Id)时置 true;
     # 公网直连 / 无网关时保持 false,一律服务端生成。

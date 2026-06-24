@@ -28,6 +28,22 @@ logger = logging.getLogger(__name__)
 CSCEC3B_CODE = "CSCEC3B"
 # 占位信用代码:18 位假数据,仅 demo seed 使用
 CSCEC3B_USC_PLACEHOLDER = "91420100MA4KXXXX01"
+_UNSAFE_BOOTSTRAP_PASSWORDS = {
+    "",
+    "Aa123456789",
+    "ChangeMe123",
+    "CHANGEME_set_strong_initial_password",
+}
+
+
+def _assert_safe_bootstrap_password() -> None:
+    """阻断生产首启时使用代码内置/模板默认的超级管理员密码。"""
+    password = settings.SUPER_ADMIN_INITIAL_PASSWORD.strip()
+    if password in _UNSAFE_BOOTSTRAP_PASSWORDS or password.upper().startswith("CHANGEME"):
+        raise RuntimeError(
+            "SUPER_ADMIN_INITIAL_PASSWORD must be set to a unique strong password "
+            "before bootstrap admin can be created."
+        )
 
 
 async def seed_buyer_org(db: AsyncSession) -> None:
@@ -199,6 +215,7 @@ async def seed_bootstrap_admin(db: AsyncSession) -> None:
     if row.scalar_one_or_none() is not None:
         logger.info("Seed: bootstrap admin %s already exists — kept as-is.", email)
         return
+    _assert_safe_bootstrap_password()
 
     role_row = await db.execute(select(Role).where(Role.code == RoleCode.ADMIN))
     admin_role = role_row.scalar_one_or_none()

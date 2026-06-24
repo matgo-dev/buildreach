@@ -138,7 +138,7 @@ app/
 ├── core/         配置 / 安全 / 异常 / 依赖 / 日志
 ├── db/           Base / Session / models(10 张表)
 ├── schemas/      Pydantic
-├── api/v1/       路由(auth / admin_users / test_rbac)
+├── api/v1/       路由(auth / admin_users / attachments / rfqs ...)
 ├── services/     业务逻辑(auth / user / 限流)
 ├── rbac/         constants / permissions_config / guards / sync
 ├── audit/        constants / middleware / logger / context
