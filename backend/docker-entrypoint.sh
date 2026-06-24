@@ -51,6 +51,10 @@ PY
 echo "[entrypoint] alembic upgrade head"
 alembic upgrade head
 
+# ---- 数据清洗(幂等,每次启动跑一遍零成本)----
+echo "[entrypoint] 数据清洗:moq_unit 标准化"
+python scripts/normalize_moq_unit.py 2>&1 | sed 's/^/  /'
+
 # ---- 启动应用(lifespan 自动触发 run_all_seeds,seed 已幂等)----
 echo "[entrypoint] 启动应用:$*"
 exec "$@"
