@@ -110,12 +110,10 @@ _PREFIX_MAP = {
 async def _descendant_category_codes(
     db: AsyncSession, category_code: str,
 ) -> list[str]:
-    """返回以 category_code 为根的整棵子树 code 集(含自身),有界迭代 ≤3 层。"""
+    """返回以 category_code 为根的整棵子树 code 集(含自身),逐层展开直到叶子。"""
     codes: list[str] = [category_code]
     current_layer = [category_code]
-    for _ in range(2):  # 最多再向下 2 层(L1→L2→L3)
-        if not current_layer:
-            break
+    while current_layer:
         rows = (await db.execute(
             select(Category.code).where(Category.parent_code.in_(current_layer))
         )).scalars().all()
