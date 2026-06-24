@@ -15,6 +15,7 @@ function Inner() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const setAccessToken = useAuthStore((s) => s.setAccessToken);
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -40,7 +41,9 @@ function Inner() {
     setError("");
     setSubmitting(true);
     try {
-      await authApi.changePassword(oldPwd, newPwd);
+      // 改密成功后后端签发新 token，无需重新登录
+      const tokens = await authApi.changePassword(oldPwd, newPwd);
+      setAccessToken(tokens.access_token);
       const me = await authApi.me();
       setUser(me);
       router.replace(defaultDashboardOf(me.roles));

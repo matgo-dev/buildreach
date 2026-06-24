@@ -129,7 +129,7 @@ export const authApi = {
   logout: () => api.post<null>("/api/v1/auth/logout"),
 
   changePassword: (old_password: string, new_password: string) =>
-    api.post<null>("/api/v1/auth/change-password", { old_password, new_password }),
+    api.post<LoginResult>("/api/v1/auth/change-password", { old_password, new_password }),
 
   // ----- 自助资料 -----
 

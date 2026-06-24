@@ -121,11 +121,11 @@ export const MOCK_ORDERS: MockOrder[] = [
       },
     ],
     items: [
-      { name: "不锈钢铰链 4寸", nameEn: "Stainless Steel Hinge 4\"", sku: "HDW-HNG-SS4", qty: 2000, unit: "pcs", unitPrice: 0.85, currency: "USD", image: "https://picsum.photos/seed/hinge/80/80", supplier: "浙江恒盛五金" },
-      { name: "碳钢螺栓 M12×80", nameEn: "Carbon Steel Bolt M12×80", sku: "FST-BLT-M12", qty: 5000, unit: "pcs", unitPrice: 0.12, currency: "USD", image: "https://picsum.photos/seed/bolt/80/80", supplier: "温州标准件厂" },
-      { name: "PPR 给水管 20mm", nameEn: "PPR Water Pipe 20mm", sku: "PIP-PPR-20", qty: 3000, unit: "m", unitPrice: 1.20, currency: "USD", image: "https://picsum.photos/seed/pipe/80/80", supplier: "浙江伟星管业" },
-      { name: "LED 面板灯 600×600", nameEn: "LED Panel Light 600×600", sku: "ELC-LED-P60", qty: 500, unit: "pcs", unitPrice: 12.50, currency: "USD", image: "https://picsum.photos/seed/ledpanel/80/80", supplier: "中山欧普照明" },
-      { name: "防水涂料 20kg", nameEn: "Waterproof Coating 20kg", sku: "CHM-WPC-20", qty: 200, unit: "barrel", unitPrice: 15.00, currency: "USD", image: "https://picsum.photos/seed/coating/80/80", supplier: "广州雨虹防水" },
+      { name: "彩石金属瓦", nameEn: "Stone Coated Metal Roof Tile", sku: "ROF-SCM-01", qty: 2000, unit: "pcs", unitPrice: 3.50, currency: "USD", image: "/images/mock/roof-tile.jpg", supplier: "杭州优铸建材" },
+      { name: "螺纹钢筋 HRB400 Φ12", nameEn: "Steel Rebar HRB400 Φ12", sku: "STL-RBR-12", qty: 5000, unit: "m", unitPrice: 0.85, currency: "USD", image: "/images/mock/steel-rebar.jpg", supplier: "唐山建龙钢铁" },
+      { name: "黄铜止回阀 DN25", nameEn: "Brass Check Valve DN25", sku: "PLB-BCV-25", qty: 500, unit: "pcs", unitPrice: 4.20, currency: "USD", image: "/images/mock/brass-valve.jpg", supplier: "玉环阀门厂" },
+      { name: "LED 风扇吸顶灯", nameEn: "LED Ceiling Fan Light", sku: "ELC-CFL-01", qty: 300, unit: "pcs", unitPrice: 18.00, currency: "USD", image: "/images/mock/led-ceiling-light.jpg", supplier: "中山欧普照明" },
+      { name: "PTFE 密封垫片 DN150", nameEn: "PTFE Seal Gasket DN150", sku: "FST-GSK-150", qty: 1000, unit: "pcs", unitPrice: 1.20, currency: "USD", image: "/images/mock/seal-gasket.png", supplier: "温州密封件厂" },
     ],
     documents: [
       { name: "Proforma Invoice", type: "PI", date: "2026-05-20" },
@@ -164,9 +164,9 @@ export const MOCK_ORDERS: MockOrder[] = [
       },
     ],
     items: [
-      { name: "镀锌方管 40×40×2.0", nameEn: "Galvanized Square Tube 40×40", sku: "STL-GST-40", qty: 800, unit: "pcs", unitPrice: 8.50, currency: "USD", image: "https://picsum.photos/seed/steeltube/80/80", supplier: "天津友联钢管" },
-      { name: "水泥 42.5R", nameEn: "Portland Cement 42.5R", sku: "BLD-CMT-425", qty: 1000, unit: "bag", unitPrice: 4.80, currency: "USD", image: "https://picsum.photos/seed/cement/80/80", supplier: "海螺水泥" },
-      { name: "瓷砖 800×800", nameEn: "Porcelain Tile 800×800", sku: "TIL-PCT-800", qty: 2000, unit: "sqm", unitPrice: 6.00, currency: "USD", image: "https://picsum.photos/seed/tile/80/80", supplier: "佛山东鹏陶瓷" },
+      { name: "铸铝入户门", nameEn: "Cast Aluminum Entry Door", sku: "DOR-CAD-01", qty: 200, unit: "pcs", unitPrice: 85.00, currency: "USD", image: "/images/mock/entry-door.jpg", supplier: "佛山万嘉门业" },
+      { name: "木纹地板砖 600×600", nameEn: "Wood Grain Floor Tile 600×600", sku: "TIL-WGF-60", qty: 3000, unit: "sqm", unitPrice: 5.80, currency: "USD", image: "/images/mock/floor-tile.jpg", supplier: "佛山东鹏陶瓷" },
+      { name: "乔立垫片 M12", nameEn: "Flat Washer M12", sku: "FST-WSH-M12", qty: 10000, unit: "pcs", unitPrice: 0.03, currency: "USD", image: "/images/mock/washer.jpg", supplier: "温州标准件厂" },
     ],
     documents: [
       { name: "Proforma Invoice", type: "PI", date: "2026-04-28" },
@@ -207,9 +207,9 @@ export const MOCK_ORDERS: MockOrder[] = [
       },
     ],
     items: [
-      { name: "安全帽 ABS", nameEn: "ABS Safety Helmet", sku: "SAF-HLM-ABS", qty: 1000, unit: "pcs", unitPrice: 2.80, currency: "USD", image: "https://picsum.photos/seed/helmet/80/80", supplier: "苏州赛邦防护" },
-      { name: "劳保手套 丁腈", nameEn: "Nitrile Work Gloves", sku: "SAF-GLV-NTR", qty: 5000, unit: "pairs", unitPrice: 0.45, currency: "USD", image: "https://picsum.photos/seed/gloves/80/80", supplier: "山东星宇手套" },
-      { name: "电动角磨机 125mm", nameEn: "Angle Grinder 125mm", sku: "TLS-AGR-125", qty: 200, unit: "pcs", unitPrice: 18.50, currency: "USD", image: "https://picsum.photos/seed/grinder/80/80", supplier: "江苏东成电动" },
+      { name: "十字镐 双扁大号", nameEn: "Cross Pickaxe Heavy Duty", sku: "TLS-PKX-01", qty: 500, unit: "pcs", unitPrice: 6.50, currency: "USD", image: "/images/mock/pickaxe.jpg", supplier: "河北富乐皇工具" },
+      { name: "防坠器 5米", nameEn: "Fall Arrester 5m", sku: "SAF-FAR-05", qty: 200, unit: "pcs", unitPrice: 12.00, currency: "USD", image: "/images/mock/fall-arrester.png", supplier: "京固安防" },
+      { name: "钛合金平弹垫组合 M4", nameEn: "Titanium Spring Washer Set M4", sku: "FST-TWS-M4", qty: 5000, unit: "pcs", unitPrice: 0.15, currency: "USD", image: "/images/mock/titanium-washer.png", supplier: "固万基紧固件" },
     ],
     documents: [
       { name: "Proforma Invoice", type: "PI", date: "2026-03-15" },
