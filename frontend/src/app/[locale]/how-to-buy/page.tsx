@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Link, useRouter, usePathname } from "@/i18n/navigation";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { RouteGuard } from "@/components/auth/RouteGuard";
+
 import { FulfillmentShowcase } from "@/components/how-to-buy/FulfillmentShowcase";
 
 /* ---------- step 配色 ---------- */
@@ -326,10 +326,8 @@ function HowToBuyContent() {
 
 export default function HowToBuyPage() {
   return (
-    <RouteGuard allowRoles={["BUYER", "OPERATOR"]}>
-      <Suspense fallback={null}>
-        <HowToBuyContent />
-      </Suspense>
-    </RouteGuard>
+    <Suspense fallback={null}>
+      <HowToBuyContent />
+    </Suspense>
   );
 }
