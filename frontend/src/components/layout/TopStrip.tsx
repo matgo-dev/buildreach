@@ -23,7 +23,7 @@ export function TopStrip() {
             <ShieldCheck className="h-3.5 w-3.5" />
             PVoC / CoC Document Support
           </span>
-          <Link href="/how-to-buy" className="hidden sm:inline hover:text-white transition-colors">{t("helpCenter")}</Link>
+          <Link href="/help-center" className="hidden sm:inline hover:text-white transition-colors">{t("helpCenter")}</Link>
           <span className="text-teal-700">|</span>
           {user ? (
             <UserDropdown />
