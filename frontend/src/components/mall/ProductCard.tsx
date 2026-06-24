@@ -10,6 +10,7 @@ import type { CategoryTreeNode } from "@/lib/api/categories";
 import { addCartItem } from "@/lib/api/cart";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
+import { useAuthStore } from "@/stores/authStore";
 import { MallButton } from "./MallButton";
 
 /** 飞入购物车动画：暖金流星效果 */
@@ -102,6 +103,11 @@ export function ProductCard({
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // 未登录 → 跳登录页
+    if (!useAuthStore.getState().user) {
+      router.push("/login");
+      return;
+    }
     setAdding(true);
     prevCountRef.current = useCartStore.getState().count;
     try {

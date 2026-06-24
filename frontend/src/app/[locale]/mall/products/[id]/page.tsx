@@ -17,13 +17,13 @@ import {
 import Link from "next/link";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { getProduct, type ProductPublicDetail, type AttrGroup, type AttrItem } from "@/lib/api/products";
 import { addCartItem } from "@/lib/api/cart";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
+import { useAuthStore } from "@/stores/authStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { getMockFloorProductDetail } from "@/components/mall/floorMockData";
@@ -417,6 +417,12 @@ function ProductDetailContent() {
   const prevCountRef = useRef(0);
   const handleAddToCart = useCallback(async () => {
     if (!product) return;
+    // 未登录 → 跳登录页
+    const user = useAuthStore.getState().user;
+    if (!user) {
+      router.push(`/${locale}/login`);
+      return;
+    }
     if (product.spu_code.startsWith("MOCK-")) {
       router.push(`/${locale}/buyer/rfqs/create`);
       return;
@@ -704,10 +710,8 @@ function ProductDetailContent() {
 
 export default function ProductDetailPage() {
   return (
-    <RouteGuard allowRoles={["BUYER", "OPERATOR"]}>
-      <Suspense fallback={null}>
-        <ProductDetailContent />
-      </Suspense>
-    </RouteGuard>
+    <Suspense fallback={null}>
+      <ProductDetailContent />
+    </Suspense>
   );
 }
