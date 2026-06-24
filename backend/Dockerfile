@@ -83,6 +83,11 @@ RUN chmod +x docker-entrypoint.sh \
     && mkdir -p /app/private_uploads/attachments \
     && chown -R appuser:appuser /app/uploads /app/private_uploads
 
+ARG BUILD_COMMIT=dev
+ARG BUILD_TIME=-
+ENV BUILD_COMMIT=$BUILD_COMMIT
+ENV BUILD_TIME=$BUILD_TIME
+
 USER appuser
 
 EXPOSE 8000

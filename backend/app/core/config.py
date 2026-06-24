@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     REFRESH_COOKIE_PATH: str = "/api/v1/auth"
     REFRESH_COOKIE_MAX_AGE: int = 7 * 24 * 3600  # 7 天,与 refresh JWT TTL 一致
     REFRESH_COOKIE_SECURE: bool = False
-    REFRESH_COOKIE_SAMESITE: str = "strict"  # strict / lax / none
+    REFRESH_COOKIE_SAMESITE: str = "lax"  # lax: 同站刷新/导航会带 cookie; strict 会阻止地址栏刷新带 cookie
 
     # CORS 允许携带凭证(refresh cookie 必需)
     CORS_ALLOW_CREDENTIALS: bool = True

@@ -67,8 +67,8 @@ export default function HelpCenterPage() {
 
   return (
     <PublicLayout>
-      {/* Hero + 主体：统一在 max-w-mall 内对齐 */}
-      <div className="mx-auto max-w-mall px-6 py-6">
+      {/* 主体 */}
+      <div className="mx-auto max-w-mall px-6 pt-1.5 pb-6">
         <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-6 py-7 mb-6">
           <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
             {t("pageTitle")}
