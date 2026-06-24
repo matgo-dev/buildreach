@@ -21,7 +21,7 @@ function HeroSlide({ active }: { active: boolean }) {
       }`}
     >
       <img
-        src="/banners/hero-main.png"
+        src="/banners/hero-main.jpg"
         alt="BuildReach - Source China Building Materials for East Africa"
         className="absolute inset-0 w-full h-full object-cover object-center"
         draggable={false}
