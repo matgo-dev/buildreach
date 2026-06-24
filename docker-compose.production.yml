@@ -55,7 +55,7 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
       SUPER_ADMIN_INITIAL_PASSWORD: ${SUPER_ADMIN_INITIAL_PASSWORD}
-      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-true}
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-false}
       CORS_ORIGINS: ${CORS_ORIGINS}
       CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
       REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-refresh_token}
@@ -75,6 +75,7 @@ services:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
     volumes:
       - uploads:/app/uploads
+      - private_uploads:/app/private_uploads
     ports:
       - "${BACKEND_HOST_PORT:-8001}:8000"
     logging: *default-logging
@@ -93,3 +94,5 @@ volumes:
     name: overseas_platform_pgdata
   uploads:
     name: overseas_platform_uploads
+  private_uploads:
+    name: overseas_platform_private_uploads

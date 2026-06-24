@@ -8,6 +8,8 @@ from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import success
 from app.db.session import get_db
@@ -125,6 +127,7 @@ async def list_quote_documents(
 @router.post("/{rfq_id}/quote-documents/retry", summary="重试失败的文档生成")
 async def retry_quote_documents(
     rfq_id: int,
+    request: Request,
     background_tasks: BackgroundTasks,
     current: CurrentUser = Depends(require_permission(Permissions.QUOTE_WRITE)),
     db: AsyncSession = Depends(get_db),
@@ -136,6 +139,21 @@ async def retry_quote_documents(
 
     count = await retry_failed_documents(
         db, active_quote.id, active_quote.version, rfq_id,
+    )
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.QUOTE,
+        action=AuditAction.UPDATE,
+        user_id=current.id,
+        user_email=current.email,
+        resource_id=active_quote.id,
+        request=request,
+        extra={
+            "action": "quote_documents_retry",
+            "rfq_id": rfq_id,
+            "version": active_quote.version,
+            "retried": count,
+        },
     )
 
     if count > 0:

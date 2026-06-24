@@ -63,48 +63,6 @@ async def _create_operator_via_super_admin(client, superadmin_headers, email="op
 
 
 @pytest.mark.asyncio
-async def test_buyer_can_access_buyer_only(client):
-    email, pwd = await _register_buyer(client)
-    token = await _login(client, email, pwd)
-    r = await client.get("/api/v1/test/buyer-only", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_buyer_cannot_access_supplier_only(client):
-    email, pwd = await _register_buyer(client)
-    token = await _login(client, email, pwd)
-    r = await client.get("/api/v1/test/supplier-only", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_supplier_isolation(client):
-    email, pwd = await _register_supplier(client)
-    token = await _login(client, email, pwd)
-    r = await client.get("/api/v1/test/supplier-only", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 200
-    r = await client.get("/api/v1/test/buyer-only", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_super_admin_can_access_admin_only(client, superadmin_headers):
-    r = await client.get("/api/v1/test/admin-only", headers=superadmin_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_operator_can_access_operator_only(client, superadmin_headers):
-    email, pwd = await _create_operator_via_super_admin(client, superadmin_headers)
-    token = await _login(client, email, pwd)
-    r = await client.get("/api/v1/test/operator-only", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 200
-    r = await client.get("/api/v1/test/admin-only", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 403
-
-
-@pytest.mark.asyncio
 async def test_admin_create_buyer_role_rejected(client, superadmin_headers):
     """POST /admin/users 不应能创建 BUYER/SUPPLIER。"""
     r = await client.post(

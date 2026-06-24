@@ -22,6 +22,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 TARGET_SIZE = (800, 800)
 JPEG_QUALITY = 85
 UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
+PRIVATE_UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "private_uploads"
 
 # ── 手机号正则 ───────────────────────────────────────────────
 _TZ_E164_RE = re.compile(r"^\+255\d{9}$")
@@ -86,10 +87,11 @@ async def validate_active_level1_categories(
         )
 
 
-def save_uploaded_image(
+def _save_processed_image(
     file_content: bytes,
     filename: str,
     subdir: str,
+    base_dir: Path,
     square: bool = False,
 ) -> tuple[str, int, int, int]:
     """处理并保存上传图片,返回 (relative_key, width, height, file_size)。"""
@@ -131,7 +133,7 @@ def save_uploaded_image(
         img = bg
 
     # g/h. 保存为 JPEG
-    dest_dir = UPLOAD_BASE_DIR / subdir
+    dest_dir = base_dir / subdir
     dest_dir.mkdir(parents=True, exist_ok=True)
     file_id = uuid.uuid4().hex
     dest_path = dest_dir / f"{file_id}.jpg"
@@ -145,6 +147,26 @@ def save_uploaded_image(
     # i. 返回相对路径 key + 尺寸 + 大小
     relative_key = f"{subdir}/{file_id}.jpg"
     return relative_key, img.width, img.height, len(file_bytes)
+
+
+def save_uploaded_image(
+    file_content: bytes,
+    filename: str,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    """处理并保存公开商品图片。"""
+    return _save_processed_image(file_content, filename, subdir, UPLOAD_BASE_DIR, square)
+
+
+def save_uploaded_private_image(
+    file_content: bytes,
+    filename: str,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    """处理并保存私有图片(证照/门店等敏感材料),不经 /static 暴露。"""
+    return _save_processed_image(file_content, filename, subdir, PRIVATE_UPLOAD_BASE_DIR, square)
 
 
 def validate_image_file(filename: str, content_length: int) -> None:

@@ -7,6 +7,7 @@ rfq_no 生成、dup product+variant、scope 越权(404)、撤销守卫+幂等、
 from __future__ import annotations
 
 import asyncio
+import io
 from decimal import Decimal
 from uuid import uuid4
 
@@ -77,6 +78,18 @@ async def _create_active_product(
     )
     assert r.status_code == 200, r.text
     sku_id = r.json()["data"]["id"]
+
+    from PIL import Image as PILImage
+
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=op,
+        files={"file": ("rfq-test.png", buf, "image/png")},
+    )
+    assert r.status_code == 200, r.text
 
     r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
@@ -721,8 +734,8 @@ async def test_idempotency_cart_items_untouched(client: AsyncClient, db_session:
 
 
 @pytest.mark.asyncio
-async def test_create_rfq_with_valid_attachments(client, db_session):
-    """创建询价单:合法附件 URL → 200。"""
+async def test_create_rfq_legacy_static_attachment_url_rejected(client, db_session):
+    """创建询价单:旧版 /static 附件 URL 拒绝,必须改用 attachment_ids。"""
     hdr = await _buyer_headers(client)
     pid = await _create_purchasable_product(db_session)
     payload = {
@@ -730,7 +743,8 @@ async def test_create_rfq_with_valid_attachments(client, db_session):
         "attachment_urls": [f"/static/rfq-attachments/{uuid4()}.jpg"],
     }
     resp = await client.post("/api/v1/rfqs", json=payload, headers=hdr)
-    assert resp.status_code == 200
+    assert resp.status_code == 422
+    assert resp.json()["code"] == 40522
 
 
 @pytest.mark.asyncio
@@ -748,8 +762,8 @@ async def test_create_rfq_external_url_rejected(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_create_rfq_too_many_attachments(client, db_session):
-    """创建询价单:超过 6 个附件 → 422 with code 40521。"""
+async def test_create_rfq_legacy_attachment_urls_rejected_before_counting(client, db_session):
+    """创建询价单:旧版 attachment_urls 非空即拒绝,不再维护公开 URL 数量规则。"""
     hdr = await _buyer_headers(client)
     pid = await _create_purchasable_product(db_session)
     urls = [f"/static/rfq-attachments/{uuid4()}.jpg" for _ in range(7)]
@@ -759,7 +773,7 @@ async def test_create_rfq_too_many_attachments(client, db_session):
     }
     resp = await client.post("/api/v1/rfqs", json=payload, headers=hdr)
     assert resp.status_code == 422
-    assert resp.json()["code"] == 40521
+    assert resp.json()["code"] == 40522
 
 
 @pytest.mark.asyncio
@@ -776,8 +790,8 @@ async def test_create_rfq_empty_attachments_ok(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_update_rfq_with_valid_attachments(client, db_session):
-    """更新询价单:合法附件 URL → 200。"""
+async def test_update_rfq_legacy_static_attachment_url_rejected(client, db_session):
+    """更新询价单:旧版 /static 附件 URL 拒绝,必须改用 attachment_ids。"""
     hdr = await _buyer_headers(client)
     pid = await _create_purchasable_product(db_session)
 
@@ -803,12 +817,13 @@ async def test_update_rfq_with_valid_attachments(client, db_session):
         "target_currency": "TZS",
     }
     resp = await client.patch(f"/api/v1/rfqs/{rfq_id}", headers=hdr, json=payload)
-    assert resp.status_code == 200
+    assert resp.status_code == 422
+    assert resp.json()["code"] == 40522
 
 
 @pytest.mark.asyncio
-async def test_update_rfq_too_many_attachments(client, db_session):
-    """更新询价单:超过 6 个附件 → 422 with code 40521。"""
+async def test_update_rfq_legacy_attachment_urls_rejected_before_counting(client, db_session):
+    """更新询价单:旧版 attachment_urls 非空即拒绝,不再维护公开 URL 数量规则。"""
     hdr = await _buyer_headers(client)
     pid = await _create_purchasable_product(db_session)
 
@@ -836,7 +851,7 @@ async def test_update_rfq_too_many_attachments(client, db_session):
     }
     resp = await client.patch(f"/api/v1/rfqs/{rfq_id}", headers=hdr, json=payload)
     assert resp.status_code == 422
-    assert resp.json()["code"] == 40521
+    assert resp.json()["code"] == 40522
 
 
 # ── 详情页商品信息增强 ────────────────────────────────────

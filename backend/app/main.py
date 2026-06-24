@@ -105,6 +105,15 @@ app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LocaleMiddleware)
 
 
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return response
+
+
 # ----- 异常处理:统一响应格式 -----
 
 @app.exception_handler(BusinessError)

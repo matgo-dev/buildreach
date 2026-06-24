@@ -61,7 +61,7 @@ services:
       SUPER_ADMIN_INITIAL_PASSWORD: ${SUPER_ADMIN_INITIAL_PASSWORD}
 
       # demo seed 总开关(演示环境保持 true;真正生产改 false)
-      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-true}
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-false}
 
       # CORS(逗号分隔)
       CORS_ORIGINS: ${CORS_ORIGINS}
