@@ -13,6 +13,7 @@ import {
   PackageOpen,
   ChevronDown,
   ChevronUp,
+  MessageCircle,
 } from "lucide-react";
 import { RfqTabNav } from "@/components/rfq/RfqTabNav";
 
@@ -30,6 +31,7 @@ import {
 } from "@/lib/api/cart";
 import { getProduct, type AttrItem } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 
 // ---------- 主页面 ----------
 
@@ -43,6 +45,7 @@ function CartContent() {
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const refreshFlag = useCartStore((s) => s.refreshFlag);
   const triggerRefresh = useCartStore((s) => s.triggerRefresh);
+  const wa = useWhatsApp();
 
   // 询价篮数据
   const { data: cart, isLoading, mutate } = useSWR<CartPublic>(
@@ -176,38 +179,43 @@ function CartContent() {
 
   const items = cart?.items ?? [];
 
-  // 空状态
-  if (items.length === 0) {
-    return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-white">
-        <ShoppingCart className="mb-4 h-16 w-16 text-gray-200" />
-        <h2 className="text-lg font-semibold text-gray-600">{t("empty")}</h2>
-        <button
-          type="button"
-          onClick={() => router.push(`/${locale}/mall`)}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
-        >
-          {t("goToMall")}
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      {/* Tab 导航：询价篮 / 我的询价单 */}
-      <RfqTabNav />
-
-      {/* 商品数量提示 */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-500">
-          {t("itemCount", { count: items.length })}
-        </span>
-      </div>
-
-      {/* 商品列表 — 卡片式 */}
+      {/* Tab + 内容整体卡片 */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {/* Tab 导航：询价篮 / 询价管理 — 始终显示 */}
+        <RfqTabNav />
+
+        {/* 空状态 */}
+        {items.length === 0 ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center">
+            <ShoppingCart className="mb-4 h-16 w-16 text-gray-200" />
+            <h2 className="text-lg font-semibold text-gray-600">{t("empty")}</h2>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.push(`/${locale}/mall`)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#00505a] bg-[#00505a] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d]"
+              >
+                {t("goToMall")}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              {wa.configured && (
+                <a
+                  href={wa.link!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {t("inquireNow")}
+                </a>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+
         {/* 表头 */}
         <div className="flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
           <input
@@ -475,72 +483,78 @@ function CartContent() {
             );
           })}
         </div>
+      </>
+      )}
       </div>
 
-      {/* 底部操作栏 — 阿里风格：左侧全选+批量操作，右侧统计+提交 */}
-      <div className="sticky bottom-0 z-10 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
-        {/* 左：全选 + 批量删除 */}
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={allChecked}
-            onChange={handleToggleAll}
-            disabled={purchasableItems.length === 0}
-            className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+      {/* 底部操作栏 — 仅有商品时显示 */}
+      {items.length > 0 && (
+        <>
+          <div className="sticky bottom-0 z-10 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
+            {/* 左：全选 + 批量删除 */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allChecked}
+                onChange={handleToggleAll}
+                disabled={purchasableItems.length === 0}
+                className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+              />
+              <span className="text-sm text-gray-700">{tCommon("selectAll")}</span>
+            </label>
+            {checkedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setBatchDeleteOpen(true)}
+                className="inline-flex items-center rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100"
+              >
+                {t("deleteSelected")}
+              </button>
+            )}
+
+            {/* 右：统计 + 提交 */}
+            <div className="ml-auto flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                {t("selected", { count: checkedIds.size })}
+                <span className="text-gray-400"> / {items.length}</span>
+              </span>
+              <button
+                type="button"
+                disabled={checkedIds.size === 0}
+                onClick={handleSubmitInquiry}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#e3a615] px-7 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                {t("submitInquiry")}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 删除单项确认框 */}
+          <ConfirmModal
+            open={deleteTarget !== null}
+            title={t("confirmDelete")}
+            variant="danger"
+            confirmLabel={tCommon("confirm")}
+            cancelLabel={tCommon("cancel")}
+            loading={deleting}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeleteTarget(null)}
           />
-          <span className="text-sm text-gray-700">{tCommon("selectAll")}</span>
-        </label>
-        {checkedIds.size > 0 && (
-          <button
-            type="button"
-            onClick={() => setBatchDeleteOpen(true)}
-            className="inline-flex items-center rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100"
-          >
-            {t("deleteSelected")}
-          </button>
-        )}
 
-        {/* 右：统计 + 提交 */}
-        <div className="ml-auto flex items-center gap-4">
-          <span className="text-sm text-gray-500">
-            {t("selected", { count: checkedIds.size })}
-            <span className="text-gray-400"> / {items.length}</span>
-          </span>
-          <button
-            type="button"
-            disabled={checkedIds.size === 0}
-            onClick={handleSubmitInquiry}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#e3a615] px-7 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-          >
-            {t("submitInquiry")}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* 删除单项确认框 */}
-      <ConfirmModal
-        open={deleteTarget !== null}
-        title={t("confirmDelete")}
-        variant="danger"
-        confirmLabel={tCommon("confirm")}
-        cancelLabel={tCommon("cancel")}
-        loading={deleting}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTarget(null)}
-      />
-
-      {/* 批量删除确认框 */}
-      <ConfirmModal
-        open={batchDeleteOpen}
-        title={t("confirmDeleteSelected", { count: checkedIds.size })}
-        variant="danger"
-        confirmLabel={tCommon("confirm")}
-        cancelLabel={tCommon("cancel")}
-        loading={batchDeleting}
-        onConfirm={handleBatchDelete}
-        onCancel={() => setBatchDeleteOpen(false)}
-      />
+          {/* 批量删除确认框 */}
+          <ConfirmModal
+            open={batchDeleteOpen}
+            title={t("confirmDeleteSelected", { count: checkedIds.size })}
+            variant="danger"
+            confirmLabel={tCommon("confirm")}
+            cancelLabel={tCommon("cancel")}
+            loading={batchDeleting}
+            onConfirm={handleBatchDelete}
+            onCancel={() => setBatchDeleteOpen(false)}
+          />
+        </>
+      )}
     </div>
   );
 }
