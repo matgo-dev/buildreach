@@ -109,6 +109,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    volumes:
+      - ${BANNER_DIR:-./data/banners}:/app/public/banners
     ports:
       - "${FRONTEND_HOST_PORT:-3001}:3000"
     logging: *default-logging
