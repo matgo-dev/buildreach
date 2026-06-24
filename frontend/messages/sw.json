@@ -376,6 +376,7 @@
     "nextPage": "Inayofuata"
   },
   "mall": {
+    "home": "Nyumbani",
     "loading": "Inapakia...",
     "searchPlaceholder": "Tafuta kwa jina, chapa, msimbo...",
     "sortNewest": "Mpya Zaidi",
@@ -955,6 +956,7 @@
     "edit": "Hariri",
     "updateSuccess": "RFQ imesasishwa",
     "addProduct": "Ongeza Bidhaa",
+    "productUnavailable": "Bidhaa haipatikani",
     "doneSelection": "Maliza",
     "searchProduct": "Tafuta Bidhaa",
     "searchPlaceholder": "Tafuta kwa jina la bidhaa...",

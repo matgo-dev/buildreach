@@ -614,15 +614,20 @@ def _serialize_item(
 
     # 增强字段（详情页读时 JOIN）
     main_image = spu_code = brand = origin = category_name = None
+    product_available = True  # 默认可用；with_product 时才做实际判断
     if with_product:
         product = item.product
         # 降级：product 不存在或已软删 → 增强字段保持 None，核心快照照常
         if product is not None and getattr(product, "deleted_at", None) is None:
+            product_available = product.status == ProductStatus.ACTIVE
             main_image = _resolve_main_image_from_product(product)
             spu_code = product.spu_code
             brand = get_localized(product, "brand")
             origin = get_localized(product, "origin")
             category_name = product.category_code
+        else:
+            # 商品已删除或不存在
+            product_available = False
 
     return RfqItemPublic(
         id=item.id,
@@ -634,6 +639,7 @@ def _serialize_item(
         quantity=item.quantity,
         target_unit_price=item.target_unit_price,
         remark=item.remark,
+        product_available=product_available,
         main_image=main_image,
         spu_code=spu_code,
         brand=brand,

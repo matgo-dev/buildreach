@@ -803,7 +803,10 @@ def import_offer(
     # MOQ
     moq_obj = data.get("moq") or {}
     moq_value = moq_obj.get("value")
-    moq_unit = moq_obj.get("unit") or None
+    moq_unit_raw = moq_obj.get("unit") or None
+    # 标准化单位（中文/英文混杂 → 统一 code）
+    from scripts.normalize_moq_unit import normalize_unit
+    moq_unit = normalize_unit(moq_unit_raw) if moq_unit_raw else None
     if moq_value is not None:
         try:
             moq_value = int(moq_value)

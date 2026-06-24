@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Pencil, FileText, Package, Download, X } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, Ban, CheckCircle2, Pencil, FileText, Package, Download, X } from "lucide-react";
 import Link from "next/link";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -694,8 +694,10 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
             </tr>
           </thead>
           <tbody>
-            {rfq.items.map((item) => (
-              <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
+            {rfq.items.map((item) => {
+              const unavailable = item.product_available === false;
+              return (
+              <tr key={item.id} className={`border-t border-gray-100 ${unavailable ? "bg-gray-50" : "even:bg-slate-50/50"}`}>
                 <td className="px-5 py-3" colSpan={2}>
                   <div className="flex items-start gap-3">
                     {item.main_image ? (
@@ -703,20 +705,32 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                       <img
                         src={item.main_image}
                         alt=""
-                        className="h-16 w-16 flex-shrink-0 rounded-lg border border-gray-100 object-cover"
+                        className={`h-16 w-16 flex-shrink-0 rounded-lg border border-gray-100 object-cover ${unavailable ? "opacity-40 grayscale" : ""}`}
                       />
                     ) : (
                       <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50">
-                        <Package className="h-6 w-6 text-gray-300" />
+                        <Package className={`h-6 w-6 ${unavailable ? "text-gray-200" : "text-gray-300"}`} />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/mall/products/${item.product_id}`}
-                        className="text-sm font-medium text-gray-800 hover:text-[#00505a] hover:underline"
-                      >
-                        {item.product_name_snapshot ?? "—"}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        {unavailable ? (
+                          <span className="text-sm font-medium text-gray-400">{item.product_name_snapshot ?? "—"}</span>
+                        ) : (
+                          <Link
+                            href={`/mall/products/${item.product_id}`}
+                            className="text-sm font-medium text-gray-800 hover:text-[#00505a] hover:underline"
+                          >
+                            {item.product_name_snapshot ?? "—"}
+                          </Link>
+                        )}
+                        {unavailable && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                            <Ban className="h-3 w-3" />
+                            {t("productUnavailable")}
+                          </span>
+                        )}
+                      </div>
                       {(item.spu_code || item.brand || item.origin) && (
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {item.spu_code && (
@@ -745,11 +759,12 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                     </div>
                   </div>
                 </td>
-                <td className="px-5 py-3 text-right align-top font-semibold text-gray-800">
+                <td className={`px-5 py-3 text-right align-top font-semibold ${unavailable ? "text-gray-400" : "text-gray-800"}`}>
                   {item.quantity} {item.uom_snapshot ?? ""}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
