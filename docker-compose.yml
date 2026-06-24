@@ -108,9 +108,9 @@ services:
     volumes:
       - uploads:/app/uploads
       - private_uploads:/app/private_uploads
-    # Nginx 接管对外端口,后端只在 compose 内部可见
-    expose:
-      - "8000"
+    # 对外暴露(过渡期保留,正式上线后可删,只走 Nginx)
+    ports:
+      - "${BACKEND_HOST_PORT:-8001}:8000"
     logging: *default-logging
 
   frontend:
@@ -125,9 +125,9 @@ services:
       - backend
     volumes:
       - ${BANNER_DIR:-./data/banners}:/app/public/banners
-    # Nginx 接管对外端口,前端只在 compose 内部可见
-    expose:
-      - "3000"
+    # 对外暴露(过渡期保留,正式上线后可删,只走 Nginx)
+    ports:
+      - "${FRONTEND_HOST_PORT:-3001}:3000"
     logging: *default-logging
 
 volumes:
