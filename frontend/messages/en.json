@@ -182,6 +182,11 @@
     "pwd_lower": "Lowercase",
     "pwd_special": "Special char",
     "terms_agree": "By registering, you agree to the Terms of Service and Privacy Policy",
+    "terms_prefix": "By registering, you agree to the",
+    "terms_link": "Terms of Service",
+    "terms_and": "and",
+    "terms_privacy_link": "Privacy Policy",
+    "legalReadDone": "I have read this",
     "err_phone_required": "Phone number is required",
     "err_phone_format": "Please enter a valid 9-digit Tanzania phone number",
     "err_phone_format_tz": "Please enter a valid 9-digit Tanzania phone number",
@@ -1575,5 +1580,45 @@
     "decoration_a7": "• Tile Filler (White Cement-Based): Traditional joint-filling material. Prone to mold and discoloration, and changes color when wet. Suitable for commercial/industrial projects where aesthetics are not a priority.\n• Epoxy Grout (Epoxy Resin-Based): Smooth, porcelain-like finish. Waterproof, mold-resistant, and color-stable with a wide range of color options. Suitable for bathrooms, kitchens, and areas requiring both waterproofing and visual appeal.\n• Application Difference: Tile filler is simply pressed into joints. Epoxy grout should be applied 1–2 days after the filler base layer (otherwise it sinks). It is applied with a specialized grout gun.\n• Cost Comparison: Epoxy grout costs approximately 5–8× more per unit than tile filler, but its maintenance cycle is much longer — more cost-effective in the long run.",
     "decoration_q8": "How are decorative building materials packaged and protected during shipping?",
     "decoration_a8": "Standard packaging by category:\n• Tiles: Packed on wooden frames or in wooden crates with cardboard separators between layers. Securely fastened for ocean freight to prevent shifting and chipping.\n• Paints & Coatings: Sealed in drums/pails with MSDS (Material Safety Data Sheet). Solvent-based products are shipped via certified hazardous materials channels.\n• Boards/Panels: Stacked flat with angle steel or timber edge protectors, covered with moisture-proof film.\n• Waterproof Membranes: Stored and shipped upright to prevent compression deformation.\n• Insulation Materials: Compressed and baled to reduce volume — they recover naturally upon unpacking.\nBuildReach inspects packaging for every shipment before dispatch to ensure compliance with ocean freight standards. For large-format building materials, we also provide container loading plans to maximize container space utilization."
+  },
+  "legal": {
+    "terms": {
+      "title": "Terms of Service",
+      "lastUpdated": "Last updated: June 2026",
+      "s1_title": "Acceptance of Terms",
+      "s1_content": "Welcome to BuildReach. The platform is operated by BuildReach Ltd. By registering, logging in, or using our services, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service. If you do not agree to any part of these terms, please do not use the platform.",
+      "s2_title": "Platform Role & Scope of Services",
+      "s2_content": "BuildReach is a B2B cross-border building materials procurement platform connecting Chinese factories with East African buyers. We provide product browsing, online quotation requests (RFQ), quote confirmation, quality inspection coordination, and consolidated shipping services.\n\nBuildReach acts as a procurement service provider, assisting buyers through the entire process from sourcing to delivery. We are not the direct seller of goods and do not assume manufacturer liability for product quality, but we conduct quality inspections during the procurement process.",
+      "s3_title": "User Registration & Account Security",
+      "s3_content": "Users must provide truthful and accurate registration information, including but not limited to company name, phone number, and business address. You are responsible for safeguarding your account credentials. Any loss resulting from unauthorized access due to credential disclosure is the user's responsibility.\n\nBuildReach reserves the right to restrict or terminate accounts that provide false information.",
+      "s4_title": "Quotation Process",
+      "s4_content": "Buyers submit Request for Quotation (RFQ) through the platform. BuildReach compiles quotation plans from multiple factories and presents them to the buyer. Quote validity periods are as displayed on the platform.\n\nSpecific procurement payment arrangements are confirmed offline between the buyer and BuildReach. The platform does not provide online payment functionality.",
+      "s5_title": "Fees",
+      "s5_content": "BuildReach provides product browsing, quotation requests, and price comparison services free of charge at the current stage.\n\nProcurement costs, international shipping, destination port clearance, and inland transportation fees are confirmed offline based on actual costs.",
+      "s6_title": "Quality Inspection & After-Sales",
+      "s6_content": "BuildReach arranges quality inspections before shipment. Items that fail inspection are returned to the factory for replacement. If you discover quality issues after receiving goods, please contact us within 7 business days of receipt and we will coordinate a resolution.\n\nFailure to raise objections within 7 business days shall be deemed acceptance of the goods.",
+      "s7_title": "Intellectual Property",
+      "s7_content": "Trademarks, product images, text, and other content displayed on the platform are the intellectual property of BuildReach or their respective rights holders. No reproduction, redistribution, or commercial use is permitted without written authorization.",
+      "s8_title": "Amendments & Governing Law",
+      "s8_content": "BuildReach reserves the right to amend these terms at any time. Amended terms will be published on the platform. Continued use of the platform constitutes acceptance of the amended terms.\n\nThese terms shall be governed by and construed in accordance with the laws of the United Republic of Tanzania. Any disputes arising from these terms shall be resolved through amicable negotiation; failing which, they shall be submitted to a court of competent jurisdiction in Dar es Salaam."
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdated": "Last updated: June 2026",
+      "s1_title": "Information We Collect",
+      "s1_content": "To provide our procurement services, we collect the following information:\n• Registration data: phone number, company name, business address, business categories\n• Identity data: storefront photos, business license photos (if provided)\n• Usage data: browsing history, search history, quotation request records\n• Device data: browser type, language preference, access timestamps",
+      "s2_title": "How We Use Your Information",
+      "s2_content": "We use the collected information solely for the following purposes:\n• Providing and improving platform services\n• Processing quotation requests and purchase orders\n• Communicating order progress and platform notifications\n• Analyzing platform usage to enhance user experience\n\nWe do not use your personal information for commercial activities unrelated to the above purposes.",
+      "s3_title": "Information Sharing & Disclosure",
+      "s3_content": "We do not sell your personal information to third parties. We may share necessary information in the following circumstances:\n• Sharing product requirement details with partner factories for order fulfillment (excluding your personal contact information)\n• Sharing delivery information with logistics providers for shipment\n• As required by applicable laws or regulations or by government authorities",
+      "s4_title": "Information Security",
+      "s4_content": "We implement reasonable technical and organizational measures to protect your personal information, including encrypted data transmission and access controls. However, please understand that no method of transmission or storage on the internet is completely secure.",
+      "s5_title": "Data Storage & Retention",
+      "s5_content": "Your personal information is stored on protected servers. We retain your personal information only for as long as necessary to fulfill the purposes described in this policy, unless a longer retention period is required or permitted by law.\n\nAfter account deletion, we will delete or anonymize your personal information within a reasonable period, except where retention is required by law.",
+      "s6_title": "Your Rights",
+      "s6_content": "Under applicable law, you have the following rights:\n• Access and obtain a copy of your personal information\n• Correct inaccurate personal information\n• Request deletion of your personal information\n• Delete your account\n\nTo exercise these rights, please contact us through platform customer service or WhatsApp.",
+      "s7_title": "Policy Updates",
+      "s7_content": "We may update this Privacy Policy from time to time. Updated policies will be published on the platform with the last updated date noted. For significant changes, we will notify you through platform notifications or other reasonable means.\n\nContinued use of the platform constitutes acceptance of the updated Privacy Policy."
+    }
   }
 }
