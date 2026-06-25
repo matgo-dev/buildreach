@@ -52,7 +52,13 @@ export default function ForgotPasswordPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => null);
-        setError(json?.message || t("error_generic"));
+        // 邮箱不存在的错误显示在邮箱字段下方
+        const errMsg = json?.errors?.[0]?.message || json?.message || t("error_generic");
+        if (json?.errors?.[0]?.field === "email") {
+          setEmailErr(errMsg);
+        } else {
+          setError(errMsg);
+        }
       } else {
         setStep("code");
       }
