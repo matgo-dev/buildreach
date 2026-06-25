@@ -139,7 +139,7 @@ def _to_public(p, *, main_image_url: str | None = None) -> dict:
         description=get_localized(p, "description"),
         category_code=p.category_code,
         origin=get_localized(p, "origin"),
-        brand=get_localized(p, "brand") or None,
+        brand=p.brand_zh or None,
         certifications=p.certifications,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
@@ -165,6 +165,7 @@ async def list_products(
     featured: bool | None = Query(None),
     supply_mode: str | None = Query(None),
     certification: str | None = Query(None, description="按认证筛选，如 CE、ISO 9001"),
+    brand: str | None = Query(None, description="按品牌筛选"),
     keyword: str | None = Query(None),
     sort: str = Query("newest"),
     page: int = Query(1, ge=1),
@@ -192,6 +193,7 @@ async def list_products(
         category_codes=pref_codes,
         featured=featured, supply_mode=supply_mode,
         certification=certification,
+        brand=brand,
         keyword=keyword, sort=sort, page=page, size=size,
     )
     # 买方行为埋点: SEARCH / VIEW_CATEGORY
@@ -217,6 +219,16 @@ async def list_products(
         "size": size,
         "pages": math.ceil(total / size) if size else 0,
     })
+
+
+@router.get("/brands", summary="品牌筛选选项")
+async def brand_options(
+    category_code: str | None = Query(None, description="按品类缩小范围"),
+    db: AsyncSession = Depends(get_db),
+):
+    """聚合所有上架商品的品牌值（locale 感知），供前端筛选下拉使用。"""
+    brands = await product_svc.list_brand_options(db, category_code=category_code)
+    return success(brands)
 
 
 @router.get("/{product_id}", summary="公开商品详情")
@@ -247,7 +259,7 @@ async def get_product(
         detail_description=get_localized(p, "detail_description") or None,
         category_code=p.category_code,
         origin=get_localized(p, "origin"),
-        brand=get_localized(p, "brand") or None,
+        brand=p.brand_zh or None,
         hs_code=p.hs_code,
         certifications=p.certifications,
         selling_points=get_localized(p, "selling_points"),

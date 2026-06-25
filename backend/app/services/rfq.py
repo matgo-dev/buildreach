@@ -622,7 +622,7 @@ def _serialize_item(
             product_available = product.status == ProductStatus.ACTIVE
             main_image = _resolve_main_image_from_product(product)
             spu_code = product.spu_code
-            brand = get_localized(product, "brand")
+            brand = product.brand_zh
             origin = get_localized(product, "origin")
             category_name = product.category_code
         else:
