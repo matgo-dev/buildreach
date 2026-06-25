@@ -10,6 +10,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   AlertCircle,
   Building2,
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -30,6 +31,7 @@ import {
   validateRequired,
 } from "@/lib/validators";
 import type { CountryCode, LanguageCode } from "@/config/country-registration-rules";
+import { categoriesApi, type CategoryNode } from "@/lib/api/categories";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { compressImage } from "@/lib/image-compress";
@@ -362,6 +364,13 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   const [optionalExpanded, setOptionalExpanded] = useState(false);
 
+  // L1 品类数据（选填，放可折叠区）
+  const [categories, setCategories] = useState<CategoryNode[]>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [catExpanded, setCatExpanded] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const COLLAPSED_CAT_COUNT = 6;
+
   // 缩略图预览 URL 管理
   const [sfPreviews, setSfPreviews] = useState<string[]>([]);
   const [licPreviews, setLicPreviews] = useState<string[]>([]);
@@ -512,6 +521,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         company_name: companyName,
         address,
         email,
+        business_category_codes: selectedCategories.length > 0 ? selectedCategories : undefined,
         storefront_images: storefrontImages,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
         language_preference: locale,
@@ -759,7 +769,17 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         <div className="rounded-lg border border-gray-200">
           <button
             type="button"
-            onClick={() => setOptionalExpanded((v) => !v)}
+            onClick={() => {
+              setOptionalExpanded((v) => !v);
+              // 懒加载品类数据
+              if (categories.length === 0 && !catLoading) {
+                setCatLoading(true);
+                categoriesApi.list({ level: 1 }).then((data) => {
+                  setCategories(data);
+                  setCatLoading(false);
+                }).catch(() => setCatLoading(false));
+              }
+            }}
             className="flex w-full items-center justify-between px-4 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50"
           >
             <span>{t("optional_section")}</span>
@@ -770,6 +790,63 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           </button>
           {optionalExpanded && (
             <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">
+              {/* Business Categories (optional) */}
+              <div className="space-y-1.5" id="field-categories">
+                <Label className="text-sm font-semibold text-gray-700">
+                  {t("label_categories")}
+                </Label>
+                {catLoading ? (
+                  <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
+                  </div>
+                ) : categories.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
+                        const selected = selectedCategories.includes(cat.code);
+                        const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
+                        return (
+                          <button
+                            key={cat.code}
+                            type="button"
+                            onClick={() => setSelectedCategories((prev) =>
+                              prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
+                            )}
+                            className={
+                              "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
+                              (selected
+                                ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
+                                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
+                            }
+                          >
+                            <div className={
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+                              (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
+                            }>
+                              {selected && <Check className="h-3 w-3" />}
+                            </div>
+                            <span className="truncate">{displayName}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {categories.length > COLLAPSED_CAT_COUNT && (
+                      <button
+                        type="button"
+                        onClick={() => setCatExpanded((v) => !v)}
+                        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                      >
+                        {catExpanded ? (
+                          <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
+                        ) : (
+                          <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
+                        )}
+                      </button>
+                    )}
+                  </>
+                ) : null}
+              </div>
+
               {/* License Images */}
               <div className="space-y-1.5" id="field-licenseImages">
                 <Label className="text-sm font-semibold text-gray-700">

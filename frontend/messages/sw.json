@@ -34,7 +34,35 @@
       "error_rate_limit": "Majaribio mengi yameshindwa, akaunti imefungwa kwa muda. Jaribu tena baada ya dakika 5",
       "error_invalid_credentials": "Taarifa si sahihi, tafadhali jaribu tena",
       "error_network": "Hitilafu ya mtandao, tafadhali jaribu tena baadaye",
-      "error_unknown": "Kuingia kumeshindwa"
+      "error_unknown": "Kuingia kumeshindwa",
+      "forgot_password": "Umesahau nenosiri?"
+    },
+    "forgotPassword": {
+      "title": "Rejesha Nenosiri",
+      "subtitle": "Weka barua pepe yako iliyosajiliwa kupata nambari ya uthibitisho",
+      "code_subtitle": "Weka nambari na nenosiri jipya",
+      "method_email": "Rejesha kupitia barua pepe",
+      "email_label": "Barua pepe iliyosajiliwa",
+      "send_code": "Tuma nambari ya uthibitisho",
+      "submitting": "Inatuma...",
+      "or": "au",
+      "method_whatsapp": "Wasiliana na msaada",
+      "contact_whatsapp": "Wasiliana nasi kupitia WhatsApp",
+      "code_sent": "Nambari ya uthibitisho imetumwa kwa {email}, angalia barua pepe yako",
+      "code_label": "Nambari ya uthibitisho",
+      "code_invalid": "Tafadhali weka nambari ya tarakimu 6",
+      "new_password": "Nenosiri jipya",
+      "pwd_hint": "Herufi 6-20 (A-Z, a-z, 0-9 tu)",
+      "reset_submit": "Rejesha Nenosiri",
+      "resetting": "Inarejesha...",
+      "not_received": "Hukupokea?",
+      "resend": "Tuma tena",
+      "success_title": "Nenosiri limebadilishwa",
+      "success_desc": "Nenosiri lako limesasishwa. Tafadhali ingia kwa nenosiri jipya",
+      "go_login": "Nenda Kuingia",
+      "back_to_login": "Rudi kuingia",
+      "error_generic": "Imeshindwa kutuma, jaribu tena baadaye",
+      "error_network": "Hitilafu ya mtandao, jaribu tena baadaye"
     }
   },
   "error": {
