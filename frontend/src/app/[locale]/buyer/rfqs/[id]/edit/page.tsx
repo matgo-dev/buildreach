@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -12,9 +12,9 @@ import {
   Plus,
   Search,
   X,
-  ChevronDown,
-  ChevronRight,
   Save,
+  Package,
+  MapPin,
 } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -22,7 +22,7 @@ import { Permissions } from "@/lib/permissions";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
-import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
+import { listProducts, type ProductPublic } from "@/lib/api/products";
 import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 import type { AttachmentPublic } from "@/lib/api/attachments";
 
@@ -38,21 +38,7 @@ interface EditItem {
   product_available: boolean;
 }
 
-// ---------- 变体轴类型 ----------
-
-type VariantAxis = {
-  key: string;
-  display: string;
-  values: Array<{ value: string; display: string }>;
-};
-
-type ProductVariantEntry = {
-  variants: VariantAxis[];
-  unit: string;
-  loading: boolean;
-};
-
-// ---------- 商品搜索弹窗（SPU + 变体选择器） ----------
+// ---------- 商品搜索弹窗 ----------
 
 function ProductSearchModal({
   open,
@@ -66,90 +52,93 @@ function ProductSearchModal({
   existingKeys: Set<string>;
 }) {
   const t = useTranslations("rfq");
+  const PAGE_SIZE = 20;
   const [keyword, setKeyword] = useState("");
   const [products, setProducts] = useState<ProductPublic[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [productVariantMap, setProductVariantMap] = useState<Record<number, ProductVariantEntry>>({});
-  const [variantSelection, setVariantSelection] = useState<Record<number, Record<string, string>>>({});
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const makeKey = useCallback((productId: number) => `${productId}::[]`, []);
 
   const handleSearch = useCallback(async () => {
     if (!keyword.trim()) return;
     setSearching(true);
     setSearched(true);
-    setExpandedId(null);
+    setPage(1);
     try {
-      const res = await listProducts({ keyword: keyword.trim(), size: 20 });
+      const res = await listProducts({ keyword: keyword.trim(), size: PAGE_SIZE, page: 1 });
       setProducts(res.items);
+      setHasMore(res.items.length >= PAGE_SIZE);
     } catch {
       setProducts([]);
+      setHasMore(false);
     } finally {
       setSearching(false);
     }
   }, [keyword]);
 
-  const expandedIdRef = useRef(expandedId);
-  expandedIdRef.current = expandedId;
-  const variantMapRef = useRef(productVariantMap);
-  variantMapRef.current = productVariantMap;
-
-  const toggleExpand = useCallback(async (productId: number) => {
-    if (expandedIdRef.current === productId) { setExpandedId(null); return; }
-    setExpandedId(productId);
-    if (variantMapRef.current[productId]) return;
-    setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: true } }));
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
     try {
-      const detail = await getProduct(productId);
-      const variants: VariantAxis[] = [];
-      for (const group of detail.attribute_groups ?? []) {
-        for (const item of group.items ?? []) {
-          if (item.selectable && item.values.length > 0) {
-            variants.push({
-              key: item.key,
-              display: item.key,
-              values: item.values.map((v) => ({ value: v.value, display: v.value })),
-            });
-          }
-        }
-      }
-      setProductVariantMap((prev) => ({
-        ...prev,
-        [productId]: { variants, unit: detail.unit, loading: false },
-      }));
+      const res = await listProducts({ keyword: keyword.trim(), size: PAGE_SIZE, page: nextPage });
+      setProducts((prev) => [...prev, ...res.items]);
+      setPage(nextPage);
+      setHasMore(res.items.length >= PAGE_SIZE);
     } catch {
-      setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: false } }));
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
     }
-  }, []);
+  }, [loadingMore, hasMore, page, keyword]);
 
-  const makeKey = useCallback((productId: number, variants: Array<{ attr_name: string; value: string }>) => {
-    const sorted = [...variants].sort((a, b) =>
-      a.attr_name.localeCompare(b.attr_name) || a.value.localeCompare(b.value),
-    );
-    return `${productId}::${JSON.stringify(sorted)}`;
-  }, []);
-
-  const handleAddProduct = useCallback((product: ProductPublic, selection: Record<string, string>, unit: string) => {
-    const selected_variants = Object.entries(selection)
-      .filter(([, v]) => v)
-      .map(([attr_name, value]) => ({ attr_name, value }));
-    const variant_display = selected_variants
-      .map((v) => `${v.attr_name}: ${v.value}`)
-      .join(" / ") || "\u2014";
-    onAdd({
-      product_id: product.id,
-      selected_variants,
-      product_name: product.name,
-      variant_display,
-      unit: unit || product.unit || "PCS",
-      quantity: 1,
-      product_available: true,
+  const toggleSelect = useCallback((productId: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
     });
-  }, [onAdd]);
+  }, []);
+
+  const handleBatchAdd = useCallback(() => {
+    if (selected.size === 0) { onClose(); return; }
+    for (const pid of selected) {
+      const p = products.find((x) => x.id === pid);
+      if (!p) continue;
+      if (existingKeys.has(makeKey(p.id))) continue;
+      onAdd({
+        product_id: p.id,
+        selected_variants: [],
+        product_name: p.name,
+        variant_display: "\u2014",
+        unit: p.unit || "PCS",
+        quantity: 1,
+        product_available: true,
+      });
+    }
+    setSelected(new Set());
+    onClose();
+  }, [selected, products, existingKeys, onAdd, onClose, makeKey]);
 
   useEffect(() => {
-    if (!open) { setKeyword(""); setProducts([]); setSearched(false); setExpandedId(null); setProductVariantMap({}); setVariantSelection({}); }
+    if (!open) { setKeyword(""); setProducts([]); setSearched(false); setSelected(new Set()); setPage(1); setHasMore(false); }
   }, [open]);
+
+  const selectableIds = useMemo(
+    () => products.filter((p) => !existingKeys.has(makeKey(p.id))).map((p) => p.id),
+    [products, existingKeys, makeKey],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+  const toggleAll = useCallback(() => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(selectableIds));
+  }, [allSelected, selectableIds]);
 
   if (!open) return null;
 
@@ -177,108 +166,94 @@ function ProductSearchModal({
             </button>
           </div>
         </div>
+
+        {/* 全选栏 */}
+        {!searching && products.length > 0 && selectableIds.length > 0 && (
+          <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-2">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll}
+              className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]/20 cursor-pointer" />
+            <span className="text-xs text-gray-500">{t("selectAll")}({selectableIds.length})</span>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {searching && <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-[#00505a]" /></div>}
           {!searching && searched && products.length === 0 && <div className="py-12 text-center text-sm text-gray-400">{t("noSearchResult")}</div>}
           {!searching && products.length > 0 && (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {products.map((p) => {
-                const isExpanded = expandedId === p.id;
-                const variantData = productVariantMap[p.id];
+                const alreadyAdded = existingKeys.has(makeKey(p.id));
+                const isSelected = selected.has(p.id);
                 return (
-                  <div key={p.id} className="rounded-lg border border-gray-100">
-                    <button type="button" onClick={() => toggleExpand(p.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50">
-                      {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />}
-                      {p.main_image && <img src={p.main_image} alt={p.name} className="h-10 w-10 shrink-0 rounded border border-gray-100 object-cover" />}
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
-                        <div className="text-xs text-gray-400">{p.spu_code}</div>
+                  <div
+                    key={p.id}
+                    onClick={() => !alreadyAdded && toggleSelect(p.id)}
+                    className={`overflow-hidden rounded-lg border transition-shadow cursor-pointer ${
+                      alreadyAdded
+                        ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                        : isSelected
+                          ? "border-[#00505a] bg-[#00505a]/5 shadow-sm"
+                          : "border-gray-200 hover:shadow-sm"
+                    }`}
+                  >
+                    <div className="flex gap-3 p-3">
+                      <div className="flex shrink-0 items-center">
+                        <input type="checkbox" checked={alreadyAdded || isSelected} disabled={alreadyAdded}
+                          onChange={() => !alreadyAdded && toggleSelect(p.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]/20 cursor-pointer disabled:cursor-not-allowed" />
                       </div>
-                    </button>
-                    {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 pl-11">
-                        {variantData?.loading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>}
-                        {variantData && !variantData.loading && (
-                          <>
-                            {variantData.variants.length > 0 && (
-                              <div className="space-y-3">
-                                {variantData.variants.map((axis) => {
-                                  const selected = variantSelection[p.id]?.[axis.key];
-                                  return (
-                                    <div key={axis.key}>
-                                      <div className="mb-1.5 text-xs font-medium text-gray-500">{axis.display}</div>
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {axis.values.map((v) => (
-                                          <button
-                                            key={v.value}
-                                            type="button"
-                                            onClick={() => {
-                                              setVariantSelection((prev) => ({
-                                                ...prev,
-                                                [p.id]: {
-                                                  ...(prev[p.id] ?? {}),
-                                                  [axis.key]: prev[p.id]?.[axis.key] === v.value ? "" : v.value,
-                                                },
-                                              }));
-                                            }}
-                                            className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-                                              selected === v.value
-                                                ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
-                                                : "border-gray-200 text-gray-600 hover:border-gray-300"
-                                            }`}
-                                          >
-                                            {v.display}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            <div className="mt-3">
-                              {(() => {
-                                const sel = variantSelection[p.id] ?? {};
-                                const selected_variants = Object.entries(sel)
-                                  .filter(([, v]) => v)
-                                  .map(([attr_name, value]) => ({ attr_name, value }));
-                                const itemKey = makeKey(p.id, selected_variants);
-                                const added = existingKeys.has(itemKey);
-                                return (
-                                  <button
-                                    type="button"
-                                    disabled={added}
-                                    onClick={() => handleAddProduct(p, sel, variantData.unit)}
-                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                                      added
-                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        : "bg-[#00505a] text-white hover:bg-[#003f46]"
-                                    }`}
-                                  >
-                                    {added ? t("alreadyAdded") : t("add")}
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          </>
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
+                        {p.main_image ? (
+                          <img src={p.main_image} alt={p.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-gray-300" /></div>
                         )}
                       </div>
-                    )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-gray-800">{p.name}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                          <span>{p.category_name}</span>
+                          {p.origin && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{p.origin}</span>}
+                          {p.brand && <span>{p.brand}</span>}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-400">
+                          <span>{p.spu_code}</span>
+                          {p.moq != null && p.moq > 0 && <span>MOQ: {p.moq} {p.moq_unit || p.unit || "PCS"}</span>}
+                          {p.unit && <span>{t("unit")}: {p.unit}</span>}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        {alreadyAdded && (
+                          <span className="rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-400">{t("alreadyAdded")}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
+
+              {hasMore && (
+                <div className="pt-2 text-center">
+                  <button type="button" onClick={handleLoadMore} disabled={loadingMore}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 disabled:text-gray-400">
+                    {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {t("loadMore")}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* 底部操作栏 */}
-        <div className="flex items-center justify-end border-t border-gray-200 px-5 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
-          >
-            {t("doneSelection")}
+        <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
+          <span className="text-sm text-gray-500">
+            {selected.size > 0 && t("selectedCount", { count: selected.size })}
+          </span>
+          <button type="button" onClick={handleBatchAdd}
+            className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]">
+            {selected.size > 0 ? t("addSelected", { count: selected.size }) : t("doneSelection")}
           </button>
         </div>
       </div>
@@ -371,14 +346,11 @@ function RfqEditContent() {
     setItems((prev) => [...prev, item]);
   }, []);
 
-  const makeKey = useCallback((productId: number, variants: Array<{ attr_name: string; value: string }>) => {
-    const sorted = [...variants].sort((a, b) =>
-      a.attr_name.localeCompare(b.attr_name) || a.value.localeCompare(b.value),
-    );
-    return `${productId}::${JSON.stringify(sorted)}`;
+  const makeKey = useCallback((productId: number) => {
+    return `${productId}::[]`;
   }, []);
 
-  const existingKeys = useMemo(() => new Set(items.map((i) => makeKey(i.product_id, i.selected_variants))), [items, makeKey]);
+  const existingKeys = useMemo(() => new Set(items.map((i) => makeKey(i.product_id))), [items, makeKey]);
   const [showSearch, setShowSearch] = useState(false);
 
   // 构建请求体（排除失效商品行）
@@ -470,7 +442,6 @@ function RfqEditContent() {
             <thead>
               <tr className="bg-gray-50 text-left text-xs text-gray-500">
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
-                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
                 <th className="w-12 px-3 py-2.5" />
               </tr>
@@ -491,7 +462,6 @@ function RfqEditContent() {
                       )}
                     </div>
                   </td>
-                  <td className={`px-5 py-3 ${unavailable ? "text-gray-300 line-through" : "text-gray-500"}`}>{item.variant_display}</td>
                   <td className="px-5 py-3 text-right">
                     {unavailable ? (
                       <span className="text-sm text-gray-300">{item.quantity} {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
@@ -513,7 +483,7 @@ function RfqEditContent() {
                 );
               })}
               <tr className="border-t border-gray-100">
-                <td colSpan={4} className="px-5 py-3">
+                <td colSpan={3} className="px-5 py-3">
                   <button type="button" onClick={() => setShowSearch(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]">
                     <Plus className="h-4 w-4" />{t("addProduct")}
                   </button>
