@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -6,6 +6,13 @@ import { routing } from "@/i18n/routing";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { BRAND } from "@/config/brand";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: BRAND.fullTitle,

@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         {/* 表单卡片 */}
-        <div className="rounded-2xl border-t-4 border-[#0D4D4D] bg-white p-8 shadow-xl">
+        <div className="rounded-2xl border-t-4 border-[#0D4D4D] bg-white p-5 sm:p-8 shadow-xl">
           {children}
         </div>
       </div>
