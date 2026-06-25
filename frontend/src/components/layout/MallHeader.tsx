@@ -159,9 +159,9 @@ export function MallHeader() {
 
           {/* 帮助中心 */}
           <Link
-            href="/how-to-buy"
+            href="/help-center"
             className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
-            title={t("navHowToBuy")}
+            title={t("helpCenter")}
           >
             <HelpCircle className="h-5 w-5" />
           </Link>

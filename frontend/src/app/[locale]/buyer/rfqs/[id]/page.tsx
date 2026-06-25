@@ -689,7 +689,6 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
           <thead>
             <tr className="bg-gray-50 text-left text-xs text-gray-500">
               <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
-              <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
               <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
             </tr>
           </thead>
@@ -698,7 +697,7 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
               const unavailable = item.product_available === false;
               return (
               <tr key={item.id} className={`border-t border-gray-100 ${unavailable ? "bg-gray-50" : "even:bg-slate-50/50"}`}>
-                <td className="px-5 py-3" colSpan={2}>
+                <td className="px-5 py-3">
                   <div className="flex items-start gap-3">
                     {item.main_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -753,9 +752,7 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                       {item.category_name && (
                         <p className="mt-0.5 text-[10px] text-gray-400">{item.category_name}</p>
                       )}
-                      {item.variant_display && (
-                        <p className="mt-1 text-xs text-gray-500">{item.variant_display}</p>
-                      )}
+
                     </div>
                   </div>
                 </td>
@@ -953,7 +950,6 @@ function QuoteLineRow({
 
   const isFee = qi.line_type === "FEE";
   const productName = isFee ? (qi.remark || "—") : (qi.product_name_snapshot ?? "—");
-  const variantDisplay = isFee ? null : qi.variant_display;
   const qty = isFee ? null : (qi.quantity ?? "—");
   const uom = isFee ? "" : (qi.uom ?? "");
 
@@ -967,9 +963,6 @@ function QuoteLineRow({
             </span>
           )}
           {productName}
-          {variantDisplay && (
-            <span className="ml-1 text-xs text-gray-400">{variantDisplay}</span>
-          )}
         </div>
       </td>
       <td className="px-4 py-3 text-right text-gray-800">
