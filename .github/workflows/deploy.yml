@@ -174,7 +174,7 @@ jobs:
           command_timeout: 15m
           script_stop: true
           script: |
-            cd /opt/overseas-platform
+            cd ${APP_DIR:-/opt/buildreach}
             git fetch origin
             git reset --hard origin/${{ github.ref_name }}
             DEPLOY_REF=origin/${{ github.ref_name }} \
