@@ -158,6 +158,8 @@
     "ph_address": "如: Kariakoo, Dar es Salaam",
     "label_categories": "经营品类",
     "loading_categories": "加载品类...",
+    "expand_categories": "展开更多 ({count})",
+    "collapse_categories": "收起",
     "label_email": "邮箱",
     "ph_email": "your@email.com",
     "label_storefront": "店面照片",
