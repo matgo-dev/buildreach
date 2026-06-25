@@ -12,7 +12,9 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Eye,
   EyeOff,
   ImagePlus,
@@ -370,6 +372,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   // L1 品类数据
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [catLoading, setCatLoading] = useState(true);
+  const [catExpanded, setCatExpanded] = useState(false);
+  const COLLAPSED_CAT_COUNT = 6;
 
   // 加载 L1 品类
   useEffect(() => {
@@ -797,33 +801,48 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {categories.map((cat) => {
-                const selected = selectedCategories.includes(cat.code);
-                const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
-                return (
-                  <button
-                    key={cat.code}
-                    type="button"
-                    onClick={() => toggleCategory(cat.code)}
-                    className={
-                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
-                      (selected
-                        ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
-                    }
-                  >
-                    <div className={
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                      (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
-                    }>
-                      {selected && <Check className="h-3 w-3" />}
-                    </div>
-                    <span className="truncate">{displayName}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
+                  const selected = selectedCategories.includes(cat.code);
+                  const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
+                  return (
+                    <button
+                      key={cat.code}
+                      type="button"
+                      onClick={() => toggleCategory(cat.code)}
+                      className={
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
+                        (selected
+                          ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
+                          : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
+                      }
+                    >
+                      <div className={
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+                        (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
+                      }>
+                        {selected && <Check className="h-3 w-3" />}
+                      </div>
+                      <span className="truncate">{displayName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {categories.length > COLLAPSED_CAT_COUNT && (
+                <button
+                  type="button"
+                  onClick={() => setCatExpanded((v) => !v)}
+                  className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                >
+                  {catExpanded ? (
+                    <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
+                  ) : (
+                    <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
+                  )}
+                </button>
+              )}
+            </>
           )}
           {errOf("categories") && <p className="text-xs text-red-500">{errOf("categories")}</p>}
         </div>

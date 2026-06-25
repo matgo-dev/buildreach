@@ -90,7 +90,7 @@ export function FilterPanel({
   };
 
   return (
-    <div className="flex items-start gap-3 px-5 py-2.5">
+    <div className="flex items-start gap-2 sm:gap-3 px-3 sm:px-5 py-2.5">
       {/* 左侧标签 */}
       <span className="text-[12px] font-semibold text-gray-500 whitespace-nowrap pt-1.5 min-w-[48px]">
         {label}
@@ -100,8 +100,8 @@ export function FilterPanel({
       <div className="flex-1 min-w-0">
         <div
           ref={containerRef}
-          className={`flex flex-wrap gap-1 overflow-hidden transition-all duration-200 ${
-            expanded ? "max-h-[500px]" : "max-h-[34px]"
+          className={`flex flex-wrap gap-1 transition-all duration-200 ${
+            expanded ? "max-h-[150px] sm:max-h-[500px] overflow-y-auto" : "max-h-[34px] overflow-hidden"
           }`}
         >
           {/* "全部"选项 */}
