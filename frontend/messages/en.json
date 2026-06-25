@@ -34,7 +34,35 @@
       "error_rate_limit": "Too many failed attempts, account temporarily locked. Please try again in 5 minutes",
       "error_invalid_credentials": "Invalid credentials, please try again",
       "error_network": "Network error, please try again later",
-      "error_unknown": "Login failed"
+      "error_unknown": "Login failed",
+      "forgot_password": "Forgot password?"
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "subtitle": "Enter your registered email to get a verification code",
+      "code_subtitle": "Enter the code and set a new password",
+      "method_email": "Reset via email",
+      "email_label": "Registered email",
+      "send_code": "Send verification code",
+      "submitting": "Sending...",
+      "or": "or",
+      "method_whatsapp": "Contact support",
+      "contact_whatsapp": "Contact us via WhatsApp",
+      "code_sent": "Verification code sent to {email}, please check your inbox",
+      "code_label": "Verification code",
+      "code_invalid": "Please enter a 6-digit code",
+      "new_password": "New password",
+      "pwd_hint": "6-20 characters (A-Z, a-z, 0-9 only)",
+      "reset_submit": "Reset Password",
+      "resetting": "Resetting...",
+      "not_received": "Didn't receive it?",
+      "resend": "Resend",
+      "success_title": "Password reset successful",
+      "success_desc": "Your password has been updated. Please login with your new password",
+      "go_login": "Go to Login",
+      "back_to_login": "Back to login",
+      "error_generic": "Failed to send, please try again later",
+      "error_network": "Network error, please try again later"
     }
   },
   "error": {

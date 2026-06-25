@@ -163,9 +163,17 @@ function LoginContent() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
-            {t("password_label")}
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+              {t("password_label")}
+            </Label>
+            <Link
+              href="/forgot-password"
+              className="text-xs text-gray-400 transition-colors hover:text-[#FF6B35]"
+            >
+              {t("forgot_password")}
+            </Link>
+          </div>
           <div className="relative">
             <input
               id="password"
