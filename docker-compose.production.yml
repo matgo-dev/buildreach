@@ -75,6 +75,7 @@ services:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
     volumes:
       - uploads:/app/uploads
+      - private_uploads:/app/private_uploads
       - ${BANNER_DIR:-./data/banners}:/srv/banners:ro
     # 保留 host 端口供调试直连,生产流量走 nginx:80
     ports:
@@ -115,4 +116,7 @@ volumes:
     name: overseas_platform_pgdata
   uploads:
     name: overseas_platform_uploads
+  private_uploads:
+    name: overseas_platform_private_uploads
   nginx_cache:
+    name: overseas_platform_nginx_cache
