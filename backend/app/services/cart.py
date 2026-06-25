@@ -540,7 +540,7 @@ def _serialize_cart(cart: Cart) -> CartPublic:
             product_name=get_localized(product, "name") if product else None,
             variant_display=variant_display,
             description=get_localized(product, "description") if product else None,
-            brand=get_localized(product, "brand") if product else None,
+            brand=product.brand_zh if product else None,
             origin=get_localized(product, "origin") if product else None,
             unit=product.unit if product else None,
             moq=product.moq if product else None,

@@ -493,10 +493,9 @@ def _build_keyword_filter(keyword: str):
     kw = f"%{keyword}%"
     locale = get_current_locale()
     name_col = getattr(Product, f"name_{locale}", Product.name_en)
-    brand_col = getattr(Product, f"brand_{locale}", Product.brand_en)
     return or_(
         name_col.ilike(kw),
-        brand_col.ilike(kw),
+        Product.brand_zh.ilike(kw),
         Product.spu_code.ilike(kw),
     )
 
@@ -548,6 +547,7 @@ async def list_products_public(
     featured: bool | None = None,
     supply_mode: str | None = None,
     certification: str | None = None,
+    brand: str | None = None,
     keyword: str | None = None,
     sort: str = "newest",
     page: int = 1,
@@ -575,6 +575,16 @@ async def list_products_public(
     if supply_mode:
         q = q.where(Product.supply_mode == supply_mode)
         count_q = count_q.where(Product.supply_mode == supply_mode)
+    if brand:
+        # 品牌名是专有名词，统一用 brand_zh 筛选，不做 locale 切换
+        brand_col = Product.brand_zh
+        brand_list = [b.strip() for b in brand.split(",") if b.strip()]
+        if len(brand_list) == 1:
+            brand_filter = brand_col == brand_list[0]
+        else:
+            brand_filter = brand_col.in_(brand_list)
+        q = q.where(brand_filter)
+        count_q = count_q.where(brand_filter)
     if certification:
         # certifications::jsonb @> jsonb_build_array('CE')
         from sqlalchemy import cast
@@ -628,6 +638,27 @@ async def list_certification_options(db: AsyncSession) -> list[str]:
         "ORDER BY cert"
     ))
     return [row[0] for row in result]
+
+
+async def list_brand_options(
+    db: AsyncSession,
+    *,
+    category_code: str | None = None,
+) -> list[str]:
+    """聚合所有上架商品的品牌值，去重排序，用于筛选下拉。品牌名统一用 brand_zh。"""
+    brand_col = Product.brand_zh
+    q = (
+        select(brand_col)
+        .where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+        .where(brand_col.isnot(None), brand_col != "")
+        .distinct()
+    )
+    if category_code:
+        codes = await _descendant_category_codes(db, category_code)
+        q = q.where(Product.category_code.in_(codes))
+    q = q.order_by(brand_col)
+    rows = await db.execute(q)
+    return [row[0] for row in rows]
 
 
 # ── SKU CRUD ─────────────────────────────────────────────

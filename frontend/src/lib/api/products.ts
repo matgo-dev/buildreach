@@ -38,6 +38,7 @@ export interface ProductListParams {
   featured?: boolean;
   supply_mode?: string;
   certification?: string;
+  brand?: string;
   sort?: "newest";
   page?: number;
   size?: number;
@@ -166,6 +167,7 @@ export async function listProducts(
   if (params.featured !== undefined) qs.set("featured", String(params.featured));
   if (params.supply_mode) qs.set("supply_mode", params.supply_mode);
   if (params.certification) qs.set("certification", params.certification);
+  if (params.brand) qs.set("brand", params.brand);
   if (params.sort) qs.set("sort", params.sort);
   if (params.page) qs.set("page", String(params.page));
   if (params.size) qs.set("size", String(params.size));
@@ -176,6 +178,11 @@ export async function listProducts(
 
 export async function listCertificationOptions(): Promise<string[]> {
   return api.get<string[]>("/api/v1/products/certification-options");
+}
+
+export async function listBrands(categoryCode?: string): Promise<string[]> {
+  const qs = categoryCode ? `?category_code=${categoryCode}` : "";
+  return api.get<string[]>(`/api/v1/products/brands${qs}`);
 }
 
 export async function getProduct(id: number): Promise<ProductPublicDetail> {

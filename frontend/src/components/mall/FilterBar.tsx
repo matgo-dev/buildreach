@@ -1,9 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { X, ListFilter } from "lucide-react";
+import useSWR from "swr";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { listBrands } from "@/lib/api/products";
+import { FilterPanel } from "./FilterPanel";
 
 interface Props {
   sort: string;
@@ -12,10 +16,12 @@ interface Props {
   total: number;
   activeCategoryCode: string;
   categoryTree: CategoryTreeNode[];
+  brand: string;
   onSortChange: (sort: string) => void;
   onFeaturedToggle: () => void;
   onSupplyModeChange: (mode: string) => void;
   onCategoryChange: (code: string) => void;
+  onBrandChange: (brand: string) => void;
   onClearAll: () => void;
   hasActiveFilters: boolean;
 }
@@ -33,43 +39,93 @@ export function FilterBar({
   total,
   activeCategoryCode,
   categoryTree,
+  brand,
   onSortChange,
   onFeaturedToggle,
   onSupplyModeChange,
   onCategoryChange,
+  onBrandChange,
   onClearAll,
   hasActiveFilters,
 }: Props) {
   const t = useTranslations("mall");
 
+  // 品牌列表
+  const { data: brands = [] } = useSWR<string[]>(
+    `/api/v1/products/brands?cat=${activeCategoryCode}`,
+    () => listBrands(activeCategoryCode || undefined),
+    { revalidateOnFocus: false },
+  );
+
+  const brandItems = useMemo(
+    () => brands.map((b) => ({ key: b, label: b })),
+    [brands],
+  );
+
+  const selectedBrands = useMemo(
+    () => (brand ? brand.split(",") : []),
+    [brand],
+  );
+
+  // 品牌单选：点击直接筛选（替换当前选中）
+  const handleBrandSelect = (key: string) => {
+    // 再次点击取消选中
+    if (selectedBrands.length === 1 && selectedBrands[0] === key) {
+      onBrandChange("");
+    } else {
+      onBrandChange(key);
+    }
+  };
+
+  // 品牌多选确认
+  const handleBrandMultiSelect = (keys: string[]) => {
+    onBrandChange(keys.join(","));
+  };
+
+  // L1 品类列表
+  const categoryItems = useMemo(
+    () => categoryTree.map((c) => ({ key: c.code, label: c.name })),
+    [categoryTree],
+  );
+
+  const handleCategorySelect = (code: string) => {
+    // 再次点击取消选中
+    if (activeCategoryCode === code) {
+      onCategoryChange("");
+    } else {
+      onCategoryChange(code);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-line bg-white shadow-mall-sm">
-      {/* 行1: 品类 chips */}
-      <div className="px-5 pt-3 pb-3 flex flex-wrap gap-1.5">
-        <button
-          onClick={() => onCategoryChange("")}
-          className={`h-[30px] rounded-full px-3 text-[12px] font-semibold transition-all ${
-            !activeCategoryCode
-              ? "bg-teal-900 text-white shadow-sm"
-              : "bg-gray-100 text-ink hover:bg-teal-50 hover:text-teal-900"
-          }`}
-        >
-          {t("chipAll")}
-        </button>
-        {categoryTree.map((cat) => (
-          <button
-            key={cat.code}
-            onClick={() => { if (cat.code !== activeCategoryCode) onCategoryChange(cat.code); }}
-            className={`h-[30px] rounded-full px-3 text-[12px] font-semibold transition-all ${
-              activeCategoryCode === cat.code
-                ? "bg-teal-900 text-white shadow-sm"
-                : "bg-gray-100 text-ink hover:bg-teal-50 hover:text-teal-900"
-            }`}
-          >
-            {cat.name}
-          </button>
-        ))}
-      </div>
+      {/* 品牌筛选行 */}
+      {brandItems.length > 0 && (
+        <FilterPanel
+          label={t("filterBrand") + "："}
+          items={brandItems}
+          selected={selectedBrands}
+          onSelect={handleBrandSelect}
+          onMultiSelect={handleBrandMultiSelect}
+          allLabel={t("filterAllBrands")}
+          onClearAll={() => onBrandChange("")}
+        />
+      )}
+
+      {/* 品类筛选行 */}
+      {categoryItems.length > 0 && (
+        <>
+          {brandItems.length > 0 && <div className="border-t border-line" />}
+          <FilterPanel
+            label={t("filterCategory") + "："}
+            items={categoryItems}
+            selected={activeCategoryCode ? [activeCategoryCode] : []}
+            onSelect={handleCategorySelect}
+            allLabel={t("filterAllCategories")}
+            onClearAll={() => onCategoryChange("")}
+          />
+        </>
+      )}
 
       {/* 分隔线 */}
       <div className="border-t border-line" />

@@ -43,6 +43,7 @@ function MallContent() {
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
   const urlSupplyMode = searchParams.get("supply_mode") || "";
+  const urlBrand = searchParams.get("brand") || "";
   const urlPage = parseInt(searchParams.get("page") || "1", 10) || 1;
 
   // 更新 URL 参数的统一方法
@@ -81,6 +82,7 @@ function MallContent() {
     () => ({
       category_code: urlCat || undefined,
       keyword: urlKeyword || undefined,
+      brand: urlBrand || undefined,
       sort: urlSort as ProductListParams["sort"],
       featured: urlFeatured || undefined,
       supply_mode: urlSupplyMode || undefined,
@@ -90,7 +92,7 @@ function MallContent() {
         ? { all_categories: showAllCategories || undefined }
         : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
+    [urlCat, urlKeyword, urlBrand, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -107,7 +109,7 @@ function MallContent() {
     revalidateOnFocus: false,
   });
 
-  const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlSort !== "newest");
+  const hasActiveFilters = !!(urlCat || urlKeyword || urlBrand || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };
@@ -131,6 +133,7 @@ function MallContent() {
           sort={urlSort}
           featured={urlFeatured}
           supplyMode={urlSupplyMode}
+          brand={urlBrand}
           total={data?.total ?? 0}
           activeCategoryCode={urlCat}
           categoryTree={categoryTree}
@@ -138,6 +141,7 @@ function MallContent() {
           onFeaturedToggle={() => updateFilters({ featured: urlFeatured ? undefined : "true" })}
           onSupplyModeChange={(mode) => updateFilters({ supply_mode: mode || undefined })}
           onCategoryChange={(code) => updateFilters({ cat: code || undefined })}
+          onBrandChange={(b) => updateFilters({ brand: b || undefined })}
           onClearAll={clearAll}
           hasActiveFilters={hasActiveFilters}
         />
