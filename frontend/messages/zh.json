@@ -34,7 +34,35 @@
       "error_rate_limit": "登录失败次数过多,账户已临时锁定,请 5 分钟后重试",
       "error_invalid_credentials": "凭证或密码错误,请重试",
       "error_network": "网络错误,请稍后再试",
-      "error_unknown": "登录失败"
+      "error_unknown": "登录失败",
+      "forgot_password": "忘记密码？"
+    },
+    "forgotPassword": {
+      "title": "找回密码",
+      "subtitle": "输入注册邮箱，获取验证码",
+      "code_subtitle": "输入验证码并设置新密码",
+      "method_email": "通过邮箱重置",
+      "email_label": "注册邮箱",
+      "send_code": "发送验证码",
+      "submitting": "发送中...",
+      "or": "或",
+      "method_whatsapp": "联系客服协助",
+      "contact_whatsapp": "通过 WhatsApp 联系客服",
+      "code_sent": "验证码已发送到 {email}，请查收邮箱",
+      "code_label": "验证码",
+      "code_invalid": "请输入 6 位验证码",
+      "new_password": "新密码",
+      "pwd_hint": "6-20 位，仅限字母和数字",
+      "reset_submit": "重置密码",
+      "resetting": "重置中...",
+      "not_received": "没有收到？",
+      "resend": "重新发送",
+      "success_title": "密码重置成功",
+      "success_desc": "您的密码已更新，请使用新密码登录",
+      "go_login": "前往登录",
+      "back_to_login": "返回登录",
+      "error_generic": "发送失败，请稍后再试",
+      "error_network": "网络错误，请稍后再试"
     }
   },
   "error": {
