@@ -158,6 +158,8 @@
     "ph_address": "mfano: Kariakoo, Dar es Salaam",
     "label_categories": "Kategoria za Biashara",
     "loading_categories": "Inapakia kategoria...",
+    "expand_categories": "Onyesha zaidi ({count})",
+    "collapse_categories": "Punguza",
     "label_email": "Barua pepe",
     "ph_email": "your@email.com",
     "label_storefront": "Picha za Duka",
