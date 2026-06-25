@@ -160,7 +160,7 @@ export function StepForm({
       case "phone":
         return validateSupplierPhone(value);
       case "email":
-        return validateEmail(value);
+        return validateEmail(value, { required: "请填写邮箱", format: "邮箱格式不正确", domain: "邮箱域名不可用" });
       case "password":
         return validatePassword(value);
       case "confirmPassword":

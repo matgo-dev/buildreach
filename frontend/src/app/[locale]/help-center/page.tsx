@@ -77,8 +77,63 @@ export default function HelpCenterPage() {
             {t("pageDesc")}
           </p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
-          {/* 左侧导航 — sticky + 填满高度 */}
+        {/* 移动端：品类手风琴，每个品类可展开FAQ */}
+        <div className="lg:hidden space-y-3">
+          {SECTIONS.map((sec) => {
+            const isActive = activeSection === sec.id;
+            return (
+              <div key={sec.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                <button
+                  onClick={() => setActiveSection(isActive ? "" : sec.id)}
+                  className="w-full flex items-center gap-2.5 px-4 py-3.5 text-left"
+                >
+                  <span className="text-base">{sec.icon}</span>
+                  <span className="flex-1 text-[14px] font-semibold text-gray-800">
+                    {t(`${sec.id}_title`)}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-400 transition-transform ${isActive ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {isActive && (
+                  <div className="px-4 pb-3 border-t border-gray-100">
+                    <p className="text-[12px] text-gray-400 py-2">
+                      {t(`${sec.id}_subtitle`)}
+                    </p>
+                    {Array.from({ length: sec.qCount }, (_, i) => i + 1).map(
+                      (i) => (
+                        <FaqItem
+                          key={`${sec.id}-${i}`}
+                          q={t(`${sec.id}_q${i}`)}
+                          a={t(`${sec.id}_a${i}`)}
+                        />
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* WhatsApp 联系 */}
+          {wa.number && (
+            <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
+              <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
+              <a
+                href={wa.buildLink() ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
+              >
+                WhatsApp
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* 桌面端：左右栏布局 */}
+        <div className="hidden lg:grid lg:grid-cols-[240px_1fr] gap-6">
+          {/* 左侧导航 — sticky */}
           <div className="lg:sticky lg:top-[140px] lg:self-start flex flex-col gap-4">
             <nav className="rounded-xl border border-gray-200 bg-white overflow-hidden">
               {SECTIONS.map((sec) => (
@@ -116,7 +171,6 @@ export default function HelpCenterPage() {
           {/* 右侧内容 */}
           <div>
             <div className="rounded-xl border border-gray-200 bg-white">
-              {/* 分区标题 */}
               <div className="border-b border-gray-100 px-6 py-4">
                 <h2 className="text-[16px] font-bold text-gray-800 flex items-center gap-2">
                   <span className="text-lg">{current.icon}</span>
@@ -126,8 +180,6 @@ export default function HelpCenterPage() {
                   {t(`${current.id}_subtitle`)}
                 </p>
               </div>
-
-              {/* FAQ 列表 */}
               <div className="px-6">
                 {Array.from({ length: current.qCount }, (_, i) => i + 1).map(
                   (i) => (
