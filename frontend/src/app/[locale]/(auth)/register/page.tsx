@@ -10,8 +10,6 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   AlertCircle,
   Building2,
-  Check,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -26,18 +24,15 @@ import {
 import { Label } from "@/components/ui/label";
 import { authApi, type LoginResult } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
-import { categoriesApi, type CategoryNode } from "@/lib/api/categories";
 import {
   validateEmail,
   validatePassword,
-  validatePasswordConfirm,
   validateRequired,
-  PASSWORD_MIN_LENGTH,
-  PASSWORD_MAX_LENGTH,
 } from "@/lib/validators";
 import type { CountryCode, LanguageCode } from "@/config/country-registration-rules";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
+import { compressImage } from "@/lib/image-compress";
 
 import { StepIndicator } from "./_components/StepIndicator";
 import { StepCountry } from "./_components/StepCountry";
@@ -79,16 +74,16 @@ export default function RegisterPage() {
   const t = useTranslations("buyerRegister");
   const tc = useTranslations("common");
 
-  // 从 URL ?role=BUYER 恢复角色（切语言后保持状态）
+  // 默认直接进入买方注册（供应商入口暂不暴露）
   const searchParams = useSearchParams();
   const urlRole = searchParams.get("role") || "";
   const [role, setRole] = useState<Role>(
-    (urlRole === "BUYER" || urlRole === "SUPPLIER") ? urlRole as Role : "",
+    urlRole === "SUPPLIER" ? "SUPPLIER" : "BUYER",
   );
   // URL 参数变化时同步（切语言刷新后）
   useEffect(() => {
-    if (urlRole === "BUYER" || urlRole === "SUPPLIER") {
-      setRole(urlRole as Role);
+    if (urlRole === "SUPPLIER") {
+      setRole("SUPPLIER");
     }
   }, [urlRole]);
 
@@ -350,37 +345,21 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>(locale === "zh" ? "CN" : "TZ");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [address, setAddress] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [storefrontImages, setStorefrontImages] = useState<File[]>([]);
   const [licenseImages, setLicenseImages] = useState<File[]>([]);
 
   // UI 状态
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [submitError, setSubmitError] = useState<React.ReactNode>("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // L1 品类数据
-  const [categories, setCategories] = useState<CategoryNode[]>([]);
-  const [catLoading, setCatLoading] = useState(true);
-  const [catExpanded, setCatExpanded] = useState(false);
-  const COLLAPSED_CAT_COUNT = 6;
   const [optionalExpanded, setOptionalExpanded] = useState(false);
-
-  // 加载 L1 品类
-  useEffect(() => {
-    categoriesApi.list({ level: 1 }).then((data) => {
-      setCategories(data);
-      setCatLoading(false);
-    }).catch(() => setCatLoading(false));
-  }, []);
 
   // 缩略图预览 URL 管理
   const [sfPreviews, setSfPreviews] = useState<string[]>([]);
@@ -413,20 +392,14 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         return null;
       case "password":
         return validatePassword(password);
-      case "confirmPassword":
-        return validatePasswordConfirm(password, confirmPassword);
       case "name":
         return validateRequired(name, t("label_name"));
       case "companyName":
         return validateRequired(companyName, t("label_company"));
       case "address":
         return validateRequired(address, t("label_address"));
-      case "categories":
-        if (selectedCategories.length === 0) return t("err_category_required");
-        return null;
       case "email":
-        if (email && validateEmail(email)) return validateEmail(email);
-        return null;
+        return validateEmail(email);
       case "storefrontImages":
         if (storefrontImages.length === 0) return t("err_storefront_required");
         return null;
@@ -445,7 +418,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   // 全字段校验
   const validateAll = (): string | null => {
-    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages"];
+    const fields = ["phone", "password", "name", "companyName", "address", "email", "storefrontImages"];
     const newErrors: Record<string, string | null> = {};
     const newTouched: Record<string, boolean> = {};
     let firstError: string | null = null;
@@ -469,15 +442,14 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     return firstError;
   };
 
-  // 文件校验
+  // 文件校验（只检格式，大小由自动压缩处理）
   const validateImageFile = (file: File): string | null => {
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return t("err_image_format");
-    if (file.size > MAX_IMAGE_SIZE) return t("err_image_size");
     return null;
   };
 
-  // 添加店面照片
-  const handleStorefrontAdd = (files: FileList | null) => {
+  // 添加店面照片（自动压缩）
+  const handleStorefrontAdd = async (files: FileList | null) => {
     if (!files) return;
     const newFiles: File[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -487,7 +459,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         setTouched((t) => ({ ...t, storefrontImages: true }));
         return;
       }
-      newFiles.push(files[i]);
+      newFiles.push(await compressImage(files[i]));
     }
     const combined = [...storefrontImages, ...newFiles].slice(0, 10);
     setStorefrontImages(combined);
@@ -500,8 +472,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setStorefrontImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // 添加执照照片
-  const handleLicenseAdd = (files: FileList | null) => {
+  // 添加执照照片（自动压缩）
+  const handleLicenseAdd = async (files: FileList | null) => {
     if (!files) return;
     const newFiles: File[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -511,7 +483,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         setTouched((t) => ({ ...t, licenseImages: true }));
         return;
       }
-      newFiles.push(files[i]);
+      newFiles.push(await compressImage(files[i]));
     }
     setLicenseImages((prev) => [...prev, ...newFiles]);
   };
@@ -520,31 +492,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setLicenseImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // 切换品类选择
-  const toggleCategory = (code: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-    );
-    // 清除品类错误
-    if (errors.categories) {
-      setErrors((e) => ({ ...e, categories: null }));
-    }
-  };
-
-  // 密码强度指示器
-  const pwdHasDigit = /\d/.test(password);
-  const pwdHasUpper = /[A-Z]/.test(password);
-  const pwdHasLower = /[a-z]/.test(password);
-  const pwdHasSpecial = /[^A-Za-z0-9]/.test(password);
-  const pwdLenOk = password.length >= PASSWORD_MIN_LENGTH && password.length <= PASSWORD_MAX_LENGTH;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const v = validateAll();
-    if (v) {
-      setSubmitError(v);
-      return;
-    }
+    if (v) return;
     setSubmitError("");
     setLoading(true);
     try {
@@ -555,8 +506,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         name,
         company_name: companyName,
         address,
-        business_category_codes: selectedCategories,
-        email: email || undefined,
+        email,
         storefront_images: storefrontImages,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
         language_preference: locale,
@@ -564,26 +514,12 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       onSubmitted(tokens);
     } catch (err) {
       if (err instanceof ApiError) {
-        // 手机号已注册
         if (err.code === 40921) {
           setErrors((e) => ({ ...e, phone: err.message }));
           setTouched((t) => ({ ...t, phone: true }));
-          setSubmitError(
-            <span>
-              {err.message}{" "}
-              <Link href="/login" className="font-semibold text-[#FF6B35] underline">{t("goLogin")}</Link>
-            </span>
-          );
         } else if (err.code === 40922) {
-          // 邮箱已注册
           setErrors((e) => ({ ...e, email: err.message }));
           setTouched((t) => ({ ...t, email: true }));
-          setSubmitError(
-            <span>
-              {err.message}{" "}
-              <Link href="/login" className="font-semibold text-[#FF6B35] underline">{t("goLogin")}</Link>
-            </span>
-          );
         } else {
           setSubmitError(err.message);
         }
@@ -597,6 +533,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   return (
     <>
+      {/* 后端业务错误（非字段级） */}
       {submitError && (
         <div className="mb-5 flex items-center gap-2.5 rounded-lg border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -608,7 +545,39 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 隐藏陷阱：吸收浏览器 autofill，防止覆盖手机号 */}
         <input type="text" name="hidden_username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
         <input type="password" name="hidden_password" autoComplete="new-password" className="hidden" tabIndex={-1} aria-hidden="true" />
-        {/* 1. Phone / WhatsApp */}
+        {/* 1. Name */}
+        <div className="space-y-1.5" id="field-name">
+          <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
+            {t("label_name")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="name" name="name" type="text"
+            value={name}
+            onChange={(e) => { setName(e.target.value); if (errors.name) setErrors((err) => ({ ...err, name: null })); }}
+            onBlur={() => touch("name")}
+            placeholder={t("ph_name")}
+            className={buyerInputCls(errOf("name"))}
+          />
+          {errOf("name") && <p className="text-xs text-red-500">{errOf("name")}</p>}
+        </div>
+
+        {/* 2. Shop / Company Name */}
+        <div className="space-y-1.5" id="field-companyName">
+          <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+            {t("label_company")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="companyName" name="companyName" type="text"
+            value={companyName}
+            onChange={(e) => { setCompanyName(e.target.value); if (errors.companyName) setErrors((err) => ({ ...err, companyName: null })); }}
+            onBlur={() => touch("companyName")}
+            placeholder={t("ph_company")}
+            className={buyerInputCls(errOf("companyName"))}
+          />
+          {errOf("companyName") && <p className="text-xs text-red-500">{errOf("companyName")}</p>}
+        </div>
+
+        {/* 3. Phone / WhatsApp */}
         <div className="space-y-1.5" id="field-phone">
           <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
             {t("label_phone")} <span className="text-red-500">*</span>
@@ -619,7 +588,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               onChange={(e) => {
                 const newRegion = e.target.value as PhoneRegion;
                 setPhoneRegion(newRegion);
-                // 截断到新国家的最大长度，不清空已输入的号码
                 setPhone((prev) => prev.slice(0, PHONE_REGION_CONFIG[newRegion].maxLen));
                 if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
               }}
@@ -649,7 +617,24 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("phone") && <p className="text-xs text-red-500">{errOf("phone")}</p>}
         </div>
 
-        {/* 2. Password */}
+        {/* 4. Email */}
+        <div className="space-y-1.5" id="field-email">
+          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+            {t("label_email")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="email" name="email" type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
+            onBlur={() => touch("email")}
+            placeholder={t("ph_email")}
+            autoComplete="email"
+            className={buyerInputCls(errOf("email"))}
+          />
+          {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
+        </div>
+
+        {/* 5. Password */}
         <div className="space-y-1.5" id="field-password">
           <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
             {t("label_password")} <span className="text-red-500">*</span>
@@ -662,7 +647,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errors.password) setErrors((err) => ({ ...err, password: null }));
-                if (errors.confirmPassword) setErrors((err) => ({ ...err, confirmPassword: null }));
               }}
               onBlur={() => touch("password")}
               placeholder={t("ph_password")}
@@ -679,98 +663,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             </button>
           </div>
           {errOf("password") && <p className="text-xs text-red-500">{errOf("password")}</p>}
-          {/* 密码强度提示：一行紧凑展示 */}
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px]">
-            <span className={pwdLenOk ? "text-green-600" : "text-gray-400"}>
-              {pwdLenOk && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_length")}
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className={pwdHasDigit ? "text-green-600" : "text-gray-400"}>
-              {pwdHasDigit && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_digit")}
-            </span>
-            <span className={pwdHasUpper ? "text-green-600" : "text-gray-400"}>
-              {pwdHasUpper && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_upper")}
-            </span>
-            <span className={pwdHasLower ? "text-green-600" : "text-gray-400"}>
-              {pwdHasLower && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_lower")}
-            </span>
-            <span className={pwdHasSpecial ? "text-green-600" : "text-gray-400"}>
-              {pwdHasSpecial && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_special")}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Confirm Password */}
-        <div className="space-y-1.5" id="field-confirmPassword">
-          <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
-            {t("label_confirm_password")} <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            <input
-              id="confirmPassword" name="confirmPassword"
-              type={showConfirm ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                if (errors.confirmPassword) setErrors((err) => ({ ...err, confirmPassword: null }));
-              }}
-              onBlur={() => touch("confirmPassword")}
-              placeholder={t("ph_confirm_password")}
-              autoComplete="new-password"
-              className={buyerInputCls(errOf("confirmPassword"), "pr-12")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
-              tabIndex={-1}
-            >
-              {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          {errOf("confirmPassword") ? (
-            <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-              <AlertCircle className="h-3 w-3" /> {errOf("confirmPassword")}
-            </p>
-          ) : (
-            confirmPassword && password && password === confirmPassword && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-[#10B981]">
-                <CheckCircle2 className="h-3 w-3" /> {t("password_match")}
-              </p>
-            )
-          )}
-        </div>
-
-        {/* 4. Contact Name */}
-        <div className="space-y-1.5" id="field-name">
-          <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
-            {t("label_name")} <span className="text-red-500">*</span>
-          </Label>
-          <input
-            id="name" name="name" type="text"
-            value={name}
-            onChange={(e) => { setName(e.target.value); if (errors.name) setErrors((err) => ({ ...err, name: null })); }}
-            onBlur={() => touch("name")}
-            placeholder={t("ph_name")}
-            className={buyerInputCls(errOf("name"))}
-          />
-          {errOf("name") && <p className="text-xs text-red-500">{errOf("name")}</p>}
-        </div>
-
-        {/* 5. Shop / Company Name */}
-        <div className="space-y-1.5" id="field-companyName">
-          <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
-            {t("label_company")} <span className="text-red-500">*</span>
-          </Label>
-          <input
-            id="companyName" name="companyName" type="text"
-            value={companyName}
-            onChange={(e) => { setCompanyName(e.target.value); if (errors.companyName) setErrors((err) => ({ ...err, companyName: null })); }}
-            onBlur={() => touch("companyName")}
-            placeholder={t("ph_company")}
-            className={buyerInputCls(errOf("companyName"))}
-          />
-          {errOf("companyName") && <p className="text-xs text-red-500">{errOf("companyName")}</p>}
+          <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint_simple")}</p>
         </div>
 
         {/* 6. Address */}
@@ -789,63 +682,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("address") && <p className="text-xs text-red-500">{errOf("address")}</p>}
         </div>
 
-        {/* 7. Business Categories (L1 multi-select) */}
-        <div className="space-y-1.5" id="field-categories">
-          <Label className="text-sm font-semibold text-gray-700">
-            {t("label_categories")} <span className="text-red-500">*</span>
-          </Label>
-          {catLoading ? (
-            <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
-                  const selected = selectedCategories.includes(cat.code);
-                  const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
-                  return (
-                    <button
-                      key={cat.code}
-                      type="button"
-                      onClick={() => toggleCategory(cat.code)}
-                      className={
-                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
-                        (selected
-                          ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
-                          : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
-                      }
-                    >
-                      <div className={
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                        (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
-                      }>
-                        {selected && <Check className="h-3 w-3" />}
-                      </div>
-                      <span className="truncate">{displayName}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {categories.length > COLLAPSED_CAT_COUNT && (
-                <button
-                  type="button"
-                  onClick={() => setCatExpanded((v) => !v)}
-                  className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-                >
-                  {catExpanded ? (
-                    <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
-                  ) : (
-                    <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
-                  )}
-                </button>
-              )}
-            </>
-          )}
-          {errOf("categories") && <p className="text-xs text-red-500">{errOf("categories")}</p>}
-        </div>
-
-        {/* 8. Storefront Photos (required) — 必填上传紧跟品类 */}
+        {/* 4. Storefront Photos (required) */}
         <div className="space-y-1.5" id="field-storefrontImages">
           <Label className="text-sm font-semibold text-gray-700">
             {t("label_storefront")} <span className="text-red-500">*</span>
@@ -944,23 +781,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                   onChange={(e) => { handleLicenseAdd(e.target.files); e.target.value = ""; }}
                 />
                 {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-1.5" id="field-email">
-                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-                  {t("label_email")}
-                </Label>
-                <input
-                  id="email" name="email" type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
-                  onBlur={() => touch("email")}
-                  placeholder={t("ph_email")}
-                  autoComplete="email"
-                  className={buyerInputCls(errOf("email"))}
-                />
-                {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
               </div>
 
             </div>

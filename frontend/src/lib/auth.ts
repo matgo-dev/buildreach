@@ -62,8 +62,8 @@ export const authApi = {
     name: string;
     company_name: string;
     address: string;
-    business_category_codes: string[];
-    email?: string;
+    business_category_codes?: string[];
+    email: string;
     tin?: string;
     brela_no?: string;
     storefront_images: File[];
@@ -78,10 +78,12 @@ export const authApi = {
     fd.append("name", payload.name);
     fd.append("company_name", payload.company_name);
     fd.append("address", payload.address);
-    for (const code of payload.business_category_codes) {
-      fd.append("business_category_codes", code);
+    if (payload.business_category_codes) {
+      for (const code of payload.business_category_codes) {
+        fd.append("business_category_codes", code);
+      }
     }
-    if (payload.email) fd.append("email", payload.email);
+    fd.append("email", payload.email);
     if (payload.tin) fd.append("tin", payload.tin);
     if (payload.brela_no) fd.append("brela_no", payload.brela_no);
     if (payload.language_preference) fd.append("language_preference", payload.language_preference);
