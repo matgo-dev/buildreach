@@ -32,7 +32,7 @@ export function PublicLayout({
     getCart().then(syncFromCart).catch(() => {});
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="flex min-h-screen flex-col bg-bg overflow-x-hidden">
       <TopStrip />
       <MallHeader />
       <MallNavRow />
