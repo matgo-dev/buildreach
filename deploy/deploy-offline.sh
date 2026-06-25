@@ -119,6 +119,15 @@ FRONTEND_CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${FRONT
 echo "  前端: HTTP ${FRONTEND_CODE} (http://localhost:${FRONTEND_PORT})"
 
 PUBLIC_ORIGIN="$(get_env_value CORS_ORIGINS | cut -d, -f1)"
+PUBLIC_ORIGIN="${PUBLIC_ORIGIN%/}"
+if [[ -n "$PUBLIC_ORIGIN" ]]; then
+  PUBLIC_CODE=$(curl -s -o /dev/null -w '%{http_code}' "${PUBLIC_ORIGIN}/healthz" 2>/dev/null || echo "000")
+  echo "  公网入口: HTTP ${PUBLIC_CODE} (${PUBLIC_ORIGIN}/healthz)"
+  if [[ "$PUBLIC_CODE" != "200" ]]; then
+    echo ""
+    echo "[警告] 容器直连已就绪,但公网入口未通过。请检查宿主机 Nginx 的 proxy_pass 端口与 .env.production 中的 FRONTEND_HOST_PORT/BACKEND_HOST_PORT 是否一致。"
+  fi
+fi
 
 echo ""
 echo "=== 容器状态 ==="

@@ -45,6 +45,20 @@ export function useBootstrapAuth() {
     clearLegacyLocalStorage();
 
     (async () => {
+      setLoaded(false);
+
+      const existingAccessToken = useAuthStore.getState().accessToken;
+      if (existingAccessToken) {
+        try {
+          const me = await authApi.me();
+          setUser(me);
+          setLoaded(true);
+          return;
+        } catch {
+          clear();
+        }
+      }
+
       const refreshed = await tryRefresh();
       if (!refreshed) {
         clear();

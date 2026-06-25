@@ -79,7 +79,7 @@ services:
       - ${BANNER_DIR:-./data/banners}:/srv/banners:ro
     # 保留 host 端口供调试直连,生产流量走 nginx:80
     ports:
-      - "${BACKEND_HOST_PORT:-8001}:8000"
+      - "${BACKEND_BIND_HOST:-127.0.0.1}:${BACKEND_HOST_PORT:-8001}:8000"
     logging: *default-logging
 
   frontend:
@@ -89,7 +89,7 @@ services:
       - backend
     # 保留 host 端口供调试直连,生产流量走 nginx:80
     ports:
-      - "${FRONTEND_HOST_PORT:-3001}:3000"
+      - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_HOST_PORT:-3001}:3000"
     logging: *default-logging
 
   nginx:

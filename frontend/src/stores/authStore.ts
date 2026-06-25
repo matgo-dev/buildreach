@@ -1,8 +1,32 @@
 import { create } from "zustand";
 import type { MeData, RoleCode } from "@/lib/auth";
 
+const ACCESS_TOKEN_SESSION_KEY = "buildreach_access_token";
+
+function readSessionAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(ACCESS_TOKEN_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionAccessToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) {
+      sessionStorage.setItem(ACCESS_TOKEN_SESSION_KEY, token);
+    } else {
+      sessionStorage.removeItem(ACCESS_TOKEN_SESSION_KEY);
+    }
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
 interface AuthState {
-  /** access token 仅存内存,刷新页面通过 refresh cookie 静默续期 */
+  /** access token 优先存内存,并在当前标签页 sessionStorage 中兜底恢复刷新 */
   accessToken: string | null;
   user: MeData | null;
   loaded: boolean;
@@ -20,14 +44,23 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: null,
+  accessToken: readSessionAccessToken(),
   user: null,
   loaded: false,
-  setAccessToken: (t) => set({ accessToken: t }),
+  setAccessToken: (t) => {
+    writeSessionAccessToken(t);
+    set({ accessToken: t });
+  },
   setUser: (u) => set({ user: u }),
   setLoaded: (b) => set({ loaded: b }),
-  clear: () => set({ accessToken: null, user: null }),
-  reset: () => set({ accessToken: null, user: null, loaded: true }),
+  clear: () => {
+    writeSessionAccessToken(null);
+    set({ accessToken: null, user: null });
+  },
+  reset: () => {
+    writeSessionAccessToken(null);
+    set({ accessToken: null, user: null, loaded: true });
+  },
   hasPermission: (code) => {
     const u = get().user;
     return !!u && u.permissions.includes(code);
