@@ -14,7 +14,7 @@ export function TopStrip() {
 
   return (
     <div className="bg-teal-950 text-[#cfe6e6] text-[13px]">
-      <div className="mx-auto max-w-mall px-6 flex items-center justify-between min-h-[36px]">
+      <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}
         </span>
