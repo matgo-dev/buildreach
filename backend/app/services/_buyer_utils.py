@@ -55,14 +55,9 @@ def validate_tz_phone(raw: str) -> str:
 async def validate_active_level1_categories(
     db: AsyncSession, codes: list[str]
 ) -> None:
-    """校验品类 code 列表均为有效的一级品类。"""
+    """校验品类 code 列表均为有效的一级品类（允许空列表）。"""
     if not codes:
-        raise BusinessError(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            42203,
-            "At least one category is required",
-            message_key=MessageKey.BUYER_CATEGORY_REQUIRED,
-        )
+        return
 
     stmt = (
         select(Category.code)
