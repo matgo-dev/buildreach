@@ -14,6 +14,14 @@ export default function PrivacyPage() {
     { title: t("privacy.s5_title"), content: t("privacy.s5_content") },
     { title: t("privacy.s6_title"), content: t("privacy.s6_content") },
     { title: t("privacy.s7_title"), content: t("privacy.s7_content") },
+    { title: t("privacy.s8_title"), content: t("privacy.s8_content") },
+    { title: t("privacy.s9_title"), content: t("privacy.s9_content") },
+    { title: t("privacy.s10_title"), content: t("privacy.s10_content") },
+    { title: t("privacy.s11_title"), content: t("privacy.s11_content") },
+    { title: t("privacy.s12_title"), content: t("privacy.s12_content") },
+    { title: t("privacy.s13_title"), content: t("privacy.s13_content") },
+    { title: t("privacy.s14_title"), content: t("privacy.s14_content") },
+    { title: t("privacy.s15_title"), content: t("privacy.s15_content") },
   ];
 
   return (
