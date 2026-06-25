@@ -120,9 +120,6 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@buildlink.co.tz"
     SMTP_USE_TLS: bool = True
 
-    # 前端 URL（密码重置邮件中的链接）
-    FRONTEND_BASE_URL: str = "http://localhost:3001"
-
     @computed_field  # type: ignore[misc]
     @property
     def CORS_ORIGINS(self) -> List[str]:
