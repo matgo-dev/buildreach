@@ -566,13 +566,18 @@ function EmailEditForm({
   onSaved: (u: { email: string }) => void;
   onCancel: () => void;
 }) {
+  const tc = useTranslations("common");
   const [newEmail, setNewEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fmtErr = validateEmail(newEmail);
+    const fmtErr = validateEmail(newEmail, {
+      required: tc("err_email_required"),
+      format: tc("err_email_format"),
+      domain: tc("err_email_domain"),
+    });
     if (fmtErr) { setError(fmtErr); return; }
     if (newEmail === currentEmail) { setError(t("errors.sameAsCurrentEmail")); return; }
     setError("");

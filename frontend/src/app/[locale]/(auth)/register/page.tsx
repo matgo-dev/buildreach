@@ -339,6 +339,7 @@ interface BuyerFormProps {
 
 function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const t = useTranslations("buyerRegister");
+  const tc = useTranslations("common");
   const locale = useLocale();
 
   // 表单字段 — 中文环境默认 CN，其他默认 TZ
@@ -399,7 +400,11 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       case "address":
         return validateRequired(address, t("label_address"));
       case "email":
-        return validateEmail(email);
+        return validateEmail(email, {
+          required: tc("err_email_required"),
+          format: tc("err_email_format"),
+          domain: tc("err_email_domain"),
+        });
       case "storefrontImages":
         if (storefrontImages.length === 0) return t("err_storefront_required");
         return null;
@@ -514,12 +519,36 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       onSubmitted(tokens);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === 40921) {
-          setErrors((e) => ({ ...e, phone: err.message }));
-          setTouched((t) => ({ ...t, phone: true }));
-        } else if (err.code === 40922) {
-          setErrors((e) => ({ ...e, email: err.message }));
-          setTouched((t) => ({ ...t, email: true }));
+        // 解析 data.errors 数组，将每个字段错误映射到表单
+        const fieldErrors = (err.data as { errors?: { field: string; code: number; message: string }[] })?.errors;
+        if (fieldErrors && fieldErrors.length > 0) {
+          const codeToI18n: Record<number, string> = {
+            40921: t("err_phone_exists"),
+            40922: t("err_email_exists"),
+          };
+          let hasFieldMatch = false;
+          for (const fe of fieldErrors) {
+            const msg = codeToI18n[fe.code] || fe.message;
+            if (fe.field === "phone") {
+              setErrors((e) => ({ ...e, phone: msg }));
+              setTouched((t) => ({ ...t, phone: true }));
+              hasFieldMatch = true;
+            } else if (fe.field === "email") {
+              setErrors((e) => ({ ...e, email: msg }));
+              setTouched((t) => ({ ...t, email: true }));
+              hasFieldMatch = true;
+            }
+          }
+          if (!hasFieldMatch) {
+            setSubmitError(err.message);
+          } else {
+            // 滚动到第一个出错字段
+            const firstField = fieldErrors.find((fe) => fe.field === "phone" || fe.field === "email")?.field;
+            if (firstField) {
+              const el = document.getElementById(`field-${firstField}`);
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }
         } else {
           setSubmitError(err.message);
         }

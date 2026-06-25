@@ -268,7 +268,7 @@ function CreateModal({
 
   const runValidator = (f: Field, v: string): string | null => {
     switch (f) {
-      case "email": return validateEmail(v);
+      case "email": return validateEmail(v, { required: "请填写邮箱", format: "邮箱格式不正确", domain: "邮箱域名不可用" });
       case "username": return validateUsernameOptional(v);
       case "name": return validateRequired(v, "姓名");
       case "password": return validatePassword(v);
@@ -285,7 +285,7 @@ function CreateModal({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const all: Partial<Record<Field, string | null>> = {
-      email: validateEmail(email),
+      email: validateEmail(email, { required: "请填写邮箱", format: "邮箱格式不正确", domain: "邮箱域名不可用" }),
       username: validateUsernameOptional(username),
       name: validateRequired(name, "姓名"),
       password: validatePassword(password),
