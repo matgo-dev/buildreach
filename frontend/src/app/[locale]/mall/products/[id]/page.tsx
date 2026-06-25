@@ -614,7 +614,7 @@ function ProductDetailContent() {
               </button>
               {wa.configured && (
               <a
-                href={wa.link!}
+                href={wa.buildLink({ productName: product.name, productCode: product.spu_code })!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
