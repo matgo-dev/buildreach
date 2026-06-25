@@ -89,11 +89,11 @@ async def test_refresh_with_invalid_origin_returns_401(client):
 
 
 @pytest.mark.asyncio
-async def test_refresh_with_missing_origin_returns_401(client):
-    """没有 Origin/Referer 头 → 401。"""
+async def test_refresh_with_missing_origin_succeeds(client):
+    """没有 Origin/Referer 头 → 放行(浏览器刷新场景,CSRF 由 SameSite cookie 保护)。"""
     await _login(client)
     r = await client.post("/api/v1/auth/refresh")
-    assert r.status_code == 401
+    assert r.status_code == 200
 
 
 @pytest.mark.asyncio
