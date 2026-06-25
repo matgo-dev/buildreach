@@ -38,7 +38,7 @@ export function PublicLayout({
       <MallNavRow />
       <main className="flex-1">
         {noContainer ? children : (
-          <div className="mx-auto max-w-mall px-6 py-6">
+          <div className="mx-auto max-w-mall px-3 sm:px-6 py-4 sm:py-6">
             {children}
           </div>
         )}

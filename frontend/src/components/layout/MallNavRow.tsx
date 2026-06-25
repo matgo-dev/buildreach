@@ -26,10 +26,10 @@ export function MallNavRow() {
 
   return (
     <nav
-      className="sticky top-[82px] z-[70] bg-white border-b border-line"
+      className="sticky top-0 md:top-[82px] z-[70] bg-white border-b border-line"
       style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05)" }}
     >
-      <div className="mx-auto max-w-mall px-6 flex items-center min-h-[50px] gap-0 overflow-x-auto scrollbar-hide">
+      <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center min-h-[44px] sm:min-h-[50px] gap-0 overflow-x-auto scrollbar-hide">
         {NAV_LINKS.map((link) => {
           const active =
             link.href === "/"
@@ -40,7 +40,7 @@ export function MallNavRow() {
             return (
               <span
                 key={link.labelKey}
-                className="relative h-[50px] inline-flex items-center px-[18px] text-[14px] font-extrabold text-gray-300 whitespace-nowrap cursor-not-allowed select-none"
+                className="relative h-[44px] sm:h-[50px] inline-flex items-center px-3 sm:px-[18px] text-[13px] sm:text-[14px] font-extrabold text-gray-300 whitespace-nowrap cursor-not-allowed select-none"
                 title={t("navComingSoon")}
               >
                 {t(link.labelKey)}
@@ -52,7 +52,7 @@ export function MallNavRow() {
             <Link
               key={link.href}
               href={link.href}
-              className={`relative h-[50px] inline-flex items-center px-[18px] text-[14px] font-extrabold whitespace-nowrap transition-colors -mb-px ${
+              className={`relative h-[44px] sm:h-[50px] inline-flex items-center px-3 sm:px-[18px] text-[13px] sm:text-[14px] font-extrabold whitespace-nowrap transition-colors -mb-px ${
                 active
                   ? "text-teal-800 border-b-[3px] border-gold"
                   : "text-ink-2 hover:text-teal-800"
