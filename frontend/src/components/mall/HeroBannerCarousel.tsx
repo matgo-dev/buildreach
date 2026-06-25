@@ -18,9 +18,9 @@ const SLIDES = [
   { src: "/banners/factory-palletizing-robot.jpg", alt: "Palletizing Robot", link: null },
   { src: "/banners/factory-packaging-robot.jpg", alt: "Packaging Robot", link: null },
   { src: "/banners/factory-coating-workshop.jpg", alt: "Coating Workshop", link: null },
-  { src: "/banners/banner-construction.jpg", alt: "Construction Site", link: null },
-  { src: "/banners/banner-crane.jpg", alt: "Tower Crane", link: null },
-  { src: "/banners/banner-skyline.jpg", alt: "City Skyline", link: null },
+  { src: "/banners/factory-mesh-rolls.jpg", alt: "Mesh Rolls Warehouse", link: null },
+  { src: "/banners/factory-crate-packing.jpg", alt: "Crate Packing Warehouse", link: null },
+  { src: "/banners/factory-decorative-panels.jpg", alt: "Decorative Panels Production", link: null },
 ];
 
 export function HeroBannerCarousel() {

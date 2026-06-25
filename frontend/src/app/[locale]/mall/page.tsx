@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -11,10 +11,10 @@ import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { listProducts, type ProductListParams, type ProductListResponse } from "@/lib/api/products";
 import { ProductGrid } from "@/components/mall/ProductGrid";
 import { FilterBar } from "@/components/mall/FilterBar";
+import { Pagination } from "@/components/mall/Pagination";
 import { RecentViews } from "@/components/mall/RecentViews";
 import { useAuthStore } from "@/stores/authStore";
 import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
-import { Loader2 } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +43,7 @@ function MallContent() {
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
   const urlSupplyMode = searchParams.get("supply_mode") || "";
+  const urlPage = parseInt(searchParams.get("page") || "1", 10) || 1;
 
   // 更新 URL 参数的统一方法
   const updateParams = useCallback(
@@ -52,29 +53,30 @@ function MallContent() {
         if (value) params.set(key, value);
         else params.delete(key);
       }
-      // 无限滚动不再需要 page 参数
-      params.delete("page");
       const qs = params.toString();
       router.replace(`/${locale}/mall${qs ? `?${qs}` : ""}`, { scroll: false });
     },
     [searchParams, router, locale]
   );
 
-  // 无限滚动状态
-  const [allProducts, setAllProducts] = useState<ProductListResponse["items"]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // 筛选条件变化时的 fingerprint，用于检测重置
-  const filterFingerprint = useMemo(
-    () => JSON.stringify({ urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, prefCodes, showAllCategories }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, prefCodes, showAllCategories]
+  // 筛选条件变化时重置到第一页
+  const updateFilters = useCallback(
+    (updates: Record<string, string | undefined>) => {
+      updateParams({ ...updates, page: undefined });
+    },
+    [updateParams]
   );
 
-  // 首页请求参数（page=1）
+  // 翻页
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      updateParams({ page: newPage > 1 ? String(newPage) : undefined });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [updateParams]
+  );
+
+  // API 请求参数
   const apiParams: ProductListParams = useMemo(
     () => ({
       category_code: urlCat || undefined,
@@ -82,13 +84,13 @@ function MallContent() {
       sort: urlSort as ProductListParams["sort"],
       featured: urlFeatured || undefined,
       supply_mode: urlSupplyMode || undefined,
-      page: 1,
+      page: urlPage,
       size: PAGE_SIZE,
       ...(prefCodes && prefCodes.length > 0 && !urlCat
         ? { all_categories: showAllCategories || undefined }
         : {}),
     }),
-    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, prefCodes, showAllCategories]
+    [urlCat, urlKeyword, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
   );
 
   const swrKey = useMemo(
@@ -104,63 +106,6 @@ function MallContent() {
   } = useSWR<ProductListResponse>(swrKey, () => listProducts(apiParams), {
     revalidateOnFocus: false,
   });
-
-  // 筛选条件变化 → 重置累积数据
-  // 用 swrKey 而非 filterFingerprint：prefCodes 加载不改变 API 请求，
-  // 但会改变 fingerprint 导致 allProducts 被清空而 SWR 不重新请求 → 空白页
-  useEffect(() => {
-    setAllProducts([]);
-    setCurrentPage(1);
-    setTotalCount(0);
-    setTotalPages(0);
-  }, [swrKey]);
-
-  // 首页数据到达 → 初始化
-  useEffect(() => {
-    if (data) {
-      setAllProducts(data.items);
-      setCurrentPage(data.page);
-      setTotalCount(data.total);
-      setTotalPages(data.pages);
-    }
-  }, [data]);
-
-  // 加载更多
-  const loadMore = useCallback(async () => {
-    if (isLoadingMore || currentPage >= totalPages) return;
-    setIsLoadingMore(true);
-    try {
-      const nextPage = currentPage + 1;
-      const res = await listProducts({ ...apiParams, page: nextPage });
-      setAllProducts((prev) => [...prev, ...res.items]);
-      setCurrentPage(nextPage);
-      setTotalCount(res.total);
-      setTotalPages(res.pages);
-    } catch {
-      // 加载失败静默，用户可继续滚动重试
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [isLoadingMore, currentPage, totalPages, apiParams]);
-
-  // IntersectionObserver 触底加载
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore]);
-
-  const hasMore = currentPage < totalPages;
 
   const hasActiveFilters = !!(urlCat || urlKeyword || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
@@ -186,43 +131,35 @@ function MallContent() {
           sort={urlSort}
           featured={urlFeatured}
           supplyMode={urlSupplyMode}
-          total={totalCount}
+          total={data?.total ?? 0}
           activeCategoryCode={urlCat}
           categoryTree={categoryTree}
-          onSortChange={(s) => updateParams({ sort: s !== "newest" ? s : undefined })}
-          onFeaturedToggle={() => updateParams({ featured: urlFeatured ? undefined : "true" })}
-          onSupplyModeChange={(mode) => updateParams({ supply_mode: mode || undefined })}
-          onCategoryChange={(code) => updateParams({ cat: code || undefined })}
+          onSortChange={(s) => updateFilters({ sort: s !== "newest" ? s : undefined })}
+          onFeaturedToggle={() => updateFilters({ featured: urlFeatured ? undefined : "true" })}
+          onSupplyModeChange={(mode) => updateFilters({ supply_mode: mode || undefined })}
+          onCategoryChange={(code) => updateFilters({ cat: code || undefined })}
           onClearAll={clearAll}
           hasActiveFilters={hasActiveFilters}
         />
 
         <ProductGrid
-          products={allProducts}
+          products={data?.items ?? []}
           categoryTree={categoryTree}
-          isLoading={isLoading && allProducts.length === 0}
+          isLoading={isLoading}
           error={error}
           onRetry={() => mutate()}
           onClearFilters={clearAll}
         />
 
-        {/* 触底哨兵 + 加载状态 */}
-        {hasMore && (
-          <div ref={sentinelRef} className="flex items-center justify-center py-6">
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{t("loadingMore")}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 全部加载完毕提示 */}
-        {!hasMore && allProducts.length > PAGE_SIZE && (
-          <div className="py-4 text-center text-xs text-gray-400">
-            {t("noMoreProducts")}
-          </div>
+        {/* 分页 */}
+        {data && data.pages > 1 && (
+          <Pagination
+            page={data.page}
+            pages={data.pages}
+            total={data.total}
+            size={data.size}
+            onPageChange={handlePageChange}
+          />
         )}
       </div>
     </PublicLayout>
