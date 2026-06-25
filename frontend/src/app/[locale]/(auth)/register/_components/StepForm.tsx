@@ -366,7 +366,7 @@ export function StepForm({
         {errOf("registration_no") && <p className="text-xs text-red-500">{errOf("registration_no")}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
             联系人 *

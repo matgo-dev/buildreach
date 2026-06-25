@@ -797,7 +797,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {categories.map((cat) => {
                 const selected = selectedCategories.includes(cat.code);
                 const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
