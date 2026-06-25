@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, MessageCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, MessageCircle } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
 import { Link } from "@/i18n/navigation";
@@ -158,15 +158,7 @@ export default function ForgotPasswordPage() {
       {step === "email" && (
         <>
           <form onSubmit={handleSendCode} className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <Mail className="h-4 w-4" />
-              {t("method_email")}
-            </div>
-
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-                {t("email_label")}
-              </Label>
               <input
                 id="email"
                 type="email"
