@@ -216,8 +216,8 @@ function CartContent() {
         ) : (
           <>
 
-        {/* 表头 */}
-        <div className="flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+        {/* 表头 — 移动端隐藏 */}
+        <div className="hidden sm:flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
           <input
             type="checkbox"
             checked={allChecked}
@@ -247,10 +247,12 @@ function CartContent() {
             return (
               <div key={item.item_id}>
               <div
-                className={`flex items-start gap-4 px-5 py-4 transition-colors ${
+                className={`flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition-colors ${
                   unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-blue-50/30"
                 }`}
               >
+                {/* 移动端：勾选 + 图片 + 名称横排 */}
+                <div className="flex items-start gap-3 sm:contents">
                 {/* 勾选 */}
                 <input
                   type="checkbox"
@@ -261,7 +263,7 @@ function CartContent() {
                 />
 
                 {/* 商品图片 — 可点击跳转详情 */}
-                <a href={detailHref} className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
+                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.main_image} alt="" className="h-full w-full object-contain" />
@@ -353,11 +355,13 @@ function CartContent() {
                     </span>
                   )}
                 </div>
+                </div>{/* 关闭移动端 wrapper */}
 
-                {/* 数量 */}
-                <div className="w-24 shrink-0 text-center pt-1">
+                {/* 数量 + 删除：移动端横排在底部，PC 端保持原位 */}
+                <div className="flex items-center gap-3 sm:contents pl-7 sm:pl-0">
+                <div className="sm:w-24 shrink-0 sm:text-center pt-1">
                   {!unavailable ? (
-                    <div>
+                    <div className="flex items-center gap-2 sm:block">
                       <input
                         type="number"
                         key={`qty-${item.item_id}-${item.quantity}`}
@@ -381,7 +385,7 @@ function CartContent() {
                         className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
                       />
                       {item.unit && (
-                        <span className="block text-[11px] text-gray-400 mt-0.5">{item.unit}</span>
+                        <span className="text-[11px] text-gray-400 sm:block sm:mt-0.5">{item.unit}</span>
                       )}
                     </div>
                   ) : (
@@ -390,7 +394,7 @@ function CartContent() {
                 </div>
 
                 {/* 删除 */}
-                <div className="w-10 shrink-0 text-center pt-1">
+                <div className="sm:w-10 shrink-0 sm:text-center pt-1">
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(item.item_id)}
@@ -399,6 +403,7 @@ function CartContent() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
+                </div>{/* 关闭数量+删除 wrapper */}
               </div>
 
               {/* 变体编辑面板 */}
@@ -490,9 +495,9 @@ function CartContent() {
       {/* 底部操作栏 — 仅有商品时显示 */}
       {items.length > 0 && (
         <>
-          <div className="sticky bottom-0 z-10 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3.5 shadow-md">
-            {/* 左：全选 + 批量删除 */}
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+          <div className="sticky bottom-0 z-10 flex items-center gap-2 sm:gap-4 rounded-xl border border-gray-200 bg-white px-3 sm:px-5 py-3 sm:py-3.5 shadow-md">
+            {/* 左：全选 */}
+            <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer select-none shrink-0">
               <input
                 type="checkbox"
                 checked={allChecked}
@@ -500,21 +505,12 @@ function CartContent() {
                 disabled={purchasableItems.length === 0}
                 className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
               />
-              <span className="text-sm text-gray-700">{tCommon("selectAll")}</span>
+              <span className="text-xs sm:text-sm text-gray-700">{tCommon("selectAll")}</span>
             </label>
-            {checkedIds.size > 0 && (
-              <button
-                type="button"
-                onClick={() => setBatchDeleteOpen(true)}
-                className="inline-flex items-center rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100"
-              >
-                {t("deleteSelected")}
-              </button>
-            )}
 
             {/* 右：统计 + 提交 */}
-            <div className="ml-auto flex items-center gap-4">
-              <span className="text-sm text-gray-500">
+            <div className="ml-auto flex items-center gap-2 sm:gap-4">
+              <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
                 {t("selected", { count: checkedIds.size })}
                 <span className="text-gray-400"> / {items.length}</span>
               </span>
@@ -522,10 +518,10 @@ function CartContent() {
                 type="button"
                 disabled={checkedIds.size === 0}
                 onClick={handleSubmitInquiry}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#e3a615] px-7 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-[#e3a615] px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {t("submitInquiry")}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </div>
           </div>

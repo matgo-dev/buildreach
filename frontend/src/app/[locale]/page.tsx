@@ -1,28 +1,14 @@
 "use client";
-import {
-  ShoppingBag, Globe, Shield,
-  Truck, MessageCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { MallButton } from "@/components/mall/MallButton";
-import { SectionTitle } from "@/components/mall/SectionTitle";
-import { MallCard } from "@/components/mall/MallCard";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { RightSidebar } from "@/components/mall/RightSidebar";
 import { HeroBannerCarousel } from "@/components/mall/HeroBannerCarousel";
 import { CategoryFloors } from "@/components/mall/CategoryFloors";
 import { useAuthStore } from "@/stores/authStore";
-
-// ─── 能力卡片 ───
-const CAPABILITIES: { icon: LucideIcon; titleKey: string; descKey: string; color: string }[] = [
-  { icon: ShoppingBag, titleKey: "capItem1Title", descKey: "capItem1Desc", color: "bg-teal-800" },
-  { icon: Shield,      titleKey: "capItem2Title", descKey: "capItem2Desc", color: "bg-gold" },
-  { icon: Globe,       titleKey: "capItem3Title", descKey: "capItem3Desc", color: "bg-emerald-600" },
-  { icon: Truck,       titleKey: "capItem4Title", descKey: "capItem4Desc", color: "bg-teal-900" },
-];
 
 export default function HomePage() {
   const t = useTranslations("mall");
@@ -48,23 +34,6 @@ export default function HomePage() {
 
       {/* ===== 下方内容区 ===== */}
       <div className="space-y-5">
-        {/* ── 平台核心能力 ── */}
-        <MallCard padding="p-6">
-          <SectionTitle sub="Platform Capabilities" className="mb-4">{t("capTitle")}</SectionTitle>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {CAPABILITIES.map(({ icon: Icon, titleKey, descKey, color }) => (
-              <div key={titleKey} className="p-4 rounded-lg border border-line hover:shadow-mall-md hover:-translate-y-0.5 transition-all">
-                <div className={`w-[38px] h-[38px] rounded-lg ${color} grid place-items-center mb-3`}
-                  style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,63,70,.18)" }}>
-                  <Icon className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="text-sm font-black text-navy mb-1">{t(titleKey)}</h3>
-                <p className="text-xs text-muted leading-relaxed">{t(descKey)}</p>
-              </div>
-            ))}
-          </div>
-        </MallCard>
-
         {/* ── 底部 CTA ── */}
         <BottomCta />
       </div>
@@ -87,15 +56,12 @@ function BottomCta() {
           <p className="text-white/50 text-sm mb-5">{t("ctaLoggedInDesc")}</p>
           <div className="flex justify-center gap-3 flex-wrap">
             <MallButton variant="gold" href="/mall">{t("ctaBrowseMall")}</MallButton>
-            <MallButton variant="outline" href="/buyer/cart">{t("ctaStartRfq")}</MallButton>
             <MallButton variant="outline" href="/order-tracking">{t("ctaTrackOrder")}</MallButton>
-          </div>
-          <div className="mt-4 flex items-center justify-center gap-2 text-sm">
             <a
               href="https://wa.me/255000000000"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
             >
               <MessageCircle className="h-4 w-4" />
               {t("ctaWhatsApp")}
