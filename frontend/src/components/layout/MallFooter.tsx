@@ -11,7 +11,7 @@ export function MallFooter() {
 
   return (
     <footer className="bg-teal-950 text-[#d6eded] mt-2.5">
-      <div className="mx-auto max-w-mall px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pt-8 pb-8">
+      <div className="mx-auto max-w-mall px-3 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pt-8 pb-8">
         {/* 品牌列 */}
         <div className="md:col-span-1">
           <h3 className="text-white text-base font-black mb-2.5">{BRAND.name}</h3>

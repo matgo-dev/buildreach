@@ -131,14 +131,14 @@ export function FilterBar({
       <div className="border-t border-line" />
 
       {/* 行2: 排序 + 快筛 + 清除 | 商品总数 */}
-      <div className="px-5 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <ListFilter className="h-3.5 w-3.5 text-muted mr-0.5" />
+      <div className="px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          <ListFilter className="h-3.5 w-3.5 text-muted mr-0.5 shrink-0" />
 
           {/* 最新上架 */}
           <button
             onClick={() => onSortChange("newest")}
-            className={`h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
+            className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               sort === "newest"
                 ? "bg-teal-900 text-white shadow-sm"
                 : "text-ink hover:bg-teal-50 hover:text-teal-900"
@@ -147,12 +147,12 @@ export function FilterBar({
             {t("sortNewest")}
           </button>
 
-          <div className="h-4 w-px bg-gray-200" />
+          <div className="h-4 w-px bg-gray-200 shrink-0" />
 
           {/* 精选推荐 */}
           <button
             onClick={onFeaturedToggle}
-            className={`h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
+            className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               featured
                 ? "bg-amber-500 text-white shadow-sm"
                 : "text-ink hover:bg-amber-50 hover:text-amber-700"
@@ -164,7 +164,7 @@ export function FilterBar({
           {/* 集采 */}
           <button
             onClick={() => onSupplyModeChange(supplyMode === "PLATFORM_STOCK" ? "" : "PLATFORM_STOCK")}
-            className={`h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
+            className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               supplyMode === "PLATFORM_STOCK"
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-ink hover:bg-blue-50 hover:text-blue-700"
@@ -176,7 +176,7 @@ export function FilterBar({
           {/* 直供 */}
           <button
             onClick={() => onSupplyModeChange(supplyMode === "SUPPLIER_DIRECT" ? "" : "SUPPLIER_DIRECT")}
-            className={`h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
+            className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               supplyMode === "SUPPLIER_DIRECT"
                 ? "bg-emerald-600 text-white shadow-sm"
                 : "text-ink hover:bg-emerald-50 hover:text-emerald-700"
@@ -188,10 +188,10 @@ export function FilterBar({
           {/* 清除筛选 */}
           {hasActiveFilters && (
             <>
-              <div className="h-4 w-px bg-gray-200" />
+              <div className="h-4 w-px bg-gray-200 shrink-0" />
               <button
                 onClick={onClearAll}
-                className="flex items-center gap-1 h-[28px] rounded-md px-2.5 text-[12px] font-semibold text-red-600 hover:bg-red-50 transition-all"
+                className="shrink-0 whitespace-nowrap flex items-center gap-1 h-[28px] rounded-md px-2.5 text-[12px] font-semibold text-red-600 hover:bg-red-50 transition-all"
               >
                 <X className="h-3 w-3" />
                 {t("clearFilters")}
