@@ -10,7 +10,7 @@
 
 设计要点
 --------
-- 幂等:按 spu_code(P-XFS-{product_id}) upsert,子行先清后插,重跑安全
+- 幂等:按 spu_code(BR-{hash8}) upsert,子行先清后插,重跑安全
 - 事务边界 = 单个 offer:一个商品失败不连累其他
 - 归类靠 categories_raw.json 数据树,不靠目录路径
 - 与 import_products_1688.py(阿里版)同构,适配鑫方盛纯中文数据源
@@ -32,6 +32,7 @@ import logging
 import shutil
 import sys
 from dataclasses import dataclass, field
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -757,7 +758,7 @@ def import_offer(
     assert data is not None
 
     product_id = offer.product_id
-    spu_code = f"P-XFS-{product_id}"
+    spu_code = "BR-" + hashlib.md5(f"P-XFS-{product_id}".encode()).hexdigest()[:8].upper()
 
     # ── 1. 归类:source_category_path → DB code ──
     # 优先用 path_zh(全路径,无歧义),回退到叶子 name_zh
@@ -1185,7 +1186,7 @@ def main() -> None:
     if args.dry_run:
         log.info("[DRY RUN] 将导入 %d 个商品(来源: %s),不写库。", len(valid_offers), run_meta.source)
         for o in valid_offers:
-            spu_code = f"P-XFS-{o.product_id}"
+            spu_code = "BR-" + hashlib.md5(f"P-XFS-{o.product_id}".encode()).hexdigest()[:8].upper()
             src_path = o.data.get("source_category_path", []) if o.data else []
             leaf = _extract_leaf_name(src_path)
             name_zh = ""

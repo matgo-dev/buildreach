@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import shutil
@@ -661,7 +662,7 @@ def import_offer(
     assert data is not None
 
     offer_id = offer.offer_id
-    spu_code = f"P-{offer_id}"
+    spu_code = "BR-" + hashlib.md5(f"P-{offer_id}".encode()).hexdigest()[:8].upper()
 
     # ── 1. 归类:source_category_path 叶子 name_en → DB code ──
     src_path = data.get("source_category_path", [])
