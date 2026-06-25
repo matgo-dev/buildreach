@@ -77,28 +77,30 @@ export function MallHeader() {
         boxShadow: "0 12px 30px rgba(0,63,70,.22)",
       }}
     >
-      <div className="mx-auto max-w-mall px-6 grid grid-cols-[200px_minmax(400px,1fr)_auto] items-center gap-5 min-h-[96px]">
+      <div className="mx-auto max-w-mall px-3 sm:px-6">
+        {/* 上层：品牌 + 购物车/语言 */}
+        <div className="flex items-center justify-between min-h-[56px] md:min-h-[96px] md:grid md:grid-cols-[200px_minmax(400px,1fr)_auto] md:gap-5">
         {/* 左:品牌 */}
         <Link
           href="/"
-          className="flex items-center gap-3.5 group"
+          className="flex items-center gap-2 sm:gap-3.5 group"
           aria-label={BRAND.name}
         >
           {/* Logo mark */}
           <img
             src={BRAND.logoMark}
             alt={BRAND.name}
-            className="h-11 w-11 shrink-0 rounded-xl object-cover"
+            className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 rounded-xl object-cover"
           />
           <span className="min-w-0">
-            <strong className="block text-[17px] leading-tight font-black text-white">
+            <strong className="block text-[15px] sm:text-[17px] leading-tight font-black text-white">
               {BRAND.name} <span className="text-gold">{BRAND.nameZh}</span>
             </strong>
           </span>
         </Link>
 
-        {/* 中:搜索框 — 暖金边框 + 最近搜索下拉 */}
-        <form onSubmit={handleSearch} className="relative min-w-0">
+        {/* 中:搜索框 — PC 上显示在这一行 */}
+        <form onSubmit={handleSearch} className="relative min-w-0 hidden md:block">
           <div
             className="flex rounded-[10px] overflow-hidden"
             style={{
@@ -156,6 +158,42 @@ export function MallHeader() {
           {/* 语言切换 */}
           <HeaderLocaleSwitcher />
         </div>
+        </div>
+
+        {/* 移动端搜索框 — 独占一行 */}
+        <form onSubmit={handleSearch} className="relative md:hidden pb-3">
+          <div
+            className="flex rounded-[10px] overflow-hidden"
+            style={{
+              border: "2px solid #e3a615",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            }}
+          >
+            <input
+              type="search"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onClick={() => setSearchFocused(true)}
+              placeholder={t("searchPlaceholder")}
+              className="flex-1 h-10 px-3 bg-white text-ink text-[14px] outline-none min-w-0"
+            />
+            <button
+              type="submit"
+              className="w-[50px] bg-gold hover:bg-gold-deep text-white grid place-items-center transition-colors"
+              aria-label="Search"
+            >
+              <Search className="h-4.5 w-4.5" strokeWidth={2.4} />
+            </button>
+          </div>
+          {isBuyer && (
+            <RecentSearches
+              visible={searchFocused}
+              onSelect={handleSelectSearch}
+              onClose={() => setSearchFocused(false)}
+            />
+          )}
+        </form>
       </div>
     </header>
   );
