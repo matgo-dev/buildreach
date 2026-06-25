@@ -168,28 +168,34 @@ export function FilterPanel({
 
         {/* 多选模式: 已选品牌 + 确定/取消 */}
         {multiMode && (
-          <div className="flex items-center gap-3 mt-2 pt-2 border-t border-dashed border-gray-200">
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-200 space-y-2">
             {pending.size > 0 && (
-              <span className="text-[12px] text-gray-500">
-                {t("filterSelected")}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[12px] text-gray-500 mr-1">{t("filterSelected")}</span>
                 {Array.from(pending).map((k) => (
-                  <span key={k} className="ml-2 font-medium text-teal-700">{k}</span>
+                  <span
+                    key={k}
+                    className="inline-flex items-center h-[22px] px-2 rounded-full bg-teal-50 text-[11px] font-medium text-teal-700 border border-teal-200"
+                  >
+                    {k}
+                  </span>
                 ))}
-              </span>
+              </div>
             )}
-            <span className="flex-1" />
-            <button
-              onClick={confirmMulti}
-              className="h-[28px] rounded-md px-4 text-[12px] font-semibold bg-teal-700 text-white hover:bg-teal-800 transition-colors"
-            >
-              {t("filterConfirm")}
-            </button>
-            <button
-              onClick={cancelMulti}
-              className="h-[28px] rounded-md px-4 text-[12px] font-semibold border border-gray-300 text-ink hover:bg-gray-50 transition-colors"
-            >
-              {t("filterCancel")}
-            </button>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={cancelMulti}
+                className="h-[28px] rounded-md px-4 text-[12px] font-semibold border border-gray-300 text-ink hover:bg-gray-50 transition-colors"
+              >
+                {t("filterCancel")}
+              </button>
+              <button
+                onClick={confirmMulti}
+                className="h-[28px] rounded-md px-4 text-[12px] font-semibold bg-teal-700 text-white hover:bg-teal-800 transition-colors"
+              >
+                {t("filterConfirm")}
+              </button>
+            </div>
           </div>
         )}
       </div>
