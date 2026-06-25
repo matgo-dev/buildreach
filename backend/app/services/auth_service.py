@@ -143,7 +143,6 @@ async def register_buyer(
     即已由调用方处理落盘后的结果。
     返回 (user, token_dict)。
     """
-    from app.db.models.buyer_browse_preference import BuyerBrowsePreference
     from app.db.models.buyer_org_image import BuyerOrgImage
 
     if not validate_password_strength(password):
@@ -208,12 +207,6 @@ async def register_buyer(
             buyer_org_id=org.id, image_key=key, image_type="LICENSE",
             sort_order=idx, width=w, height=h, file_size=fsize,
         ))
-
-    # 浏览偏好初始化 = 经营品类
-    db.add(BuyerBrowsePreference(
-        user_id=user.id,
-        category_codes=business_category_codes,
-    ))
 
     await write_audit(
         db,

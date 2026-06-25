@@ -19,12 +19,13 @@ import {
   EyeOff,
   ImagePlus,
   Loader2,
+  RefreshCw,
   ShoppingCart,
   X,
 } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
-import { authApi, type LoginResult } from "@/lib/auth";
+import { authApi, type CaptchaData, type LoginResult } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { categoriesApi, type CategoryNode } from "@/lib/api/categories";
 import {
@@ -391,6 +392,29 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const sfInputRef = useRef<HTMLInputElement>(null);
   const licInputRef = useRef<HTMLInputElement>(null);
 
+  // 验证码
+  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+
+  const loadCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
+    setCaptchaCode("");
+    try {
+      const data = await authApi.getCaptcha();
+      setCaptcha(data);
+    } catch {
+      // 静默失败，用户可点刷新重试
+    } finally {
+      setCaptchaLoading(false);
+    }
+  }, []);
+
+  // 页面加载时获取验证码
+  useEffect(() => {
+    loadCaptcha();
+  }, [loadCaptcha]);
+
   // storefrontImages 变化时更新预览
   useEffect(() => {
     const urls = storefrontImages.map((f) => URL.createObjectURL(f));
@@ -422,10 +446,12 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       case "address":
         return validateRequired(address, t("label_address"));
       case "categories":
-        if (selectedCategories.length === 0) return t("err_category_required");
         return null;
       case "email":
         if (email && validateEmail(email)) return validateEmail(email);
+        return null;
+      case "captcha":
+        if (!captchaCode.trim()) return t("err_captcha_required");
         return null;
       case "storefrontImages":
         if (storefrontImages.length === 0) return t("err_storefront_required");
@@ -445,7 +471,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   // 全字段校验
   const validateAll = (): string | null => {
-    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages"];
+    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages", "captcha"];
     const newErrors: Record<string, string | null> = {};
     const newTouched: Record<string, boolean> = {};
     let firstError: string | null = null;
@@ -562,10 +588,21 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         storefront_images: storefrontImages,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
         language_preference: locale,
+        captcha_key: captcha?.key || "",
+        captcha_code: captchaCode,
       });
       onSubmitted(tokens);
     } catch (err) {
+      // 提交失败刷新验证码(一次性消耗，后端已销毁)
+      loadCaptcha();
       if (err instanceof ApiError) {
+        // 验证码错误
+        if (err.code === 42230) {
+          setErrors((e) => ({ ...e, captcha: t("err_captcha_wrong") }));
+          setTouched((t) => ({ ...t, captcha: true }));
+          setSubmitError(t("err_captcha_wrong"));
+          return;
+        }
         // 手机号已注册
         if (err.code === 40921) {
           setErrors((e) => ({ ...e, phone: err.message }));
@@ -794,7 +831,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 7. Business Categories (L1 multi-select) */}
         <div className="space-y-1.5" id="field-categories">
           <Label className="text-sm font-semibold text-gray-700">
-            {t("label_categories")} <span className="text-red-500">*</span>
+            {t("label_categories")} <span className="text-gray-400 font-normal">({t("optional")})</span>
           </Label>
           {catLoading ? (
             <div className="flex items-center gap-2 py-2 text-sm text-gray-400">

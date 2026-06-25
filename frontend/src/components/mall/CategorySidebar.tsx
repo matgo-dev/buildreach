@@ -42,15 +42,9 @@ function getShortName(cat: CategoryTreeNode, locale: string): string {
 export function CategorySidebar({
   activeCategoryCode = "",
   variant = "home",
-  prefCodes,
-  showAllCategories = false,
-  onToggleAllCategories,
 }: {
   activeCategoryCode?: string;
   variant?: "home" | "mall";
-  prefCodes?: string[];
-  showAllCategories?: boolean;
-  onToggleAllCategories?: () => void;
 }) {
   const router = useRouter();
   const locale = useLocale();
@@ -61,16 +55,9 @@ export function CategorySidebar({
   const [flyoutTop, setFlyoutTop] = useState(0);
   const asideRef = useRef<HTMLElement>(null);
 
-  // 偏好过滤
-  const hasPref = !!prefCodes && prefCodes.length > 0;
-  const filteredTree =
-    hasPref && !showAllCategories
-      ? categoryTree.filter((cat) => prefCodes!.includes(cat.code))
-      : categoryTree;
-
   // 分组为行:按语言调整每行数量
   const catsPerRow = locale === "zh" ? CATS_PER_ROW_ZH : CATS_PER_ROW_OTHER;
-  const rows = chunkArray(filteredTree, catsPerRow);
+  const rows = chunkArray(categoryTree, catsPerRow);
   const isSticky = variant === "mall";
   const isHome = variant === "home";
   const visibleRows = isHome ? rows.slice(0, HOME_MAX_ROWS) : rows;
@@ -230,31 +217,6 @@ export function CategorySidebar({
           </button>
         )}
 
-        {/* 偏好品类筛选提示 */}
-        {hasPref && onToggleAllCategories && (
-          <div className="px-4 py-2 border-t border-gray-100 text-center">
-            {!showAllCategories ? (
-              <>
-                <span className="block text-[11px] text-muted mb-1">
-                  {t("prefFilterActive", { count: prefCodes!.length })}
-                </span>
-                <button
-                  onClick={onToggleAllCategories}
-                  className="text-[12px] text-teal-600 hover:text-teal-800 hover:underline transition-colors"
-                >
-                  {t("viewAllCategories")}
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={onToggleAllCategories}
-                className="text-[12px] text-teal-600 hover:text-teal-800 hover:underline transition-colors"
-              >
-                {t("myCategories")}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* 二级飞出面板 — 展示该行所有 L1 品类的子品类 */}
