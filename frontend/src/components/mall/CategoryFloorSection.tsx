@@ -41,23 +41,12 @@ export function CategoryFloorSection({
     `floor-products-${config.categoryCodes.join(",")}`,
     async () => {
       try {
-        const featured = await listProducts({
-          category_code: primaryCode,
-          featured: true,
-          size: FLOOR_PRODUCT_SIZE,
-          sort: "newest",
-        });
-        if (featured.items.length >= FLOOR_PRODUCT_SIZE) {
-          return featured.items.slice(0, FLOOR_PRODUCT_SIZE);
-        }
-        const rest = await listProducts({
+        const res = await listProducts({
           category_code: primaryCode,
           size: FLOOR_PRODUCT_SIZE,
           sort: "newest",
         });
-        const seenIds = new Set(featured.items.map((p) => p.id));
-        const extra = rest.items.filter((p) => !seenIds.has(p.id));
-        return [...featured.items, ...extra].slice(0, FLOOR_PRODUCT_SIZE);
+        return res.items.slice(0, FLOOR_PRODUCT_SIZE);
       } catch {
         return []; // API 错误时返回空，由 Mock 兜底
       }
