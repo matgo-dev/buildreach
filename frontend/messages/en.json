@@ -158,6 +158,8 @@
     "ph_address": "e.g. Kariakoo, Dar es Salaam",
     "label_categories": "Business Categories",
     "loading_categories": "Loading categories...",
+    "expand_categories": "Show more ({count})",
+    "collapse_categories": "Show less",
     "label_email": "Email",
     "ph_email": "your@email.com",
     "label_storefront": "Storefront Photos",
