@@ -13,8 +13,6 @@ import {
   Plus,
   Search,
   X,
-  ChevronDown,
-  ChevronRight,
   Calendar,
   MapPin,
   Package,
@@ -173,21 +171,7 @@ function CertificationTagInput({
   );
 }
 
-// ---------- 变体轴类型 ----------
-
-type VariantAxis = {
-  key: string;           // attr_key_en
-  display: string;       // attr_key 显示名
-  values: Array<{ value: string; display: string }>;
-};
-
-type ProductVariantEntry = {
-  variants: VariantAxis[];  // selectable=true 的属性轴
-  unit: string;
-  loading: boolean;
-};
-
-// ---------- 商品搜索弹窗（SPU + 变体选择器） ----------
+// ---------- 商品搜索弹窗 ----------
 
 function ProductSearchModal({
   open,
@@ -201,29 +185,48 @@ function ProductSearchModal({
   existingKeys: Set<string>;
 }) {
   const t = useTranslations("rfq");
+  const PAGE_SIZE = 20;
   const [keyword, setKeyword] = useState("");
   const [products, setProducts] = useState<ProductPublic[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [productVariantMap, setProductVariantMap] = useState<Record<number, ProductVariantEntry>>({});
-  // 跟踪每个商品的变体选中状态
-  const [variantSelection, setVariantSelection] = useState<Record<number, Record<string, string>>>({});
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (!keyword.trim()) return;
     setSearching(true);
     setSearched(true);
-    setExpandedId(null);
+    setPage(1);
     try {
-      const res = await listProducts({ keyword: keyword.trim(), size: 20 });
+      const res = await listProducts({ keyword: keyword.trim(), size: PAGE_SIZE, page: 1 });
       setProducts(res.items);
+      setHasMore(res.items.length >= PAGE_SIZE);
     } catch {
       setProducts([]);
+      setHasMore(false);
     } finally {
       setSearching(false);
     }
   }, [keyword]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const res = await listProducts({ keyword: keyword.trim(), size: PAGE_SIZE, page: nextPage });
+      setProducts((prev) => [...prev, ...res.items]);
+      setPage(nextPage);
+      setHasMore(res.items.length >= PAGE_SIZE);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, page, keyword]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -235,66 +238,37 @@ function ProductSearchModal({
     [handleSearch],
   );
 
-  const expandedIdRef = useRef(expandedId);
-  expandedIdRef.current = expandedId;
-  const variantMapRef = useRef(productVariantMap);
-  variantMapRef.current = productVariantMap;
+  const toggleSelect = useCallback((productId: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }, []);
 
-  const toggleExpand = useCallback(
-    async (productId: number) => {
-      if (expandedIdRef.current === productId) {
-        setExpandedId(null);
-        return;
-      }
-      setExpandedId(productId);
-      if (variantMapRef.current[productId]) return;
-
-      setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: true } }));
-      try {
-        const detail = await getProduct(productId);
-        const variants: VariantAxis[] = [];
-        for (const group of detail.attribute_groups ?? []) {
-          for (const item of group.items ?? []) {
-            if (item.selectable && item.values.length > 0) {
-              variants.push({
-                key: item.key,
-                display: item.key,
-                values: item.values.map((v) => ({ value: v.value, display: v.value })),
-              });
-            }
-          }
-        }
-        setProductVariantMap((prev) => ({
-          ...prev,
-          [productId]: { variants, unit: detail.unit, loading: false },
-        }));
-      } catch {
-        setProductVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: false } }));
-      }
-    },
-    [],
-  );
-
-  const handleAddProduct = useCallback(
-    (product: ProductPublic, selection: Record<string, string>, unit: string) => {
-      const selected_variants = Object.entries(selection).map(([attr_name, value]) => ({
-        attr_name,
-        value,
-      }));
-      const variant_display = selected_variants
-        .map((v) => `${v.attr_name}: ${v.value}`)
-        .join(" / ") || "\u2014";
+  const handleBatchAdd = useCallback(() => {
+    if (selected.size === 0) {
+      onClose();
+      return;
+    }
+    for (const pid of selected) {
+      const p = products.find((x) => x.id === pid);
+      if (!p) continue;
+      const itemKey = makeItemKey(p.id, []);
+      if (existingKeys.has(itemKey)) continue;
       onAdd({
-        product_id: product.id,
-        selected_variants,
-        product_name: product.name,
-        variant_display,
-        unit: unit || product.unit || "PCS",
+        product_id: p.id,
+        selected_variants: [],
+        product_name: p.name,
+        variant_display: "\u2014",
+        unit: p.unit || "PCS",
         quantity: 1,
       });
-    },
-    [onAdd],
-  );
+    }
+    setSelected(new Set());
+    onClose();
+  }, [selected, products, existingKeys, onAdd, onClose]);
 
   // 重置状态
   useEffect(() => {
@@ -302,11 +276,27 @@ function ProductSearchModal({
       setKeyword("");
       setProducts([]);
       setSearched(false);
-      setExpandedId(null);
-      setProductVariantMap({});
-      setVariantSelection({});
+      setSelected(new Set());
+      setPage(1);
+      setHasMore(false);
     }
   }, [open]);
+
+  // 可选商品（排除已添加的）
+  const selectableIds = useMemo(
+    () => products.filter((p) => !existingKeys.has(makeItemKey(p.id, []))).map((p) => p.id),
+    [products, existingKeys],
+  );
+
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+
+  const toggleAll = useCallback(() => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(selectableIds));
+    }
+  }, [allSelected, selectableIds]);
 
   if (!open) return null;
 
@@ -351,6 +341,21 @@ function ProductSearchModal({
           </div>
         </div>
 
+        {/* 全选栏 */}
+        {!searching && products.length > 0 && selectableIds.length > 0 && (
+          <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-2">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]/20 cursor-pointer"
+            />
+            <span className="text-xs text-gray-500">
+              {t("selectAll")}({selectableIds.length})
+            </span>
+          </div>
+        )}
+
         {/* 结果列表 */}
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {searching && (
@@ -368,16 +373,33 @@ function ProductSearchModal({
           {!searching && products.length > 0 && (
             <div className="space-y-2">
               {products.map((p) => {
-                const isExpanded = expandedId === p.id;
-                const variantData = productVariantMap[p.id];
-                const hasVariants = variantData && !variantData.loading && variantData.variants.length > 0;
-                // 未展开时的快速添加（无变体商品）
-                const noVariantKey = makeItemKey(p.id, []);
-                const noVariantAdded = existingKeys.has(noVariantKey);
+                const itemKey = makeItemKey(p.id, []);
+                const alreadyAdded = existingKeys.has(itemKey);
+                const isSelected = selected.has(p.id);
                 return (
-                  <div key={p.id} className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-sm">
-                    {/* 商品信息行 */}
+                  <div
+                    key={p.id}
+                    onClick={() => !alreadyAdded && toggleSelect(p.id)}
+                    className={`overflow-hidden rounded-lg border transition-shadow cursor-pointer ${
+                      alreadyAdded
+                        ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                        : isSelected
+                          ? "border-[#00505a] bg-[#00505a]/5 shadow-sm"
+                          : "border-gray-200 hover:shadow-sm"
+                    }`}
+                  >
                     <div className="flex gap-3 p-3">
+                      {/* 多选框 */}
+                      <div className="flex shrink-0 items-center">
+                        <input
+                          type="checkbox"
+                          checked={alreadyAdded || isSelected}
+                          disabled={alreadyAdded}
+                          onChange={() => !alreadyAdded && toggleSelect(p.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]/20 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                      </div>
                       {/* 商品图 */}
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
                         {p.main_image ? (
@@ -413,141 +435,52 @@ function ProductSearchModal({
                           {p.unit && <span>{t("unit")}: {p.unit}</span>}
                         </div>
                       </div>
-                      {/* 操作区 */}
-                      <div className="flex shrink-0 flex-col items-end justify-between">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(p.id)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#00505a] hover:bg-[#00505a]/5"
-                        >
-                          {isExpanded ? (
-                            <>
-                              {t("collapse")}
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            </>
-                          ) : (
-                            <>
-                              {t("selectVariant")}
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </>
-                          )}
-                        </button>
-                        {/* 无变体时直接添加 */}
-                        {!isExpanded && (
-                          <button
-                            type="button"
-                            disabled={noVariantAdded}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddProduct(p, {}, p.unit || "");
-                            }}
-                            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                              noVariantAdded
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-[#00505a] text-white hover:bg-[#003f46]"
-                            }`}
-                          >
-                            {noVariantAdded ? t("alreadyAdded") : t("quickAdd")}
-                          </button>
+                      {/* 状态标签 */}
+                      <div className="flex shrink-0 items-center">
+                        {alreadyAdded && (
+                          <span className="rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-400">
+                            {t("alreadyAdded")}
+                          </span>
                         )}
                       </div>
                     </div>
-
-                    {/* 变体选择器（展开时） */}
-                    {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3">
-                        {variantData?.loading && (
-                          <div className="flex items-center justify-center py-4">
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                          </div>
-                        )}
-                        {variantData && !variantData.loading && (
-                          <>
-                            {hasVariants ? (
-                              <div className="space-y-3">
-                                {variantData.variants.map((axis) => {
-                                  const selected = variantSelection[p.id]?.[axis.key];
-                                  return (
-                                    <div key={axis.key}>
-                                      <div className="mb-1.5 text-xs font-medium text-gray-600">{axis.display}</div>
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {axis.values.map((v) => (
-                                          <button
-                                            key={v.value}
-                                            type="button"
-                                            onClick={() => {
-                                              setVariantSelection((prev) => ({
-                                                ...prev,
-                                                [p.id]: {
-                                                  ...(prev[p.id] ?? {}),
-                                                  [axis.key]: prev[p.id]?.[axis.key] === v.value ? "" : v.value,
-                                                },
-                                              }));
-                                            }}
-                                            className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-                                              selected === v.value
-                                                ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
-                                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                            }`}
-                                          >
-                                            {v.display}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-400">{t("noVariants")}</p>
-                            )}
-                            {/* 加入按钮 */}
-                            <div className="mt-3 flex items-center justify-between">
-                              <span className="text-xs text-gray-400">
-                                {t("unit")}: {variantData.unit || p.unit || "PCS"}
-                              </span>
-                              {(() => {
-                                const sel = variantSelection[p.id] ?? {};
-                                const selected_variants = Object.entries(sel)
-                                  .filter(([, v]) => v)
-                                  .map(([attr_name, value]) => ({ attr_name, value }));
-                                const itemKey = makeItemKey(p.id, selected_variants);
-                                const added = existingKeys.has(itemKey);
-                                return (
-                                  <button
-                                    type="button"
-                                    disabled={added}
-                                    onClick={() => handleAddProduct(p, sel, variantData.unit)}
-                                    className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
-                                      added
-                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        : "bg-[#00505a] text-white hover:bg-[#003f46]"
-                                    }`}
-                                  >
-                                    {added ? t("alreadyAdded") : t("addWithVariant")}
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
+
+              {/* 加载更多 */}
+              {hasMore && (
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 disabled:text-gray-400"
+                  >
+                    {loadingMore ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
+                    {t("loadMore")}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* 底部操作栏 */}
-        <div className="flex items-center justify-end border-t border-gray-200 px-5 py-3">
+        <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
+          <span className="text-sm text-gray-500">
+            {selected.size > 0 && t("selectedCount", { count: selected.size })}
+          </span>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleBatchAdd}
             className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
           >
-            {t("doneSelection")}
+            {selected.size > 0
+              ? t("addSelected", { count: selected.size })
+              : t("doneSelection")}
           </button>
         </div>
       </div>
@@ -712,61 +645,6 @@ function RfqCreateContent() {
     [],
   );
 
-  // 手动行项的变体数据缓存 + 选中状态
-  const [manualVariantMap, setManualVariantMap] = useState<Record<number, ProductVariantEntry>>({});
-  const [manualVariantSelection, setManualVariantSelection] = useState<Record<number, Record<string, string>>>({});
-  const [manualExpandedId, setManualExpandedId] = useState<number | null>(null);
-
-  // 加载商品的变体轴
-  const loadVariantAxes = useCallback(async (productId: number) => {
-    if (manualVariantMap[productId]) return;
-    setManualVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: true } }));
-    try {
-      const detail = await getProduct(productId);
-      const variants: VariantAxis[] = [];
-      for (const group of detail.attribute_groups ?? []) {
-        for (const item of group.items ?? []) {
-          if (item.selectable && item.values.length > 0) {
-            variants.push({
-              key: item.key,
-              display: item.key,
-              values: item.values.map((v) => ({ value: v.value, display: v.value })),
-            });
-          }
-        }
-      }
-      setManualVariantMap((prev) => ({
-        ...prev,
-        [productId]: { variants, unit: detail.unit, loading: false },
-      }));
-      // 有变体时自动展开
-      if (variants.length > 0) {
-        setManualExpandedId(productId);
-      }
-    } catch {
-      setManualVariantMap((prev) => ({ ...prev, [productId]: { variants: [], unit: "", loading: false } }));
-    }
-  }, [manualVariantMap]);
-
-  // 应用变体选择到手动行项
-  const handleApplyVariant = useCallback((idx: number, productId: number) => {
-    const sel = manualVariantSelection[productId] ?? {};
-    const selected_variants = Object.entries(sel)
-      .filter(([, v]) => v)
-      .map(([attr_name, value]) => ({ attr_name, value }));
-    const variant_display = selected_variants
-      .map((v) => `${v.attr_name}: ${v.value}`)
-      .join(" / ") || "\u2014";
-    setDraft((prev) => ({
-      ...prev,
-      manualItems: prev.manualItems.map((m, i) =>
-        i === idx ? { ...m, selected_variants, variant_display } : m,
-      ),
-    }));
-    setManualExpandedId(null);
-    idemRef.current = null;
-  }, [manualVariantSelection]);
-
   // 从 URL product_id 自动添加商品到手动列表
   useEffect(() => {
     if (!productIdParam || productIdLoadedRef.current) return;
@@ -791,27 +669,6 @@ function RfqCreateContent() {
           unit: detail.unit || "PCS",
           quantity: 1,
         });
-
-        // 加载变体轴数据
-        const variants: VariantAxis[] = [];
-        for (const group of detail.attribute_groups ?? []) {
-          for (const item of group.items ?? []) {
-            if (item.selectable && item.values.length > 0) {
-              variants.push({
-                key: item.key,
-                display: item.key,
-                values: item.values.map((v) => ({ value: v.value, display: v.value })),
-              });
-            }
-          }
-        }
-        setManualVariantMap((prev) => ({
-          ...prev,
-          [detail.id]: { variants, unit: detail.unit, loading: false },
-        }));
-        if (variants.length > 0) {
-          setManualExpandedId(detail.id);
-        }
       })
       .catch(() => {
         toast.error(t("productNotFound"));
@@ -1076,7 +933,6 @@ function RfqCreateContent() {
             <thead>
               <tr className="bg-gray-50 text-left text-xs text-gray-500">
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
-                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
                 {!isCartPath && <th className="w-12 px-3 py-2.5" />}
               </tr>
@@ -1087,9 +943,6 @@ function RfqCreateContent() {
                 <tr key={`cart-${item.item_id}`} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-gray-500">
-                    {item.variant_display ?? "\u2014"}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {isCartPath ? (
@@ -1133,132 +986,44 @@ function RfqCreateContent() {
               ))}
 
               {/* 手动添加的商品 */}
-              {manualItems.map((item, idx) => {
-                const variantData = manualVariantMap[item.product_id];
-                const isExpanded = manualExpandedId === item.product_id;
-                const hasVariants = variantData && !variantData.loading && variantData.variants.length > 0;
-                return (
-                  <React.Fragment key={`manual-${item.product_id}-${idx}`}>
-                    <tr className="border-t border-gray-100 even:bg-slate-50/50">
-                      <td className="px-5 py-3 font-medium text-gray-800">
-                        {item.product_name}
-                      </td>
-                      <td className="px-5 py-3 text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <span>{item.variant_display}</span>
-                          {/* 变体编辑按钮 */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (isExpanded) {
-                                setManualExpandedId(null);
-                              } else {
-                                loadVariantAxes(item.product_id);
-                                setManualExpandedId(item.product_id);
-                              }
-                            }}
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-[#00505a] hover:bg-[#00505a]/5 transition-colors"
-                          >
-                            {isExpanded ? t("collapse") : t("selectVariant")}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <div className="inline-flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
-                            }}
-                            min={1}
-                            className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
-                          />
-                          <span className="text-xs text-gray-500">
-                            {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveManualItem(idx)}
-                          className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                    {/* 变体选择面板（展开时） */}
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={4} className="bg-gray-50/60 px-5 py-3">
-                          {variantData?.loading && (
-                            <div className="flex items-center justify-center py-3">
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                            </div>
-                          )}
-                          {variantData && !variantData.loading && (
-                            <>
-                              {hasVariants ? (
-                                <div className="space-y-3">
-                                  {variantData.variants.map((axis) => {
-                                    const selected = manualVariantSelection[item.product_id]?.[axis.key];
-                                    return (
-                                      <div key={axis.key}>
-                                        <div className="mb-1.5 text-xs font-medium text-gray-600">{axis.display}</div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                          {axis.values.map((v) => (
-                                            <button
-                                              key={v.value}
-                                              type="button"
-                                              onClick={() => {
-                                                setManualVariantSelection((prev) => ({
-                                                  ...prev,
-                                                  [item.product_id]: {
-                                                    ...(prev[item.product_id] ?? {}),
-                                                    [axis.key]: prev[item.product_id]?.[axis.key] === v.value ? "" : v.value,
-                                                  },
-                                                }));
-                                              }}
-                                              className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-                                                selected === v.value
-                                                  ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
-                                                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                              }`}
-                                            >
-                                              {v.display}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleApplyVariant(idx, item.product_id)}
-                                    className="mt-1 rounded-md bg-[#00505a] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#003f46]"
-                                  >
-                                    {t("confirmVariant") ?? "确认选择"}
-                                  </button>
-                                </div>
-                              ) : (
-                                <p className="text-xs text-gray-400">{t("noVariants")}</p>
-                              )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+              {manualItems.map((item, idx) => (
+                <tr key={`manual-${item.product_id}-${idx}`} className="border-t border-gray-100 even:bg-slate-50/50">
+                  <td className="px-5 py-3 font-medium text-gray-800">
+                    {item.product_name}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
+                        }}
+                        min={1}
+                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                      />
+                      <span className="text-xs text-gray-500">
+                        {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveManualItem(idx)}
+                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
 
               {/* 添加商品按钮 — 始终显示（篮子路径和直询路径除外） */}
               {!isCartPath && !isDirectPath && (
                 <tr className="border-t border-gray-100">
-                  <td colSpan={4} className="px-5 py-3">
+                  <td colSpan={3} className="px-5 py-3">
                     <button
                       type="button"
                       onClick={() => setShowSearch(true)}
