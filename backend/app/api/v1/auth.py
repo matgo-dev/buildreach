@@ -703,7 +703,7 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     email: str = Form(...),
 ):
-    """接收邮箱，发送6位验证码。无论邮箱是否存在都返回成功（防枚举）。"""
+    """接收邮箱，校验是否已注册，发送6位验证码。"""
     import random
     from app.services.email_service import send_verification_code_email
 
@@ -712,16 +712,22 @@ async def forgot_password(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    if user:
-        code = f"{random.randint(100000, 999999)}"
-        _reset_codes[email] = {
-            "code": code,
-            "user_id": user.id,
-            "expires": _time.time() + 600,  # 10 分钟有效
-        }
-        send_verification_code_email(email, code)
+    if not user:
+        raise MultipleValidationError([{
+            "field": "email",
+            "code": 40401,
+            "message": "该邮箱未注册，请检查后重试",
+        }])
 
-    return success(None, message="如果该邮箱已注册，您将收到验证码")
+    code = f"{random.randint(100000, 999999)}"
+    _reset_codes[email] = {
+        "code": code,
+        "user_id": user.id,
+        "expires": _time.time() + 600,  # 10 分钟有效
+    }
+    send_verification_code_email(email, code)
+
+    return success(None, message="验证码已发送")
 
 
 @router.post("/reset-password", summary="重置密码（验证码模式）")
