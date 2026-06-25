@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
@@ -63,7 +63,7 @@ export default function HelpCenterPage() {
   const wa = useWhatsApp();
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
 
-  const current = SECTIONS.find((s) => s.id === activeSection)!;
+  const current = SECTIONS.find((s) => s.id === activeSection) ?? SECTIONS[0];
 
   return (
     <PublicLayout>
@@ -91,9 +91,10 @@ export default function HelpCenterPage() {
                   <span className="flex-1 text-[14px] font-semibold text-gray-800">
                     {t(`${sec.id}_title`)}
                   </span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-gray-400 transition-transform ${isActive ? "rotate-180" : ""}`}
-                  />
+                  {isActive
+                    ? <ChevronDown className="h-4 w-4 text-teal-600" />
+                    : <ChevronRight className="h-4 w-4 text-gray-400" />
+                  }
                 </button>
                 {isActive && (
                   <div className="px-4 pb-3 border-t border-gray-100">
