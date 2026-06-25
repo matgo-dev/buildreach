@@ -6,7 +6,10 @@
     "confirm": "Confirm",
     "back_to_home": "Back to Home",
     "back": "Back",
-    "selectAll": "Select All"
+    "selectAll": "Select All",
+    "err_email_required": "Please enter your email",
+    "err_email_format": "Invalid email format",
+    "err_email_domain": "This email domain is not accepted, please use a valid email address (e.g. .com, .cn)"
   },
   "brand": {
     "name": "BuildReach",

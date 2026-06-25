@@ -6,7 +6,10 @@
     "confirm": "确定",
     "back_to_home": "返回首页",
     "back": "返回",
-    "selectAll": "全选"
+    "selectAll": "全选",
+    "err_email_required": "请填写邮箱",
+    "err_email_format": "邮箱格式不正确",
+    "err_email_domain": "邮箱域名不可用,请使用正式邮箱地址(如 .com、.cn)"
   },
   "brand": {
     "name": "BuildReach 筑达",
