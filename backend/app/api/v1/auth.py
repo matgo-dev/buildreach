@@ -204,7 +204,7 @@ async def register_buyer(
     company_name: str = Form(...),
     address: str = Form(...),
     business_category_codes: list[str] = Form(default=[]),
-    email: str | None = Form(default=None),
+    email: str = Form(...),
     tin: str | None = Form(default=None),
     brela_no: str | None = Form(default=None),
     language_preference: str | None = Form(default=None),
@@ -243,23 +243,23 @@ async def register_buyer(
     else:
         address = address.strip()
 
-    # 邮箱格式(选填)
-    if email:
-        email = email.strip()
-        if not email:
-            email = None
-        else:
-            try:
-                ev_validate_email(email)
-            except EvNotValidError:
-                errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
+    # 邮箱格式(必填，用于密码找回)
+    email = email.strip()
+    if not email:
+        errors.append({"field": "email", "code": 42200, "message": "请填写邮箱"})
+    else:
+        try:
+            ev_validate_email(email)
+        except EvNotValidError:
+            errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
 
-    # 品类校验
-    try:
-        await validate_active_level1_categories(db, business_category_codes)
-    except Exception as e:
-        code = getattr(e, "biz_code", 42204)
-        errors.append({"field": "business_category_codes", "code": code, "message": str(e.detail) if hasattr(e, "detail") else str(e)})
+    # 品类校验（选填，有值时才校验）
+    if business_category_codes:
+        try:
+            await validate_active_level1_categories(db, business_category_codes)
+        except Exception as e:
+            code = getattr(e, "biz_code", 42204)
+            errors.append({"field": "business_category_codes", "code": code, "message": str(e.detail) if hasattr(e, "detail") else str(e)})
 
     # 门店照片张数校验
     if not storefront_images or len(storefront_images) < 1:

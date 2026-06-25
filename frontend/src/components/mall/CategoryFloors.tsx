@@ -11,12 +11,6 @@ import { FloorElevator, type FloorItem } from "./FloorElevator";
  */
 const FLOOR_CONFIGS: FloorConfig[] = [
   {
-    id: "floor-tools",
-    nameKey: "floorToolsConsumables",
-    categoryCodes: ["24"],              // 手动工具（XFS code=24）
-    bgImage: "/images/floors/tools.png",
-  },
-  {
     id: "floor-safety",
     nameKey: "floorSafetyProtection",
     categoryCodes: ["21", "22"],         // 劳保(21) + 安防(22)
@@ -45,6 +39,13 @@ const FLOOR_CONFIGS: FloorConfig[] = [
     nameKey: "floorDecorationBuilding",
     categoryCodes: ["36", "37", "09"],  // 防水(36)+涂料(37)+装饰材料(09)
     bgImage: "/images/floors/decoration.png",
+  },
+  {
+    id: "floor-tools",
+    nameKey: "floorToolsConsumables",
+    categoryCodes: ["24"],              // 手动工具（XFS code=24）
+    bgImage: "/images/floors/tools.png",
+    excludeSubcategoryCodes: ["24.017", "24.020"], // 排除园林工具、土杂工具
   },
 ];
 

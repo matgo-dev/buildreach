@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Plus, X, Star } from "lucide-react";
 import { ProductImage } from "@/lib/api/operatorProducts";
 import { useToast } from "@/components/ui/Toast";
+import { compressImage } from "@/lib/image-compress";
 
 export interface ImageChange {
   added: File[];
@@ -60,12 +61,10 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
         toastWarning(t("imageRejectFormat"));
         continue;
       }
-      if (file.size > MAX_FILE_SIZE) {
-        toastWarning(t("imageRejectSize"));
-        continue;
-      }
+      // 自动压缩大图片，不再硬拒绝
+      const compressed = await compressImage(file);
       try {
-        const { w, h } = await readImageDimension(file);
+        const { w, h } = await readImageDimension(compressed);
         if (w < MIN_DIMENSION || h < MIN_DIMENSION) {
           toastWarning(t("imageRejectDimension", { w, h }));
           continue;
@@ -74,7 +73,7 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
         toastWarning(t("imageRejectFormat"));
         continue;
       }
-      valid.push(file);
+      valid.push(compressed);
     }
     setValidating(false);
     if (valid.length > 0) {
