@@ -53,6 +53,24 @@ export interface ProductListResponse {
   pages: number;
 }
 
+export interface HomeFloorCategory {
+  code: string;
+  name: string;
+  name_zh: string;
+  level: number;
+}
+
+export interface HomeFloorData {
+  categories: HomeFloorCategory[];
+  products: ProductPublic[];
+}
+
+export interface HomeFloorProductsResponse {
+  floors: Record<string, HomeFloorData>;
+  generated_at: string;
+  ttl_seconds: number;
+}
+
 // ---------- 详情 ----------
 
 export interface ProductImage {
@@ -174,6 +192,10 @@ export async function listProducts(
   if (params.all_categories) qs.set("all_categories", "true");
   const q = qs.toString();
   return api.get<ProductListResponse>(`/api/v1/products${q ? `?${q}` : ""}`);
+}
+
+export async function listHomeFloorProducts(): Promise<HomeFloorProductsResponse> {
+  return api.get<HomeFloorProductsResponse>("/api/v1/products/home-floors");
 }
 
 export async function listCertificationOptions(): Promise<string[]> {

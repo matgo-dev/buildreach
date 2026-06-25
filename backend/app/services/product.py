@@ -627,6 +627,165 @@ async def list_products_public(
     return products, total, main_image_map
 
 
+async def sample_home_floor_products(
+    db: AsyncSession,
+    *,
+    category_paths: list[list[str]],
+    exclude_category_paths: list[list[str]] | None = None,
+    size: int = 8,
+) -> tuple[list[Product], dict[int, str], list[Category]]:
+    """首页楼层选品:按分类中文路径解析当前环境 code,每个展示类目最多 1 个 SPU。"""
+    if not category_paths or size <= 0:
+        return [], {}, []
+
+    display_categories = await _resolve_home_floor_display_categories(
+        db,
+        category_paths=category_paths,
+        exclude_category_paths=exclude_category_paths or [],
+    )
+
+    if not display_categories:
+        return [], {}, display_categories
+
+    # 批量获取所有展示品类的后代 code（1 次查询合并所有品类）
+    all_parent_codes = [c.code for c in display_categories]
+    # 建立 L2 code → 后代 codes 的映射
+    cat_to_descendants: dict[str, list[str]] = {c: [c] for c in all_parent_codes}
+    current_layer = list(all_parent_codes)
+    while current_layer:
+        rows = (await db.execute(
+            select(Category.code, Category.parent_code).where(
+                Category.parent_code.in_(current_layer)
+            )
+        )).all()
+        if not rows:
+            break
+        next_layer = []
+        for child_code, parent_code in rows:
+            # 找到这个 child 归属哪个顶层展示品类
+            for top_code in all_parent_codes:
+                if parent_code in cat_to_descendants.get(top_code, []):
+                    cat_to_descendants[top_code].append(child_code)
+                    break
+            next_layer.append(child_code)
+        current_layer = next_layer
+
+    # 合并所有后代 code，一条 SQL 查出候选商品
+    all_codes = []
+    code_to_cat: dict[str, str] = {}  # product.category_code → 归属的展示品类 code
+    for cat_code, descendants in cat_to_descendants.items():
+        for d in descendants:
+            all_codes.append(d)
+            code_to_cat[d] = cat_code
+
+    if not all_codes:
+        return [], {}, display_categories
+
+    # 一条 SQL 查出所有候选商品，按展示品类分组取最新
+    all_candidates_stmt = (
+        select(Product)
+        .where(
+            Product.status == ProductStatus.ACTIVE,
+            _not_deleted(Product),
+            Product.category_code.in_(all_codes),
+        )
+        .order_by(Product.created_at.desc(), Product.id.desc())
+    )
+    all_candidates = (await db.execute(all_candidates_stmt)).scalars().all()
+
+    # 按展示品类分组，每个品类取第 1 个（最新的）
+    selected: list[Product] = []
+    seen_cats: set[str] = set()
+    seen_ids: set[int] = set()
+    for product in all_candidates:
+        top_cat = code_to_cat.get(product.category_code)
+        if not top_cat or top_cat in seen_cats or product.id in seen_ids:
+            continue
+        selected.append(product)
+        seen_cats.add(top_cat)
+        seen_ids.add(product.id)
+        if len(selected) >= size:
+            break
+
+    main_image_map = await _batch_main_images(db, [p.id for p in selected])
+    return selected, main_image_map, display_categories
+
+
+async def _resolve_category_path(
+    db: AsyncSession,
+    path: list[str],
+) -> Category | None:
+    """按 name_zh 路径解析分类，避免跨环境硬编码 code。"""
+    parent_code: str | None = None
+    category: Category | None = None
+    for level, raw_name in enumerate(path, start=1):
+        name = raw_name.strip()
+        if not name:
+            return None
+        stmt = select(Category).where(
+            Category.level == level,
+            Category.name_zh == name,
+            Category.is_active.is_(True),
+        )
+        if parent_code is None:
+            stmt = stmt.where(Category.parent_code.is_(None))
+        else:
+            stmt = stmt.where(Category.parent_code == parent_code)
+        category = (await db.execute(stmt.limit(1))).scalar_one_or_none()
+        if category is None:
+            return None
+        parent_code = category.code
+    return category
+
+
+async def _resolve_home_floor_display_categories(
+    db: AsyncSession,
+    *,
+    category_paths: list[list[str]],
+    exclude_category_paths: list[list[str]],
+) -> list[Category]:
+    """楼层左侧入口/商品采样桶:配置到 L1 时展开 L2，配置到 L2/L3 时使用该节点。"""
+    exclude_codes: set[str] = set()
+    for path in exclude_category_paths:
+        category = await _resolve_category_path(db, path)
+        if category is not None:
+            exclude_codes.add(category.code)
+
+    resolved_roots: list[Category] = []
+    seen_root_codes: set[str] = set()
+    for path in category_paths:
+        category = await _resolve_category_path(db, path)
+        if category is None or category.code in seen_root_codes:
+            continue
+        resolved_roots.append(category)
+        seen_root_codes.add(category.code)
+
+    display_categories: list[Category] = []
+    seen_codes: set[str] = set()
+    for root in resolved_roots:
+        if root.level == 1:
+            children = (await db.execute(
+                select(Category)
+                .where(
+                    Category.parent_code == root.code,
+                    Category.level == 2,
+                    Category.is_active.is_(True),
+                )
+                .order_by(Category.sort_order.asc(), Category.code.asc())
+            )).scalars().all()
+            candidates = list(children)
+        else:
+            candidates = [root]
+
+        for category in candidates:
+            if category.code in seen_codes or category.code in exclude_codes:
+                continue
+            display_categories.append(category)
+            seen_codes.add(category.code)
+
+    return display_categories
+
+
 async def list_certification_options(db: AsyncSession) -> list[str]:
     """聚合所有上架商品的认证值，去重排序，用于筛选下拉。"""
     from sqlalchemy import text

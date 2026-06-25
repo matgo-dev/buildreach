@@ -2,11 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import useSWR from "swr";
 import { Loader2, PackageOpen } from "lucide-react";
 
-import { listProducts, type ProductPublic } from "@/lib/api/products";
-import type { CategoryTreeNode } from "@/lib/api/categories";
+import type { HomeFloorCategory, ProductPublic } from "@/lib/api/products";
 import { ProductCardCompact } from "./ProductCardCompact";
 import { MOCK_FLOOR_PRODUCTS } from "./floorMockData";
 
@@ -14,83 +12,28 @@ import { MOCK_FLOOR_PRODUCTS } from "./floorMockData";
 export interface FloorConfig {
   id: string;             // DOM id，供电梯锚点用
   nameKey: string;        // i18n key
-  categoryCodes: string[];// 多个 L1 品类 code，合并展示其下 L2 子品类
   bgImage: string;        // 左区背景图 URL（竖长图，底部有产品实物）
-  excludeSubcategoryCodes?: string[]; // 排除的 L2 子品类 code
 }
-
-const FLOOR_PRODUCT_SIZE = 8;
 
 export function CategoryFloorSection({
   config,
-  categoryTree,
+  products: realProducts,
+  categories,
+  isLoading,
 }: {
   config: FloorConfig;
-  categoryTree: CategoryTreeNode[];
+  products?: ProductPublic[];
+  categories?: HomeFloorCategory[];
+  isLoading: boolean;
 }) {
   const t = useTranslations("mall");
   const router = useRouter();
 
-  // 合并多个 L1 下的 L2 子品类（排除指定 code）
-  const excludeSet = new Set(config.excludeSubcategoryCodes ?? []);
-  const l2Children = config.categoryCodes.flatMap(
-    (code) => categoryTree.find((c) => c.code === code)?.children ?? []
-  ).filter((c) => !excludeSet.has(c.code));
-
-  // 商品查询：每个 L2 子品类各取 1 个，拼满 8 个（鑫方盛策略，保证多样性）
-  const l2Codes = l2Children.map((c) => c.code);
-  const primaryCode = config.categoryCodes[0];
-  const { data, isLoading } = useSWR(
-    `floor-products-${config.categoryCodes.join(",")}-${excludeSet.size}`,
-    async () => {
-      try {
-        // 优先按子品类各取 1 个
-        if (l2Codes.length > 0) {
-          const sampled: ProductPublic[] = [];
-          const seen = new Set<number>();
-          // 轮询每个 L2，每个取 1 个
-          for (const code of l2Codes.slice(0, FLOOR_PRODUCT_SIZE)) {
-            try {
-              const res = await listProducts({ category_code: code, size: 1, sort: "newest" });
-              for (const item of res.items) {
-                if (!seen.has(item.id)) {
-                  sampled.push(item);
-                  seen.add(item.id);
-                  break;
-                }
-              }
-            } catch { /* 单个子品类失败不影响整体 */ }
-            if (sampled.length >= FLOOR_PRODUCT_SIZE) break;
-          }
-          // 不足 8 个时用主品类补齐
-          if (sampled.length < FLOOR_PRODUCT_SIZE) {
-            try {
-              const res = await listProducts({ category_code: primaryCode, size: FLOOR_PRODUCT_SIZE, sort: "newest" });
-              for (const item of res.items) {
-                if (!seen.has(item.id)) {
-                  sampled.push(item);
-                  seen.add(item.id);
-                }
-                if (sampled.length >= FLOOR_PRODUCT_SIZE) break;
-              }
-            } catch { /* ignore */ }
-          }
-          return sampled;
-        }
-        // 无 L2 数据时降级为原逻辑
-        const res = await listProducts({ category_code: primaryCode, size: FLOOR_PRODUCT_SIZE, sort: "newest" });
-        return res.items.slice(0, FLOOR_PRODUCT_SIZE);
-      } catch {
-        return [];
-      }
-    },
-    { revalidateOnFocus: false },
-  );
-
-  // 真实数据 >= 4 个才用真实数据，否则用 Mock（TODO: 数据入库后移除）
+  // 有真实楼层数据就展示真实数据；只有 API 为空/失败时才用 Mock 占位。
   // mock 按楼层 id 匹配（不依赖品类 code，初始化数据后 code 可能变化）
   const mockProducts = (MOCK_FLOOR_PRODUCTS[config.id] ?? []) as ProductPublic[];
-  const products: ProductPublic[] = (data && data.length >= 4) ? data : mockProducts;
+  const products: ProductPublic[] = realProducts && realProducts.length > 0 ? realProducts : mockProducts;
+  const navCategories = categories ?? [];
 
   return (
     <section
@@ -122,15 +65,15 @@ export function CategoryFloorSection({
               {t(config.nameKey)}
             </h3>
 
-            {l2Children.length > 0 && (
+            {navCategories.length > 0 && (
               <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-                {l2Children.slice(0, 10).map((l2) => (
+                {navCategories.slice(0, 10).map((category) => (
                   <button
-                    key={l2.code}
-                    onClick={() => router.push(`/mall?cat=${l2.code}`)}
+                    key={category.code}
+                    onClick={() => router.push(`/mall?cat=${category.code}`)}
                     className="truncate text-left text-[13px] font-bold leading-relaxed text-white/90 transition-colors hover:text-white hover:underline"
                   >
-                    {l2.name}
+                    {category.name}
                   </button>
                 ))}
               </div>

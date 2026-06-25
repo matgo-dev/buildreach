@@ -6,6 +6,9 @@
 from __future__ import annotations
 
 import math
+from copy import deepcopy
+from datetime import datetime, timezone
+from time import monotonic
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +33,56 @@ from app.services import product as product_svc
 from app.services.buyer_event import EventType, record_event_background
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+HOME_FLOOR_PRODUCT_SIZE = 8
+HOME_FLOOR_CACHE_SECONDS = 300
+
+HOME_FLOOR_CONFIGS = [
+    {
+        "id": "floor-safety",
+        "category_paths": [["安全防护"], ["劳保"], ["安防"], ["临建设施"]],
+        "exclude_category_paths": [],
+    },
+    {
+        "id": "floor-fasteners",
+        "category_paths": [["五金紧固"], ["紧固件"]],
+        "exclude_category_paths": [],
+    },
+    {
+        "id": "floor-electrical",
+        "category_paths": [
+            ["电工电气"], ["卫浴照明"], ["电器"], ["灯具照明"],
+            ["工控自动化"], ["电工辅料"], ["中低压配电"],
+        ],
+        "exclude_category_paths": [],
+    },
+    {
+        "id": "floor-doors",
+        "category_paths": [
+            ["装饰材料", "门窗幕墙"], ["装饰材料", "门窗型材"],
+            ["门窗"], ["暖通"], ["水暖器材"], ["陶瓷卫浴"],
+            ["塑胶管道"], ["金属管道"],
+        ],
+        "exclude_category_paths": [],
+    },
+    {
+        "id": "floor-decoration",
+        "category_paths": [
+            ["防水保温"], ["装饰材料"], ["保温"], ["防水"],
+            ["涂料化工"], ["土建材料"], ["临建设施"], ["装配式材料"],
+        ],
+        "exclude_category_paths": [
+            ["装饰材料", "门窗幕墙"], ["装饰材料", "门窗型材"],
+        ],
+    },
+    {
+        "id": "floor-tools",
+        "category_paths": [["工具耗材"], ["手动工具"]],
+        "exclude_category_paths": [["手动工具", "园林工具"], ["手动工具", "土杂工具"]],
+    },
+]
+
+_HOME_FLOOR_CACHE: dict[str, tuple[float, dict]] = {}
 
 
 async def _resolve_buyer_identity(
@@ -150,6 +203,15 @@ def _to_public(p, *, main_image_url: str | None = None) -> dict:
     ).model_dump()
 
 
+def _floor_category_to_public(category) -> dict:
+    return {
+        "code": category.code,
+        "name": get_localized(category, "name"),
+        "name_zh": category.name_zh,
+        "level": category.level,
+    }
+
+
 @router.get("/certification-options", summary="认证筛选选项")
 async def certification_options(db: AsyncSession = Depends(get_db)):
     """聚合所有上架商品的认证值，供前端筛选下拉使用。"""
@@ -213,6 +275,41 @@ async def brand_options(
     """聚合所有上架商品的品牌值（locale 感知），供前端筛选下拉使用。"""
     brands = await product_svc.list_brand_options(db, category_code=category_code)
     return success(brands)
+
+
+@router.get("/home-floors", summary="首页品类楼层商品")
+async def home_floor_products(
+    db: AsyncSession = Depends(get_db),
+):
+    locale = get_current_locale()
+    cached = _HOME_FLOOR_CACHE.get(locale)
+    now = monotonic()
+    if cached and now - cached[0] < HOME_FLOOR_CACHE_SECONDS:
+        return success(deepcopy(cached[1]))
+
+    floors: dict[str, dict] = {}
+    for config in HOME_FLOOR_CONFIGS:
+        products, img_map, categories = await product_svc.sample_home_floor_products(
+            db,
+            category_paths=config["category_paths"],
+            exclude_category_paths=config["exclude_category_paths"],
+            size=HOME_FLOOR_PRODUCT_SIZE,
+        )
+        floors[config["id"]] = {
+            "categories": [_floor_category_to_public(category) for category in categories[:10]],
+            "products": [
+                _to_public(product, main_image_url=img_map.get(product.id))
+                for product in products
+            ],
+        }
+
+    data = {
+        "floors": floors,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "ttl_seconds": HOME_FLOOR_CACHE_SECONDS,
+    }
+    _HOME_FLOOR_CACHE[locale] = (now, deepcopy(data))
+    return success(data)
 
 
 @router.get("/{product_id}", summary="公开商品详情")
