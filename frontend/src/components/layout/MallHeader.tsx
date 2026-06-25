@@ -50,7 +50,7 @@ export function MallHeader() {
       e.preventDefault();
       const kw = searchValue.trim();
       const qs = kw ? `?keyword=${encodeURIComponent(kw)}` : "";
-      router.push(`/${locale}/mall${qs}`);
+      router.push(`/mall${qs}`);
       setSearchFocused(false);
       // 延迟刷新最近搜索缓存，等后端 BackgroundTask 写入完成
       if (kw) {
@@ -63,7 +63,7 @@ export function MallHeader() {
   const handleSelectSearch = useCallback(
     (kw: string) => {
       setSearchValue(kw);
-      router.push(`/${locale}/mall?keyword=${encodeURIComponent(kw)}`);
+      router.push(`/mall?keyword=${encodeURIComponent(kw)}`);
       setSearchFocused(false);
     },
     [router, locale],
