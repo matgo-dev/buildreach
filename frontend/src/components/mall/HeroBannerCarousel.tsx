@@ -6,28 +6,48 @@ import Link from "next/link";
 
 const AUTOPLAY_INTERVAL = 2000;
 
-/** MVP 固定 banner 列表 — 后续可改为后台管理 */
-const SLIDES = [
-  { src: "/banners/hero-main.jpg", alt: "BuildReach - Source China Building Materials for East Africa", link: "/mall" },
-  { src: "/banners/factory-aerial-view.jpg", alt: "Factory Aerial View", link: null },
-  { src: "/banners/factory-production-line.jpg", alt: "Production Line", link: null },
-  { src: "/banners/factory-steel-products.jpg", alt: "Steel Products", link: null },
-  { src: "/banners/factory-steel-coils.jpg", alt: "Steel Coils Workshop", link: null },
-  { src: "/banners/factory-exterior.jpg", alt: "Factory Exterior", link: null },
-  { src: "/banners/factory-industrial-furnace.jpg", alt: "Industrial Furnace", link: null },
-  { src: "/banners/factory-palletizing-robot.jpg", alt: "Palletizing Robot", link: null },
-  { src: "/banners/factory-packaging-robot.jpg", alt: "Packaging Robot", link: null },
-  { src: "/banners/factory-coating-workshop.jpg", alt: "Coating Workshop", link: null },
-  { src: "/banners/factory-mesh-rolls.jpg", alt: "Mesh Rolls Warehouse", link: null },
-  { src: "/banners/factory-crate-packing.jpg", alt: "Crate Packing Warehouse", link: null },
-  { src: "/banners/factory-decorative-panels.jpg", alt: "Decorative Panels Production", link: null },
-];
+/** 主图固定（有按钮热区），不走动态加载 */
+const HERO_SLIDE = {
+  src: "/banners/hero-main.jpg",
+  alt: "BuildReach - Source China Building Materials for East Africa",
+  link: "/mall",
+};
+
+/** 文件名 → alt 文本：去掉扩展名，连字符转空格，首字母大写 */
+function fileToAlt(name: string): string {
+  return name
+    .replace(/\.[^.]+$/, "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export function HeroBannerCarousel() {
+  const [slides, setSlides] = useState([HERO_SLIDE]);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
-  const count = SLIDES.length;
+
+  // 从后端拉取 banner 文件列表
+  useEffect(() => {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    fetch(`${apiBase}/api/v1/banners/slides`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.code === 0 && Array.isArray(res.data) && res.data.length > 0) {
+          const dynamicSlides = res.data.map((name: string) => ({
+            src: `/banners/${name}`,
+            alt: fileToAlt(name),
+            link: null,
+          }));
+          setSlides([HERO_SLIDE, ...dynamicSlides]);
+        }
+      })
+      .catch(() => {
+        // 接口不可用时保持 hero 单图
+      });
+  }, []);
+
+  const count = slides.length;
 
   const goTo = useCallback(
     (idx: number) => setCurrent(((idx % count) + count) % count),
@@ -48,7 +68,7 @@ export function HeroBannerCarousel() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {SLIDES.map((slide, i) => {
+      {slides.map((slide, i) => {
         const img = (
           <img
             src={slide.src}
@@ -96,12 +116,12 @@ export function HeroBannerCarousel() {
       {/* 圆点指示器 */}
       {count > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => goTo(i)}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                i === current ? "bg-white scale-110" : "bg-white/50 hover:bg-white/70"
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                i === current ? "bg-white" : "bg-white/40 hover:bg-white/70"
               }`}
               aria-label={`Go to slide ${i + 1}`}
             />

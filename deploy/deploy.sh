@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/opt/overseas-platform}"
+APP_DIR="${APP_DIR:-/opt/buildreach}"
 BACKUP_DIR="${BACKUP_DIR:-$APP_DIR/backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-60}"

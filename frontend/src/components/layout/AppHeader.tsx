@@ -59,7 +59,7 @@ export function AppHeader({
       e.preventDefault();
       const kw = searchValue.trim();
       const qs = kw ? `?keyword=${encodeURIComponent(kw)}` : "";
-      router.push(`/${locale}/mall${qs}`);
+      router.push(`/mall${qs}`);
     },
     [searchValue, router, locale],
   );
