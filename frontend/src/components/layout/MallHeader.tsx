@@ -25,6 +25,7 @@ import { BRAND } from "@/config/brand";
 import { workspaceDashboardOf } from "@/config/navigation";
 import { api } from "@/lib/api";
 import type { RoleCode } from "@/lib/auth";
+import { routing } from "@/i18n/routing";
 
 /** 角色标签 labelKey 对应 mall.roleBuyer 等 */
 const ROLE_PILL: Record<RoleCode, { labelKey: string; cls: string }> = {
@@ -366,15 +367,19 @@ function HeaderLocaleSwitcher() {
       {open && (
         <div className="absolute right-0 z-[200] mt-1 w-40 rounded-lg border border-line bg-white py-1 shadow-mall-lg">
           {LOCALES.map((l) => (
-            <Link
+            <button
               key={l.code}
-              href={hrefWithQuery}
-              locale={l.code}
+              type="button"
               onClick={() => {
                 fireLanguagePref(l.pref);
                 setOpen(false);
+                if (l.code === locale) return;
+                // 设 cookie 让 middleware 识别 + 整页刷新清除路由缓存
+                document.cookie = `NEXT_LOCALE=${l.code};path=/;max-age=31536000;SameSite=Lax`;
+                const prefix = l.code === routing.defaultLocale ? "" : `/${l.code}`;
+                window.location.href = `${prefix}${hrefWithQuery}`;
               }}
-              className={`flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
                 l.code === locale
                   ? "bg-teal-50 font-medium text-teal-900"
                   : "text-ink hover:bg-teal-50"
@@ -382,7 +387,7 @@ function HeaderLocaleSwitcher() {
             >
               <span>{l.short} · {l.full}</span>
               {l.code === locale && <Check className="h-3.5 w-3.5" />}
-            </Link>
+            </button>
           ))}
         </div>
       )}
