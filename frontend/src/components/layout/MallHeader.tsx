@@ -11,6 +11,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  HelpCircle,
   Search,
   Settings,
   ShoppingCart,
@@ -154,6 +155,15 @@ export function MallHeader() {
               </span>
               )}
             </div>
+          </Link>
+
+          {/* 帮助中心 */}
+          <Link
+            href="/how-to-buy"
+            className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
+            title={t("navHowToBuy")}
+          >
+            <HelpCircle className="h-5 w-5" />
           </Link>
 
           {/* 语言切换 */}
