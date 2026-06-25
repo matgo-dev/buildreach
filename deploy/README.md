@@ -26,7 +26,7 @@ gh run watch
 
 - [ ] ECS 已装 Docker 20.10+ 和 Docker Compose v2
 - [ ] ECS 安全组开放 22 / 3000 / 8000
-- [ ] 创建部署目录:`sudo mkdir -p /opt/overseas-platform && sudo chown $USER:$USER /opt/overseas-platform`
+- [ ] 创建部署目录:`sudo mkdir -p /opt/buildreach && sudo chown $USER:$USER /opt/buildreach`
 
 ### 2. SSH 密钥(GitHub Actions 用)
 
@@ -56,7 +56,7 @@ repo → Settings → Secrets and variables → Actions → New repository secre
 
 ```bash
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 
 # 克隆代码
 git clone git@github.com:buildlink-dev/buildlink-ea.git .
@@ -83,7 +83,7 @@ bash deploy/deploy.sh
 
 ```bash
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 source .env.production
 
 # 把 data/ 目录拷进 backend 容器（CSV 在项目根目录，容器内看不到）
@@ -112,11 +112,11 @@ asyncio.run(run())
 ```bash
 # 在老演示目录上(本机或老 ECS 路径)
 docker compose exec -T <老 db 服务名> pg_dump -U <老 user> <老 db> | gzip > /tmp/legacy-demo.sql.gz
-scp /tmp/legacy-demo.sql.gz user@<新 ECS>:/opt/overseas-platform/
+scp /tmp/legacy-demo.sql.gz user@<新 ECS>:/opt/buildreach/
 
 # 在新 ECS 上
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 
 # 清空新库 seed 创的默认数据(避免唯一键冲突)
 # ⚠️ 仅首次部署专用,日常部署不能跑这一步
@@ -147,7 +147,7 @@ docker compose restart backend
 
 ```bash
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 docker compose logs -f backend       # 后端
 docker compose logs -f frontend      # 前端
 docker compose logs -f db            # 数据库
@@ -177,7 +177,7 @@ docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > ba
 
 ```bash
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 bash deploy/deploy.sh
 ```
 
@@ -185,7 +185,7 @@ bash deploy/deploy.sh
 
 ```bash
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 git log --oneline -10                    # 找到上一版 commit
 git reset --hard <commit-sha>
 bash deploy/deploy.sh
@@ -195,7 +195,7 @@ bash deploy/deploy.sh
 
 ```bash
 ssh user@<ECS-IP>
-cd /opt/overseas-platform
+cd /opt/buildreach
 source .env.production
 ls backups/                              # 找最近备份
 gunzip -c backups/YYYYMMDD-HHMMSS.sql.gz | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"

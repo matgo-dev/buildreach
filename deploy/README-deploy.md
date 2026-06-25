@@ -66,7 +66,7 @@ frontend/public/
 ### 2.2 执行打包
 
 ```bash
-cd /opt/overseas-platform   # 或你的项目目录
+cd /opt/buildreach   # 或你的项目目录
 bash deploy/package-offline.sh --api-url https://<你的域名> --tag 20260624
 ```
 
