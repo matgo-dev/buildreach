@@ -15,6 +15,14 @@ export default function TermsPage() {
     { title: t("terms.s6_title"), content: t("terms.s6_content") },
     { title: t("terms.s7_title"), content: t("terms.s7_content") },
     { title: t("terms.s8_title"), content: t("terms.s8_content") },
+    { title: t("terms.s9_title"), content: t("terms.s9_content") },
+    { title: t("terms.s10_title"), content: t("terms.s10_content") },
+    { title: t("terms.s11_title"), content: t("terms.s11_content") },
+    { title: t("terms.s12_title"), content: t("terms.s12_content") },
+    { title: t("terms.s13_title"), content: t("terms.s13_content") },
+    { title: t("terms.s14_title"), content: t("terms.s14_content") },
+    { title: t("terms.s15_title"), content: t("terms.s15_content") },
+    { title: t("terms.s16_title"), content: t("terms.s16_content") },
   ];
 
   return (
