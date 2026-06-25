@@ -39,10 +39,8 @@
     },
     "forgotPassword": {
       "title": "Reset Password",
-      "subtitle": "Enter your registered email to get a verification code",
+      "subtitle": "Enter the email you used when registering",
       "code_subtitle": "Enter the code and set a new password",
-      "method_email": "Reset via email",
-      "email_label": "Registered email",
       "send_code": "Send verification code",
       "submitting": "Sending...",
       "or": "or",

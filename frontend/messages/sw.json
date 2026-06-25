@@ -39,10 +39,8 @@
     },
     "forgotPassword": {
       "title": "Rejesha Nenosiri",
-      "subtitle": "Weka barua pepe yako iliyosajiliwa kupata nambari ya uthibitisho",
+      "subtitle": "Weka barua pepe uliyotumia wakati wa kusajili",
       "code_subtitle": "Weka nambari na nenosiri jipya",
-      "method_email": "Rejesha kupitia barua pepe",
-      "email_label": "Barua pepe iliyosajiliwa",
       "send_code": "Tuma nambari ya uthibitisho",
       "submitting": "Inatuma...",
       "or": "au",
