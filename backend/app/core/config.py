@@ -112,6 +112,14 @@ class Settings(BaseSettings):
     # CORS 允许携带凭证(refresh cookie 必需)
     CORS_ALLOW_CREDENTIALS: bool = True
 
+    # SMTP 邮件（密码找回）— 未配置时静默跳过发送
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@buildlink.co.tz"
+    SMTP_USE_TLS: bool = True
+
     @computed_field  # type: ignore[misc]
     @property
     def CORS_ORIGINS(self) -> List[str]:

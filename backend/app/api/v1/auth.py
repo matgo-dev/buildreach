@@ -687,3 +687,102 @@ async def update_language_preference(
     )
     await db.commit()
     return success({"language_preference": lang})
+
+
+# ===== 忘记密码（验证码模式，对齐阿里国际站） =====
+
+# 内存存储验证码（MVP 单机；生产可改 Redis）
+# key: email, value: {"code": "123456", "user_id": 1, "expires": timestamp}
+import time as _time
+_reset_codes: dict[str, dict] = {}
+
+
+@router.post("/forgot-password", summary="忘记密码-发送验证码")
+async def forgot_password(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    email: str = Form(...),
+):
+    """接收邮箱，校验是否已注册，发送6位验证码。"""
+    import random
+    from app.services.email_service import send_verification_code_email
+
+    email = email.strip().lower()
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise MultipleValidationError([{
+            "field": "email",
+            "code": 40401,
+            "message": "该邮箱未注册，请检查后重试",
+        }])
+
+    code = f"{random.randint(100000, 999999)}"
+    _reset_codes[email] = {
+        "code": code,
+        "user_id": user.id,
+        "expires": _time.time() + 600,  # 10 分钟有效
+    }
+    send_verification_code_email(email, code)
+
+    return success(None, message="验证码已发送")
+
+
+@router.post("/reset-password", summary="重置密码（验证码模式）")
+async def reset_password(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    email: str = Form(...),
+    code: str = Form(...),
+    new_password: str = Form(...),
+):
+    """验证邮箱+验证码+设置新密码。"""
+    from app.core.security import hash_password
+
+    email = email.strip().lower()
+
+    # 校验密码强度
+    if not validate_password_strength(new_password):
+        raise MultipleValidationError([{
+            "field": "new_password",
+            "code": 42202,
+            "message": PASSWORD_RULE_MESSAGE,
+        }])
+
+    # 校验验证码
+    entry = _reset_codes.get(email)
+    if not entry or entry["code"] != code.strip():
+        raise MultipleValidationError([{
+            "field": "code",
+            "code": 40101,
+            "message": "验证码错误",
+        }])
+    if _time.time() > entry["expires"]:
+        _reset_codes.pop(email, None)
+        raise MultipleValidationError([{
+            "field": "code",
+            "code": 40102,
+            "message": "验证码已过期，请重新获取",
+        }])
+
+    user_id = entry["user_id"]
+    _reset_codes.pop(email, None)  # 一次性消费
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise MultipleValidationError([{
+            "field": "email",
+            "code": 40103,
+            "message": "用户不存在",
+        }])
+
+    # 更新密码 + token_version（使旧 token 全部失效）
+    user.password_hash = hash_password(new_password)
+    user.token_version = (user.token_version or 0) + 1
+    user.must_change_password = False
+    await db.commit()
+
+    return success(None, message="密码重置成功，请使用新密码登录")
