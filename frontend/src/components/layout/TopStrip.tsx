@@ -18,7 +18,7 @@ export function TopStrip() {
         <span className="hidden md:inline">
           {t("stripAnnouncement")}
         </span>
-        <div className="flex items-center gap-2 sm:gap-4 text-xs whitespace-nowrap overflow-x-hidden">
+        <div className="flex items-center gap-2 sm:gap-4 text-xs whitespace-nowrap overflow-visible">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp/20 px-2 sm:px-3 py-0.5 text-[#9af0bc] font-extrabold text-[11px] sm:text-xs shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">PVoC / CoC Document Support</span>
