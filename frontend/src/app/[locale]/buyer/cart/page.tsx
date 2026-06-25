@@ -202,7 +202,7 @@ function CartContent() {
               </button>
               {wa.configured && (
                 <a
-                  href={wa.link!}
+                  href={wa.buildLink()!}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"

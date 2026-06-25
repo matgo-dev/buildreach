@@ -102,7 +102,7 @@ export default function HelpCenterPage() {
               <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
                 <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
                 <a
-                  href={wa.link ?? "#"}
+                  href={wa.buildLink() ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"

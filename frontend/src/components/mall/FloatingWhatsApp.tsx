@@ -49,7 +49,7 @@ export function FloatingWhatsApp() {
             {/* 客服入口 */}
             <div className="p-4">
               <a
-                href={wa.link!}
+                href={wa.buildLink()!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-xl bg-[#f0f2f5] p-3.5 hover:bg-[#e4e6eb] transition-colors"
