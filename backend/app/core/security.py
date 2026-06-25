@@ -11,15 +11,12 @@ from app.core.config import settings
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 全局密码规则(PRD v1.4 Δ1):11-50 位,且 数字/大写/小写/特殊字符 4 类中至少 3 类。
-# 特殊字符宽松定义:任何非字母数字字符。
-PASSWORD_MIN_LENGTH = 11
-PASSWORD_MAX_LENGTH = 50
+# 全局密码规则:6-20 位,仅字母和数字(对齐阿里国际站)。
+PASSWORD_MIN_LENGTH = 6
+PASSWORD_MAX_LENGTH = 20
 
 # 错误文案前后端逐字一致(frontend/src/lib/validators.ts 同步)
-PASSWORD_RULE_MESSAGE = (
-    "密码 11-50 位,需包含数字、大写字母、小写字母、特殊字符中至少 3 类"
-)
+PASSWORD_RULE_MESSAGE = "密码须 6-20 位,仅限字母和数字"
 
 
 def hash_password(plain: str) -> str:
@@ -34,16 +31,10 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def validate_password_strength(plain: str) -> bool:
-    """11-50 位 + 数字/大写/小写/特殊字符至少 3 类。"""
+    """6-20 位,仅字母和数字。"""
     if not (PASSWORD_MIN_LENGTH <= len(plain) <= PASSWORD_MAX_LENGTH):
         return False
-    cats = sum([
-        any(c.isdigit() for c in plain),
-        any(c.isupper() for c in plain),
-        any(c.islower() for c in plain),
-        any(not c.isalnum() for c in plain),
-    ])
-    return cats >= 3
+    return plain.isalnum() and plain.isascii()
 
 
 def _now_utc() -> datetime:
