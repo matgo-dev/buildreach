@@ -182,6 +182,11 @@
     "pwd_lower": "Herufi ndogo",
     "pwd_special": "Herufi maalum",
     "terms_agree": "Kwa kusajili, unakubali Masharti ya Huduma na Sera ya Faragha",
+    "terms_prefix": "Kwa kusajili, unakubali",
+    "terms_link": "Masharti ya Huduma",
+    "terms_and": "na",
+    "terms_privacy_link": "Sera ya Faragha",
+    "legalReadDone": "Nimesoma",
     "err_phone_required": "Nambari ya simu inahitajika",
     "err_phone_format": "Tafadhali weka nambari ya simu ya Tanzania yenye tarakimu 9",
     "err_phone_format_tz": "Tafadhali weka nambari ya simu ya Tanzania yenye tarakimu 9",
@@ -1575,5 +1580,45 @@
     "decoration_a7": "• Grout ya kawaida (ya saruji nyeupe): Nyenzo ya jadi ya kujaza mipaka, inakuwa na ukungu na kuwa nyeusi kwa urahisi, inabadilika rangi baada ya kunyonya maji. Inafaa kwa kazi za ujenzi ambapo urembo si kipaumbele.\n• Grout ya mapambo (ya epoxy resin): Uso laini kama keramiki, kuzuia maji na ukungu, haibadilishi rangi, rangi nyingi za kuchagua. Inafaa kwa bafuni, jikoni na maeneo mengine yanayohitaji kuzuia maji na urembo.\n• Tofauti za ujenzi: Grout ya kawaida inapakwa moja kwa moja kwenye mipaka; grout ya mapambo inapaswa kupakwa siku 1-2 baada ya grout ya msingi (vinginevyo itazama ndani), inapakwa kwa bunduki maalum ya gundi kwenye mipaka.\n• Ulinganisho wa gharama: Bei ya grout ya mapambo ni mara 5-8 ya grout ya kawaida, lakini muda wa matengenezo ni mrefu zaidi — kwa muda mrefu ni ya faida zaidi.",
     "decoration_q8": "Ufungashaji na usafirishaji wa vifaa vya mapambo unalindwaje?",
     "decoration_a8": "Njia za kawaida za kufungasha kwa kategoria tofauti:\n• Vigae: Ufungashaji wa fremu ya mbao au sanduku la mbao, kila safu imetenganishwa na kadibodi. Wakati wa usafirishaji wa bahari, vinafungwa imara kuzuia kuhamia na kugongana.\n• Rangi/Mafuta: Ndoo zilizofungwa kwa ukali, zikiambatanishwa na MSDS (Karatasi ya Data ya Usalama). Bidhaa zenye vimumunyisho husafirishwa kupitia njia maalum ya bidhaa hatari.\n• Bodi: Zimepangwa gorofa, kingo zinalindwa na chuma cha pembe au mbao, zimefunikwa na filamu ya kuzuia unyevu.\n• Karatasi za kuzuia maji: Zinasimamishwa wakati wa usafirishaji ili kuepuka kupinda kwa shinikizo.\n• Vifaa vya kuhami joto: Vinabandikwa kwa kubana ili kupunguza kiasi, vinajirudi kwa kawaida baada ya kufika.\nJukwaa hukagua ufungashaji wa kila consignment kabla ya kutuma ili kuhakikisha unakidhi viwango vya usafirishaji wa bahari. Kwa vifaa vikubwa vya ujenzi, pia tunatoa mapendekezo ya mpangilio wa kupakia kontena ili kutumia nafasi ya kontena kwa ufanisi mkubwa zaidi."
+  },
+  "legal": {
+    "terms": {
+      "title": "Masharti ya Huduma",
+      "lastUpdated": "Ilisasishwa mwisho: Juni 2026",
+      "s1_title": "Kukubali Masharti",
+      "s1_content": "Karibu kwenye jukwaa la BuildReach. Jukwaa linaendeshwa na BuildReach Ltd. Kwa kusajili, kuingia, au kutumia huduma zetu, unakubali kuwa umesoma, kuelewa, na kukubaliana na Masharti haya ya Huduma. Ikiwa hukubaliani na sehemu yoyote ya masharti haya, tafadhali usitumie jukwaa.",
+      "s2_title": "Jukumu la Jukwaa na Wigo wa Huduma",
+      "s2_content": "BuildReach ni jukwaa la B2B la ununuzi wa vifaa vya ujenzi kuvuka mipaka, linalounganisha viwanda vya China na wanunuzi wa Afrika Mashariki. Tunatoa huduma za kuonyesha bidhaa, maombi ya bei (RFQ), uthibitisho wa bei, uratibu wa ukaguzi wa ubora, na usafirishaji wa pamoja.\n\nBuildReach hufanya kazi kama mtoa huduma wa ununuzi, kusaidia wanunuzi katika mchakato mzima kutoka utafutaji hadi uwasilishaji. Sisi si muuzaji wa moja kwa moja wa bidhaa na hatuchukui jukumu la mtengenezaji kwa ubora wa bidhaa, lakini tunafanya ukaguzi wa ubora wakati wa mchakato wa ununuzi.",
+      "s3_title": "Usajili wa Mtumiaji na Usalama wa Akaunti",
+      "s3_content": "Watumiaji lazima watoe taarifa sahihi za usajili, ikiwa ni pamoja na jina la kampuni, nambari ya simu, na anwani ya biashara. Una jukumu la kulinda akaunti yako. Hasara yoyote inayotokana na ufikiaji usioidhinishwa kutokana na kufichua nywila ni jukumu la mtumiaji.\n\nBuildReach ina haki ya kuzuia au kufuta akaunti zinazotoa taarifa za uwongo.",
+      "s4_title": "Mchakato wa Maombi ya Bei",
+      "s4_content": "Wanunuzi huwasilisha Maombi ya Bei (RFQ) kupitia jukwaa. BuildReach hukusanya mipango ya bei kutoka viwanda mbalimbali na kuwasilisha kwa mnunuzi. Muda wa uhalali wa bei ni kama inavyoonyeshwa kwenye jukwaa.\n\nMipango ya malipo ya ununuzi huthibitishwa nje ya mtandao kati ya mnunuzi na BuildReach. Jukwaa halitoi huduma za malipo ya mtandaoni.",
+      "s5_title": "Ada",
+      "s5_content": "BuildReach hutoa huduma za kuvinjari bidhaa, maombi ya bei, na ulinganisho wa bei bila malipo katika hatua ya sasa.\n\nGharama za ununuzi, usafirishaji wa kimataifa, ushuru wa bandari ya marudio, na usafirishaji wa ndani huthibitishwa nje ya mtandao kulingana na gharama halisi.",
+      "s6_title": "Ukaguzi wa Ubora na Huduma Baada ya Mauzo",
+      "s6_content": "BuildReach hupanga ukaguzi wa ubora kabla ya kusafirisha. Bidhaa zisizofaulu ukaguzi hurudishwa kiwandani kwa kubadilishwa. Ukigundua matatizo ya ubora baada ya kupokea bidhaa, tafadhali wasiliana nasi ndani ya siku 7 za kazi za kupokea na tutaratibu suluhisho.\n\nKutoleta malalamiko ndani ya siku 7 za kazi kutachukuliwa kuwa umekubali bidhaa.",
+      "s7_title": "Haki Miliki",
+      "s7_content": "Alama za biashara, picha za bidhaa, maandishi, na maudhui mengine yanayoonyeshwa kwenye jukwaa ni mali ya kiakili ya BuildReach au wamiliki wao husika. Hakuna kunakili, kusambaza, au matumizi ya kibiashara yanayoruhusiwa bila idhini ya maandishi.",
+      "s8_title": "Marekebisho na Sheria Inayotumika",
+      "s8_content": "BuildReach ina haki ya kurekebisha masharti haya wakati wowote. Masharti yaliyorekebishwa yatachapishwa kwenye jukwaa. Kuendelea kutumia jukwaa kunachukuliwa kuwa umekubali masharti yaliyorekebishwa.\n\nMasharti haya yatatawaliwa na kutafsiriwa kulingana na sheria za Jamhuri ya Muungano wa Tanzania. Migogoro yoyote inayotokana na masharti haya itatatuliwa kwa mazungumzo ya kirafiki; ikishindikana, itawasilishwa kwa mahakama yenye mamlaka katika Dar es Salaam."
+    },
+    "privacy": {
+      "title": "Sera ya Faragha",
+      "lastUpdated": "Ilisasishwa mwisho: Juni 2026",
+      "s1_title": "Taarifa Tunazokusanya",
+      "s1_content": "Ili kutoa huduma zetu za ununuzi, tunakusanya taarifa zifuatazo:\n• Taarifa za usajili: nambari ya simu, jina la kampuni, anwani ya biashara, kategoria za biashara\n• Taarifa za utambulisho: picha za duka, picha za leseni ya biashara (ikitolewa)\n• Taarifa za matumizi: historia ya kuvinjari, historia ya utafutaji, rekodi za maombi ya bei\n• Taarifa za kifaa: aina ya kivinjari, upendeleo wa lugha, nyakati za ufikiaji",
+      "s2_title": "Jinsi Tunavyotumia Taarifa Zako",
+      "s2_content": "Tunatumia taarifa zilizokusanywa kwa madhumuni yafuatayo pekee:\n• Kutoa na kuboresha huduma za jukwaa\n• Kushughulikia maombi ya bei na agizo za ununuzi\n• Kuwasiliana nawe kuhusu maendeleo ya agizo na arifa za jukwaa\n• Kuchambua matumizi ya jukwaa ili kuboresha uzoefu wa mtumiaji\n\nHatutumii taarifa zako za kibinafsi kwa shughuli za kibiashara zisizohusiana na madhumuni hapo juu.",
+      "s3_title": "Kushiriki na Kufichua Taarifa",
+      "s3_content": "Hatuuzi taarifa zako za kibinafsi kwa wahusika wengine. Tunaweza kushiriki taarifa muhimu katika hali zifuatazo:\n• Kushiriki maelezo ya mahitaji ya bidhaa na viwanda washirika kwa utimizaji wa agizo (bila kujumuisha taarifa zako za mawasiliano)\n• Kushiriki taarifa za uwasilishaji na watoa huduma za usafirishaji\n• Kama inavyohitajika na sheria au mamlaka za serikali",
+      "s4_title": "Usalama wa Taarifa",
+      "s4_content": "Tunatekeleza hatua za kiufundi na za shirika ili kulinda taarifa zako za kibinafsi, ikiwa ni pamoja na usimbaji fiche wa data na udhibiti wa ufikiaji. Hata hivyo, tafadhali elewa kuwa hakuna njia ya usambazaji au uhifadhi kwenye mtandao ambayo ni salama kabisa.",
+      "s5_title": "Uhifadhi wa Taarifa",
+      "s5_content": "Taarifa zako za kibinafsi zinahifadhiwa kwenye seva zilizolindwa. Tunahifadhi taarifa zako za kibinafsi kwa muda unaohitajika kutimiza madhumuni yaliyoelezwa katika sera hii pekee, isipokuwa sheria inahitaji au inaruhusu muda mrefu zaidi.\n\nBaada ya kufuta akaunti, tutafuta au kufanya taarifa zako kuwa za kutojulikana ndani ya kipindi cha busara, isipokuwa pale sheria inahitaji uhifadhi.",
+      "s6_title": "Haki Zako",
+      "s6_content": "Chini ya sheria inayotumika, una haki zifuatazo:\n• Kufikia na kupata nakala ya taarifa zako za kibinafsi\n• Kusahihisha taarifa za kibinafsi zisizo sahihi\n• Kuomba kufutwa kwa taarifa zako za kibinafsi\n• Kufuta akaunti yako\n\nIli kutumia haki hizi, tafadhali wasiliana nasi kupitia huduma ya wateja ya jukwaa au WhatsApp.",
+      "s7_title": "Masasisho ya Sera",
+      "s7_content": "Tunaweza kusasisha Sera hii ya Faragha mara kwa mara. Sera zilizosasishwa zitachapishwa kwenye jukwaa na tarehe ya mwisho ya kusasishwa itaonyeshwa. Kwa mabadiliko makubwa, tutakujulisha kupitia arifa za jukwaa au njia nyingine za busara.\n\nKuendelea kutumia jukwaa kunachukuliwa kuwa umekubali Sera ya Faragha iliyosasishwa."
+    }
   }
 }

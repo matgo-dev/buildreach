@@ -387,6 +387,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [licPreviews, setLicPreviews] = useState<string[]>([]);
   // 图片放大预览
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
   const sfInputRef = useRef<HTMLInputElement>(null);
   const licInputRef = useRef<HTMLInputElement>(null);
 
@@ -984,7 +985,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
         {/* 服务条款 */}
         <p className="text-center text-xs text-gray-400">
-          {t("terms_agree")}
+          {t("terms_prefix")}{" "}
+          <button type="button" onClick={() => setLegalModal("terms")} className="text-[#00505a] underline hover:text-[#003d3d]">{t("terms_link")}</button>
+          {" "}{t("terms_and")}{" "}
+          <button type="button" onClick={() => setLegalModal("privacy")} className="text-[#00505a] underline hover:text-[#003d3d]">{t("terms_privacy_link")}</button>
         </p>
       </form>
 
@@ -1006,6 +1010,56 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           </div>
         </div>
       )}
+
+      {/* 服务条款 / 隐私政策弹窗 */}
+      {legalModal && (
+        <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+      )}
     </>
+  );
+}
+
+/** 服务条款/隐私政策模态弹窗 */
+function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () => void }) {
+  const tLegal = useTranslations("legal");
+  const t = useTranslations("buyerRegister");
+  const sectionCount = type === "terms" ? 8 : 7;
+  const sections = Array.from({ length: sectionCount }, (_, i) => ({
+    title: tLegal(`${type}.s${i + 1}_title`),
+    content: tLegal(`${type}.s${i + 1}_content`),
+  }));
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
+      <div className="relative flex w-full max-w-2xl max-h-[85vh] flex-col rounded-xl bg-white shadow-2xl">
+        {/* 头部 */}
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="text-lg font-bold text-[#00505a]">{tLegal(`${type}.title`)}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-gray-100">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+        {/* 可滚动内容 */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <p className="text-xs text-gray-400">{tLegal(`${type}.lastUpdated`)}</p>
+          {sections.map((s, i) => (
+            <section key={i}>
+              <h3 className="text-sm font-bold text-gray-800 mb-1.5">{`${i + 1}. ${s.title}`}</h3>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{s.content}</p>
+            </section>
+          ))}
+        </div>
+        {/* 底部按钮 */}
+        <div className="border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-lg bg-[#e3a615] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c99012]"
+          >
+            {t("legalReadDone")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
