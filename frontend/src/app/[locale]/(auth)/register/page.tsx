@@ -949,7 +949,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () => void }) {
   const tLegal = useTranslations("legal");
   const t = useTranslations("buyerRegister");
-  const sectionCount = type === "terms" ? 8 : 7;
+  const sectionCount = type === "terms" ? 16 : 15;
   const sections = Array.from({ length: sectionCount }, (_, i) => ({
     title: tLegal(`${type}.s${i + 1}_title`),
     content: tLegal(`${type}.s${i + 1}_content`),
