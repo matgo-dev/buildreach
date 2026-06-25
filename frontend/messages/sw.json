@@ -6,7 +6,10 @@
     "confirm": "Thibitisha",
     "back_to_home": "Rudi Nyumbani",
     "back": "Rudi",
-    "selectAll": "Chagua Zote"
+    "selectAll": "Chagua Zote",
+    "err_email_required": "Tafadhali ingiza barua pepe yako",
+    "err_email_format": "Muundo wa barua pepe si sahihi",
+    "err_email_domain": "Kikoa hiki cha barua pepe hakikubaliki, tafadhali tumia anwani halisi (mfano .com, .cn)"
   },
   "brand": {
     "name": "BuildReach",

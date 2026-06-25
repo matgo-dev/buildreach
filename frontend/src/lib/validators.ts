@@ -22,12 +22,17 @@ export const PASSWORD_RE = /^[A-Za-z0-9]{6,20}$/;
 // 错误文案与后端 PASSWORD_RULE_MESSAGE 逐字一致
 export const PASSWORD_RULE_MESSAGE = "密码须 6-20 位,仅限字母和数字";
 
-export function validateEmail(v: string): string | null {
-  if (!v) return "请填写邮箱";
-  if (!EMAIL_RE.test(v)) return "邮箱格式不正确";
+export interface EmailMessages {
+  required: string;
+  format: string;
+  domain: string;
+}
+
+export function validateEmail(v: string, msgs: EmailMessages): string | null {
+  if (!v) return msgs.required;
+  if (!EMAIL_RE.test(v)) return msgs.format;
   const domain = v.split("@")[1] || "";
-  if (RESERVED_EMAIL_TLDS.test(domain))
-    return "邮箱域名不可用,请使用正式邮箱地址(如 .com、.cn)";
+  if (RESERVED_EMAIL_TLDS.test(domain)) return msgs.domain;
   return null;
 }
 
@@ -143,7 +148,11 @@ export function validateAllRegisterFields(
   );
   push("name", "联系人", validateRequired(form.name, "联系人姓名"));
   push("phone", "联系电话", validateSupplierPhone(form.phone));
-  push("email", "联系邮箱", validateEmail(form.email));
+  push("email", "联系邮箱", validateEmail(form.email, {
+    required: "请填写邮箱",
+    format: "邮箱格式不正确",
+    domain: "邮箱域名不可用,请使用正式邮箱地址(如 .com、.cn)",
+  }));
   push("password", "密码", validatePassword(form.password));
   push(
     "confirmPassword",
