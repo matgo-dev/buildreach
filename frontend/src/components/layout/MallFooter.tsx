@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { MessageCircle, Mail } from "lucide-react";
 import { BRAND } from "@/config/brand";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 
@@ -18,11 +19,6 @@ export function MallFooter() {
           <p className="text-[13px] leading-relaxed text-[#d6eded]">
             {BRAND.description}
           </p>
-          {wa.number && (
-          <p className="mt-3 text-[13px]">
-            WhatsApp: {wa.number}
-          </p>
-          )}
         </div>
 
         {/* 采购服务 */}
@@ -51,9 +47,16 @@ export function MallFooter() {
         <div>
           <h4 className="text-white text-sm font-bold mb-2.5">{t("footerContact")}</h4>
           <div className="space-y-2 text-[13px]">
-            <p>Dar es Salaam, Tanzania</p>
-            {wa.number && <p>{wa.number}</p>}
-            <p>info@buildreach.co.tz</p>
+            {wa.number && (
+              <p className="flex items-center gap-1.5">
+                <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                {wa.number}
+              </p>
+            )}
+            <p className="flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 shrink-0" />
+              info@buildreach.co.tz
+            </p>
           </div>
         </div>
       </div>
