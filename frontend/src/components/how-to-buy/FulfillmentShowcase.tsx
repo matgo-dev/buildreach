@@ -9,6 +9,7 @@ type ProcessStep = {
   image: string;
   phase: "online" | "offline";
   highlight?: boolean;
+  disabled?: boolean;
 };
 
 const PROCESS_STEPS: ProcessStep[] = [
@@ -17,12 +18,12 @@ const PROCESS_STEPS: ProcessStep[] = [
   { id: "P3", image: "fulfillment-order.jpg", phase: "online" },
   { id: "1", image: "factory-production.jpg", phase: "offline" },
   { id: "2", image: "qc-inspection.jpg", phase: "offline" },
-  { id: "3", image: "consolidation-packing.jpg", phase: "offline", highlight: true },
+  { id: "3", image: "consolidation-packing.jpg", phase: "offline" },
   { id: "4", image: "customs-declaration.jpg", phase: "offline" },
   { id: "5", image: "ocean-freight.jpg", phase: "offline" },
   { id: "6", image: "arrival-dsm-port.jpg", phase: "offline" },
-  { id: "7", image: "destination-clearance.jpg", phase: "offline" },
-  { id: "8", image: "ddp-delivery.jpg", phase: "offline" },
+  { id: "7", image: "destination-clearance.jpg", phase: "offline", disabled: true },
+  { id: "8", image: "ddp-delivery.jpg", phase: "offline", disabled: true },
 ];
 
 const CONSOLIDATION_IMAGES = [
@@ -94,10 +95,13 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
           <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-0.5">
             {t("phaseOffline")}
           </span>
-          <span className="text-xs text-gray-400">1 ~ 8</span>
+          <span className="text-xs text-gray-400">1 ~ 6（FOB）</span>
+          <span className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400">{t("phaseBuyerSelf")}</span>
+          <span className="text-xs text-gray-300">7 ~ 8</span>
         </div>
         {/* 步骤条 */}
-        <div className="flex items-center gap-0 overflow-x-auto pb-2">
+        <div className="flex items-center justify-center gap-0 overflow-x-auto pb-2">
           {PROCESS_STEPS.map((step, i) => {
             const isHighlight = step.highlight;
             return (
@@ -105,21 +109,35 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
                 <div className="flex flex-col items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isHighlight
-                        ? "bg-amber-500 text-white ring-2 ring-amber-300"
-                        : step.phase === "online"
-                          ? "bg-teal-600 text-white"
-                          : "bg-gray-300 text-gray-700"
+                      step.disabled
+                        ? "bg-gray-200 text-gray-400"
+                        : isHighlight
+                          ? "bg-amber-500 text-white ring-2 ring-amber-300"
+                          : step.phase === "online"
+                            ? "bg-teal-600 text-white"
+                            : "bg-amber-600 text-white"
                     }`}
                   >
                     {step.id}
                   </div>
-                  <span className="text-[10px] text-gray-500 mt-1 whitespace-nowrap max-w-[60px] text-center leading-tight">
+                  <span className={`text-[10px] mt-1 whitespace-nowrap max-w-[60px] text-center leading-tight ${
+                    step.disabled ? "text-gray-300" : "text-gray-500"
+                  }`}>
                     {t(`step_${step.id}_label`)}
                   </span>
                 </div>
                 {i < PROCESS_STEPS.length - 1 && (
-                  <div className="w-4 md:w-6 h-0.5 bg-gray-300 mx-0.5 flex-shrink-0" />
+                  <>
+                    {step.id === "6" ? (
+                      <div className="flex flex-col items-center mx-1 flex-shrink-0">
+                        <div className="w-px h-3 bg-amber-400" />
+                        <span className="text-[8px] font-bold text-amber-600 whitespace-nowrap">FOB</span>
+                        <div className="w-px h-3 bg-gray-300" />
+                      </div>
+                    ) : (
+                      <div className="w-4 md:w-8 h-0.5 bg-gray-300 mx-0.5 flex-shrink-0" />
+                    )}
+                  </>
                 )}
               </div>
             );
@@ -156,11 +174,13 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                 <div className="absolute left-1/2 -translate-x-1/2 top-6 hidden md:flex z-10">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md ${
-                      isHighlight
-                        ? "bg-amber-500 text-white ring-4 ring-amber-200"
-                        : step.phase === "online"
-                          ? "bg-teal-600 text-white"
-                          : "bg-white text-gray-700 border-2 border-gray-300"
+                      step.disabled
+                        ? "bg-gray-200 text-gray-400"
+                        : isHighlight
+                          ? "bg-amber-500 text-white ring-4 ring-amber-200"
+                          : step.phase === "online"
+                            ? "bg-teal-600 text-white"
+                            : "bg-amber-600 text-white"
                     }`}
                   >
                     {step.id}
@@ -179,9 +199,11 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                   >
                     <div
                       className={`rounded-xl overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${
-                        isHighlight
-                          ? "border-amber-300 bg-amber-50/50"
-                          : "border-gray-200 bg-white"
+                        step.disabled
+                          ? "border-gray-200 bg-gray-50 opacity-50"
+                          : isHighlight
+                            ? "border-amber-300 bg-amber-50/50"
+                            : "border-gray-200 bg-white"
                       }`}
                     >
                       {/* 图片 */}
@@ -199,11 +221,13 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                           {/* 移动端序号 */}
                           <span
                             className={`md:hidden w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                              isHighlight
-                                ? "bg-amber-500 text-white"
-                                : step.phase === "online"
-                                  ? "bg-teal-600 text-white"
-                                  : "bg-gray-200 text-gray-700"
+                              step.disabled
+                                ? "bg-gray-200 text-gray-400"
+                                : isHighlight
+                                  ? "bg-amber-500 text-white"
+                                  : step.phase === "online"
+                                    ? "bg-teal-600 text-white"
+                                    : "bg-amber-600 text-white"
                             }`}
                           >
                             {step.id}
