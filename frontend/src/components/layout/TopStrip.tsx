@@ -13,12 +13,12 @@ export function TopStrip() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="bg-teal-950 text-[#cfe6e6] text-[13px] overflow-hidden">
+    <div className="bg-teal-950 text-[#cfe6e6] text-[13px]">
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}
         </span>
-        <div className="flex items-center gap-2 sm:gap-4 text-xs whitespace-nowrap overflow-hidden">
+        <div className="flex items-center gap-2 sm:gap-4 text-xs whitespace-nowrap overflow-x-hidden">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp/20 px-2 sm:px-3 py-0.5 text-[#9af0bc] font-extrabold text-[11px] sm:text-xs shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">PVoC / CoC Document Support</span>

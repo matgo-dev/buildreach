@@ -192,7 +192,8 @@
     "err_image_size": "Image size must be under 5MB",
     "err_generic": "Registration failed, please try again later",
     "err_phone_exists": "This phone number is already registered",
-    "err_email_exists": "This email is already registered"
+    "err_email_exists": "This email is already registered",
+    "optional_section": "More Info (Optional)"
   },
   "category": {
     "level1": "Level 1",
