@@ -210,7 +210,13 @@ function LoginContent() {
         </button>
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="mt-3 text-right">
+        <Link href="/forgot-password" className="text-sm text-gray-500 transition-colors hover:text-[#0D4D4D]">
+          {t("forgotPassword")}
+        </Link>
+      </div>
+
+      <div className="mt-4 text-center">
         <p className="text-sm text-gray-500">
           {t("no_account")}{" "}
           <Link href="/register" className="font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]">

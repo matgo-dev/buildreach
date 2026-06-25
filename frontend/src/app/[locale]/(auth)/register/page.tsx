@@ -4,22 +4,18 @@
 // - SUPPLIER → 3 步向导(Step 1 国家 / Step 2 语言 / Step 3 表单)
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AlertCircle,
-  Building2,
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Eye,
   EyeOff,
   ImagePlus,
   Loader2,
-  ShoppingCart,
   X,
 } from "lucide-react";
 
@@ -30,7 +26,6 @@ import { categoriesApi, type CategoryNode } from "@/lib/api/categories";
 import {
   validateEmail,
   validatePassword,
-  validatePasswordConfirm,
   validateRequired,
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
@@ -79,23 +74,6 @@ export default function RegisterPage() {
   const t = useTranslations("buyerRegister");
   const tc = useTranslations("common");
 
-  // 从 URL ?role=BUYER 恢复角色（切语言后保持状态）
-  const searchParams = useSearchParams();
-  const urlRole = searchParams.get("role") || "";
-  const [role, setRole] = useState<Role>(
-    (urlRole === "BUYER" || urlRole === "SUPPLIER") ? urlRole as Role : "",
-  );
-  // URL 参数变化时同步（切语言刷新后）
-  useEffect(() => {
-    if (urlRole === "BUYER" || urlRole === "SUPPLIER") {
-      setRole(urlRole as Role);
-    }
-  }, [urlRole]);
-
-  // SUPPLIER 草稿(sessionStorage)
-  const { draft, hydrated, update, clearDraft, clearRegistrationNo, clearLanguagePreference } =
-    useRegisterDraft();
-
   // PRD v1.4 Δ8:已登录用户访问 /register 自动跳工作台
   const me = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
@@ -104,37 +82,6 @@ export default function RegisterPage() {
       router.replace(defaultDashboardOf(me.roles));
     }
   }, [authLoaded, me, router]);
-
-  // 切换角色时清掉 SUPPLIER 草稿 + 同步到 URL（切语言后可恢复）
-  const handleSwitchRole = (next: Role) => {
-    if (role === "SUPPLIER" && next !== "SUPPLIER") clearDraft();
-    setRole(next);
-    // 同步到 URL query，不触发导航
-    const url = new URL(window.location.href);
-    if (next) url.searchParams.set("role", next);
-    else url.searchParams.delete("role");
-    window.history.replaceState({}, "", url.toString());
-  };
-
-  // SUPPLIER hydrate 完后,如果 draft.currentStep > 1,自动锁角色为 SUPPLIER
-  useEffect(() => {
-    if (hydrated && draft.country_code && !role) {
-      setRole("SUPPLIER");
-    }
-  }, [hydrated, draft.country_code, role]);
-
-  // PRD v1.4 Δ7:有未提交数据时关 tab / 刷新 弹原生确认框
-  const hasAnyNonEmptyDraftField =
-    !!draft.country_code ||
-    !!draft.language_preference ||
-    !!draft.company_name ||
-    !!draft.registration_no ||
-    !!draft.name ||
-    !!draft.phone ||
-    !!draft.email;
-  const shouldWarnOnUnload =
-    role === "SUPPLIER" && draft.currentStep >= 2 && hasAnyNonEmptyDraftField;
-  useBeforeUnload(shouldWarnOnUnload);
 
   // 注册成功后:存 token → 拉 me → 跳转 buyer 首页
   const handleBuyerRegistered = useCallback(async (tokens: LoginResult) => {
@@ -163,71 +110,9 @@ export default function RegisterPage() {
     <>
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-900">{t("pageTitle")}</h2>
-        {!role && (
-          <p className="mt-1 text-sm text-gray-400">{t("selectRole")}</p>
-        )}
       </div>
 
-      {/* 角色选择 */}
-      {!role && (
-        <div className="mb-6">
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => handleSwitchRole("BUYER")}
-              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#0D4D4D] hover:bg-[#0D4D4D]/5"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 transition-colors group-hover:bg-[#0D4D4D]/10">
-                <ShoppingCart className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#0D4D4D]" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#0D4D4D]">
-                  {t("roleBuyer")}
-                </p>
-                <p className="mt-0.5 text-xs text-gray-400">{t("roleBuyerHint")}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0D4D4D]" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSwitchRole("SUPPLIER")}
-              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#FF6B35] hover:bg-[#FF6B35]/5"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 transition-colors group-hover:bg-[#FF6B35]/10">
-                <Building2 className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#FF6B35]" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#FF6B35]">
-                  {t("roleSupplier")}
-                </p>
-                <p className="mt-0.5 text-xs text-gray-400">{t("roleSupplierHint")}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#FF6B35]" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {role && (
-        <>
-
-          {role === "BUYER" && <BuyerForm onSubmitted={handleBuyerRegistered} />}
-
-          {role === "SUPPLIER" && (
-            <SupplierWizard
-              draft={draft}
-              hydrated={hydrated}
-              update={update}
-              clearRegistrationNo={clearRegistrationNo}
-              clearLanguagePreference={clearLanguagePreference}
-              onSubmitted={() => {
-                clearDraft();
-                router.replace("/login?registered=1");
-              }}
-            />
-          )}
-        </>
-      )}
+      <BuyerForm onSubmitted={handleBuyerRegistered} />
 
       <div className="mt-5 text-center">
         <p className="text-sm text-gray-500">
@@ -350,8 +235,16 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>(locale === "zh" ? "CN" : "TZ");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+
+  // 邮箱验证码相关状态
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationToken, setVerificationToken] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeVerifying, setCodeVerifying] = useState(false);
+  const [codeCooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [address, setAddress] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -361,7 +254,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   // UI 状态
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [submitError, setSubmitError] = useState<React.ReactNode>("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -413,8 +305,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         return null;
       case "password":
         return validatePassword(password);
-      case "confirmPassword":
-        return validatePasswordConfirm(password, confirmPassword);
       case "name":
         return validateRequired(name, t("label_name"));
       case "companyName":
@@ -425,7 +315,9 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         if (selectedCategories.length === 0) return t("err_category_required");
         return null;
       case "email":
-        if (email && validateEmail(email)) return validateEmail(email);
+        if (!email) return t("err_email_required");
+        if (validateEmail(email)) return validateEmail(email);
+        if (!emailVerified) return t("err_email_not_verified");
         return null;
       case "storefrontImages":
         if (storefrontImages.length === 0) return t("err_storefront_required");
@@ -445,7 +337,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   // 全字段校验
   const validateAll = (): string | null => {
-    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages"];
+    const fields = ["email", "password", "phone", "name", "companyName", "address", "categories", "storefrontImages"];
     const newErrors: Record<string, string | null> = {};
     const newTouched: Record<string, boolean> = {};
     let firstError: string | null = null;
@@ -538,6 +430,68 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const pwdHasSpecial = /[^A-Za-z0-9]/.test(password);
   const pwdLenOk = password.length >= PASSWORD_MIN_LENGTH && password.length <= PASSWORD_MAX_LENGTH;
 
+  // 清理倒计时
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  // 发送验证码
+  const handleSendCode = async () => {
+    if (!email || validateEmail(email)) {
+      setErrors((e) => ({ ...e, email: validateEmail(email) || t("err_email_required") }));
+      setTouched((t) => ({ ...t, email: true }));
+      return;
+    }
+    setCodeSending(true);
+    try {
+      await authApi.sendVerificationCode(email, "REGISTER");
+      // 启动60秒倒计时
+      setCooldown(60);
+      cooldownRef.current = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(cooldownRef.current!);
+            cooldownRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      setErrors((e) => ({ ...e, email: null }));
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.code === 40902) {
+          setErrors((e) => ({ ...e, email: err.message }));
+          setTouched((t) => ({ ...t, email: true }));
+        } else {
+          setErrors((e) => ({ ...e, email: err.message }));
+        }
+      }
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
+  // 验证验证码
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) return;
+    setCodeVerifying(true);
+    try {
+      const result = await authApi.verifyCode(email, verificationCode, "REGISTER");
+      setVerificationToken(result.verification_token);
+      setEmailVerified(true);
+      setErrors((e) => ({ ...e, email: null, verificationCode: null }));
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrors((e) => ({ ...e, verificationCode: err.message }));
+      }
+    } finally {
+      setCodeVerifying(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const v = validateAll();
@@ -556,7 +510,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         company_name: companyName,
         address,
         business_category_codes: selectedCategories,
-        email: email || undefined,
+        email,
+        verification_token: verificationToken,
         storefront_images: storefrontImages,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
         language_preference: locale,
@@ -608,7 +563,139 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 隐藏陷阱：吸收浏览器 autofill，防止覆盖手机号 */}
         <input type="text" name="hidden_username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
         <input type="password" name="hidden_password" autoComplete="new-password" className="hidden" tabIndex={-1} aria-hidden="true" />
-        {/* 1. Phone / WhatsApp */}
+        {/* 1. Email + Verification Code */}
+        <div className="space-y-1.5" id="field-email">
+          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+            {t("label_email")} <span className="text-red-500">*</span>
+          </Label>
+          <div className="flex gap-2">
+            <input
+              id="email" name="email" type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailVerified) {
+                  setEmailVerified(false);
+                  setVerificationToken("");
+                  setVerificationCode("");
+                }
+                if (errors.email) setErrors((err) => ({ ...err, email: null }));
+              }}
+              onBlur={() => touch("email")}
+              placeholder={t("ph_email")}
+              readOnly={emailVerified}
+              className={buyerInputCls(errOf("email"), emailVerified ? "bg-gray-50" : "")}
+            />
+            {!emailVerified && (
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={codeSending || codeCooldown > 0 || !email}
+                className="shrink-0 rounded-lg bg-[#0D4D4D] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d] disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {codeSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : codeCooldown > 0 ? (
+                  `${codeCooldown}s`
+                ) : (
+                  t("btn_send_code")
+                )}
+              </button>
+            )}
+            {emailVerified && (
+              <span className="flex shrink-0 items-center gap-1 text-sm text-green-600">
+                <CheckCircle2 className="h-4 w-4" /> {t("email_verified")}
+              </span>
+            )}
+          </div>
+          {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
+        </div>
+
+        {/* Verification Code (only show after sending) */}
+        {!emailVerified && codeCooldown >= 0 && email && (
+          <div className="space-y-1.5" id="field-verificationCode">
+            <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
+              {t("label_verification_code")} <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex gap-2">
+              <input
+                id="verificationCode" name="verificationCode"
+                type="text" inputMode="numeric"
+                value={verificationCode}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setVerificationCode(v);
+                  if (errors.verificationCode) setErrors((err) => ({ ...err, verificationCode: null }));
+                }}
+                placeholder={t("ph_verification_code")}
+                maxLength={6}
+                className={buyerInputCls(errors.verificationCode ? errors.verificationCode : null)}
+              />
+              <button
+                type="button"
+                onClick={handleVerifyCode}
+                disabled={codeVerifying || verificationCode.length !== 6}
+                className="shrink-0 rounded-lg bg-[#0D4D4D] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d] disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {codeVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : t("btn_verify")}
+              </button>
+            </div>
+            {errors.verificationCode && (
+              <p className="text-xs text-red-500">{errors.verificationCode}</p>
+            )}
+          </div>
+        )}
+
+        {/* 2. Password (only one input, no confirm) */}
+        <div className="space-y-1.5" id="field-password">
+          <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+            {t("label_password")} <span className="text-red-500">*</span>
+          </Label>
+          <div className="relative">
+            <input
+              id="password" name="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors((err) => ({ ...err, password: null }));
+              }}
+              onBlur={() => touch("password")}
+              placeholder={t("ph_password")}
+              autoComplete="new-password"
+              className={buyerInputCls(errOf("password"), "pr-12")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errOf("password") && <p className="text-xs text-red-500">{errOf("password")}</p>}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px]">
+            <span className={pwdLenOk ? "text-green-600" : "text-gray-400"}>
+              {pwdLenOk && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_length")}
+            </span>
+            <span className="text-gray-300">|</span>
+            <span className={pwdHasDigit ? "text-green-600" : "text-gray-400"}>
+              {pwdHasDigit && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_digit")}
+            </span>
+            <span className={pwdHasUpper ? "text-green-600" : "text-gray-400"}>
+              {pwdHasUpper && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_upper")}
+            </span>
+            <span className={pwdHasLower ? "text-green-600" : "text-gray-400"}>
+              {pwdHasLower && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_lower")}
+            </span>
+            <span className={pwdHasSpecial ? "text-green-600" : "text-gray-400"}>
+              {pwdHasSpecial && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_special")}
+            </span>
+          </div>
+        </div>
+
+        {/* 3. Phone */}
         <div className="space-y-1.5" id="field-phone">
           <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
             {t("label_phone")} <span className="text-red-500">*</span>
@@ -619,7 +706,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               onChange={(e) => {
                 const newRegion = e.target.value as PhoneRegion;
                 setPhoneRegion(newRegion);
-                // 截断到新国家的最大长度，不清空已输入的号码
                 setPhone((prev) => prev.slice(0, PHONE_REGION_CONFIG[newRegion].maxLen));
                 if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
               }}
@@ -647,98 +733,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             />
           </div>
           {errOf("phone") && <p className="text-xs text-red-500">{errOf("phone")}</p>}
-        </div>
-
-        {/* 2. Password */}
-        <div className="space-y-1.5" id="field-password">
-          <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
-            {t("label_password")} <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            <input
-              id="password" name="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.password) setErrors((err) => ({ ...err, password: null }));
-                if (errors.confirmPassword) setErrors((err) => ({ ...err, confirmPassword: null }));
-              }}
-              onBlur={() => touch("password")}
-              placeholder={t("ph_password")}
-              autoComplete="new-password"
-              className={buyerInputCls(errOf("password"), "pr-12")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          {errOf("password") && <p className="text-xs text-red-500">{errOf("password")}</p>}
-          {/* 密码强度提示：一行紧凑展示 */}
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px]">
-            <span className={pwdLenOk ? "text-green-600" : "text-gray-400"}>
-              {pwdLenOk && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_length")}
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className={pwdHasDigit ? "text-green-600" : "text-gray-400"}>
-              {pwdHasDigit && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_digit")}
-            </span>
-            <span className={pwdHasUpper ? "text-green-600" : "text-gray-400"}>
-              {pwdHasUpper && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_upper")}
-            </span>
-            <span className={pwdHasLower ? "text-green-600" : "text-gray-400"}>
-              {pwdHasLower && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_lower")}
-            </span>
-            <span className={pwdHasSpecial ? "text-green-600" : "text-gray-400"}>
-              {pwdHasSpecial && <Check className="mr-0.5 inline h-3 w-3" />}{t("pwd_special")}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Confirm Password */}
-        <div className="space-y-1.5" id="field-confirmPassword">
-          <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
-            {t("label_confirm_password")} <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            <input
-              id="confirmPassword" name="confirmPassword"
-              type={showConfirm ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                if (errors.confirmPassword) setErrors((err) => ({ ...err, confirmPassword: null }));
-              }}
-              onBlur={() => touch("confirmPassword")}
-              placeholder={t("ph_confirm_password")}
-              autoComplete="new-password"
-              className={buyerInputCls(errOf("confirmPassword"), "pr-12")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
-              tabIndex={-1}
-            >
-              {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          {errOf("confirmPassword") ? (
-            <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-              <AlertCircle className="h-3 w-3" /> {errOf("confirmPassword")}
-            </p>
-          ) : (
-            confirmPassword && password && password === confirmPassword && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-[#10B981]">
-                <CheckCircle2 className="h-3 w-3" /> {t("password_match")}
-              </p>
-            )
-          )}
         </div>
 
         {/* 4. Contact Name */}
@@ -945,24 +939,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                 />
                 {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
               </div>
-
-              {/* Email */}
-              <div className="space-y-1.5" id="field-email">
-                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-                  {t("label_email")}
-                </Label>
-                <input
-                  id="email" name="email" type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
-                  onBlur={() => touch("email")}
-                  placeholder={t("ph_email")}
-                  autoComplete="email"
-                  className={buyerInputCls(errOf("email"))}
-                />
-                {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
-              </div>
-
             </div>
           )}
         </div>

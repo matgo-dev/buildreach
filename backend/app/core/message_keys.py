@@ -107,6 +107,17 @@ class MessageKey:
     ATTACHMENT_ALREADY_LINKED = "error.attachment.already_linked"
     ATTACHMENT_ORPHAN_QUOTA = "error.attachment.orphan_quota"
 
+    # verification — 验证码模块 401xx
+    VERIFICATION_CODE_INVALID = "error.verification.code_invalid"
+    VERIFICATION_CODE_EXPIRED = "error.verification.code_expired"
+    VERIFICATION_CODE_EXHAUSTED = "error.verification.code_exhausted"
+    VERIFICATION_CODE_COOLDOWN = "error.verification.cooldown"
+    VERIFICATION_CODE_IP_LIMIT = "error.verification.ip_limit"
+    VERIFICATION_TOKEN_INVALID = "error.verification.token_invalid"
+    VERIFICATION_TOKEN_USED = "error.verification.token_used"
+    VERIFICATION_EMAIL_NOT_FOUND = "error.verification.email_not_found"
+    PASSWORD_CONFIRM_MISMATCH = "error.auth.password_confirm_mismatch"
+
     # quote — 报价模块 405xx
     QUOTE_RFQ_STATE_INVALID = "error.quote.rfq_state_invalid"
     QUOTE_NOT_FOUND = "error.quote.not_found"

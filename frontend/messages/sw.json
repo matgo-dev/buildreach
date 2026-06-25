@@ -31,7 +31,8 @@
       "error_rate_limit": "Majaribio mengi yameshindwa, akaunti imefungwa kwa muda. Jaribu tena baada ya dakika 5",
       "error_invalid_credentials": "Taarifa si sahihi, tafadhali jaribu tena",
       "error_network": "Hitilafu ya mtandao, tafadhali jaribu tena baadaye",
-      "error_unknown": "Kuingia kumeshindwa"
+      "error_unknown": "Kuingia kumeshindwa",
+      "forgotPassword": "Umesahau nenosiri?"
     }
   },
   "error": {
@@ -198,7 +199,14 @@
     "err_generic": "Usajili umeshindwa, tafadhali jaribu tena baadaye",
     "err_phone_exists": "Nambari hii ya simu tayari imesajiliwa",
     "err_email_exists": "Barua pepe hii tayari imesajiliwa",
-    "optional_section": "Taarifa Zaidi (Hiari)"
+    "optional_section": "Taarifa Zaidi (Hiari)",
+    "btn_send_code": "Tuma Nambari",
+    "btn_verify": "Thibitisha",
+    "label_verification_code": "Nambari ya Uthibitisho",
+    "ph_verification_code": "Ingiza nambari ya tarakimu 6",
+    "email_verified": "Imethibitishwa",
+    "err_email_required": "Barua pepe inahitajika",
+    "err_email_not_verified": "Tafadhali thibitisha barua pepe yako kwanza"
   },
   "category": {
     "level1": "Kiwango cha 1",
@@ -1624,5 +1632,25 @@
       "s7_title": "Masasisho ya Sera",
       "s7_content": "Tunaweza kusasisha Sera hii ya Faragha mara kwa mara. Sera zilizosasishwa zitachapishwa kwenye jukwaa na tarehe ya mwisho ya kusasishwa itaonyeshwa. Kwa mabadiliko makubwa, tutakujulisha kupitia arifa za jukwaa au njia nyingine za busara.\n\nKuendelea kutumia jukwaa kunachukuliwa kuwa umekubali Sera ya Faragha iliyosasishwa."
     }
+  },
+  "forgotPassword": {
+    "pageTitle": "Weka upya Nenosiri",
+    "subtitle": "Ingiza barua pepe yako kupokea nambari ya uthibitisho",
+    "label_email": "Barua pepe",
+    "ph_email": "barua@pepe.com",
+    "btn_send_code": "Tuma Nambari",
+    "label_code": "Nambari ya Uthibitisho",
+    "ph_code": "Ingiza nambari ya tarakimu 6",
+    "btn_verify": "Thibitisha",
+    "label_new_password": "Nenosiri Jipya",
+    "ph_new_password": "Ingiza nenosiri jipya",
+    "label_confirm_password": "Thibitisha Nenosiri",
+    "ph_confirm_password": "Ingiza nenosiri jipya tena",
+    "btn_reset": "Weka upya Nenosiri",
+    "back_to_login": "Rudi kwenye Kuingia",
+    "email_verified": "Imethibitishwa",
+    "reset_success": "Nenosiri limewekwa upya! Inaelekeza kwenye kuingia...",
+    "err_email_required": "Barua pepe inahitajika",
+    "err_password_mismatch": "Nenosiri hazifanani"
   }
 }

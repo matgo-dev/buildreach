@@ -31,7 +31,8 @@
       "error_rate_limit": "Too many failed attempts, account temporarily locked. Please try again in 5 minutes",
       "error_invalid_credentials": "Invalid credentials, please try again",
       "error_network": "Network error, please try again later",
-      "error_unknown": "Login failed"
+      "error_unknown": "Login failed",
+      "forgotPassword": "Forgot password?"
     }
   },
   "error": {
@@ -198,7 +199,14 @@
     "err_generic": "Registration failed, please try again later",
     "err_phone_exists": "This phone number is already registered",
     "err_email_exists": "This email is already registered",
-    "optional_section": "More Info (Optional)"
+    "optional_section": "More Info (Optional)",
+    "btn_send_code": "Send Code",
+    "btn_verify": "Verify",
+    "label_verification_code": "Verification Code",
+    "ph_verification_code": "Enter 6-digit code",
+    "email_verified": "Verified",
+    "err_email_required": "Email is required",
+    "err_email_not_verified": "Please verify your email first"
   },
   "category": {
     "level1": "Level 1",
@@ -1624,5 +1632,25 @@
       "s7_title": "Policy Updates",
       "s7_content": "We may update this Privacy Policy from time to time. Updated policies will be published on the platform with the last updated date noted. For significant changes, we will notify you through platform notifications or other reasonable means.\n\nContinued use of the platform constitutes acceptance of the updated Privacy Policy."
     }
+  },
+  "forgotPassword": {
+    "pageTitle": "Reset Password",
+    "subtitle": "Enter your email to receive a verification code",
+    "label_email": "Email",
+    "ph_email": "your@email.com",
+    "btn_send_code": "Send Code",
+    "label_code": "Verification Code",
+    "ph_code": "Enter 6-digit code",
+    "btn_verify": "Verify",
+    "label_new_password": "New Password",
+    "ph_new_password": "Enter new password",
+    "label_confirm_password": "Confirm Password",
+    "ph_confirm_password": "Re-enter new password",
+    "btn_reset": "Reset Password",
+    "back_to_login": "Back to Login",
+    "email_verified": "Verified",
+    "reset_success": "Password reset successfully! Redirecting to login...",
+    "err_email_required": "Email is required",
+    "err_password_mismatch": "Passwords do not match"
   }
 }

@@ -755,5 +755,88 @@ class RfqItemsOrRemarkRequiredError(BusinessError):
         )
 
 
+# ── 验证码域 401xx ──────────────────────────────────────────
+
+
+class VerificationCodeInvalidError(BusinessError):
+    """40101 — 验证码错误。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40101,
+            "Invalid verification code",
+            message_key=MessageKey.VERIFICATION_CODE_INVALID,
+        )
+
+
+class VerificationCodeExpiredError(BusinessError):
+    """40102 — 验证码已过期。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40102,
+            "Verification code has expired",
+            message_key=MessageKey.VERIFICATION_CODE_EXPIRED,
+        )
+
+
+class VerificationCodeExhaustedError(BusinessError):
+    """40103 — 验证码尝试次数过多，已失效。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40103,
+            "Too many attempts, please request a new code",
+            message_key=MessageKey.VERIFICATION_CODE_EXHAUSTED,
+        )
+
+
+class VerificationCooldownError(BusinessError):
+    """40104 — 发送过于频繁。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_429_TOO_MANY_REQUESTS, 40104,
+            "Please wait before requesting another code",
+            message_key=MessageKey.VERIFICATION_CODE_COOLDOWN,
+        )
+
+
+class VerificationIpLimitError(BusinessError):
+    """40105 — IP请求过于频繁。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_429_TOO_MANY_REQUESTS, 40105,
+            "Too many requests from this IP",
+            message_key=MessageKey.VERIFICATION_CODE_IP_LIMIT,
+        )
+
+
+class VerificationTokenInvalidError(BusinessError):
+    """40106 — verification_token 无效或已过期。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40106,
+            "Invalid or expired verification token",
+            message_key=MessageKey.VERIFICATION_TOKEN_INVALID,
+        )
+
+
+class VerificationTokenUsedError(BusinessError):
+    """40107 — verification_token 已被使用。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40107,
+            "Verification token has already been used",
+            message_key=MessageKey.VERIFICATION_TOKEN_USED,
+        )
+
+
+class PasswordConfirmMismatchError(BusinessError):
+    """40108 — 两次密码不一致。"""
+    def __init__(self):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40108,
+            "Passwords do not match",
+            message_key=MessageKey.PASSWORD_CONFIRM_MISMATCH,
+        )
+
+
 def success(data: Any = None, message: str = "ok") -> dict:
     return {"code": 0, "message": message, "data": data}

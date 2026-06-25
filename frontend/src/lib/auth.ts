@@ -63,7 +63,8 @@ export const authApi = {
     company_name: string;
     address: string;
     business_category_codes: string[];
-    email?: string;
+    email: string;
+    verification_token: string;
     tin?: string;
     brela_no?: string;
     storefront_images: File[];
@@ -81,7 +82,8 @@ export const authApi = {
     for (const code of payload.business_category_codes) {
       fd.append("business_category_codes", code);
     }
-    if (payload.email) fd.append("email", payload.email);
+    fd.append("email", payload.email);
+    fd.append("verification_token", payload.verification_token);
     if (payload.tin) fd.append("tin", payload.tin);
     if (payload.brela_no) fd.append("brela_no", payload.brela_no);
     if (payload.language_preference) fd.append("language_preference", payload.language_preference);
@@ -115,6 +117,29 @@ export const authApi = {
     }
     return json.data as LoginResult;
   },
+
+  // ----- 验证码 -----
+
+  sendVerificationCode: (email: string, purpose: "REGISTER" | "RESET_PASSWORD") =>
+    api.post<{ message: string; expires_in: number }>(
+      "/api/v1/auth/verification-code/send",
+      { email, purpose },
+      { noAuth: true },
+    ),
+
+  verifyCode: (email: string, code: string, purpose: "REGISTER" | "RESET_PASSWORD") =>
+    api.post<{ verification_token: string; expires_in: number }>(
+      "/api/v1/auth/verification-code/verify",
+      { email, code, purpose },
+      { noAuth: true },
+    ),
+
+  resetPassword: (verification_token: string, new_password: string, confirm_password: string) =>
+    api.post<{ message: string }>(
+      "/api/v1/auth/reset-password",
+      { verification_token, new_password, confirm_password },
+      { noAuth: true },
+    ),
 
   /** identifier 可为邮箱、手机号或用户名 */
   login: (identifier: string, password: string, phoneRegion?: string) =>

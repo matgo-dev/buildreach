@@ -28,6 +28,7 @@ from app.schemas.auth import (
     TokenOut,
 )
 from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, ProfileUpdateIn
+from app.schemas.verification import SendCodeIn, SendCodeOut, VerifyCodeIn, VerifyCodeOut, ResetPasswordIn
 from app.services import auth_service, me_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
@@ -188,7 +189,134 @@ async def _check_supplier_duplicates(
     return errors
 
 
+def _client_ip(request: Request) -> str:
+    """提取客户端 IP(优先 X-Forwarded-For）。"""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+# ── 验证码端点 ──────────────────────────────────────────
+
+
+@router.post("/verification-code/send", summary="发送邮箱验证码")
+async def send_verification_code(
+    body: SendCodeIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services import verification_service
+    from app.services.email_service import send_verification_email
+    import asyncio
+
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent")
+
+    code, expires_in = await verification_service.send_code(
+        db,
+        email=body.email,
+        purpose=body.purpose,
+        ip_address=ip,
+        user_agent=ua,
+    )
+    await db.commit()
+
+    # code 为空表示 RESET_PASSWORD 且邮箱不存在(防枚举,不发邮件)
+    if code:
+        locale = request.headers.get("accept-language", "en")[:2]
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(None, send_verification_email, body.email, code, locale)
+
+    return success(SendCodeOut(
+        message="Verification code sent",
+        expires_in=expires_in,
+    ).model_dump())
+
+
+@router.post("/verification-code/verify", summary="校验验证码")
+async def verify_verification_code(
+    body: VerifyCodeIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services import verification_service
+
+    token = await verification_service.verify_code(
+        db,
+        email=body.email,
+        code=body.code,
+        purpose=body.purpose,
+    )
+    await db.commit()
+
+    return success(VerifyCodeOut(
+        verification_token=token,
+        expires_in=settings.VERIFICATION_TOKEN_EXPIRE_MINUTES * 60,
+    ).model_dump())
+
+
+@router.post("/reset-password", summary="忘记密码 - 重置密码")
+async def reset_password(
+    body: ResetPasswordIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services import verification_service
+    from app.core.exceptions import PasswordConfirmMismatchError
+    from app.core.security import hash_password, validate_password_strength
+    from app.db.models.verification_code import VerificationPurpose
+
+    # 两次密码一致性
+    if body.new_password != body.confirm_password:
+        raise PasswordConfirmMismatchError()
+
+    # 密码强度
+    if not validate_password_strength(body.new_password):
+        from app.core.exceptions import ValidationFailedError
+        raise ValidationFailedError(PASSWORD_RULE_MESSAGE)
+
+    # 消费 token(事务内标记 used)
+    email = await verification_service.consume_verification_token(
+        db, body.verification_token, VerificationPurpose.RESET_PASSWORD,
+    )
+
+    # 查找用户
+    from sqlalchemy import func as sa_func
+    result = await db.execute(
+        select(User).where(sa_func.lower(User.email) == email.lower())
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        from app.core.exceptions import VerificationTokenInvalidError
+        raise VerificationTokenInvalidError()
+
+    # 更新密码 + token_version
+    user.password_hash = hash_password(body.new_password)
+    user.token_version += 1
+
+    # 审计日志
+    from app.audit.constants import AuditAction, AuditResourceType
+    from app.audit.logger import write_audit
+    from app.db.models.audit_log import AuditStatus
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.PASSWORD_CHANGE,
+        status=AuditStatus.SUCCESS,
+        user_id=user.id,
+        user_email=user.email,
+        resource_id=user.id,
+        request=request,
+        extra={"method": "reset_password"},
+        commit=False,
+    )
+    await db.commit()
+
+    return success({"message": "Password reset successfully"})
 
 
 @router.post("/register/buyer", summary="BUYER 自助注册")
@@ -204,7 +332,8 @@ async def register_buyer(
     company_name: str = Form(...),
     address: str = Form(...),
     business_category_codes: list[str] = Form(default=[]),
-    email: str | None = Form(default=None),
+    email: str = Form(...),
+    verification_token: str = Form(...),
     tin: str | None = Form(default=None),
     brela_no: str | None = Form(default=None),
     language_preference: str | None = Form(default=None),
@@ -243,16 +372,15 @@ async def register_buyer(
     else:
         address = address.strip()
 
-    # 邮箱格式(选填)
-    if email:
-        email = email.strip()
-        if not email:
-            email = None
-        else:
-            try:
-                ev_validate_email(email)
-            except EvNotValidError:
-                errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
+    # 邮箱格式(必填)
+    email = email.strip() if email else ""
+    if not email:
+        errors.append({"field": "email", "code": 42200, "message": "邮箱不能为空"})
+    else:
+        try:
+            ev_validate_email(email)
+        except EvNotValidError:
+            errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
 
     # 品类校验
     try:
@@ -276,6 +404,17 @@ async def register_buyer(
 
     if errors:
         raise MultipleValidationError(errors)
+
+    # ── 验证 verification_token(邮箱已验证） ──
+    from app.services import verification_service
+    from app.db.models.verification_code import VerificationPurpose
+    verified_email = await verification_service.consume_verification_token(
+        db, verification_token, VerificationPurpose.REGISTER,
+    )
+    # 确保 token 中的邮箱与表单邮箱一致
+    if verified_email.lower() != email.lower():
+        from app.core.exceptions import VerificationTokenInvalidError
+        raise VerificationTokenInvalidError()
 
     # ── 图片处理 + 落盘 ──
     saved_storefront: list[tuple[str, int, int, int]] = []
