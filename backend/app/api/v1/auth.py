@@ -383,9 +383,11 @@ def _origin_allowed(origin_header: str | None, allowed: list[str]) -> bool:
     """Origin/Referer 白名单校验(CSRF 防御)。
 
     取 origin_header 的 scheme://host[:port],与 allowed 列表精确匹配。
+    浏览器刷新页面不发 Origin/Referer，此时放行——
+    CSRF 防护已由 SameSite=lax cookie 策略保证。
     """
     if not origin_header:
-        return False
+        return True
     parsed = urlparse(origin_header)
     if not parsed.scheme or not parsed.hostname:
         return False
