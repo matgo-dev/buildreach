@@ -28,7 +28,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
           <h3 className="text-navy text-[15px] font-black mb-0.5">{t("customerSupport")}</h3>
           <p className="text-muted text-[12px] mb-2">{t("customerSupportHint")}</p>
           <p className="text-navy text-lg font-black mb-2">{wa.number}</p>
-          <MallButton variant="whatsapp" block href={wa.link!}>
+          <MallButton variant="whatsapp" block href={wa.buildLink()!}>
             <MessageCircle className="h-4 w-4" />
             {t("chatOnWhatsApp")}
           </MallButton>
