@@ -11,8 +11,6 @@ import {
   Trash2,
   ArrowRight,
   PackageOpen,
-  ChevronDown,
-  ChevronUp,
   MessageCircle,
 } from "lucide-react";
 import { RfqTabNav } from "@/components/rfq/RfqTabNav";
@@ -29,7 +27,6 @@ import {
   type CartItemPublic,
   type CartPublic,
 } from "@/lib/api/cart";
-import { getProduct, type AttrItem } from "@/lib/api/products";
 import { useCartStore } from "@/stores/cartStore";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 
@@ -97,13 +94,6 @@ function CartContent() {
       return next;
     });
   }, []);
-
-  // 变体编辑
-  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
-  // productId -> 可选属性轴列表（已筛出 selectable=true）
-  const [productAttrs, setProductAttrs] = useState<Record<number, AttrItem[]>>({});
-  const [editingVariants, setEditingVariants] = useState<Array<{ attr_name: string; value: string }>>([]);
-  const [variantSaving, setVariantSaving] = useState(false);
 
   // 删除单项
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
@@ -284,42 +274,6 @@ function CartContent() {
                   {item.description && (
                     <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{item.description}</p>
                   )}
-                  {/* 规格 + 修改规格按钮 */}
-                  {item.variant_display && (
-                    <p className="mt-1 text-xs text-gray-600">
-                      <span className="text-gray-400">{t("specs")}:</span> {item.variant_display}
-                    </p>
-                  )}
-                  {!unavailable && item.selected_variants && item.selected_variants.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (expandedItemId === item.item_id) {
-                          setExpandedItemId(null);
-                        } else {
-                          setExpandedItemId(item.item_id);
-                          // 懒加载产品属性（只取 selectable 轴）
-                          if (!productAttrs[item.product_id]) {
-                            getProduct(item.product_id).then((p) => {
-                              const selectable: AttrItem[] = [];
-                              for (const grp of p.attribute_groups) {
-                                for (const attr of grp.items) {
-                                  if (attr.selectable) selectable.push(attr);
-                                }
-                              }
-                              setProductAttrs((prev) => ({ ...prev, [item.product_id]: selectable }));
-                            }).catch(() => {});
-                          }
-                          setEditingVariants([...(item.selected_variants || [])]);
-                        }
-                      }}
-                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-[#00505a]/30 px-2.5 py-0.5 text-xs font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10"
-                    >
-                      {t("editVariant")}
-                      {expandedItemId === item.item_id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                    </button>
-                  )}
                   {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {item.moq != null && item.moq > 0 && (
@@ -406,84 +360,6 @@ function CartContent() {
                 </div>{/* 关闭数量+删除 wrapper */}
               </div>
 
-              {/* 变体编辑面板 */}
-              {expandedItemId === item.item_id && (
-                <div className="mx-4 mb-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4">
-                  {productAttrs[item.product_id] ? (
-                    <>
-                      {productAttrs[item.product_id].map((attr) => (
-                        <div key={attr.key} className="mb-3">
-                          <span className="text-xs font-medium text-gray-500 mb-1.5 block">{attr.key}</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {attr.values.map((av) => {
-                              const isSelected = editingVariants.some(
-                                (v) => v.attr_name === attr.key && v.value === av.value
-                              );
-                              return (
-                                <button
-                                  key={av.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingVariants((prev) => {
-                                      const without = prev.filter((v) => v.attr_name !== attr.key);
-                                      if (isSelected) return without;
-                                      return [...without, { attr_name: attr.key, value: av.value }];
-                                    });
-                                  }}
-                                  className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-                                    isSelected
-                                      ? "border-[#00505a] bg-[#00505a]/10 text-[#00505a] font-medium"
-                                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                  }`}
-                                >
-                                  {av.value}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          type="button"
-                          disabled={variantSaving}
-                          onClick={async () => {
-                            setVariantSaving(true);
-                            try {
-                              const cart = await updateCartItem(item.item_id, { selected_variants: editingVariants });
-                              mutate(cart, false);
-                              syncFromCart(cart);
-                              setExpandedItemId(null);
-                            } catch (err: unknown) {
-                              if (err instanceof ApiError && err.code === 40520) {
-                                toast.error(t("duplicateVariant"));
-                              } else {
-                                toast.error(err instanceof Error ? err.message : tError("general" as Parameters<typeof tError>[0]));
-                              }
-                            } finally {
-                              setVariantSaving(false);
-                            }
-                          }}
-                          className="rounded-full border border-[#00505a] bg-[#00505a] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b] disabled:opacity-50"
-                        >
-                          {t("confirmVariant")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setExpandedItemId(null)}
-                          className="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
-                        >
-                          {t("cancelEdit")}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                    </div>
-                  )}
-                </div>
-              )}
               </div>
             );
           })}
