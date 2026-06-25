@@ -5,8 +5,8 @@
 #   Docker Compose 只在本机 127.0.0.1 暴露 frontend/backend 端口,
 #   宿主机 Nginx 作为唯一公网入口。
 #
-# 默认端口:
-#   frontend: 127.0.0.1:3001
+# 默认端口必须与 .env.production 中的 FRONTEND_HOST_PORT / BACKEND_HOST_PORT 一致:
+#   frontend: 127.0.0.1:3001  # 若 FRONTEND_HOST_PORT=8003,这里也要改成 8003
 #   backend:  127.0.0.1:8001
 #
 # HTTPS 证书、server_name、日志路径可由运维按服务器实际情况调整。
@@ -43,6 +43,19 @@ server {
         proxy_pass http://buildreach_backend;
         expires 7d;
         add_header Cache-Control "public";
+        access_log off;
+    }
+
+    location /banners/ {
+        proxy_pass http://buildreach_frontend;
+        add_header Cache-Control "no-cache";
+        access_log off;
+    }
+
+    location /images/ {
+        proxy_pass http://buildreach_frontend;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
         access_log off;
     }
 

@@ -57,6 +57,8 @@ fi
 if [ -n "${DEPLOY_IMAGE_BASE_URL:-}" ]; then
     export IMAGE_BASE_URL="$DEPLOY_IMAGE_BASE_URL"
 fi
+PUBLIC_ORIGIN="${DEPLOY_PUBLIC_ORIGIN:-${CORS_ORIGINS%%,*}}"
+PUBLIC_ORIGIN="${PUBLIC_ORIGIN%/}"
 export BACKEND_HOST_PORT FRONTEND_HOST_PORT IMAGE_TAG
 
 # ---- 1. 备份数据库(只在 DB 容器已运行时备份)----
@@ -148,9 +150,20 @@ for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
     sleep 2
 done
 
+echo "[deploy] 等待公网入口健康(最多 ${HEALTH_TIMEOUT_SECONDS}s): ${PUBLIC_ORIGIN}/healthz ..."
+PUBLIC_OK=0
+for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
+    if curl -fsS "${PUBLIC_ORIGIN}/healthz" > /dev/null 2>&1; then
+        echo "[deploy]       public entry healthy(第 ${i} 次,$((i * 2))s)"
+        PUBLIC_OK=1
+        break
+    fi
+    sleep 2
+done
+
 # 任一服务不健康 → 回滚到旧镜像
-if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ]; then
-    echo "[deploy] ⚠️  健康检查失败(backend=$BACKEND_OK, frontend=$FRONTEND_OK)"
+if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ] || [ "$PUBLIC_OK" -ne 1 ]; then
+    echo "[deploy] ⚠️  健康检查失败(backend=$BACKEND_OK, frontend=$FRONTEND_OK, public=$PUBLIC_OK)"
     echo "[deploy]    最近日志:"
     if [ "$BACKEND_OK" -ne 1 ]; then
         echo "[deploy]    --- backend ---"
@@ -159,6 +172,11 @@ if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ]; then
     if [ "$FRONTEND_OK" -ne 1 ]; then
         echo "[deploy]    --- frontend ---"
         docker compose -f "$COMPOSE_FILE" logs --tail=30 frontend 2>&1 | sed 's/^/         /'
+    fi
+    if [ "$PUBLIC_OK" -ne 1 ]; then
+        echo "[deploy]    --- nginx ---"
+        docker compose -f "$COMPOSE_FILE" logs --tail=30 nginx 2>&1 | sed 's/^/         /'
+        echo "[deploy]    公网入口未通过: ${PUBLIC_ORIGIN}/healthz"
     fi
 
     # 回滚:如果有旧镜像记录,用旧镜像重启容器
@@ -202,4 +220,5 @@ echo "[deploy]    ref       → $DEPLOY_REF"
 echo "[deploy]    image_tag → $IMAGE_TAG"
 echo "[deploy]    backend   → http://localhost:${BACKEND_HOST_PORT}/healthz"
 echo "[deploy]    frontend  → http://localhost:${FRONTEND_HOST_PORT}"
+echo "[deploy]    public    → ${PUBLIC_ORIGIN}"
 echo "[deploy] =================================================="
