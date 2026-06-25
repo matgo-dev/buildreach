@@ -170,13 +170,13 @@ function HowToBuyContent() {
                 {t("heroDesc")}
               </p>
             </div>
-            {/* Stats — 横排紧凑 */}
-            <div className="flex gap-3 flex-shrink-0">
+            {/* Stats — 横排紧凑，移动端自适应 */}
+            <div className="grid grid-cols-3 gap-2 lg:flex lg:gap-3 lg:flex-shrink-0">
               <Link
                 href="/mall"
-                className="flex flex-col items-center rounded-lg bg-white/10 border border-white/15 px-4 py-2.5 hover:bg-white/15 transition-colors cursor-pointer"
+                className="flex flex-col items-center rounded-lg bg-white/10 border border-white/15 px-2 py-2.5 lg:px-4 hover:bg-white/15 transition-colors cursor-pointer"
               >
-                <span className="text-xl font-bold text-[#e3a615] leading-none">
+                <span className="text-lg lg:text-xl font-bold text-[#e3a615] leading-none">
                   {t("stat1Value")}
                 </span>
                 <span className="text-[10px] text-white/60 mt-1 whitespace-nowrap">
@@ -186,9 +186,9 @@ function HowToBuyContent() {
               {[2, 3].map((i) => (
                 <div
                   key={i}
-                  className="flex flex-col items-center rounded-lg bg-white/10 border border-white/15 px-4 py-2.5"
+                  className="flex flex-col items-center rounded-lg bg-white/10 border border-white/15 px-2 py-2.5 lg:px-4"
                 >
-                  <span className="text-xl font-bold text-[#e3a615] leading-none">
+                  <span className="text-lg lg:text-xl font-bold text-[#e3a615] leading-none">
                     {t(`stat${i}Value`)}
                   </span>
                   <span className="text-[10px] text-white/60 mt-1 whitespace-nowrap">
@@ -199,21 +199,23 @@ function HowToBuyContent() {
             </div>
           </div>
 
-          {/* 中：7 步 mini pipeline — 紧凑居中 */}
-          <div className="flex items-center justify-center bg-white/[0.06] rounded-lg px-3 py-2 mb-4 gap-0">
-            {phases.map((p, i) => (
-              <div key={i} className="flex items-center">
-                <div className="flex flex-col items-center px-3 lg:px-4">
-                  <span className="text-base leading-none">{p.icon}</span>
-                  <span className="text-[10px] text-white/70 mt-0.5 whitespace-nowrap">
-                    {t(p.labelKey)}
-                  </span>
+          {/* 中：7 步 mini pipeline — 移动端可横滚 */}
+          <div className="overflow-x-auto -mx-3 px-3 mb-4">
+            <div className="flex items-center justify-center bg-white/[0.06] rounded-lg px-3 py-2 gap-0 min-w-max">
+              {phases.map((p, i) => (
+                <div key={i} className="flex items-center">
+                  <div className="flex flex-col items-center px-2 lg:px-4">
+                    <span className="text-base leading-none">{p.icon}</span>
+                    <span className="text-[10px] text-white/70 mt-0.5 whitespace-nowrap">
+                      {t(p.labelKey)}
+                    </span>
+                  </div>
+                  {i < phases.length - 1 && (
+                    <div className="w-3 lg:w-4 h-[1.5px] bg-white/25 flex-shrink-0" />
+                  )}
                 </div>
-                {i < phases.length - 1 && (
-                  <div className="w-4 h-[1.5px] bg-white/25 flex-shrink-0" />
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* 下：CTA 按钮 */}

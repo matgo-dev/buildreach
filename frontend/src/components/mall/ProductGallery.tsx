@@ -78,11 +78,11 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
   }, [lightboxOpen, goPrev, goNext]);
 
   return (
-    <div className="shrink-0">
+    <div className="shrink-0 w-full lg:w-auto">
       {/* 主图 — 悬浮原地放大 */}
       <div
         ref={mainRef}
-        className="relative w-[400px] h-[360px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-crosshair"
+        className="relative w-full lg:w-[400px] aspect-square lg:aspect-auto lg:h-[360px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden cursor-crosshair"
         onClick={openLightbox}
         onMouseEnter={() => setZooming(true)}
         onMouseLeave={() => setZooming(false)}
