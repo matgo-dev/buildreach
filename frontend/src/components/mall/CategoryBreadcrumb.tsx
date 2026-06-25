@@ -57,43 +57,45 @@ export function CategoryBreadcrumb({
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center gap-1 text-xs text-gray-400"
+      className="overflow-x-auto"
     >
-      <Link
-        href={`/${locale}/mall`}
-        className="flex items-center gap-1 text-[#00505a] transition-colors hover:underline"
-      >
-        <Home className="h-3 w-3" />
-        <span>{t("home")}</span>
-      </Link>
+      <div className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
+        <Link
+          href={`/${locale}/mall`}
+          className="flex items-center gap-1 text-[#00505a] transition-colors hover:underline flex-shrink-0"
+        >
+          <Home className="h-3 w-3" />
+          <span>{t("home")}</span>
+        </Link>
 
-      {crumbs.map((crumb, idx) => {
-        const isLast = idx === crumbs.length - 1 && !tail;
-        return (
-          <React.Fragment key={crumb.code}>
+        {crumbs.map((crumb, idx) => {
+          const isLast = idx === crumbs.length - 1 && !tail;
+          return (
+            <React.Fragment key={crumb.code}>
+              <ChevronRight className="h-3 w-3 flex-shrink-0 text-gray-300" />
+              {isLast ? (
+                <span className="font-medium text-gray-600">{crumb.name}</span>
+              ) : (
+                <Link
+                  href={`/${locale}/mall?cat=${crumb.code}`}
+                  className="text-[#00505a] transition-colors hover:underline"
+                >
+                  {crumb.name}
+                </Link>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {tail && (
+          <>
             <ChevronRight className="h-3 w-3 flex-shrink-0 text-gray-300" />
-            {isLast ? (
-              <span className="font-medium text-gray-600">{crumb.name}</span>
-            ) : (
-              <Link
-                href={`/${locale}/mall?cat=${crumb.code}`}
-                className="text-[#00505a] transition-colors hover:underline"
-              >
-                {crumb.name}
-              </Link>
-            )}
-          </React.Fragment>
-        );
-      })}
-
-      {tail && (
-        <>
-          <ChevronRight className="h-3 w-3 flex-shrink-0 text-gray-300" />
-          <span className="max-w-[200px] truncate font-medium text-gray-700">
-            {tail}
-          </span>
-        </>
-      )}
+            <span className="max-w-[200px] truncate font-medium text-gray-700">
+              {tail}
+            </span>
+          </>
+        )}
+      </div>
     </nav>
   );
 }
