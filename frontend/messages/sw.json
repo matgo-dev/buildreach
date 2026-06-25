@@ -192,7 +192,8 @@
     "err_image_size": "Ukubwa wa picha lazima uwe chini ya 5MB",
     "err_generic": "Usajili umeshindwa, tafadhali jaribu tena baadaye",
     "err_phone_exists": "Nambari hii ya simu tayari imesajiliwa",
-    "err_email_exists": "Barua pepe hii tayari imesajiliwa"
+    "err_email_exists": "Barua pepe hii tayari imesajiliwa",
+    "optional_section": "Taarifa Zaidi (Hiari)"
   },
   "category": {
     "level1": "Kiwango cha 1",

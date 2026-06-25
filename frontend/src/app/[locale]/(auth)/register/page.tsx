@@ -19,13 +19,12 @@ import {
   EyeOff,
   ImagePlus,
   Loader2,
-  RefreshCw,
   ShoppingCart,
   X,
 } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
-import { authApi, type CaptchaData, type LoginResult } from "@/lib/auth";
+import { authApi, type LoginResult } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { categoriesApi, type CategoryNode } from "@/lib/api/categories";
 import {
@@ -357,8 +356,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [address, setAddress] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [email, setEmail] = useState("");
-  const [tin, setTin] = useState("");
-  const [brelaNo, setBrelaNo] = useState("");
   const [storefrontImages, setStorefrontImages] = useState<File[]>([]);
   const [licenseImages, setLicenseImages] = useState<File[]>([]);
 
@@ -375,6 +372,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [catLoading, setCatLoading] = useState(true);
   const [catExpanded, setCatExpanded] = useState(false);
   const COLLAPSED_CAT_COUNT = 6;
+  const [optionalExpanded, setOptionalExpanded] = useState(false);
 
   // 加载 L1 品类
   useEffect(() => {
@@ -391,29 +389,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const sfInputRef = useRef<HTMLInputElement>(null);
   const licInputRef = useRef<HTMLInputElement>(null);
-
-  // 验证码
-  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
-  const [captchaCode, setCaptchaCode] = useState("");
-  const [captchaLoading, setCaptchaLoading] = useState(false);
-
-  const loadCaptcha = useCallback(async () => {
-    setCaptchaLoading(true);
-    setCaptchaCode("");
-    try {
-      const data = await authApi.getCaptcha();
-      setCaptcha(data);
-    } catch {
-      // 静默失败，用户可点刷新重试
-    } finally {
-      setCaptchaLoading(false);
-    }
-  }, []);
-
-  // 页面加载时获取验证码
-  useEffect(() => {
-    loadCaptcha();
-  }, [loadCaptcha]);
 
   // storefrontImages 变化时更新预览
   useEffect(() => {
@@ -446,12 +421,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       case "address":
         return validateRequired(address, t("label_address"));
       case "categories":
+        if (selectedCategories.length === 0) return t("err_category_required");
         return null;
       case "email":
         if (email && validateEmail(email)) return validateEmail(email);
-        return null;
-      case "captcha":
-        if (!captchaCode.trim()) return t("err_captcha_required");
         return null;
       case "storefrontImages":
         if (storefrontImages.length === 0) return t("err_storefront_required");
@@ -471,7 +444,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   // 全字段校验
   const validateAll = (): string | null => {
-    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages", "captcha"];
+    const fields = ["phone", "password", "confirmPassword", "name", "companyName", "address", "categories", "email", "storefrontImages"];
     const newErrors: Record<string, string | null> = {};
     const newTouched: Record<string, boolean> = {};
     let firstError: string | null = null;
@@ -583,26 +556,13 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         address,
         business_category_codes: selectedCategories,
         email: email || undefined,
-        tin: tin || undefined,
-        brela_no: brelaNo || undefined,
         storefront_images: storefrontImages,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
         language_preference: locale,
-        captcha_key: captcha?.key || "",
-        captcha_code: captchaCode,
       });
       onSubmitted(tokens);
     } catch (err) {
-      // 提交失败刷新验证码(一次性消耗，后端已销毁)
-      loadCaptcha();
       if (err instanceof ApiError) {
-        // 验证码错误
-        if (err.code === 42230) {
-          setErrors((e) => ({ ...e, captcha: t("err_captcha_wrong") }));
-          setTouched((t) => ({ ...t, captcha: true }));
-          setSubmitError(t("err_captcha_wrong"));
-          return;
-        }
         // 手机号已注册
         if (err.code === 40921) {
           setErrors((e) => ({ ...e, phone: err.message }));
@@ -831,7 +791,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 7. Business Categories (L1 multi-select) */}
         <div className="space-y-1.5" id="field-categories">
           <Label className="text-sm font-semibold text-gray-700">
-            {t("label_categories")} <span className="text-gray-400 font-normal">({t("optional")})</span>
+            {t("label_categories")} <span className="text-red-500">*</span>
           </Label>
           {catLoading ? (
             <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
@@ -928,91 +888,82 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
         </div>
 
-        {/* 9. License Images (optional) — 紧跟店面照片 */}
-        <div className="space-y-1.5" id="field-licenseImages">
-          <Label className="text-sm font-semibold text-gray-700">
-            {t("label_license")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <p className="text-xs text-gray-400">{t("license_hint")}</p>
-          <div className="flex flex-wrap gap-2">
-            {licPreviews.map((url, idx) => (
-              <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
-                <img
-                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
-                  onClick={() => setPreviewUrl(url)}
+        {/* 可折叠选填区域 */}
+        <div className="rounded-lg border border-gray-200">
+          <button
+            type="button"
+            onClick={() => setOptionalExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-4 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50"
+          >
+            <span>{t("optional_section")}</span>
+            {optionalExpanded
+              ? <ChevronUp className="h-4 w-4" />
+              : <ChevronDown className="h-4 w-4" />
+            }
+          </button>
+          {optionalExpanded && (
+            <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">
+              {/* License Images */}
+              <div className="space-y-1.5" id="field-licenseImages">
+                <Label className="text-sm font-semibold text-gray-700">
+                  {t("label_license")}
+                </Label>
+                <p className="text-xs text-gray-400">{t("license_hint")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {licPreviews.map((url, idx) => (
+                    <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                      <img
+                        src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                        onClick={() => setPreviewUrl(url)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLicenseImage(idx)}
+                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => licInputRef.current?.click()}
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                    <span className="text-[10px]">{t("upload")}</span>
+                  </button>
+                </div>
+                <input
+                  ref={licInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { handleLicenseAdd(e.target.files); e.target.value = ""; }}
                 />
-                <button
-                  type="button"
-                  onClick={() => removeLicenseImage(idx)}
-                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => licInputRef.current?.click()}
-              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
-            >
-              <ImagePlus className="h-5 w-5" />
-              <span className="text-[10px]">{t("upload")}</span>
-            </button>
-          </div>
-          <input
-            ref={licInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            className="hidden"
-            onChange={(e) => { handleLicenseAdd(e.target.files); e.target.value = ""; }}
-          />
-          {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
-        </div>
 
-        {/* 10. Email (optional) */}
-        <div className="space-y-1.5" id="field-email">
-          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-            {t("label_email")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <input
-            id="email" name="email" type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
-            onBlur={() => touch("email")}
-            placeholder={t("ph_email")}
-            autoComplete="email"
-            className={buyerInputCls(errOf("email"))}
-          />
-          {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
-        </div>
+              {/* Email */}
+              <div className="space-y-1.5" id="field-email">
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                  {t("label_email")}
+                </Label>
+                <input
+                  id="email" name="email" type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
+                  onBlur={() => touch("email")}
+                  placeholder={t("ph_email")}
+                  autoComplete="email"
+                  className={buyerInputCls(errOf("email"))}
+                />
+                {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
+              </div>
 
-        {/* 11. TIN Number (optional) */}
-        <div className="space-y-1.5" id="field-tin">
-          <Label htmlFor="tin" className="text-sm font-semibold text-gray-700">
-            {t("label_tin")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <input
-            id="tin" name="tin" type="text"
-            value={tin}
-            onChange={(e) => setTin(e.target.value)}
-            placeholder={t("ph_tin")}
-            className={buyerInputCls(null)}
-          />
-        </div>
-
-        {/* 12. BRELA Registration No (optional) */}
-        <div className="space-y-1.5" id="field-brela">
-          <Label htmlFor="brela" className="text-sm font-semibold text-gray-700">
-            {t("label_brela")} <span className="ml-1 font-normal text-gray-400">({t("optional")})</span>
-          </Label>
-          <input
-            id="brela" name="brela" type="text"
-            value={brelaNo}
-            onChange={(e) => setBrelaNo(e.target.value)}
-            placeholder={t("ph_brela")}
-            className={buyerInputCls(null)}
-          />
+            </div>
+          )}
         </div>
 
         {/* Submit */}

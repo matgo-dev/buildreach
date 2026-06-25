@@ -192,7 +192,8 @@
     "err_image_size": "图片大小不能超过 5MB",
     "err_generic": "注册失败,请稍后重试",
     "err_phone_exists": "该手机号已注册",
-    "err_email_exists": "该邮箱已注册"
+    "err_email_exists": "该邮箱已注册",
+    "optional_section": "更多信息（选填）"
   },
   "category": {
     "level1": "一级分类",
