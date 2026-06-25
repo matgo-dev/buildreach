@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -14,7 +14,6 @@ import { FilterBar } from "@/components/mall/FilterBar";
 import { Pagination } from "@/components/mall/Pagination";
 import { RecentViews } from "@/components/mall/RecentViews";
 import { useAuthStore } from "@/stores/authStore";
-import { getBrowsePreferences } from "@/lib/api/buyerPrefs";
 
 const PAGE_SIZE = 20;
 
@@ -25,17 +24,7 @@ function MallContent() {
   const t = useTranslations("mall");
 
   const { tree: categoryTree } = useCategoryTree();
-
-  // 买方浏览偏好：仅 BUYER 角色才拉取
   const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
-  const { data: prefCodes } = useSWR<string[]>(
-    isBuyer ? "buyer-browse-prefs" : null,
-    () => getBrowsePreferences(),
-    { revalidateOnFocus: false },
-  );
-
-  // 偏好品类展示全部
-  const [showAllCategories, setShowAllCategories] = useState(false);
 
   // URL 参数读取
   const urlCat = searchParams.get("cat") || "";
@@ -88,11 +77,8 @@ function MallContent() {
       supply_mode: urlSupplyMode || undefined,
       page: urlPage,
       size: PAGE_SIZE,
-      ...(prefCodes && prefCodes.length > 0 && !urlCat
-        ? { all_categories: showAllCategories || undefined }
-        : {}),
     }),
-    [urlCat, urlKeyword, urlBrand, urlSort, urlFeatured, urlSupplyMode, urlPage, prefCodes, showAllCategories]
+    [urlCat, urlKeyword, urlBrand, urlSort, urlFeatured, urlSupplyMode, urlPage]
   );
 
   const swrKey = useMemo(

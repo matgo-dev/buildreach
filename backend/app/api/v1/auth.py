@@ -191,6 +191,13 @@ async def _check_supplier_duplicates(
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.get("/captcha", summary="获取图形验证码")
+async def get_captcha():
+    from app.core.captcha import generate_captcha
+    key, image = generate_captcha()
+    return success({"key": key, "image": image})
+
+
 @router.post("/register/buyer", summary="BUYER 自助注册")
 async def register_buyer(
     request: Request,
@@ -203,11 +210,14 @@ async def register_buyer(
     name: str = Form(...),
     company_name: str = Form(...),
     address: str = Form(...),
-    business_category_codes: list[str] = Form(...),
+    business_category_codes: list[str] = Form(default=[]),
     email: str | None = Form(default=None),
     tin: str | None = Form(default=None),
     brela_no: str | None = Form(default=None),
     language_preference: str | None = Form(default=None),
+    # 验证码
+    captcha_key: str = Form(...),
+    captcha_code: str = Form(...),
     # 文件字段
     storefront_images: list[UploadFile] = File(...),
     license_images: list[UploadFile] | None = File(default=None),
@@ -220,7 +230,12 @@ async def register_buyer(
     )
     from app.core.phone import normalize_phone_to_e164
     from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
+    from app.core.captcha import verify_captcha
     from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
+
+    # ── 验证码校验(最先,失败直接返回) ──
+    if not verify_captcha(captcha_key, captcha_code):
+        raise MultipleValidationError([{"field": "captcha", "code": 42230, "message": "验证码错误或已过期"}])
 
     # ── 全量格式校验(一次性收集) ──
     errors: list[dict] = []
