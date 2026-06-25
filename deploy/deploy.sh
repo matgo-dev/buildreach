@@ -59,6 +59,10 @@ if [ -n "${DEPLOY_IMAGE_BASE_URL:-}" ]; then
 fi
 PUBLIC_ORIGIN="${DEPLOY_PUBLIC_ORIGIN:-${CORS_ORIGINS%%,*}}"
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN%/}"
+if [ -z "$PUBLIC_ORIGIN" ]; then
+    PUBLIC_ORIGIN="http://localhost"
+    echo "[deploy] ⚠️  PUBLIC_ORIGIN 未设置,使用 $PUBLIC_ORIGIN"
+fi
 export BACKEND_HOST_PORT FRONTEND_HOST_PORT IMAGE_TAG
 
 # ---- 1. 备份数据库(只在 DB 容器已运行时备份)----
@@ -67,7 +71,7 @@ mkdir -p "$BACKUP_DIR"
 if docker compose -f "$COMPOSE_FILE" ps db --status running 2>/dev/null | grep -q db \
    || docker compose ps db --status running 2>/dev/null | grep -q db; then
     BACKUP_FILE="$BACKUP_DIR/$(date +%Y%m%d-%H%M%S).sql.gz"
-    echo "[deploy] [1/6] 备份数据库 → $BACKUP_FILE"
+    echo "[deploy] [1/7] 备份数据库 → $BACKUP_FILE"
     # 用当前运行的 compose 配置来 exec
     if docker compose -f "$COMPOSE_FILE" ps db --status running 2>/dev/null | grep -q db; then
         docker compose -f "$COMPOSE_FILE" exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
@@ -79,11 +83,11 @@ if docker compose -f "$COMPOSE_FILE" ps db --status running 2>/dev/null | grep -
     echo "[deploy]       当前备份目录("$(du -sh "$BACKUP_DIR" | cut -f1)"):"
     ls -lh "$BACKUP_DIR"/*.sql.gz 2>/dev/null | tail -5 | sed 's/^/         /'
 else
-    echo "[deploy] [1/6] DB 容器未运行,跳过备份(首次部署)"
+    echo "[deploy] [1/7] DB 容器未运行,跳过备份(首次部署)"
 fi
 
 # ---- 2. 拉最新代码 ----
-echo "[deploy] [2/6] 拉取最新代码"
+echo "[deploy] [2/7] 拉取最新代码"
 git fetch origin
 PREV_SHA=$(git rev-parse HEAD)
 git reset --hard "$DEPLOY_REF"
@@ -107,7 +111,7 @@ if [ -d "$BANNER_SRC" ]; then
 fi
 
 # ---- 3. 拉取镜像 ----
-echo "[deploy] [3/6] 拉取镜像(IMAGE_TAG=$IMAGE_TAG)"
+echo "[deploy] [3/7] 拉取镜像(IMAGE_TAG=$IMAGE_TAG)"
 # 登录阿里云 ACR（凭证从 .env.production 读取）
 if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
     echo "[deploy]       登录阿里云 ACR..."
@@ -131,7 +135,7 @@ docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --remove-orph
 echo "[deploy] [6/7] 等待 backend 健康(最多 ${HEALTH_TIMEOUT_SECONDS}s)..."
 BACKEND_OK=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
-    if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
+    if curl -fsS --max-time 5 "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
         echo "[deploy]       backend healthy(第 ${i} 次,$((i * 2))s)"
         BACKEND_OK=1
         break
@@ -142,7 +146,7 @@ done
 echo "[deploy] 等待 frontend 健康(最多 ${HEALTH_TIMEOUT_SECONDS}s)..."
 FRONTEND_OK=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
-    if curl -fsS "http://localhost:${FRONTEND_HOST_PORT}" > /dev/null 2>&1; then
+    if curl -fsS --max-time 5 "http://localhost:${FRONTEND_HOST_PORT}" > /dev/null 2>&1; then
         echo "[deploy]       frontend healthy(第 ${i} 次,$((i * 2))s)"
         FRONTEND_OK=1
         break
@@ -150,10 +154,10 @@ for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
     sleep 2
 done
 
-echo "[deploy] 等待公网入口健康(最多 ${HEALTH_TIMEOUT_SECONDS}s): ${PUBLIC_ORIGIN}/healthz ..."
+echo "[deploy] 等待公网入口健康(最多 ${HEALTH_TIMEOUT_SECONDS}s): localhost:80/healthz ..."
 PUBLIC_OK=0
 for i in $(seq 1 $((HEALTH_TIMEOUT_SECONDS / 2))); do
-    if curl -fsS "${PUBLIC_ORIGIN}/healthz" > /dev/null 2>&1; then
+    if curl -fsS --max-time 5 "http://localhost:80/healthz" > /dev/null 2>&1; then
         echo "[deploy]       public entry healthy(第 ${i} 次,$((i * 2))s)"
         PUBLIC_OK=1
         break
@@ -186,12 +190,16 @@ if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ] || [ "$PUBLIC_OK" -ne 1 ]
         echo "[deploy]    旧 frontend → $OLD_FRONTEND_IMAGE"
         # 回退代码到上一版本（compose 文件、entrypoint 等都要匹配旧镜像）
         git reset --hard "$PREV_SHA"
-        # 用旧镜像重启（不再 pull，直接用本地缓存的旧镜像）
-        docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --no-pull --remove-orphans
-        # 等回滚后的服务起来
+        # 从旧镜像名中提取 tag，覆盖 IMAGE_TAG 确保不会 pull 新镜像
+        OLD_IMAGE_TAG="${OLD_BACKEND_IMAGE##*:}"
+        export IMAGE_TAG="$OLD_IMAGE_TAG"
+        echo "[deploy]    回滚 IMAGE_TAG → $IMAGE_TAG"
+        docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --remove-orphans
+        # 等回滚后的服务起来（检查 backend + nginx）
         ROLLBACK_OK=0
         for i in $(seq 1 15); do
-            if curl -fsS "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1; then
+            if curl -fsS --max-time 5 "http://localhost:${BACKEND_HOST_PORT}/healthz" > /dev/null 2>&1 \
+               && curl -fsS --max-time 5 "http://localhost:80/healthz" > /dev/null 2>&1; then
                 ROLLBACK_OK=1
                 break
             fi
