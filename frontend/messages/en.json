@@ -1044,11 +1044,11 @@
     "draftSaved": "Draft saved",
     "attachment": {
       "label": "Attachments",
-      "upload": "Click or drag to upload (image / PDF / Excel)",
-      "hint": "Supports JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Up to 6 files.",
+      "upload": "Click or drag to upload (image / PDF / Excel / archive)",
+      "hint": "Supports JPG, PNG, WEBP, PDF, XLSX, DOC/DOCX, ZIP, RAR (≤50 MB). Up to 6 files.",
       "maxReached": "Maximum 6 attachments allowed",
-      "invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX",
-      "tooLarge": "File too large. Images ≤5 MB, documents ≤10 MB",
+      "invalidType": "File type not supported. Allowed: JPG, PNG, WEBP, PDF, XLSX, DOC/DOCX, ZIP, RAR",
+      "tooLarge": "File too large. Max 50 MB per file",
       "download": "Download"
     },
     "backToCartEdit": "Back to Basket",
