@@ -3,8 +3,7 @@
 import { useCallback } from "react";
 import useSWR from "swr";
 import { useAuthStore } from "@/stores/authStore";
-
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBase } from "@/lib/env";
 
 interface WhatsAppData {
   whatsapp_link: string | null;
@@ -19,7 +18,7 @@ export interface WhatsAppContext {
 }
 
 async function fetchWhatsApp(): Promise<WhatsAppData> {
-  const res = await fetch(`${BASE}/api/v1/contact/whatsapp`);
+  const res = await fetch(`${getApiBase()}/api/v1/contact/whatsapp`);
   const json = await res.json();
   return json.data;
 }

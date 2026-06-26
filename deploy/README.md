@@ -68,7 +68,7 @@ vim .env.production    # 填真实值,关键项:
                        #   POSTGRES_PASSWORD = openssl rand -base64 24
                        #   JWT_SECRET_KEY    = openssl rand -hex 32
                        #   RELEASE_TAG              = 打包时 --tag
-                       #   NEXT_PUBLIC_API_BASE_URL = https://<DOMAIN>
+                       #   API_BASE_URL             = https://<DOMAIN>
                        #   CORS_ORIGINS             = https://<DOMAIN>
                        #   IMAGE_BASE_URL           = https://<DOMAIN>/static
 chmod 600 .env.production

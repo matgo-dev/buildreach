@@ -32,10 +32,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* 是 client-side 变量,**必须 build 时注入**(打进 bundle)
-# 运行时再改无效。compose 通过 build.args 传入。
-ARG NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+# API_BASE_URL 改为运行时注入(entrypoint.sh 生成 __env.js),不再构建时写死
 ARG NEXT_PUBLIC_DEMO_EMAILS
 ENV NEXT_PUBLIC_DEMO_EMAILS=$NEXT_PUBLIC_DEMO_EMAILS
 
@@ -55,6 +52,8 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# 运行时环境变量注入脚本
+COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
 
 USER nextjs
 
@@ -67,4 +66,4 @@ ENV PORT=3000 \
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
     CMD node -e "fetch('http://localhost:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["sh", "entrypoint.sh"]

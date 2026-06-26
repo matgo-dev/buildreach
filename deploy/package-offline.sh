@@ -20,30 +20,20 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # ── 参数解析 ──
-NEXT_PUBLIC_API_BASE_URL=""
 RELEASE_TAG=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --api-url)  NEXT_PUBLIC_API_BASE_URL="$2"; shift 2 ;;
     --tag)      RELEASE_TAG="$2"; shift 2 ;;
     *)          echo "未知参数: $1"; exit 1 ;;
   esac
 done
 
 # ── 参数校验 ──
-if [[ -z "$NEXT_PUBLIC_API_BASE_URL" ]]; then
-  echo "错误: 必须指定 --api-url"
-  echo "用法: bash deploy/package-offline.sh --api-url https://your-domain.com --tag 20260623"
-  exit 1
-fi
 if [[ -z "$RELEASE_TAG" ]]; then
   echo "错误: 必须指定 --tag"
-  echo "用法: bash deploy/package-offline.sh --api-url https://your-domain.com --tag 20260623"
+  echo "用法: bash deploy/package-offline.sh --tag 20260623"
   exit 1
-fi
-if [[ "$NEXT_PUBLIC_API_BASE_URL" =~ :[0-9]+$ ]]; then
-  echo "警告: --api-url 带端口。若今晚走 Nginx/HTTPS 单域名入口,建议传 https://your-domain.com"
 fi
 
 BACKEND_IMAGE="buildlink-backend:${RELEASE_TAG}"
@@ -92,8 +82,8 @@ echo ""
 echo "=========================================="
 echo " BuildLink EA 离线部署包打包"
 echo "=========================================="
-echo "  API URL:      ${NEXT_PUBLIC_API_BASE_URL}"
 echo "  Release Tag:  ${RELEASE_TAG}"
+echo "  API URL:      运行时通过 .env 的 API_BASE_URL 配置"
 echo "  Platform:     linux/amd64"
 echo "=========================================="
 echo ""
@@ -120,7 +110,6 @@ echo ""
 echo "=== 3/6 构建前端镜像 → ${FRONTEND_IMAGE} ==="
 docker build --platform linux/amd64 \
   -t "${FRONTEND_IMAGE}" \
-  --build-arg NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL}" \
   "${PROJECT_ROOT}/frontend"
 
 # ── 4/6 导出镜像为 tar ──
@@ -145,7 +134,8 @@ echo "=== 5/6 组装部署包 ==="
 mkdir -p "${OUTPUT_DIR}/deploy" "${OUTPUT_DIR}/data" "${OUTPUT_DIR}/logs"
 
 # 部署文件
-cp "${PROJECT_ROOT}/docker-compose.offline.yml"  "${OUTPUT_DIR}/"
+# 包内统一用 docker-compose.yml，部署时直接 docker compose up -d
+cp "${PROJECT_ROOT}/docker-compose.offline.yml"  "${OUTPUT_DIR}/docker-compose.yml"
 cp "${PROJECT_ROOT}/.env.production.example"      "${OUTPUT_DIR}/"
 for f in load-images.sh deploy-offline.sh init-data.sh nginx-host.conf.example; do
   [[ -f "${PROJECT_ROOT}/deploy/${f}" ]] && cp "${PROJECT_ROOT}/deploy/${f}" "${OUTPUT_DIR}/deploy/"
@@ -184,7 +174,7 @@ cat > "${OUTPUT_DIR}/manifest.json" <<MANIFEST
   "release_tag": "${RELEASE_TAG}",
   "git_sha": "${GIT_SHA}",
   "build_time": "${BUILD_TIME}",
-  "api_base_url": "${NEXT_PUBLIC_API_BASE_URL}",
+  "api_base_url": "runtime (.env API_BASE_URL)",
   "images": {
     "postgres": "${PG_IMAGE}",
     "backend": "${BACKEND_IMAGE}",

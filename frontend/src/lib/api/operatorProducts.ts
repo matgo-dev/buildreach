@@ -5,8 +5,7 @@
 
 import { api, apiRequest } from "../api";
 import { useAuthStore } from "@/stores/authStore";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBase } from "@/lib/env";
 const PREFIX = "/api/v1/operator/products";
 
 // ---------- 枚举 ----------
@@ -479,7 +478,7 @@ export const operatorProductsApi = {
   /** 上传图片（multipart/form-data）；SKU 图带 sku_id */
   uploadImage: async (productId: number, file: File, skuId?: number): Promise<ProductImage> => {
     const qs = skuId != null ? `?sku_id=${skuId}` : "";
-    const url = `${BASE_URL}${PREFIX}/${productId}/images${qs}`;
+    const url = `${getApiBase()}${PREFIX}/${productId}/images${qs}`;
 
     const formData = new FormData();
     formData.append("file", file);

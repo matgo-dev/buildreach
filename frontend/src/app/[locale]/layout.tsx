@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import { routing } from "@/i18n/routing";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -45,6 +46,9 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
+      <head>
+        <Script src="/__env.js" strategy="beforeInteractive" />
+      </head>
       <body>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider>

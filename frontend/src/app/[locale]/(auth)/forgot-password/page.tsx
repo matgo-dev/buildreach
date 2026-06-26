@@ -9,8 +9,7 @@ import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { validateEmail, validatePassword } from "@/lib/validators";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
-
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBase } from "@/lib/env";
 
 type Step = "email" | "code" | "done";
 
@@ -46,7 +45,7 @@ export default function ForgotPasswordPage() {
     try {
       const fd = new FormData();
       fd.append("email", email);
-      const res = await fetch(`${BASE}/api/v1/auth/forgot-password`, {
+      const res = await fetch(`${getApiBase()}/api/v1/auth/forgot-password`, {
         method: "POST",
         body: fd,
       });
@@ -91,7 +90,7 @@ export default function ForgotPasswordPage() {
       fd.append("email", email);
       fd.append("code", code.trim());
       fd.append("new_password", password);
-      const res = await fetch(`${BASE}/api/v1/auth/reset-password`, {
+      const res = await fetch(`${getApiBase()}/api/v1/auth/reset-password`, {
         method: "POST",
         body: fd,
       });
