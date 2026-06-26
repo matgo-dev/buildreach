@@ -30,6 +30,12 @@ export interface CategoryTreeNode {
   children: CategoryTreeNode[];
 }
 
+export interface CategoryThumbnail {
+  code: string;
+  name: string;
+  thumbnail: string | null;
+}
+
 export const categoriesApi = {
   /** 扁平列表;is_active 默认 true。 */
   list: (params?: { level?: 1 | 2 | 3; parent_code?: string; is_active?: boolean }) => {
@@ -40,6 +46,8 @@ export const categoriesApi = {
     const q = qs.toString();
     return api.get<CategoryNode[]>(`/api/v1/categories${q ? `?${q}` : ""}`);
   },
+  /** L1 品类缩略图(移动端宫格入口) */
+  thumbnails: () => api.get<CategoryThumbnail[]>("/api/v1/categories/thumbnails"),
   /** 嵌套树;is_active 默认 true, max_depth 限制层级深度。 */
   tree: (params?: { is_active?: boolean; max_depth?: number }) => {
     const qs = new URLSearchParams();

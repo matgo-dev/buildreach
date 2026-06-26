@@ -27,6 +27,14 @@ async def list_categories(
     return success([r.model_dump() for r in rows])
 
 
+@router.get("/thumbnails", summary="L1品类缩略图(移动端宫格)")
+async def get_category_thumbnails(
+    db: AsyncSession = Depends(get_db),
+):
+    data = await category_service.get_l1_thumbnails(db)
+    return success(data)
+
+
 @router.get("/tree", summary="商品分类嵌套树")
 async def get_categories_tree(
     is_active: bool = Query(True, description="默认只返回启用的"),

@@ -643,6 +643,7 @@
       "leadTime": "Lead Time"
     },
     "viewAllCategories": "View All Categories",
+    "collapseCategories": "Collapse",
     "myCategories": "My Categories Only",
     "prefFilterActive": "Showing {count} preferred categories",
     "recentViews": "Recently Viewed",
