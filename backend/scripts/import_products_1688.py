@@ -12,7 +12,9 @@
 --------
 - 幂等:按 spu_code upsert,子行先清后插,重跑安全
 - 事务边界 = 单个 offer:一个商品失败不连累其他
-- 归类靠 categories_raw.json 数据树,不靠目录路径
+- 品类归类:导入开始时从 DB 加载全量品类到 name_to_code 缓存
+  遇到未知 source_category_path 时跳过该商品(不再自动创建品类)
+  运营需到 data/categories.csv 补充后重跑
 - 参照 import_categories.py 的 CLI 模式(--dry-run / fail-fast / 永不物理删)
 
 ⚠️ 本脚本**不在应用启动时自动跑**,只能本地人工执行。
@@ -505,140 +507,21 @@ def close_run(
     db.flush()
 
 
-# ────────────────────── 分类导入(Phase 4 实现) ──────────────────────
+# ────────────────────── 品类缓存加载(不再自动创建品类) ──────────────────────
 
 
-def _split_seq(code: str) -> int:
-    """从 code 末尾段取整数序号:'01'→1, '01.005'→5。"""
-    return int(code.split(".")[-1])
+def load_category_name_to_code(db: Session) -> dict[str, str]:
+    """从 DB 加载全量品类,构建 name_en → code 缓存。
 
-
-def _next_seq(used: set[int]) -> int:
-    seq = 1
-    while seq in used:
-        seq += 1
-    return seq
-
-
-def _make_code(parent_code: str | None, seq: int, level: int) -> str:
-    """生成分类 code:L1 两位,L2+ 三位,父子用点分隔。"""
-    if level == 1:
-        return f"{seq:02d}"
-    assert parent_code is not None
-    return f"{parent_code}.{seq:03d}"
-
-
-def import_categories(db: Session, cat_tree: list[CategoryNode]) -> dict[str, str]:
-    """将 categories_raw.json 全层存入 categories 表,返回 name_en → code 映射。
-
-    算法沿用 import_categories.py:按 (name_zh, parent_code) 匹配现有节点,
-    沿用 code;新节点取空号生成稳定 code。append-only,永不物理删。
+    品类不在此处创建。遇到未知品类时调用方跳过商品,
+    提示运营到 data/categories.csv 补充后重跑。
     """
-    # 加载所有现有分类
-    existing_by_natural: dict[tuple[str, str | None], Category] = {}
-    used_seq_by_parent: dict[str | None, set[int]] = {}
-
+    name_to_code: dict[str, str] = {}
     for c in db.execute(select(Category)).scalars().all():
-        existing_by_natural[(c.name_zh, c.parent_code)] = c
-        used_seq_by_parent.setdefault(c.parent_code, set()).add(_split_seq(c.code))
-
-    slug_to_code: dict[str, str] = {}
-    inserted = 0
-    updated = 0
-
-    def _upsert_node(node: CategoryNode, parent_code: str | None) -> str:
-        nonlocal inserted, updated
-
-        # name_en 也纳入匹配辅助,但 natural key 仍以 name_zh 为主
-        natural_key = (node.name_zh, parent_code)
-        existing = existing_by_natural.get(natural_key)
-
-        if existing:
-            code = existing.code
-            # 更新 name_en(抓取可能比 Excel 更完整)
-            changed = False
-            if node.name_en and existing.name_en != node.name_en:
-                existing.name_en = node.name_en
-                changed = True
-            if existing.level != node.level:
-                existing.level = node.level
-                changed = True
-            if not existing.is_active:
-                existing.is_active = True
-                changed = True
-            if changed:
-                existing.updated_at = _utcnow()
-                updated += 1
-        else:
-            # 也尝试用 name_en + parent 匹配(九云数据可能只有英文)
-            en_key = (node.name_en, parent_code) if node.name_en else None
-            existing_by_en = existing_by_natural.get(en_key) if en_key else None
-            if existing_by_en:
-                code = existing_by_en.code
-                if node.name_zh and existing_by_en.name_zh != node.name_zh:
-                    existing_by_en.name_zh = node.name_zh
-                if node.name_en and existing_by_en.name_en != node.name_en:
-                    existing_by_en.name_en = node.name_en
-                existing_by_en.is_active = True
-                existing_by_en.updated_at = _utcnow()
-                updated += 1
-            else:
-                # 新建
-                used = used_seq_by_parent.setdefault(parent_code, set())
-                seq = _next_seq(used)
-                used.add(seq)
-                code = _make_code(parent_code, seq, node.level)
-
-                now = _utcnow()
-                _nzh = node.name_zh or node.name_en
-                _nen = node.name_en or None
-                cat = Category(
-                    code=code,
-                    name_zh=_nzh,
-                    name_en=_nen,
-                    level=node.level,
-                    parent_code=parent_code,
-                    sort_order=0,
-                    is_active=True,
-                    created_at=now,
-                    updated_at=now,
-                    source_lang="zh",
-                    trans_meta={
-                        "name_zh": "src",
-                        "name_en": "manual" if _nen else "pending",
-                        "name_sw": "pending",
-                    },
-                    i18n_pending_at=now,
-                )
-                db.add(cat)
-                db.flush()  # 让后续子节点的 FK 可引用
-                # 注册到 lookup 避免重复
-                existing_by_natural[natural_key] = cat
-                inserted += 1
-
-        slug_to_code[node.name_en] = code
-        node.db_code = code
-
-        # 递归子节点
-        for child in node.children:
-            _upsert_node(child, code)
-
-        return code
-
-    for root in cat_tree:
-        _upsert_node(root, None)
-
-    # 全量刷新 is_leaf:有 active 子节点的品类为非叶子
-    all_cats = db.execute(select(Category)).scalars().all()
-    parent_codes_with_active_children: set[str] = set()
-    for c in all_cats:
-        if c.parent_code and c.is_active:
-            parent_codes_with_active_children.add(c.parent_code)
-    for c in all_cats:
-        c.is_leaf = c.code not in parent_codes_with_active_children
-
-    log.info("  分类导入: 新增=%d, 更新=%d, 总映射=%d", inserted, updated, len(slug_to_code))
-    return slug_to_code
+        if c.name_en:
+            name_to_code[c.name_en] = c.code
+    log.info("  品类缓存加载: %d 条(name_en → code)", len(name_to_code))
+    return name_to_code
 
 
 # ────────────────────── 商品导入(Phase 5 实现) ──────────────────────
@@ -648,7 +531,7 @@ def import_offer(
     db: Session,
     offer: OfferFile,
     *,
-    slug_to_code: dict[str, str],
+    name_to_code: dict[str, str],
     leaf_lookup: dict[str, CategoryNode],
     run: IngestRun,
     run_meta: RunMeta,
@@ -665,11 +548,12 @@ def import_offer(
     spu_code = "BR-" + hashlib.md5(f"P-{offer_id}".encode()).hexdigest()[:8].upper()
 
     # ── 1. 归类:source_category_path 叶子 name_en → DB code ──
+    # 品类不在此处创建,未映射则抛 ValueError 让调用方跳过
     src_path = data.get("source_category_path", [])
     leaf_name = _extract_leaf_name(src_path)
-    category_code = slug_to_code.get(leaf_name or "")
+    category_code = name_to_code.get(leaf_name or "")
     if not category_code:
-        raise ValueError(f"分类 '{leaf_name}' 无法映射到 DB code")
+        raise ValueError(f"分类 '{leaf_name}' 未在 DB 中找到,请到 data/categories.csv 补充后重跑")
 
     # ── 1.5 来源溯源 + 视频 ──
     source_obj = data.get("source", {})
@@ -1355,10 +1239,9 @@ def main() -> None:
             )
             db.commit()
 
-            # 6. 导入分类
-            log.info("导入分类 ...")
-            slug_to_code = import_categories(db, cat_tree)
-            db.commit()
+            # 6. 从 DB 加载品类缓存(不创建品类,声明式治理由 import_categories.py 负责)
+            log.info("加载品类缓存 ...")
+            name_to_code = load_category_name_to_code(db)
 
             # 7. 导入商品(逐 offer 独立事务)
             leaf_lookup = build_leaf_lookup(cat_tree)
@@ -1368,12 +1251,14 @@ def main() -> None:
 
             success_count = 0
             import_errors: list[dict] = []
+            # 收集未映射品类路径,导入结束后汇总提示运营补充
+            unmapped_paths: set[str] = set()
 
             for i, offer in enumerate(valid_offers, 1):
                 try:
                     import_offer(
                         db, offer,
-                        slug_to_code=slug_to_code,
+                        name_to_code=name_to_code,
                         leaf_lookup=leaf_lookup,
                         run=run,
                         run_meta=run_meta,
@@ -1383,6 +1268,20 @@ def main() -> None:
                     success_count += 1
                     if i % 50 == 0:
                         log.info("  进度: %d/%d", i, len(valid_offers))
+                except ValueError as exc:
+                    # 品类未映射:跳过该商品,收集路径供运营补充
+                    db.rollback()
+                    err_msg = str(exc)
+                    log.warning("  [%s] 跳过(品类未映射): %s", offer.offer_id, err_msg)
+                    # 提取 leaf_name 存入未映射集合
+                    if offer.data:
+                        src_path = offer.data.get("source_category_path", [])
+                        leaf = _extract_leaf_name(src_path) or "(unknown)"
+                        unmapped_paths.add(leaf)
+                    import_errors.append({
+                        "offer_id": offer.offer_id,
+                        "error": err_msg,
+                    })
                 except Exception as exc:
                     db.rollback()
                     err_msg = str(exc)[:500]
@@ -1391,6 +1290,16 @@ def main() -> None:
                         "offer_id": offer.offer_id,
                         "error": err_msg,
                     })
+
+            # 未映射品类汇总提示
+            if unmapped_paths:
+                log.warning(
+                    "⚠️  以下 %d 个品类路径未在 DB 中找到,对应商品已跳过。"
+                    "请到 data/categories.csv 补充后重跑:",
+                    len(unmapped_paths),
+                )
+                for path in sorted(unmapped_paths):
+                    log.warning("    - %s", path)
 
             # 加上校验阶段失败的
             for oid, errs in vr.offer_errors.items():
