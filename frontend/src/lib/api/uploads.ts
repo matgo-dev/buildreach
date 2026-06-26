@@ -1,7 +1,6 @@
 // 文件上传 API — 通用上传端点，供询价附件等场景复用
 import { getToken } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+import { getApiBase } from "@/lib/env";
 
 export interface UploadResult {
   url: string;
@@ -33,7 +32,7 @@ export async function uploadFile(file: File): Promise<UploadResult> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
-  const resp = await fetch(`${API_BASE}/api/v1/uploads/files`, {
+  const resp = await fetch(`${getApiBase()}/api/v1/uploads/files`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,

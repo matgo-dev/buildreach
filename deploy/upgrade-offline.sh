@@ -79,8 +79,8 @@ cp -r "$SRC/images" "$INSTALL_DIR/images"
 echo "  ✓ images/"
 
 # compose
-cp "$SRC/docker-compose.offline.yml" "$INSTALL_DIR/"
-echo "  ✓ docker-compose.offline.yml"
+cp "$SRC/docker-compose.yml" "$INSTALL_DIR/"
+echo "  ✓ docker-compose.yml"
 
 # 部署脚本
 cp -r "$SRC/deploy" "$INSTALL_DIR/"
@@ -130,7 +130,7 @@ for f in images/*.tar; do
 done
 
 source .env.production
-docker compose -f docker-compose.offline.yml --env-file .env.production up -d --remove-orphans
+docker compose -f docker-compose.yml --env-file .env.production up -d --remove-orphans
 
 # ── 5. 健康检查 ──
 echo ""
@@ -161,7 +161,7 @@ done
 if [[ "$BE_OK" -ne 1 ]] || [[ "$FE_OK" -ne 1 ]]; then
     echo ""
     echo "  ❌ 健康检查失败 (backend=$BE_OK, frontend=$FE_OK)"
-    echo "  请检查: docker compose -f docker-compose.offline.yml logs --tail=30"
+    echo "  请检查: docker compose -f docker-compose.yml logs --tail=30"
     exit 1
 fi
 

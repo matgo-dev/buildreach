@@ -153,7 +153,6 @@ jobs:
             ${{ env.ACR_IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.image_tag }}
             ${{ env.ACR_IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=${{ steps.public.outputs.public_origin }}
             NEXT_PUBLIC_DEMO_EMAILS=${{ vars.DEMO_EMAILS }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend

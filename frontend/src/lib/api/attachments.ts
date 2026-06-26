@@ -5,8 +5,7 @@
  * 下载:fetch blob(带 token) → Blob → createObjectURL(前端自行管理 revoke)
  */
 import { getToken } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+import { getApiBase } from "@/lib/env";
 
 export interface AttachmentPublic {
   id: number;
@@ -51,7 +50,7 @@ export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
-  const resp = await fetch(`${API_BASE}/api/v1/attachments`, {
+  const resp = await fetch(`${getApiBase()}/api/v1/attachments`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
@@ -69,7 +68,7 @@ export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
 
 export async function fetchThumbnailBlob(id: number): Promise<Blob> {
   const token = getToken();
-  const resp = await fetch(`${API_BASE}/api/v1/attachments/${id}/thumbnail`, {
+  const resp = await fetch(`${getApiBase()}/api/v1/attachments/${id}/thumbnail`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
   });
@@ -83,7 +82,7 @@ export async function fetchThumbnailBlob(id: number): Promise<Blob> {
 
 export async function fetchAttachmentBlob(id: number): Promise<Blob> {
   const token = getToken();
-  const resp = await fetch(`${API_BASE}/api/v1/attachments/${id}/download`, {
+  const resp = await fetch(`${getApiBase()}/api/v1/attachments/${id}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
   });

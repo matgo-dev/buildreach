@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PACK_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # 默认值
-COMPOSE_FILE="${PACK_ROOT}/docker-compose.offline.yml"
+COMPOSE_FILE="${PACK_ROOT}/docker-compose.yml"
 ENV_FILE="${PACK_ROOT}/.env.production"
 DATA_DIR="${PACK_ROOT}/data"
 BATCH_DIRS=()
