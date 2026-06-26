@@ -200,8 +200,8 @@ export async function streamAiMessage(
 ): Promise<void> {
   const { useAuthStore } = await import("@/stores/authStore");
   const accessToken = useAuthStore.getState().accessToken;
-  const BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  const { getApiBase } = await import("@/lib/env");
+  const BASE = getApiBase();
   const resp = await fetch(
     `${BASE}/api/v1/credit/ai/conversations/${conversationId}/messages`,
     {

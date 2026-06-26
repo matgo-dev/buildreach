@@ -70,7 +70,8 @@ export const authApi = {
     license_images?: File[];
     language_preference?: string;
   }): Promise<LoginResult> => {
-    const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    const { getApiBase } = await import("./env");
+    const BASE = getApiBase();
     const fd = new FormData();
     fd.append("phone", payload.phone);
     fd.append("phone_region", payload.phone_region || "TZ");

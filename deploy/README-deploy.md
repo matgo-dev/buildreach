@@ -118,14 +118,14 @@ vi .env.production
 
 | 变量 | 示例 | 说明 |
 |------|------|------|
-| `NEXT_PUBLIC_API_BASE_URL` | `https://www.example.com` | 前端构建时注入的公网入口 |
+| `API_BASE_URL` | `https://www.example.com` | 浏览器访问后端的公网入口（运行时注入） |
 | `CORS_ORIGINS` | `https://www.example.com` | 前端地址 |
 | `IMAGE_BASE_URL` | `https://www.example.com/static` | 图片 URL 前缀 |
 | `BANNER_DIR` | `./data/banners` | 首页轮播图目录,默认不用改 |
 | `BACKEND_HOST_PORT` | `8001` | 后端端口 |
 | `FRONTEND_HOST_PORT` | `3001` | 前端端口 |
 
-> **⚠️ 三个 URL 必须匹配**：`NEXT_PUBLIC_API_BASE_URL`（已在构建时注入）、`CORS_ORIGINS`、`IMAGE_BASE_URL` 必须基于同一个 HTTPS 域名入口。
+> **⚠️ 三个 URL 必须匹配**：`API_BASE_URL`、`CORS_ORIGINS`、`IMAGE_BASE_URL` 必须基于同一个 HTTPS 域名入口。
 
 **可以保持默认的值：** 其他所有变量保持 `.env.production.example` 中的默认值即可。
 
@@ -212,12 +212,12 @@ scp buildlink-offline-20260625.tar.gz user@server:/opt/
 
 # 3. 服务器上备份数据库
 source .env.production
-docker compose -f docker-compose.offline.yml --env-file .env.production \
+docker compose --env-file .env.production \
   exec -T db pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
   | gzip > /opt/backups/db-$(date +%Y%m%d_%H%M%S).sql.gz
 
 # 4. 停旧服务
-docker compose -f docker-compose.offline.yml --env-file .env.production down
+docker compose --env-file .env.production down
 
 # 5. 解包新版本
 cd /opt && tar xzf buildlink-offline-20260625.tar.gz && cd buildlink-offline
@@ -239,7 +239,7 @@ bash deploy/deploy-offline.sh
 ## 五、常见问题
 
 ### Q: 换了服务器 IP 怎么办？
-`NEXT_PUBLIC_API_BASE_URL` 在前端构建时写死了，**必须重新打包**（后端镜像不用重建）。
+`API_BASE_URL` 是运行时注入的，修改 `.env.production` 后重启前端容器即可：`docker compose --env-file .env.production restart frontend`
 
 ### Q: 翻译不生效？
 检查 `TRANSLATION_PROVIDER` 和对应的 API Key。在国内服务器上 Google Translate 不可用，需要用 `aliyun` 或 `mock`。
@@ -260,7 +260,7 @@ bash deploy/init-data.sh --skip-categories --batch data/xfs/<新批次目录>
 ### Q: 怎么备份？
 ```bash
 # 数据库
-docker compose -f docker-compose.offline.yml --env-file .env.production \
+docker compose --env-file .env.production \
   exec -T db pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" | gzip > backup.sql.gz
 
 # 图片（商品图+附件）

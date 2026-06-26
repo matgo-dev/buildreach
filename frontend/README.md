@@ -8,7 +8,8 @@
 cd frontend
 pnpm install
 cp .env.local.example .env.local
-# 默认 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# 本地开发: NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# Docker 部署: API_BASE_URL 运行时注入（见 entrypoint.sh）
 
 pnpm dev   # http://localhost:3000
 ```

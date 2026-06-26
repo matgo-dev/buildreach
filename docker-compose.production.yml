@@ -87,6 +87,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      API_BASE_URL: ${API_BASE_URL}
     # 保留 host 端口供调试直连,生产流量走 nginx:80
     ports:
       - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_HOST_PORT:-3001}:3000"
