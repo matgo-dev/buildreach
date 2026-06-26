@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { validatePassword } from "@/lib/validators";
-
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBase } from "@/lib/env";
 
 function ResetPasswordContent() {
   const t = useTranslations("auth.resetPassword");
@@ -56,7 +55,7 @@ function ResetPasswordContent() {
       const fd = new FormData();
       fd.append("token", token);
       fd.append("new_password", password);
-      const res = await fetch(`${BASE}/api/v1/auth/reset-password`, {
+      const res = await fetch(`${getApiBase()}/api/v1/auth/reset-password`, {
         method: "POST",
         headers: { "Accept-Language": lang },
         body: fd,

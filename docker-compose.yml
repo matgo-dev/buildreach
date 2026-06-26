@@ -119,12 +119,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # NEXT_PUBLIC_* 必须 build 时注入,运行时改无效
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         NEXT_PUBLIC_DEMO_EMAILS: ${NEXT_PUBLIC_DEMO_EMAILS:-}
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      # 运行时注入，entrypoint.sh 生成 __env.js 供浏览器读取
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
     volumes:
       - ${BANNER_DIR:-./data/banners}:/app/public/banners
     # 对外暴露(过渡期保留,正式上线后可删,只走 Nginx)

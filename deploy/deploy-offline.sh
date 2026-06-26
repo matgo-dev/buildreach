@@ -11,7 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PACK_ROOT="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="${PACK_ROOT}/.env.production"
-COMPOSE_FILE="${PACK_ROOT}/docker-compose.offline.yml"
+COMPOSE_FILE="${PACK_ROOT}/docker-compose.yml"
 
 # 参数解析
 while [[ $# -gt 0 ]]; do
@@ -47,7 +47,7 @@ require_env_value() {
   fi
 }
 
-for key in RELEASE_TAG POSTGRES_PASSWORD JWT_SECRET_KEY SUPER_ADMIN_EMAIL SUPER_ADMIN_INITIAL_PASSWORD NEXT_PUBLIC_API_BASE_URL CORS_ORIGINS IMAGE_BASE_URL; do
+for key in RELEASE_TAG POSTGRES_PASSWORD JWT_SECRET_KEY SUPER_ADMIN_EMAIL SUPER_ADMIN_INITIAL_PASSWORD API_BASE_URL CORS_ORIGINS IMAGE_BASE_URL; do
   require_env_value "$key"
 done
 
@@ -56,7 +56,7 @@ if [[ "$(get_env_value SEED_DEMO_ACCOUNTS)" == "true" ]]; then
   exit 1
 fi
 
-if [[ "$(get_env_value NEXT_PUBLIC_API_BASE_URL)" == https://* && "$(get_env_value REFRESH_COOKIE_SECURE)" != "true" ]]; then
+if [[ "$(get_env_value API_BASE_URL)" == https://* && "$(get_env_value REFRESH_COOKIE_SECURE)" != "true" ]]; then
   echo "错误: HTTPS 公网入口必须设置 REFRESH_COOKIE_SECURE=true"
   exit 1
 fi
@@ -75,7 +75,7 @@ bash "${SCRIPT_DIR}/load-images.sh"
 echo ""
 echo "=== 2/3 启动服务 ==="
 cd "$PACK_ROOT"
-docker compose -f docker-compose.offline.yml --env-file "$ENV_FILE" up -d
+docker compose -f docker-compose.yml --env-file "$ENV_FILE" up -d
 
 # ── 3/3 健康检查（循环等待，最多 120 秒）──
 echo ""
@@ -103,12 +103,12 @@ done
 if [[ $ELAPSED -ge $MAX_WAIT ]]; then
   echo ""
   echo "[失败] 后端 ${MAX_WAIT}s 内未就绪，打印最近日志："
-  docker compose -f docker-compose.offline.yml logs --tail=50 backend
+  docker compose -f docker-compose.yml logs --tail=50 backend
   echo ""
   echo "排查命令："
-  echo "  docker compose -f docker-compose.offline.yml ps"
-  echo "  docker compose -f docker-compose.offline.yml logs backend"
-  echo "  docker compose -f docker-compose.offline.yml logs db"
+  echo "  docker compose -f docker-compose.yml ps"
+  echo "  docker compose -f docker-compose.yml logs backend"
+  echo "  docker compose -f docker-compose.yml logs db"
   exit 1
 fi
 
@@ -131,7 +131,7 @@ fi
 
 echo ""
 echo "=== 容器状态 ==="
-docker compose -f docker-compose.offline.yml ps
+docker compose -f docker-compose.yml ps
 
 echo ""
 echo "=========================================="

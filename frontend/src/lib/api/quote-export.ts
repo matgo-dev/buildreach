@@ -11,8 +11,7 @@
  */
 
 import { useAuthStore } from "@/stores/authStore";
-
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBase } from "@/lib/env";
 
 /** 下载结果类型 */
 export type ExportResult =
@@ -42,7 +41,7 @@ export async function exportQuotePdf(rfqId: number): Promise<ExportResult> {
   const headers = _buildHeaders();
 
   const resp = await fetch(
-    `${BASE}/api/v1/rfqs/${rfqId}/quote/export`,
+    `${getApiBase()}/api/v1/rfqs/${rfqId}/quote/export`,
     { headers, credentials: "include" },
   );
 

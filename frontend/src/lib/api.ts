@@ -8,8 +8,7 @@
 //   - 并发请求触发的多次 refresh 用 promise 复用去重
 
 import { useAuthStore } from "@/stores/authStore";
-
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBase } from "./env";
 const REFRESH_PATH = "/api/v1/auth/refresh";
 
 export class ApiError extends Error {
@@ -50,7 +49,7 @@ export async function tryRefresh(): Promise<boolean> {
 
   refreshPromise = (async () => {
     try {
-      const res = await fetch(`${BASE}${REFRESH_PATH}`, {
+      const res = await fetch(`${getApiBase()}${REFRESH_PATH}`, {
         method: "POST",
         credentials: "include",
       });
@@ -124,7 +123,7 @@ async function rawFetch(path: string, opts: RequestOptions): Promise<Response> {
     if (token) finalHeaders["Authorization"] = `Bearer ${token}`;
   }
 
-  return fetch(`${BASE}${path}`, {
+  return fetch(`${getApiBase()}${path}`, {
     ...rest,
     headers: finalHeaders,
     credentials: "include", // refresh cookie 自动带
