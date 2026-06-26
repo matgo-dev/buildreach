@@ -64,7 +64,10 @@ async def _get_role(db: AsyncSession, code: str) -> Role:
 
 
 async def _email_exists(db: AsyncSession, email: str) -> bool:
-    row = await db.execute(select(User.id).where(User.email == email))
+    """排除已停用账号,允许邮箱被新用户复用。"""
+    row = await db.execute(
+        select(User.id).where(User.email == email, User.status != UserStatus.DISABLED)
+    )
     return row.scalar_one_or_none() is not None
 
 
@@ -74,7 +77,10 @@ async def _username_exists(db: AsyncSession, username: str) -> bool:
 
 
 async def _phone_exists(db: AsyncSession, phone: str) -> bool:
-    row = await db.execute(select(User.id).where(User.phone == phone))
+    """排除已停用账号,允许手机号被新用户复用。"""
+    row = await db.execute(
+        select(User.id).where(User.phone == phone, User.status != UserStatus.DISABLED)
+    )
     return row.scalar_one_or_none() is not None
 
 

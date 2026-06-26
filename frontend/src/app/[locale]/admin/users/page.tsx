@@ -1,11 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Plus, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Pencil, Plus, X } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
-import { adminUsersApi, type AdminUserOut, type InternalRole } from "@/lib/adminUsers";
+import { adminUsersApi, type AdminUserOut, type AdminUserUpdateIn, type InternalRole } from "@/lib/adminUsers";
 import { Permissions } from "@/lib/permissions";
 import {
   validateEmail,
@@ -23,6 +23,7 @@ function Inner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<AdminUserOut | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -108,24 +109,25 @@ function Inner() {
             <tr>
               <th className="px-4 py-3 text-left font-semibold">ID</th>
               <th className="px-4 py-3 text-left font-semibold">邮箱</th>
+              <th className="px-4 py-3 text-left font-semibold">手机号</th>
               <th className="px-4 py-3 text-left font-semibold">用户名</th>
               <th className="px-4 py-3 text-left font-semibold">姓名</th>
               <th className="px-4 py-3 text-left font-semibold">角色</th>
               <th className="px-4 py-3 text-left font-semibold">状态</th>
-              <th className="px-4 py-3 text-left font-semibold">操作</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                   <Loader2 className="inline h-4 w-4 animate-spin" /> 加载中…
                 </td>
               </tr>
             )}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                   暂无账号
                 </td>
               </tr>
@@ -134,7 +136,8 @@ function Inner() {
               items.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">#{u.id}</td>
-                  <td className="px-4 py-3 text-slate-800">{u.email}</td>
+                  <td className="px-4 py-3 text-slate-800">{u.email ?? "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.phone ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-600">{u.username ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-700">{u.name}</td>
                   <td className="px-4 py-3">
@@ -152,24 +155,33 @@ function Inner() {
                   <td className="px-4 py-3">
                     <StatusBadge status={u.status} />
                   </td>
-                  <td className="px-4 py-3">
-                    {u.status === "ACTIVE" ? (
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
                       <button
                         disabled={busyId === u.id}
-                        onClick={() => onDisable(u)}
-                        className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        onClick={() => setEditTarget(u)}
+                        className="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                       >
-                        停用
+                        <Pencil className="inline h-3 w-3 mr-1" />编辑
                       </button>
-                    ) : (
-                      <button
-                        disabled={busyId === u.id}
-                        onClick={() => onEnable(u)}
-                        className="rounded border border-emerald-300 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
-                      >
-                        启用
-                      </button>
-                    )}
+                      {u.status === "ACTIVE" ? (
+                        <button
+                          disabled={busyId === u.id}
+                          onClick={() => onDisable(u)}
+                          className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          停用
+                        </button>
+                      ) : (
+                        <button
+                          disabled={busyId === u.id}
+                          onClick={() => onEnable(u)}
+                          className="rounded border border-emerald-300 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+                        >
+                          启用
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -225,6 +237,129 @@ function Inner() {
           }}
         />
       )}
+
+      {editTarget && (
+        <EditModal
+          user={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={async () => {
+            setEditTarget(null);
+            await load(page);
+            showToast("ok", "信息已更新");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUserOut;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [email, setEmail] = useState(user.email ?? "");
+  const [phone, setPhone] = useState(user.phone ?? "");
+  const [name, setName] = useState(user.name);
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState("");
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const nameErr = validateRequired(name, "姓名");
+    if (nameErr) return setErr(nameErr);
+
+    if (email) {
+      const emailErr = validateEmail(email, { required: "", format: "邮箱格式不正确", domain: "邮箱域名不可用" });
+      if (emailErr) return setErr(emailErr);
+    }
+
+    const body: AdminUserUpdateIn = {};
+    if (email !== (user.email ?? "")) body.email = email || undefined;
+    if (phone !== (user.phone ?? "")) body.phone = phone || undefined;
+    if (name !== user.name) body.name = name;
+
+    if (Object.keys(body).length === 0) {
+      onClose();
+      return;
+    }
+
+    setErr("");
+    setSubmitting(true);
+    try {
+      await adminUsersApi.update(user.id, body);
+      await onSaved();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "更新失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">编辑用户信息</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {err && (
+          <div className="mb-3 flex items-center gap-2 rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4" /> {err}
+          </div>
+        )}
+        <form onSubmit={onSubmit} className="space-y-3" noValidate>
+          <Field id="edit-email" label="邮箱">
+            <input
+              id="edit-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputCls(false)}
+            />
+          </Field>
+          <Field id="edit-phone" label="手机号">
+            <input
+              id="edit-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={inputCls(false)}
+            />
+          </Field>
+          <Field id="edit-name" label="姓名 *">
+            <input
+              id="edit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls(false)}
+            />
+          </Field>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex h-9 items-center gap-2 rounded-lg bg-[#003366] px-4 text-sm font-semibold text-white hover:bg-[#002244] disabled:opacity-60"
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              保存
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_permission
-from app.schemas.user import AdminUserCreateIn, AdminUserListOut, AdminUserOut
+from app.schemas.user import AdminUserCreateIn, AdminUserListOut, AdminUserOut, AdminUserUpdateIn
 from app.services import user_service
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
@@ -97,6 +97,28 @@ async def _load_roles_of(db: AsyncSession, user_id: int) -> list[str]:
         select(Role.code).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user_id)
     )
     return sorted(rows.scalars().all())
+
+
+@router.put("/{user_id}", summary="编辑用户信息(email/phone/name)")
+async def update_user_route(
+    body: AdminUserUpdateIn,
+    user_id: int = Path(..., ge=1),
+    request: Request = None,  # type: ignore[assignment]
+    current: CurrentUser = Depends(require_permission(Permissions.USER_MANAGE)),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await user_service.update_user(
+        db,
+        target_user_id=user_id,
+        actor_user_id=current.id,
+        actor_user_email=current.email,
+        email=body.email,
+        phone=body.phone,
+        name=body.name,
+        request=request,
+    )
+    roles = await _load_roles_of(db, user.id)
+    return success(_user_to_out(user, roles).model_dump())
 
 
 @router.post("/{user_id}/disable", summary="停用账号(ADMIN/OPERATOR/BUYER/SUPPLIER 均可)")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Integer, String
+from sqlalchemy import Boolean, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampUpdateMixin
@@ -13,14 +13,23 @@ class UserStatus:
 
 class User(Base, TimestampUpdateMixin):
     __tablename__ = "users"
+    __table_args__ = (
+        # 仅对非 DISABLED 用户做唯一约束,停用账号释放邮箱/用户名/手机号
+        Index("uq_users_email_active", "email", unique=True,
+              postgresql_where=text("status != 'DISABLED'")),
+        Index("uq_users_username_active", "username", unique=True,
+              postgresql_where=text("status != 'DISABLED'")),
+        Index("uq_users_phone_active", "phone", unique=True,
+              postgresql_where=text("status != 'DISABLED'")),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
-    # 用户名:选填,UNIQUE,登录时可作为 email 的替代凭证
-    username: Mapped[str | None] = mapped_column(String(50), unique=True, nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # 用户名:选填,登录时可作为 email 的替代凭证
+    username: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    # 手机号:UNIQUE,买方主登录凭证(坦桑 +255 E.164),其他角色选填
-    phone: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True, index=True)
+    # 手机号:买方主登录凭证(坦桑 +255 E.164),其他角色选填
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=UserStatus.ACTIVE)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

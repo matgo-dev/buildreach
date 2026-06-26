@@ -6,7 +6,6 @@
  */
 import {
   type LucideIcon,
-  Grid3x3,
   Package,
   Receipt,
   ScrollText,
@@ -115,12 +114,6 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { path: "/admin/users",       labelKey: "userManagement",       label: "用户管理", labelEn: "Users",       icon: Users,       resource: "user",       requiredPermissions: [Permissions.USER_MANAGE],       description: "内部账号(ADMIN/OPERATOR)创建与停用" },
           { path: "/admin/audit-logs",  labelKey: "auditLogs",            label: "审计日志", labelEn: "Audit Logs",  icon: ScrollText,  resource: "system",     requiredPermissions: [Permissions.SYSTEM_AUDIT],      description: "全平台敏感操作审计记录" },
-        ],
-      },
-      {
-        label: "RBAC 调试",
-        items: [
-          { path: "/admin/permission-matrix", labelKey: "permissionMatrix",  label: "权限矩阵全景",      labelEn: "Matrix",        icon: Grid3x3,    resource: null, requiredPermissions: [], description: "4 角色 × 15 资源域 × 5 符号的全景视图" },
         ],
       },
     ],
