@@ -14,13 +14,10 @@ class UserStatus:
 class User(Base, TimestampUpdateMixin):
     __tablename__ = "users"
     __table_args__ = (
-        # 仅对非 DISABLED 用户做唯一约束,停用账号释放邮箱/用户名/手机号
-        Index("uq_users_email_active", "email", unique=True,
-              postgresql_where=text("status != 'DISABLED'")),
-        Index("uq_users_username_active", "username", unique=True,
-              postgresql_where=text("status != 'DISABLED'")),
-        Index("uq_users_phone_active", "phone", unique=True,
-              postgresql_where=text("status != 'DISABLED'")),
+        # 全状态唯一约束:禁用账号不释放邮箱/用户名/手机号,恢复走启用流程
+        Index("uq_users_email", "email", unique=True),
+        Index("uq_users_username", "username", unique=True),
+        Index("uq_users_phone", "phone", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

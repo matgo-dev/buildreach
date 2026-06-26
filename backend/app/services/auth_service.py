@@ -64,11 +64,11 @@ async def _get_role(db: AsyncSession, code: str) -> Role:
 
 
 async def _email_exists(db: AsyncSession, email: str) -> bool:
-    """排除已停用账号,允许邮箱被新用户复用。"""
+    """任何状态的账号都占用邮箱,禁止复用。"""
     row = await db.execute(
-        select(User.id).where(User.email == email, User.status != UserStatus.DISABLED)
+        select(User.id).where(User.email == email)
     )
-    return row.scalar_one_or_none() is not None
+    return row.first() is not None
 
 
 async def _username_exists(db: AsyncSession, username: str) -> bool:
@@ -77,11 +77,11 @@ async def _username_exists(db: AsyncSession, username: str) -> bool:
 
 
 async def _phone_exists(db: AsyncSession, phone: str) -> bool:
-    """排除已停用账号,允许手机号被新用户复用。"""
+    """任何状态的账号都占用手机号,禁止复用。"""
     row = await db.execute(
-        select(User.id).where(User.phone == phone, User.status != UserStatus.DISABLED)
+        select(User.id).where(User.phone == phone)
     )
-    return row.scalar_one_or_none() is not None
+    return row.first() is not None
 
 
 def _classify_identifier(identifier: str) -> str:
@@ -110,19 +110,21 @@ async def _find_user_by_identifier(
     from app.core.phone import normalize_phone_to_e164
     from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
 
+    # 只查 ACTIVE 用户:DISABLED 账号不允许登录,
+    # 且同一邮箱/手机可能同时存在 ACTIVE + DISABLED 记录导致 MultipleResultsFound
     ident = identifier.strip()
     kind = _classify_identifier(ident)
+    active_filter = User.status != UserStatus.DISABLED
     if kind == "email":
-        row = await db.execute(select(User).where(User.email == ident))
+        row = await db.execute(select(User).where(User.email == ident, active_filter))
     elif kind == "phone":
         try:
             e164 = normalize_phone_to_e164(ident, phone_region)
-            row = await db.execute(select(User).where(User.phone == e164))
+            row = await db.execute(select(User).where(User.phone == e164, active_filter))
         except (PhoneFormatError, PhoneUnsupportedRegionError):
-            # 归一化失败:回退为 username 查(不暴露失败原因,防枚举)
-            row = await db.execute(select(User).where(User.username == ident))
+            row = await db.execute(select(User).where(User.username == ident, active_filter))
     else:
-        row = await db.execute(select(User).where(User.username == ident))
+        row = await db.execute(select(User).where(User.username == ident, active_filter))
     return row.scalar_one_or_none()
 
 
