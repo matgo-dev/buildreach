@@ -183,9 +183,9 @@ export function CategoryBreadcrumb({
           </>
         )}
 
-        {/* 客服入口 — 同行右侧 */}
-        {configured && (
-          <div className="ml-auto flex items-center gap-2 shrink-0">
+        {/* 客服入口 — 仅列表页显示，详情页(有tail)不显示 */}
+        {configured && !tail && (
+          <div className="ml-4 flex items-center gap-2 shrink-0">
             <span className="text-[12px] text-amber-500 hidden sm:inline">{t("cantFindHint")}</span>
             <a
               href={buildLink() || "#"}
