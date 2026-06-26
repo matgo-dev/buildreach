@@ -159,12 +159,14 @@ async def _check_supplier_duplicates(
                     "message": DUPLICATE_REGISTRATION_ERROR_MESSAGE,
                 })
 
-    # 邮箱重复
+    # 邮箱重复(排除已停用账号)
     if "email" not in errored_fields:
         email = raw.get("email", "")
         if email:
-            from app.db.models.user import User
-            row = await db.execute(select(User.id).where(User.email == email))
+            from app.db.models.user import User, UserStatus
+            row = await db.execute(
+                select(User.id).where(User.email == email, User.status != UserStatus.DISABLED)
+            )
             if row.scalar_one_or_none() is not None:
                 errors.append({
                     "field": "email",
@@ -172,12 +174,14 @@ async def _check_supplier_duplicates(
                     "message": EMAIL_ALREADY_REGISTERED_MESSAGE,
                 })
 
-    # 手机号重复
+    # 手机号重复(排除已停用账号)
     if "phone" not in errored_fields:
         phone = raw.get("phone", "")
         if phone:
-            from app.db.models.user import User
-            row = await db.execute(select(User.id).where(User.phone == phone))
+            from app.db.models.user import User, UserStatus
+            row = await db.execute(
+                select(User.id).where(User.phone == phone, User.status != UserStatus.DISABLED)
+            )
             if row.scalar_one_or_none() is not None:
                 errors.append({
                     "field": "phone",

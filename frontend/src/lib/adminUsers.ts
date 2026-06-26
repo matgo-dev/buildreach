@@ -11,11 +11,18 @@ export type InternalRole = "ADMIN" | "OPERATOR";
 export interface AdminUserOut {
   id: number;
   email: string;
+  phone: string | null;
   username: string | null;
   name: string;
   status: UserStatus;
   must_change_password: boolean;
   roles: RoleCode[];
+}
+
+export interface AdminUserUpdateIn {
+  email?: string;
+  phone?: string;
+  name?: string;
 }
 
 export interface AdminUserListOut {
@@ -43,4 +50,6 @@ export const adminUsersApi = {
     api.post<AdminUserOut>(`/api/v1/admin/users/${userId}/disable`),
   enable: (userId: number) =>
     api.post<AdminUserOut>(`/api/v1/admin/users/${userId}/enable`),
+  update: (userId: number, body: AdminUserUpdateIn) =>
+    api.put<AdminUserOut>(`/api/v1/admin/users/${userId}`, body),
 };

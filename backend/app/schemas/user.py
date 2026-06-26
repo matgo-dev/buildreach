@@ -37,6 +37,14 @@ class AdminUserOut(BaseModel):
     roles: list[str]
 
 
+class AdminUserUpdateIn(BaseModel):
+    """Admin 编辑用户信息。"""
+
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=30)
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+
+
 class AdminUserListOut(BaseModel):
     items: list[AdminUserOut]
     total: int

@@ -38,11 +38,16 @@ async def create_internal_user(
         )
     if not validate_password_strength(password):
         raise ValidationFailedError(PASSWORD_RULE_MESSAGE)
-    row = await db.execute(select(User.id).where(User.email == email))
+    # 排除已停用账号,允许复用
+    row = await db.execute(
+        select(User.id).where(User.email == email, User.status != UserStatus.DISABLED)
+    )
     if row.scalar_one_or_none() is not None:
         raise ConflictError("Email 已存在")
     if username:
-        row2 = await db.execute(select(User.id).where(User.username == username))
+        row2 = await db.execute(
+            select(User.id).where(User.username == username, User.status != UserStatus.DISABLED)
+        )
         if row2.scalar_one_or_none() is not None:
             raise ConflictError("用户名已存在")
 
@@ -119,6 +124,75 @@ async def list_users(
 
     items = [(u, sorted(roles_by_user.get(u.id, []))) for u in users]
     return items, total
+
+
+async def update_user(
+    db: AsyncSession,
+    *,
+    target_user_id: int,
+    actor_user_id: int,
+    actor_user_email: str,
+    email: str | None = None,
+    phone: str | None = None,
+    name: str | None = None,
+    request: Request | None = None,
+) -> User:
+    """Admin 编辑用户基本信息(email/phone/name)。"""
+    target = await db.get(User, target_user_id)
+    if target is None:
+        raise NotFoundError("User not found")
+
+    changes: dict = {}
+
+    if name is not None and name != target.name:
+        changes["name"] = {"old": target.name, "new": name}
+        target.name = name
+
+    if email is not None and email != target.email:
+        # 检查邮箱唯一(排除 DISABLED)
+        row = await db.execute(
+            select(User.id).where(
+                User.email == email,
+                User.status != UserStatus.DISABLED,
+                User.id != target.id,
+            )
+        )
+        if row.scalar_one_or_none() is not None:
+            raise ConflictError("该邮箱已被其他用户使用")
+        changes["email"] = {"old": target.email, "new": email}
+        target.email = email
+
+    if phone is not None and phone != target.phone:
+        # 检查手机号唯一(排除 DISABLED)
+        row = await db.execute(
+            select(User.id).where(
+                User.phone == phone,
+                User.status != UserStatus.DISABLED,
+                User.id != target.id,
+            )
+        )
+        if row.scalar_one_or_none() is not None:
+            raise ConflictError("该手机号已被其他用户使用")
+        changes["phone"] = {"old": target.phone, "new": phone}
+        target.phone = phone
+
+    if not changes:
+        return target
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.UPDATE,
+        user_id=actor_user_id,
+        user_email=actor_user_email,
+        resource_id=target.id,
+        request=request,
+        extra={"changes": changes},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(target)
+    return target
 
 
 async def _count_active_admins(db: AsyncSession) -> int:
