@@ -28,8 +28,8 @@ export default function HomePage() {
         <RightSidebar variant="home" />
       </div>
 
-      {/* ===== 移动端品类宫格入口(仅 <lg 显示) ===== */}
-      <MobileCategoryGrid />
+      {/* ===== 移动端品类宫格入口(仅 <lg 显示) — 等白底品类图准备好后启用 ===== */}
+      {/* <MobileCategoryGrid /> */}
 
       {/* ===== 品类楼层区 ===== */}
       <div className="mb-5">
