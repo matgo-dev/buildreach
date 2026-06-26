@@ -1,4 +1,4 @@
-"""Excel 导入脚本测试(对齐 PRD §4 / scripts/import_categories.py)。
+"""CSV 品类导入脚本测试(对齐 scripts/import_categories.py 声明式治理版本)。
 
 脚本本身用 sync SQLAlchemy(psycopg),所以不依赖 conftest 的 async fixture,
 独立建 sync engine 跑测试。drop_all + create_all 每个 test 隔离。
@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from openpyxl import Workbook
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
@@ -21,12 +20,10 @@ from app.db import models as _models  # noqa: F401
 from app.db.models import Category
 from app.db.url import prepare_sync_url
 from scripts.import_categories import (
-    ExcelL1,
-    ExcelL2,
-    ExcelTree,
-    import_from_xlsx,
-    parse_xlsx,
-    validate_xlsx_path,
+    CsvRow,
+    ImportStats,
+    import_from_csv,
+    parse_csv,
 )
 
 
@@ -73,267 +70,252 @@ def sync_db():
 # ---------- helpers ----------
 
 
-def _make_xlsx(tmp_path: Path, rows: list[tuple], name: str = "cat.xlsx") -> Path:
-    wb = Workbook()
-    ws = wb.active
-    ws.append(("一级分类", "二级分类", "三级分类"))
-    for row in rows:
-        ws.append(row)
+def _make_csv(tmp_path: Path, rows: list[dict], name: str = "cat.csv") -> Path:
+    """生成测试用 CSV 文件。"""
+    header = "code,level,name_zh,name_en,name_sw,short_name_zh,short_name_en,short_name_sw,parent_code,is_leaf,is_active"
+    lines = [header]
+    for r in rows:
+        lines.append(",".join([
+            r.get("code", ""),
+            str(r.get("level", 1)),
+            r.get("name_zh", ""),
+            r.get("name_en", ""),
+            r.get("name_sw", ""),
+            r.get("short_name_zh", ""),
+            r.get("short_name_en", ""),
+            r.get("short_name_sw", ""),
+            r.get("parent_code", ""),
+            r.get("is_leaf", "f"),
+            r.get("is_active", "t"),
+        ]))
     path = tmp_path / name
-    wb.save(path)
+    path.write_text("\n".join(lines), encoding="utf-8")
     return path
 
 
-def _tree_with(rows: list[tuple[str, str, list[str]]]) -> ExcelTree:
-    """直接构造 ExcelTree,绕过 xlsx,用于纯算法测试。"""
-    tree = ExcelTree()
-    l1_idx: dict[str, ExcelL1] = {}
-    l2_idx: dict[tuple[str, str], ExcelL2] = {}
-    for l1_name, l2_name, l3_names in rows:
-        if l1_name not in l1_idx:
-            n1 = ExcelL1(name_zh=l1_name)
-            l1_idx[l1_name] = n1
-            tree.l1_nodes.append(n1)
-        l1 = l1_idx[l1_name]
-        key = (l1_name, l2_name)
-        if key not in l2_idx:
-            n2 = ExcelL2(name_zh=l2_name)
-            l2_idx[key] = n2
-            l1.l2_nodes.append(n2)
-        l2 = l2_idx[key]
-        for x in l3_names:
-            if x not in l2.l3_names:
-                l2.l3_names.append(x)
-    return tree
+def _rows_for(*specs: tuple[str, int, str, str]) -> list[CsvRow]:
+    """快速构造 CsvRow 列表: (code, level, name_zh, parent_code)。"""
+    return [
+        CsvRow(
+            code=code,
+            level=level,
+            name_zh=name_zh,
+            name_en=None,
+            name_sw=None,
+            parent_code=parent_code or None,
+            is_active=True,
+        )
+        for code, level, name_zh, parent_code in specs
+    ]
 
 
-# ---------- parse_xlsx ----------
+# ---------- parse_csv ----------
 
 
-def test_parse_xlsx_header_match_and_l3_split(tmp_path):
-    path = _make_xlsx(tmp_path, [("土建", "钢筋", "螺纹钢、圆钢")])
-    tree = parse_xlsx(path)
-    assert len(tree.l1_nodes) == 1
-    assert tree.l1_nodes[0].name_zh == "土建"
-    assert tree.l1_nodes[0].l2_nodes[0].l3_names == ["螺纹钢", "圆钢"]
+def test_parse_csv_basic(tmp_path):
+    rows = _make_csv(tmp_path, [
+        {"code": "01", "level": "1", "name_zh": "土建", "parent_code": "", "is_leaf": "f", "is_active": "t"},
+        {"code": "01.001", "level": "2", "name_zh": "钢筋", "parent_code": "01", "is_leaf": "t", "is_active": "t"},
+    ])
+    result = parse_csv(rows)
+    assert len(result) == 2
+    assert result[0].code == "01"
+    assert result[0].level == 1
+    assert result[1].parent_code == "01"
 
 
-def test_parse_xlsx_l1_forward_fill(tmp_path):
-    """L1 列省略时向下填充。"""
-    path = _make_xlsx(
-        tmp_path,
-        [
-            ("土建", "钢筋", "螺纹钢"),
-            (None, "商砼", "C30"),
-            (None, "型材", "工字钢"),
-        ],
-    )
-    tree = parse_xlsx(path)
-    assert len(tree.l1_nodes) == 1
-    assert [l2.name_zh for l2 in tree.l1_nodes[0].l2_nodes] == ["钢筋", "商砼", "型材"]
+def test_parse_csv_bool_parsing(tmp_path):
+    """PostgreSQL 布尔值 t/f 正确解析。"""
+    rows = _make_csv(tmp_path, [
+        {"code": "01", "level": "1", "name_zh": "X", "is_active": "t"},
+        {"code": "02", "level": "1", "name_zh": "Y", "is_active": "f"},
+    ])
+    result = parse_csv(rows)
+    assert result[0].is_active is True
+    assert result[1].is_active is False
 
 
-def test_parse_xlsx_l3_all_delimiters(tmp_path):
-    """支持 、 , ， ; ； 与换行 共 6 种分隔符。"""
-    path = _make_xlsx(tmp_path, [("土建", "钢筋", "A、B,C，D;E；F\nG")])
-    tree = parse_xlsx(path)
-    assert tree.l1_nodes[0].l2_nodes[0].l3_names == ["A", "B", "C", "D", "E", "F", "G"]
-
-
-def test_parse_xlsx_l3_dedup_same_parent(tmp_path):
-    """同 parent 下同名 L3 去重。"""
-    path = _make_xlsx(tmp_path, [("土建", "钢筋", "A、A、B")])
-    tree = parse_xlsx(path)
-    assert tree.l1_nodes[0].l2_nodes[0].l3_names == ["A", "B"]
-
-
-def test_parse_xlsx_trailing_empty_segment(tmp_path):
-    """末尾空段(分隔符余项)被丢弃。"""
-    path = _make_xlsx(tmp_path, [("土建", "钢筋", "A、B、")])
-    tree = parse_xlsx(path)
-    assert tree.l1_nodes[0].l2_nodes[0].l3_names == ["A", "B"]
-
-
-def test_parse_xlsx_invalid_header_fails(tmp_path):
-    """表头不含 一级/二级/三级 → fail-fast。"""
-    path = tmp_path / "bad.xlsx"
-    wb = Workbook()
-    wb.active.append(("a", "b", "c"))
-    wb.save(path)
+def test_parse_csv_missing_required_col(tmp_path):
+    """缺少必要列 → fail-fast。"""
+    path = tmp_path / "bad.csv"
+    path.write_text("code,level,name_zh\n01,1,X\n", encoding="utf-8")
     with pytest.raises(SystemExit):
-        parse_xlsx(path)
+        parse_csv(path)
 
 
-def test_parse_xlsx_missing_l2_fails(tmp_path):
-    """L2 必须有值。"""
-    path = _make_xlsx(tmp_path, [("土建", None, "螺纹钢")])
-    with pytest.raises(SystemExit):
-        parse_xlsx(path)
+def test_parse_csv_empty_code_skipped(tmp_path):
+    """空 code 行被跳过。"""
+    rows = _make_csv(tmp_path, [
+        {"code": "01", "level": "1", "name_zh": "A", "parent_code": "", "is_active": "t"},
+        {"code": "", "level": "1", "name_zh": "B", "parent_code": "", "is_active": "t"},
+    ])
+    result = parse_csv(rows)
+    assert len(result) == 1
 
 
-# ---------- import_from_xlsx 核心算法 ----------
+def test_parse_csv_name_en_sw_nullable(tmp_path):
+    """name_en/name_sw 为空时解析为 None。"""
+    rows = _make_csv(tmp_path, [
+        {"code": "01", "level": "1", "name_zh": "X", "name_en": "", "name_sw": ""},
+    ])
+    result = parse_csv(rows)
+    assert result[0].name_en is None
+    assert result[0].name_sw is None
+
+
+# ---------- import_from_csv 核心算法 ----------
 
 
 def test_import_empty_db_all_new(sync_db):
-    tree = _tree_with(
-        [
-            ("土建", "钢筋", ["螺纹钢"]),
-            ("土建", "商砼", ["C30"]),
-            ("安装", "弱电", ["电缆"]),
-        ]
+    rows = _rows_for(
+        ("01", 1, "土建", ""),
+        ("01.001", 2, "钢筋", "01"),
+        ("01.001.001", 3, "螺纹钢", "01.001"),
+        ("02", 1, "安装", ""),
     )
-    stats = import_from_xlsx(sync_db, tree)
+    stats = import_from_csv(sync_db, rows)
     sync_db.commit()
-    assert stats.inserted == 8  # 2 L1 + 3 L2 + 3 L3
+    assert stats.inserted == 4
     assert stats.updated == 0
     codes = [
         c.code
         for c in sync_db.execute(select(Category).order_by(Category.code)).scalars()
     ]
-    assert codes == [
-        "01",
-        "01.001",
-        "01.001.001",
-        "01.002",
-        "01.002.001",
-        "02",
-        "02.001",
-        "02.001.001",
-    ]
+    assert codes == ["01", "01.001", "01.001.001", "02"]
 
 
 def test_import_idempotent(sync_db):
-    tree = _tree_with([("土建", "钢筋", ["螺纹钢"])])
-    import_from_xlsx(sync_db, tree)
+    rows = _rows_for(
+        ("01", 1, "土建", ""),
+        ("01.001", 2, "钢筋", "01"),
+    )
+    import_from_csv(sync_db, rows)
     sync_db.commit()
 
-    stats = import_from_xlsx(sync_db, tree)
+    stats = import_from_csv(sync_db, rows)
     sync_db.commit()
     assert stats.inserted == 0
     assert stats.updated == 0
-    assert stats.kept == 0
 
 
-def test_import_preserve_code_on_new_inserts(sync_db):
-    """中间插新 L3,旧 code 不漂移,新节点拿空号。"""
-    tree1 = _tree_with([("土建", "钢筋", ["螺纹钢", "圆钢"])])
-    import_from_xlsx(sync_db, tree1)
-    sync_db.commit()
-    old = {
-        c.name_zh: c.code for c in sync_db.execute(select(Category)).scalars()
-    }
-
-    tree2 = _tree_with([("土建", "钢筋", ["螺纹钢", "盘圆", "圆钢"])])
-    stats = import_from_xlsx(sync_db, tree2)
-    sync_db.commit()
-    new = {
-        c.name_zh: c.code for c in sync_db.execute(select(Category)).scalars()
-    }
-    assert stats.inserted == 1
-    # 旧节点 code 沿用
-    assert new["螺纹钢"] == old["螺纹钢"]
-    assert new["圆钢"] == old["圆钢"]
-    # 新节点拿空号(001/002 已占,取 003)
-    assert new["盘圆"] == "01.001.003"
-
-
-def test_import_same_name_under_different_parents(sync_db):
-    """不同 parent 下同名 L3 是两个独立节点。"""
-    tree = _tree_with(
-        [
-            ("土建", "钢筋", ["螺纹"]),
-            ("土建", "商砼", ["螺纹"]),  # 同名,不同 parent
-        ]
+def test_import_preserves_code(sync_db):
+    """CSV 中的 code 原样写入 DB，不做任何生成。"""
+    rows = _rows_for(
+        ("99", 1, "特殊", ""),
+        ("99.888", 2, "子类", "99"),
     )
-    stats = import_from_xlsx(sync_db, tree)
+    stats = import_from_csv(sync_db, rows)
     sync_db.commit()
-    rows = sync_db.execute(
-        select(Category).where(Category.name_zh == "螺纹")
-    ).scalars().all()
-    assert len(rows) == 2
-    assert {r.parent_code for r in rows} == {"01.001", "01.002"}
+    assert stats.inserted == 2
+    codes = {
+        c.code
+        for c in sync_db.execute(select(Category)).scalars()
+    }
+    assert "99" in codes
+    assert "99.888" in codes
+
+
+def test_import_updates_name(sync_db):
+    """名称变化时触发更新。"""
+    rows1 = _rows_for(("01", 1, "土建", ""))
+    import_from_csv(sync_db, rows1)
+    sync_db.commit()
+
+    rows2 = [CsvRow(code="01", level=1, name_zh="土建材料", name_en="Civil", name_sw=None, parent_code=None, is_active=True)]
+    stats = import_from_csv(sync_db, rows2)
+    sync_db.commit()
+    assert stats.updated == 1
+    cat = sync_db.execute(select(Category).where(Category.code == "01")).scalar_one()
+    assert cat.name_zh == "土建材料"
+    assert cat.name_en == "Civil"
 
 
 def test_import_deactivate_missing(sync_db):
-    tree1 = _tree_with([("土建", "钢筋", ["A", "B"])])
-    import_from_xlsx(sync_db, tree1)
+    rows1 = _rows_for(
+        ("01", 1, "A", ""),
+        ("02", 1, "B", ""),
+    )
+    import_from_csv(sync_db, rows1)
     sync_db.commit()
 
-    tree2 = _tree_with([("土建", "钢筋", ["A"])])
-    stats = import_from_xlsx(sync_db, tree2, deactivate_missing=True)
+    rows2 = _rows_for(("01", 1, "A", ""))
+    stats = import_from_csv(sync_db, rows2, deactivate_missing=True)
     sync_db.commit()
     assert stats.deactivated == 1
-    b = sync_db.execute(
-        select(Category).where(Category.name_zh == "B")
-    ).scalar_one()
+    b = sync_db.execute(select(Category).where(Category.code == "02")).scalar_one()
     assert b.is_active is False
 
 
 def test_import_default_keep_missing(sync_db):
-    """默认不停用 Excel 中缺失的节点。"""
-    tree1 = _tree_with([("土建", "钢筋", ["A", "B"])])
-    import_from_xlsx(sync_db, tree1)
+    """默认不停用 CSV 中缺失的节点。"""
+    rows1 = _rows_for(
+        ("01", 1, "A", ""),
+        ("02", 1, "B", ""),
+    )
+    import_from_csv(sync_db, rows1)
     sync_db.commit()
 
-    tree2 = _tree_with([("土建", "钢筋", ["A"])])
-    stats = import_from_xlsx(sync_db, tree2)
+    rows2 = _rows_for(("01", 1, "A", ""))
+    stats = import_from_csv(sync_db, rows2)
     sync_db.commit()
     assert stats.kept == 1
     assert stats.deactivated == 0
-    b = sync_db.execute(
-        select(Category).where(Category.name_zh == "B")
-    ).scalar_one()
+    b = sync_db.execute(select(Category).where(Category.code == "02")).scalar_one()
     assert b.is_active is True
 
 
 def test_import_dry_run_no_writes(sync_db):
-    tree = _tree_with([("土建", "钢筋", ["螺纹钢"])])
-    stats = import_from_xlsx(sync_db, tree, dry_run=True)
+    rows = _rows_for(("01", 1, "土建", ""))
+    stats = import_from_csv(sync_db, rows, dry_run=True)
     sync_db.rollback()
-    assert stats.inserted == 3
+    assert stats.inserted == 1
     assert sync_db.execute(select(Category)).scalars().all() == []
 
 
-def test_import_reactivates_when_excel_has_it_again(sync_db):
-    """先停用,再次出现在 Excel → is_active 重新 true。"""
-    tree1 = _tree_with([("土建", "钢筋", ["A", "B"])])
-    import_from_xlsx(sync_db, tree1)
+def test_import_reactivates_when_csv_has_it_again(sync_db):
+    """先停用，再次出现在 CSV → is_active 重新 true。"""
+    rows1 = _rows_for(
+        ("01", 1, "A", ""),
+        ("02", 1, "B", ""),
+    )
+    import_from_csv(sync_db, rows1)
     sync_db.commit()
 
-    tree2 = _tree_with([("土建", "钢筋", ["A"])])
-    import_from_xlsx(sync_db, tree2, deactivate_missing=True)
+    rows2 = _rows_for(("01", 1, "A", ""))
+    import_from_csv(sync_db, rows2, deactivate_missing=True)
     sync_db.commit()
 
     # B 再次出现
-    tree3 = _tree_with([("土建", "钢筋", ["A", "B"])])
-    stats = import_from_xlsx(sync_db, tree3)
+    rows3 = _rows_for(
+        ("01", 1, "A", ""),
+        ("02", 1, "B", ""),
+    )
+    stats = import_from_csv(sync_db, rows3)
     sync_db.commit()
     assert stats.updated == 1
-    b = sync_db.execute(
-        select(Category).where(Category.name_zh == "B")
-    ).scalar_one()
+    b = sync_db.execute(select(Category).where(Category.code == "02")).scalar_one()
     assert b.is_active is True
 
 
-# ---------- validate_xlsx_path ----------
+def test_import_is_leaf_synced(sync_db):
+    """导入后 is_leaf 自动刷新：有子节点的标 False，叶子标 True。"""
+    rows = _rows_for(
+        ("01", 1, "Parent", ""),
+        ("01.001", 2, "Child", "01"),
+    )
+    import_from_csv(sync_db, rows)
+    sync_db.commit()
+    parent = sync_db.execute(select(Category).where(Category.code == "01")).scalar_one()
+    child = sync_db.execute(select(Category).where(Category.code == "01.001")).scalar_one()
+    assert parent.is_leaf is False
+    assert child.is_leaf is True
 
 
-def test_validate_xlsx_path_rejects_outside_data(tmp_path):
-    p = tmp_path / "x.xlsx"
-    p.write_bytes(b"fake")
-    with pytest.raises(SystemExit):
-        validate_xlsx_path(p)
-
-
-def test_validate_xlsx_path_rejects_missing(tmp_path):
-    with pytest.raises(SystemExit):
-        validate_xlsx_path(tmp_path / "nope.xlsx")
-
-
-def test_validate_xlsx_path_rejects_non_xlsx(tmp_path, monkeypatch):
-    """非 .xlsx → fail-fast(monkeypatch 把 DATA_DIR 指到 tmp_path 以通过路径检查)。"""
-    monkeypatch.setattr("scripts.import_categories.DATA_DIR", tmp_path)
-    p = tmp_path / "x.csv"
-    p.write_bytes(b"fake")
-    with pytest.raises(SystemExit):
-        validate_xlsx_path(p)
+def test_import_trans_meta_new_node(sync_db):
+    """新建节点的 trans_meta 根据 CSV 有无值正确标记。"""
+    rows = [CsvRow(code="01", level=1, name_zh="X", name_en="Y", name_sw=None, parent_code=None, is_active=True)]
+    import_from_csv(sync_db, rows)
+    sync_db.commit()
+    cat = sync_db.execute(select(Category).where(Category.code == "01")).scalar_one()
+    assert cat.trans_meta["name_en"] == "manual"
+    assert cat.trans_meta["name_sw"] == "pending"
