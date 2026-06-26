@@ -242,7 +242,7 @@ export function StepForm({
         registration_no: draft.registration_no,
         language_preference: languagePreference,
       });
-      // 注册成功 → 写预填凭证(/login 一次性消费) + 触发草稿清理与跳转
+      // 注册成功 → 只预填账号(/login 一次性消费),不落明文密码
       try {
         sessionStorage.setItem(
           "prefill_login",
@@ -251,7 +251,6 @@ export function StepForm({
             // 而 login _classify_identifier 仅识别纯 11 位中国手机号,prefill 国际格式 phone
             // 会被当 username 查必然 401。TODO(I18N-PHONE):各国 phone 精确规则就绪后再放开。
             identifier: draft.email,
-            password,
           }),
         );
       } catch {
