@@ -101,7 +101,7 @@ export function FilterPanel({
         <div
           ref={containerRef}
           className={`flex flex-wrap gap-1 transition-all duration-200 ${
-            expanded ? "max-h-[150px] sm:max-h-[500px] overflow-y-auto" : "max-h-[34px] overflow-hidden"
+            expanded ? "max-h-[150px] sm:max-h-[140px] overflow-y-auto" : "max-h-[34px] overflow-hidden"
           }`}
         >
           {/* "全部"选项 */}

@@ -26,9 +26,7 @@ function MallContent() {
   const { tree: categoryTree } = useCategoryTree();
   const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
 
-  // URL 参数读取；无品类时展示配置的默认品类，避免首屏全是卫浴图片
-  const DEFAULT_CATEGORY = process.env.NEXT_PUBLIC_DEFAULT_CATEGORY || "04.014";
-  const urlCat = searchParams.get("cat") || DEFAULT_CATEGORY;
+  const urlCat = searchParams.get("cat") || "";
   const urlKeyword = searchParams.get("keyword") || "";
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
@@ -96,9 +94,12 @@ function MallContent() {
     revalidateOnFocus: false,
   });
 
-  const hasActiveFilters = !!(searchParams.get("cat") || urlKeyword || urlBrand || urlFeatured || urlSupplyMode || urlSort !== "newest");
+  // 品类不算筛选条件（面包屑管品类），只有品牌/关键词/精选/供应模式/排序才是筛选
+  const hasActiveFilters = !!(urlKeyword || urlBrand || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
-    router.replace(`/${locale}/mall`, { scroll: false });
+    // 清除筛选但保留当前品类
+    const base = urlCat ? `/${locale}/mall?cat=${urlCat}` : `/${locale}/mall`;
+    router.replace(base, { scroll: false });
   };
 
   return (

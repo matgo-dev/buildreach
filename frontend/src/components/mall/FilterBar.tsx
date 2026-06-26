@@ -1,13 +1,84 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { X, ListFilter } from "lucide-react";
+import { X, ListFilter, ChevronDown, ChevronUp } from "lucide-react";
 import useSWR from "swr";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { listBrands } from "@/lib/api/products";
 import { FilterPanel } from "./FilterPanel";
+
+/** 移动端筛选行 — 默认一行溢出隐藏，展开后固定高度可滚动 */
+function MobileFilterRow({
+  label,
+  items,
+  selected,
+  onSelect,
+  moreLabel,
+  collapseLabel,
+}: {
+  label: string;
+  items: { key: string; label: string }[];
+  selected: string[];
+  onSelect: (key: string) => void;
+  moreLabel: string;
+  collapseLabel: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  const checkOverflow = useCallback(() => {
+    const el = containerRef.current;
+    if (el) setOverflows(el.scrollHeight > el.clientHeight + 4);
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+    window.addEventListener("resize", checkOverflow);
+    return () => window.removeEventListener("resize", checkOverflow);
+  }, [checkOverflow, items]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="block lg:hidden px-3 py-2 border-b border-line">
+      <div className="flex items-start gap-2">
+        <span className="text-[11px] font-semibold text-gray-500 shrink-0 pt-1.5">{label}:</span>
+        <div
+          ref={containerRef}
+          className={`flex-1 flex flex-wrap gap-1.5 transition-all duration-200 ${
+            expanded ? "max-h-[150px] overflow-y-auto" : "max-h-[30px] overflow-hidden"
+          }`}
+        >
+          {items.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => onSelect(item.key)}
+              className={`shrink-0 h-[26px] rounded-full px-2.5 text-[11px] font-medium transition-all ${
+                selected.includes(item.key)
+                  ? "bg-teal-700 text-white"
+                  : "bg-gray-100 text-gray-600 active:bg-teal-50"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {(overflows || expanded) && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="shrink-0 flex items-center gap-0.5 text-[11px] text-teal-700 font-medium pt-1.5"
+          >
+            {expanded ? collapseLabel : moreLabel}
+            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   sort: string;
@@ -50,10 +121,10 @@ export function FilterBar({
 }: Props) {
   const t = useTranslations("mall");
 
-  // 品牌列表
+  // 品牌列表 — 全平台 Top 50，不按品类筛选
   const { data: brands = [] } = useSWR<string[]>(
-    `/api/v1/products/brands?cat=${activeCategoryCode}`,
-    () => listBrands(activeCategoryCode || undefined),
+    "/api/v1/products/brands",
+    () => listBrands(),
     { revalidateOnFocus: false },
   );
 
@@ -109,7 +180,6 @@ export function FilterBar({
             selected={selectedBrands}
             onSelect={handleBrandSelect}
             onMultiSelect={handleBrandMultiSelect}
-            allLabel={t("filterAllBrands")}
             onClearAll={() => onBrandChange("")}
           />
         )}
@@ -123,7 +193,6 @@ export function FilterBar({
               items={categoryItems}
               selected={activeCategoryCode ? [activeCategoryCode] : []}
               onSelect={handleCategorySelect}
-              allLabel={t("filterAllCategories")}
               onClearAll={() => onCategoryChange("")}
             />
           </>
@@ -132,6 +201,24 @@ export function FilterBar({
         {/* 分隔线 */}
         <div className="border-t border-line" />
       </div>
+
+      {/* 移动端品牌+品类筛选 — 默认一行，展开固定高度可滚动 */}
+      <MobileFilterRow
+        label={t("filterBrand")}
+        items={brandItems}
+        selected={selectedBrands}
+        onSelect={handleBrandSelect}
+        moreLabel={t("filterMore")}
+        collapseLabel={t("filterCollapse")}
+      />
+      <MobileFilterRow
+        label={t("filterCategory")}
+        items={categoryItems}
+        selected={activeCategoryCode ? [activeCategoryCode] : []}
+        onSelect={handleCategorySelect}
+        moreLabel={t("filterMore")}
+        collapseLabel={t("filterCollapse")}
+      />
 
       {/* 行2: 排序 + 快筛 + 清除 | 商品总数 */}
       <div className="px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">

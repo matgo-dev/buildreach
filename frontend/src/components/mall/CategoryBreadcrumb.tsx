@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageCircle } from "lucide-react";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 
@@ -49,7 +49,7 @@ function getSiblings(
   return nodes.map((n) => ({ code: n.code, name: n.name }));
 }
 
-/** 单个面包屑节点 — 带下拉切换 */
+/** 单个面包屑节点 — 悬浮展开多列网格面板 */
 function CrumbDropdown({
   crumb,
   siblings,
@@ -61,6 +61,15 @@ function CrumbDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleEnter = () => {
+    clearTimeout(timerRef.current);
+    setOpen(true);
+  };
+  const handleLeave = () => {
+    timerRef.current = setTimeout(() => setOpen(false), 150);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -71,18 +80,30 @@ function CrumbDropdown({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // 移动端2列，桌面端根据数量：<=6 单列，<=15 三列，>15 五列
+  const cols = siblings.length <= 6 ? 1 : siblings.length <= 15 ? 3 : 5;
+  const desktopGrid =
+    cols === 1 ? "sm:grid-cols-1 sm:w-48" :
+    cols === 3 ? "sm:grid-cols-3 sm:w-[28rem]" :
+    "sm:grid-cols-5 sm:w-[42rem]";
+
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm text-gray-700 hover:border-teal-400 hover:text-teal-700 transition-colors"
+        className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[12px] text-gray-700 hover:border-teal-400 hover:text-teal-700 transition-colors h-[28px]"
       >
         <span className="max-w-[120px] truncate">{crumb.name}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && siblings.length > 0 && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className={`absolute left-0 top-full z-50 mt-1 grid grid-cols-2 w-[calc(100vw-2rem)] ${desktopGrid} gap-0 rounded-lg border border-gray-200 bg-white shadow-lg max-h-80 overflow-y-auto`}>
           {siblings.map((s) => (
             <button
               key={s.code}
@@ -90,10 +111,10 @@ function CrumbDropdown({
                 onSelect(s.code);
                 setOpen(false);
               }}
-              className={`block w-full text-left px-3 py-2 text-sm transition-colors ${
+              className={`text-left px-3 py-2 text-[12px] transition-colors ${
                 s.code === crumb.code
                   ? "bg-teal-50 text-teal-700 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-teal-700"
               }`}
             >
               {s.name}
@@ -132,57 +153,50 @@ export function CategoryBreadcrumb({
     router.replace(`/${locale}/mall?cat=${code}`, { scroll: false });
   };
 
-  // "全部结果" — 清除品类筛选
-  const handleAllResults = () => {
-    router.replace(`/${locale}/mall`, { scroll: false });
-  };
-
   return (
     <nav aria-label="Breadcrumb">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1">
-        {/* 面包屑路径 */}
-        <div className="flex items-center gap-2 text-sm whitespace-nowrap overflow-x-auto">
-          <button
-            onClick={handleAllResults}
-            className="text-gray-500 hover:text-teal-700 transition-colors shrink-0"
-          >
-            {t("allResults")}
-          </button>
+      <div className="flex flex-wrap items-center gap-2 text-[12px] py-1">
+        <span className="text-gray-500 shrink-0">
+          {t("allResults")}
+        </span>
 
-          {crumbs.map((crumb, idx) => {
-            const siblings = getSiblings(categoryTree, crumbs, idx);
-            return (
-              <React.Fragment key={crumb.code}>
-                <span className="text-gray-300">/</span>
-                <CrumbDropdown
-                  crumb={crumb}
-                  siblings={siblings}
-                  onSelect={handleSelect}
-                />
-              </React.Fragment>
-            );
-          })}
-
-          {tail && (
-            <>
+        {crumbs.map((crumb, idx) => {
+          const siblings = getSiblings(categoryTree, crumbs, idx);
+          return (
+            <React.Fragment key={crumb.code}>
               <span className="text-gray-300">/</span>
-              <span className="max-w-[200px] truncate text-sm font-medium text-gray-700">
-                {tail}
-              </span>
-            </>
-          )}
-        </div>
+              <CrumbDropdown
+                crumb={crumb}
+                siblings={siblings}
+                onSelect={handleSelect}
+              />
+            </React.Fragment>
+          );
+        })}
 
-        {/* 右侧客服入口 — 移动端换行，桌面端推到右侧 */}
+        {tail && (
+          <>
+            <span className="text-gray-300">/</span>
+            <span className="max-w-[200px] truncate text-[12px] font-medium text-gray-700">
+              {tail}
+            </span>
+          </>
+        )}
+
+        {/* 客服入口 — 同行右侧 */}
         {configured && (
-          <a
-            href={buildLink() || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto shrink-0 text-xs text-gray-400 hover:text-teal-600 transition-colors whitespace-nowrap"
-          >
-            {t("cantFindCategory")}
-          </a>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <span className="text-[12px] text-amber-500 hidden sm:inline">{t("cantFindHint")}</span>
+            <a
+              href={buildLink() || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-1 text-[12px] font-medium text-white hover:bg-[#20bd5a] transition-colors h-[28px]"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t("contactService")}
+            </a>
+          </div>
         )}
       </div>
     </nav>

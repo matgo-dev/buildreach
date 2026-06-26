@@ -34,17 +34,19 @@ export function MobileCategoryGrid() {
         <span className="text-sm font-bold text-gray-800">{t("allCategories")}</span>
       </div>
 
-      {/* 标签网格 */}
-      <div className="grid grid-cols-5 gap-1.5">
-        {visible.map((cat) => (
-          <button
-            key={cat.code}
-            onClick={() => router.push(`/${locale}/mall?cat=${cat.code}`)}
-            className="py-2 px-1 rounded-lg bg-gray-50 border border-gray-100 text-[12px] text-gray-700 text-center leading-tight truncate transition-colors active:bg-teal-50 active:text-teal-800 active:border-teal-200"
-          >
-            {cat.name}
-          </button>
-        ))}
+      {/* 标签网格 — 展开时固定高度可滚动 */}
+      <div className={expanded ? "max-h-[200px] overflow-y-auto" : ""}>
+        <div className="grid grid-cols-5 gap-1.5">
+          {visible.map((cat) => (
+            <button
+              key={cat.code}
+              onClick={() => router.push(`/${locale}/mall?cat=${cat.code}`)}
+              className="py-2 px-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-700 text-center leading-snug min-h-[40px] flex items-center justify-center overflow-hidden break-words transition-colors active:bg-teal-50 active:text-teal-800 active:border-teal-200"
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 展开/收起 */}
