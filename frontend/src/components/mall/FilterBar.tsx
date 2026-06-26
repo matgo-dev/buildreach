@@ -160,10 +160,8 @@ export function FilterBar({
   );
 
   const handleCategorySelect = (code: string) => {
-    // 再次点击取消选中
-    if (activeCategoryCode === code) {
-      onCategoryChange("");
-    } else {
+    // 品类只能切换，不能反选清空
+    if (activeCategoryCode !== code) {
       onCategoryChange(code);
     }
   };
@@ -193,7 +191,6 @@ export function FilterBar({
               items={categoryItems}
               selected={activeCategoryCode ? [activeCategoryCode] : []}
               onSelect={handleCategorySelect}
-              onClearAll={() => onCategoryChange("")}
             />
           </>
         )}

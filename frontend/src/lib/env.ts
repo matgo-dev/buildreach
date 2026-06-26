@@ -14,12 +14,16 @@ declare global {
 /**
  * 获取 API 基础地址（浏览器访问后端的公网地址）。
  *
- * 优先级：window.__ENV.API_BASE_URL > process.env.NEXT_PUBLIC_API_BASE_URL > localhost fallback
+ * 优先级：window.__ENV.API_BASE_URL > process.env.API_BASE_URL > process.env.NEXT_PUBLIC_API_BASE_URL
+ * 未配置时抛错，不提供默认值，避免静默连错端口。
  */
 export function getApiBase(): string {
   if (typeof window !== "undefined" && window.__ENV?.API_BASE_URL) {
     return window.__ENV.API_BASE_URL;
   }
-  // SSR 或开发环境 fallback（NEXT_PUBLIC_ 构建时注入，仅 dev 有效）
-  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  const base = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!base) {
+    throw new Error("API_BASE_URL 未配置，请在 .env.local 中设置 API_BASE_URL");
+  }
+  return base;
 }
