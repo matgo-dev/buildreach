@@ -9,7 +9,7 @@ from typing import Union
 from alembic import op
 
 revision: str = 'a84ca1ab6928'
-down_revision: Union[str, None] = 'fe438ffd1696'
+down_revision = ('6aa11955310e', 'b3c4d5e6f7g8', 'a3f8e1b20614', '8c6363c79f45')
 branch_labels = None
 depends_on = None
 
