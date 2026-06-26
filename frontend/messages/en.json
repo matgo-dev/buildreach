@@ -409,7 +409,8 @@
   "mall": {
     "home": "Home",
     "allResults": "All Results",
-    "cantFindCategory": "Can't find what you need? Contact us",
+    "cantFindHint": "Can't find what you need?",
+    "contactService": "Contact Support",
     "loading": "Loading...",
     "searchPlaceholder": "Search by name, brand, code...",
     "sortNewest": "Newest",

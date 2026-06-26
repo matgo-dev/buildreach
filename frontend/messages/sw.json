@@ -409,7 +409,8 @@
   "mall": {
     "home": "Nyumbani",
     "allResults": "Matokeo Yote",
-    "cantFindCategory": "Hupati unachotaka? Wasiliana nasi",
+    "cantFindHint": "Hupati unachotaka?",
+    "contactService": "Wasiliana na Msaada",
     "loading": "Inapakia...",
     "searchPlaceholder": "Tafuta kwa jina, chapa, msimbo...",
     "sortNewest": "Mpya Zaidi",
