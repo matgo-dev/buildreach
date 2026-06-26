@@ -1,5 +1,7 @@
+name: buildreach
+
 # ============================================================
-# 生产部署编排（镜像拉取模式）
+# BuildReach · 生产部署编排（镜像拉取模式）
 #
 # 与 docker-compose.yml 的区别：
 #   - backend/frontend 用 image: 从阿里云 ACR 拉取，不走本地 build
