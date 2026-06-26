@@ -1,5 +1,7 @@
+name: buildreach
+
 # ============================================================
-# BuildLink EA · 离线部署编排
+# BuildReach · 离线部署编排
 #
 # 与 docker-compose.yml 的区别:
 #   - 用 image: 不用 build: — 镜像由打包机预构建，docker load 后直接用
