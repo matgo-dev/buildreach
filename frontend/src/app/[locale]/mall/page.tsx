@@ -26,8 +26,9 @@ function MallContent() {
   const { tree: categoryTree } = useCategoryTree();
   const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
 
-  // URL 参数读取
-  const urlCat = searchParams.get("cat") || "";
+  // URL 参数读取；无品类时展示配置的默认品类，避免首屏全是卫浴图片
+  const DEFAULT_CATEGORY = process.env.NEXT_PUBLIC_DEFAULT_CATEGORY || "04.014";
+  const urlCat = searchParams.get("cat") || DEFAULT_CATEGORY;
   const urlKeyword = searchParams.get("keyword") || "";
   const urlSort = searchParams.get("sort") || "newest";
   const urlFeatured = searchParams.get("featured") === "true";
@@ -95,7 +96,7 @@ function MallContent() {
     revalidateOnFocus: false,
   });
 
-  const hasActiveFilters = !!(urlCat || urlKeyword || urlBrand || urlFeatured || urlSupplyMode || urlSort !== "newest");
+  const hasActiveFilters = !!(searchParams.get("cat") || urlKeyword || urlBrand || urlFeatured || urlSupplyMode || urlSort !== "newest");
   const clearAll = () => {
     router.replace(`/${locale}/mall`, { scroll: false });
   };

@@ -408,6 +408,7 @@
   },
   "mall": {
     "home": "Home",
+    "allResults": "All Results",
     "loading": "Loading...",
     "searchPlaceholder": "Search by name, brand, code...",
     "sortNewest": "Newest",

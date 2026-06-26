@@ -408,6 +408,7 @@
   },
   "mall": {
     "home": "首页",
+    "allResults": "全部结果",
     "loading": "加载中...",
     "searchPlaceholder": "搜索商品名称、品牌、编码...",
     "sortNewest": "最新上架",

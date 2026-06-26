@@ -408,6 +408,7 @@
   },
   "mall": {
     "home": "Nyumbani",
+    "allResults": "Matokeo Yote",
     "loading": "Inapakia...",
     "searchPlaceholder": "Tafuta kwa jina, chapa, msimbo...",
     "sortNewest": "Mpya Zaidi",
