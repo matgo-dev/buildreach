@@ -1,14 +1,13 @@
 """品类 + 属性模板种子：以 CSV 为唯一数据源,upsert 模式。
 
-⚠️ DEPRECATED — 生产品类数据已切换为鑫方盛数据源,使用 scripts/import_categories_xfs.py。
+⚠️ DEPRECATED — 生产品类数据已切换为声明式治理,使用 scripts/import_categories.py。
 本文件仅保留给测试 conftest 使用(测试需要品类数据初始化)。
 线上/部署不应再调用此脚本。
 
 数据源:
-- data/categories.csv — 每行一个 L3,带所属 L1/L2 名,853 行
+- data/categories.csv — 声明式品类表,每行一个品类(L1-L4),约 6391 行,code 已预定义
 - data/attr_templates.csv — 每行一个 L1 下的属性,44 行
 
-code 派生:按 CSV 首次出现顺序编号。
 落库:按 code / (category_code, attr_key) 查重,存在则更新,不存在则插入。
 不删除任何已有数据,商品等引用品类的业务数据不受影响。
 幂等:重复运行结果一致。
@@ -42,80 +41,34 @@ async def _mark_i18n_pending(cat: "Category", name_zh: str) -> None:
     await apply_i18n_create(cat, "name", name_zh, "zh", domain="category")
 
 
-def _load_en_names() -> dict[str, str]:
-    """加载中英文名称映射。"""
-    path = _DATA_DIR / "category_names_en.json"
-    if path.exists():
-        return json.load(path.open(encoding="utf-8"))
-    return {}
-
-
 def _parse_categories_csv() -> list[dict]:
-    """读取 categories.csv,派生 code / level / parent_code / sort_order,关联英文名。"""
+    """读取 categories.csv,code/level/parent_code 直接从 CSV 取,不再派生。"""
     path = _DATA_DIR / "categories.csv"
-    en_names = _load_en_names()
     rows: list[dict] = []
-
-    # 跟踪首次出现顺序,派生编号
-    l1_map: dict[str, str] = {}   # name_zh → code
-    l1_seq = 0
-    l2_map: dict[str, str] = {}   # "L1_name|L2_name" → code
-    l2_counter: dict[str, int] = {}  # l1_code → next seq
-    l3_counter: dict[str, int] = {}  # l2_code → next seq
 
     with open(path, encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            l1_name = row["一级分类"].strip()
-            l2_name = row["二级分类"].strip()
-            l3_name = row["三级分类"].strip()
-
-            if not l1_name or not l2_name or not l3_name:
+            code = row["code"].strip()
+            name_zh = row["name_zh"].strip()
+            if not code or not name_zh:
                 continue
 
-            # L1
-            if l1_name not in l1_map:
-                l1_seq += 1
-                l1_code = f"{l1_seq:02d}"
-                l1_map[l1_name] = l1_code
-                l2_counter[l1_code] = 0
-                rows.append({
-                    "code": l1_code,
-                    "name_zh": l1_name,
-                    "name_en": en_names.get(l1_name),
-                    "level": 1,
-                    "parent_code": None,
-                    "sort_order": l1_seq * 10,
-                })
-            l1_code = l1_map[l1_name]
+            level = int(row["level"])
+            parent_code = row.get("parent_code", "").strip() or None
+            name_en = row.get("name_en", "").strip() or None
+            name_sw = row.get("name_sw", "").strip() or None
+            is_active = row.get("is_active", "t").strip().lower() in ("t", "true", "1", "yes")
 
-            # L2
-            l2_key = f"{l1_name}|{l2_name}"
-            if l2_key not in l2_map:
-                l2_counter[l1_code] += 1
-                l2_code = f"{l1_code}.{l2_counter[l1_code]:03d}"
-                l2_map[l2_key] = l2_code
-                l3_counter[l2_code] = 0
-                rows.append({
-                    "code": l2_code,
-                    "name_zh": l2_name,
-                    "name_en": en_names.get(l2_name),
-                    "level": 2,
-                    "parent_code": l1_code,
-                    "sort_order": l2_counter[l1_code] * 10,
-                })
-            l2_code = l2_map[l2_key]
-
-            # L3
-            l3_counter[l2_code] += 1
-            l3_code = f"{l2_code}.{l3_counter[l2_code]:03d}"
             rows.append({
-                "code": l3_code,
-                "name_zh": l3_name,
-                "name_en": en_names.get(l3_name),
-                "level": 3,
-                "parent_code": l2_code,
-                "sort_order": l3_counter[l2_code] * 10,
+                "code": code,
+                "name_zh": name_zh,
+                "name_en": name_en,
+                "name_sw": name_sw,
+                "level": level,
+                "parent_code": parent_code,
+                "is_active": is_active,
+                "sort_order": 0,
             })
 
     return rows
@@ -173,7 +126,7 @@ async def seed_categories(db: AsyncSession) -> None:
     l1_map = {r["name_zh"]: r["code"] for r in cat_rows if r["level"] == 1}
     attr_rows = _parse_attr_templates_csv(l1_map)
 
-    # upsert 品类(L1→L2→L3,父先于子,JSON 已保证 FK 安全)
+    # upsert 品类(父先于子,CSV 按 code 排序保证 FK 安全)
     cat_created, cat_updated, cat_i18n_marked = 0, 0, 0
     for item in cat_rows:
         row = await db.execute(
@@ -183,10 +136,11 @@ async def seed_categories(db: AsyncSession) -> None:
         if existing is not None:
             existing.name_zh = item["name_zh"]
             existing.name_en = item.get("name_en")
+            existing.name_sw = item.get("name_sw")
             existing.level = item["level"]
             existing.parent_code = item["parent_code"]
             existing.sort_order = item["sort_order"]
-            existing.is_active = True
+            existing.is_active = item["is_active"]
             # 补标 i18n:已有记录如果缺翻译且未标 pending,补上标记
             if existing.i18n_pending_at is None and _needs_translation(existing):
                 await _mark_i18n_pending(existing, item["name_zh"])
@@ -197,10 +151,11 @@ async def seed_categories(db: AsyncSession) -> None:
                 code=item["code"],
                 name_zh=item["name_zh"],
                 name_en=item.get("name_en"),
+                name_sw=item.get("name_sw"),
                 level=item["level"],
                 parent_code=item["parent_code"],
                 sort_order=item["sort_order"],
-                is_active=True,
+                is_active=item["is_active"],
             )
             # 初始化 i18n 标记,让 sweeper 能发现并翻译
             await _mark_i18n_pending(cat, item["name_zh"])
@@ -258,8 +213,9 @@ async def seed_categories(db: AsyncSession) -> None:
     l1_count = sum(1 for r in cat_rows if r["level"] == 1)
     l2_count = sum(1 for r in cat_rows if r["level"] == 2)
     l3_count = sum(1 for r in cat_rows if r["level"] == 3)
+    l4_count = sum(1 for r in cat_rows if r["level"] == 4)
     logger.warning(
-        "Seed: categories L1=%d L2=%d L3=%d (total %d, +%d/~%d, i18n_marked=%d), attr_templates=%d (+%d/~%d).",
-        l1_count, l2_count, l3_count, len(cat_rows),
+        "Seed: categories L1=%d L2=%d L3=%d L4=%d (total %d, +%d/~%d, i18n_marked=%d), attr_templates=%d (+%d/~%d).",
+        l1_count, l2_count, l3_count, l4_count, len(cat_rows),
         cat_created, cat_updated, cat_i18n_marked, len(attr_rows), attr_created, attr_updated,
     )
