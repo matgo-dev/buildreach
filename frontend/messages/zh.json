@@ -409,6 +409,7 @@
   "mall": {
     "home": "首页",
     "allResults": "全部结果",
+    "cantFindCategory": "没有找到想要的品类？联系客服",
     "loading": "加载中...",
     "searchPlaceholder": "搜索商品名称、品牌、编码...",
     "sortNewest": "最新上架",
