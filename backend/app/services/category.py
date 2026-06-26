@@ -4,11 +4,14 @@
 """
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.i18n import get_localized
 from app.db.models import Category
+from app.db.models.product import Product, ProductStatus
+from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.category import CategoryNode, CategoryTreeNode
 
 
@@ -95,3 +98,84 @@ async def get_tree(
             parent.children.append(child)
 
     return roots
+
+
+async def get_l1_thumbnails(db: AsyncSession) -> list[dict]:
+    """每个 L1 品类取一张代表商品图，用于移动端宫格入口。
+
+    策略: 对每个 L1 品类，找其下所有子品类中有主图的 ACTIVE 商品，
+    取 view_count 最高的那张作为代表图。
+    """
+    # 1. 拿所有 L1 品类
+    l1_cats = await list_flat(db, level=1, is_active=True)
+
+    # 2. 拿所有品类(用于匹配 L1 前缀)
+    all_cats_stmt = select(Category.code).where(Category.is_active.is_(True))
+    all_codes = [r[0] for r in (await db.execute(all_cats_stmt)).all()]
+
+    # 3. 为每个 L1 找所有后代 code
+    l1_to_codes: dict[str, list[str]] = {}
+    for l1 in l1_cats:
+        prefix = l1.code + "."
+        descendants = [c for c in all_codes if c == l1.code or c.startswith(prefix)]
+        l1_to_codes[l1.code] = descendants
+
+    # 4. 一次查所有 L1 后代品类中 ACTIVE 商品的主图
+    all_descendant_codes = [c for codes in l1_to_codes.values() for c in codes]
+    if not all_descendant_codes:
+        return [{"code": l1.code, "name": l1.name, "thumbnail": None} for l1 in l1_cats]
+
+    # 子查询: 每个商品的主图 key
+    img_sub = (
+        select(
+            ProductImage.product_id,
+            ProductImage.image_key,
+            func.row_number()
+            .over(
+                partition_by=ProductImage.product_id,
+                order_by=[
+                    (ProductImage.image_type != ImageType.MAIN).asc(),
+                    ProductImage.sort_order.asc(),
+                ],
+            )
+            .label("rn"),
+        )
+        .where(ProductImage.deleted_at.is_(None))
+        .subquery()
+    )
+
+    # 主查询: ACTIVE 商品 + 主图, 按品类分区取 view_count 最高的
+    stmt = (
+        select(
+            Product.category_code,
+            img_sub.c.image_key,
+        )
+        .join(img_sub, (img_sub.c.product_id == Product.id) & (img_sub.c.rn == 1))
+        .where(
+            Product.status == ProductStatus.ACTIVE,
+            Product.deleted_at.is_(None),
+            Product.category_code.in_(all_descendant_codes),
+        )
+        .order_by(Product.view_count.desc().nulls_last(), Product.id.desc())
+    )
+    rows = (await db.execute(stmt)).all()
+
+    # 5. 按 L1 分组取第一张
+    base = settings.IMAGE_BASE_URL
+    l1_thumb: dict[str, str] = {}
+    for cat_code, image_key in rows:
+        for l1_code, desc_codes in l1_to_codes.items():
+            if l1_code in l1_thumb:
+                continue
+            if cat_code in desc_codes:
+                l1_thumb[l1_code] = f"{base}/{image_key}"
+                break
+
+    return [
+        {
+            "code": l1.code,
+            "name": l1.name,
+            "thumbnail": l1_thumb.get(l1.code),
+        }
+        for l1 in l1_cats
+    ]

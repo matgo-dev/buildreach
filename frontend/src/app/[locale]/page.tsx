@@ -7,6 +7,7 @@ import { MallButton } from "@/components/mall/MallButton";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { RightSidebar } from "@/components/mall/RightSidebar";
 import { HeroBannerCarousel } from "@/components/mall/HeroBannerCarousel";
+import { MobileCategoryGrid } from "@/components/mall/MobileCategoryGrid";
 import { CategoryFloors } from "@/components/mall/CategoryFloors";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -26,6 +27,9 @@ export default function HomePage() {
         {/* 右侧信息栏 — home 模式不 sticky */}
         <RightSidebar variant="home" />
       </div>
+
+      {/* ===== 移动端品类宫格入口(仅 <lg 显示) ===== */}
+      <MobileCategoryGrid />
 
       {/* ===== 品类楼层区 ===== */}
       <div className="mb-5">
