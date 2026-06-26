@@ -11,9 +11,7 @@ from app.schemas.banner import BannerCreate, BannerDetailOut, BannerOut, BannerU
 
 
 def _full_image_url(image_url: str) -> str:
-    """相对路径 → 绝对 URL；已是绝对 URL 的直接返回（兼容旧数据）。"""
-    if image_url.startswith(("http://", "https://")):
-        return image_url
+    """相对路径 → 绝对 URL，统一由 IMAGE_BASE_URL 拼接。"""
     base = settings.IMAGE_BASE_URL.rstrip("/")
     return f"{base}/{image_url.lstrip('/')}"
 
