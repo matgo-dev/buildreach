@@ -10,6 +10,12 @@
 # ============================================================
 set -euo pipefail
 
+# Apple Silicon / x86 打包机都统一用 BuildKit,避免旧构建器复用异构缓存导致平台不匹配。
+export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-1}"
+# macOS 上 shasum 依赖 Perl locale,固定 C locale 避免 C.UTF-8 不可用时 panic。
+export LC_ALL=C
+export LANG=C
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -47,6 +53,17 @@ PG_IMAGE="postgres:16.4-alpine"
 OUTPUT_DIR="${PROJECT_ROOT}/buildlink-offline"
 IMAGES_DIR="${OUTPUT_DIR}/images"
 ARCHIVE_NAME="buildlink-offline-${RELEASE_TAG}.tar.gz"
+
+ensure_amd64_image() {
+  local image="$1"
+  local arch=""
+  arch="$(docker image inspect --format '{{.Architecture}}' "$image" 2>/dev/null || true)"
+  if [[ "$arch" == "amd64" ]]; then
+    echo "  本地已有 amd64 镜像,跳过 pull: ${image}"
+    return
+  fi
+  docker pull --platform linux/amd64 "$image"
+}
 
 # ── 前置工具检查 ──
 for cmd in docker git tar; do
@@ -89,7 +106,7 @@ rm -f "${PROJECT_ROOT}/${ARCHIVE_NAME}"
 # ── 1/6 拉取 postgres 基础镜像（指定平台）──
 echo ""
 echo "=== 1/6 拉取 ${PG_IMAGE} (linux/amd64) ==="
-docker pull --platform linux/amd64 "${PG_IMAGE}"
+ensure_amd64_image "${PG_IMAGE}"
 
 # ── 2/6 构建后端镜像 ──
 echo ""
@@ -139,6 +156,10 @@ done
 DATA_SRC="${PROJECT_ROOT}/data"
 DATA_DST="${OUTPUT_DIR}/data"
 
+# 首页轮播图进入应用离线包,用于 OpenResty 直接 serve /banners/ 与后端扫描 /srv/banners。
+mkdir -p "${DATA_DST}/banners"
+cp -R "${BANNER_PUBLIC_DIR}/." "${DATA_DST}/banners/"
+
 if [[ -d "${DATA_SRC}" ]]; then
   # 品类相关 CSV / JSON
   for f in categories.csv attr_templates.csv category_names_en.json floor_category_mapping.csv; do
@@ -170,6 +191,7 @@ cat > "${OUTPUT_DIR}/manifest.json" <<MANIFEST
     "frontend": "${FRONTEND_IMAGE}"
   },
   "included_data": [
+    "data/banners/",
     "data/categories.csv",
     "data/attr_templates.csv",
     "data/category_names_en.json",

@@ -13,7 +13,7 @@
 | 数据 | 路径 | 来源 | 说明 |
 |------|------|------|------|
 | **商品批次数据** | 独立资产包,服务器解压到 `data/xfs/output_xfs_YYYYMMDD_HHMMSS/` | 鑫方盛抓取脚本产出 | 含 offer.json + 商品图片,体积可能十几 G,不进入应用离线包 |
-| **轮播图图片** | `frontend/public/banners/*.png/jpg` | 设计师/运营提供 | 首页固定轮播用的图片,随前端镜像发布 |
+| **轮播图图片** | `frontend/public/banners/*.png/jpg` | 设计师/运营提供 | 打包时复制到离线包 `data/banners/`,用于首页轮播与 OpenResty 静态访问 |
 | **楼层背景图** | `frontend/public/images/floors/*.png` | 设计师/运营提供 | 首页六个楼层背景图,随前端镜像发布 |
 
 > 当前首页轮播不读 `banner_slides` 表,不需要执行 `seed_banners.py`。后续改成运营后台动态 Banner 时再启用 DB 初始化。
@@ -38,7 +38,7 @@ data/
 └── category_names_en.json                 ← ✅ 已有
 
 frontend/public/
-├── banners/                               ← ✅ 随前端镜像发布
+├── banners/                               ← ✅ 打包时复制到离线包 data/banners/
 │   ├── hero-main.jpg
 │   └── ...
 └── images/floors/                         ← ✅ 随前端镜像发布
@@ -73,10 +73,10 @@ bash deploy/package-offline.sh --api-url https://<你的域名> --tag 20260624
 ### 2.3 打包产出
 
 ```
-buildlink-offline-20260624.tar.gz    ← 这就是离线部署包（约 400M-1.5G，取决于商品图片量）
+buildlink-offline-20260624.tar.gz    ← 这就是离线部署包（约 400M-1.5G，取决于镜像大小）
 ```
 
-包内含：镜像 tar × 3 + 轻量初始化数据 + 脚本 + 配置模板 + manifest.json。
+包内含：镜像 tar × 3 + 首页轮播图 `data/banners/` + 轻量初始化数据 + 脚本 + 配置模板 + manifest.json。
 大体积商品批次不在此包内,需要作为独立资产包上传。
 
 ---
@@ -121,6 +121,7 @@ vi .env.production
 | `NEXT_PUBLIC_API_BASE_URL` | `https://www.example.com` | 前端构建时注入的公网入口 |
 | `CORS_ORIGINS` | `https://www.example.com` | 前端地址 |
 | `IMAGE_BASE_URL` | `https://www.example.com/static` | 图片 URL 前缀 |
+| `BANNER_DIR` | `./data/banners` | 首页轮播图目录,默认不用改 |
 | `BACKEND_HOST_PORT` | `8001` | 后端端口 |
 | `FRONTEND_HOST_PORT` | `3001` | 前端端口 |
 
@@ -148,6 +149,23 @@ data/xfs/output_xfs_20260623_023104/
     └── .../offers/*/
         ├── offer.json
         └── images/*.jpg
+```
+
+### 3.3.1 配置 OpenResty / 1Panel 静态目录
+
+如果使用宿主机 OpenResty / 1Panel 作为公网入口,请把 `/banners/` 指向离线包中的本地目录:
+
+```text
+/banners/  ->  /opt/buildlink-offline/data/banners/
+```
+
+同时保留反代规则:
+
+```text
+/        -> 127.0.0.1:3001
+/api/    -> 127.0.0.1:8001
+/static/ -> 127.0.0.1:8001
+/healthz -> 127.0.0.1:8001
 ```
 
 ### 3.4 一键启动
