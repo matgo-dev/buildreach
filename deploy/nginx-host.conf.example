@@ -10,6 +10,7 @@
 #   backend:  127.0.0.1:8001
 #
 # HTTPS 证书、server_name、日志路径可由运维按服务器实际情况调整。
+# 如离线包不解压到 /opt/buildlink-offline,请同步调整 /banners/ 的 alias 路径。
 # ============================================================
 
 upstream buildreach_frontend {
@@ -47,7 +48,7 @@ server {
     }
 
     location /banners/ {
-        proxy_pass http://buildreach_frontend;
+        alias /opt/buildlink-offline/data/banners/;
         add_header Cache-Control "no-cache";
         access_log off;
     }

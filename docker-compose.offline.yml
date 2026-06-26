@@ -76,6 +76,7 @@ services:
     volumes:
       - uploads:/app/uploads
       - private_uploads:/app/private_uploads
+      - ${BANNER_DIR:-./data/banners}:/srv/banners:ro
     ports:
       - "${BACKEND_BIND_HOST:-127.0.0.1}:${BACKEND_HOST_PORT:-8001}:8000"
     logging: *default-logging
