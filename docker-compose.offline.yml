@@ -67,7 +67,7 @@ services:
       LOGIN_RATE_LIMIT_LOCK_SECONDS: ${LOGIN_RATE_LIMIT_LOCK_SECONDS:-300}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENABLE_DEBUG_API: ${ENABLE_DEBUG_API:-false}
-      IMAGE_BASE_URL: ${IMAGE_BASE_URL:-http://localhost:8001/static}
+      IMAGE_BASE_URL: ${IMAGE_BASE_URL:-http://localhost:17857/static}
       TRANSLATION_PROVIDER: ${TRANSLATION_PROVIDER:-mock}
       GOOGLE_TRANSLATE_API_KEY: ${GOOGLE_TRANSLATE_API_KEY:-}
       ALIYUN_TRANSLATE_ACCESS_KEY_ID: ${ALIYUN_TRANSLATE_ACCESS_KEY_ID:-}
@@ -78,7 +78,7 @@ services:
       - private_uploads:/app/private_uploads
       - ${BANNER_DIR:-./data/banners}:/srv/banners:ro
     ports:
-      - "${BACKEND_BIND_HOST:-127.0.0.1}:${BACKEND_HOST_PORT:-8001}:8000"
+      - "${BACKEND_BIND_HOST:-127.0.0.1}:${BACKEND_HOST_PORT:-17857}:8000"
     logging: *default-logging
 
   frontend:
@@ -89,7 +89,7 @@ services:
     environment:
       API_BASE_URL: ${API_BASE_URL}
     ports:
-      - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_HOST_PORT:-3001}:3000"
+      - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_HOST_PORT:-7857}:3000"
     logging: *default-logging
 
 volumes:
