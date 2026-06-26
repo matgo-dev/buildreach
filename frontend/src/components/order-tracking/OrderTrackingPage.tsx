@@ -26,10 +26,13 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { MOCK_ORDERS, type MockOrder, type Shipment, type Milestone, MILESTONE_KEYS } from "./mockOrders";
 
-// demo 账号邮箱 — 只有这些用户能看到 mock 订单数据
-const DEMO_EMAILS = new Set([
-  "buyer@cscec3b.local",
-]);
+// demo 账号邮箱 — 地推演示用，通过 NEXT_PUBLIC_DEMO_EMAILS 环境变量配置，逗号分隔
+const DEMO_EMAILS = new Set(
+  (process.env.NEXT_PUBLIC_DEMO_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean),
+);
 
 // 节点图标映射
 const MILESTONE_ICONS: Record<string, React.ElementType> = {

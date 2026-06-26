@@ -6,48 +6,33 @@ import Link from "next/link";
 
 const AUTOPLAY_INTERVAL = 2000;
 
-/** 主图固定（有按钮热区），不走动态加载 */
-const HERO_SLIDE = {
-  src: "/banners/hero-main.jpg",
-  alt: "BuildReach - Source China Building Materials for East Africa",
-  link: "/mall",
-};
-
-/** 文件名 → alt 文本：去掉扩展名，连字符转空格，首字母大写 */
-function fileToAlt(name: string): string {
-  return name
-    .replace(/\.[^.]+$/, "")
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
+/** 轮播图配置 — 静态资源，不依赖后端 API */
+const SLIDES: { src: string; alt: string; link: string | null }[] = [
+  {
+    src: "/banners/hero-main.jpg",
+    alt: "BuildReach - Source China Building Materials for East Africa",
+    link: "/mall",
+  },
+  { src: "/banners/factory-aerial-view.jpg", alt: "Factory Aerial View", link: null },
+  { src: "/banners/factory-coating-workshop.jpg", alt: "Factory Coating Workshop", link: null },
+  { src: "/banners/factory-crate-packing.jpg", alt: "Factory Crate Packing", link: null },
+  { src: "/banners/factory-decorative-panels.jpg", alt: "Factory Decorative Panels", link: null },
+  { src: "/banners/factory-exterior.jpg", alt: "Factory Exterior", link: null },
+  { src: "/banners/factory-industrial-furnace.jpg", alt: "Factory Industrial Furnace", link: null },
+  { src: "/banners/factory-mesh-rolls.jpg", alt: "Factory Mesh Rolls", link: null },
+  { src: "/banners/factory-packaging-robot.jpg", alt: "Factory Packaging Robot", link: null },
+  { src: "/banners/factory-palletizing-robot.jpg", alt: "Factory Palletizing Robot", link: null },
+  { src: "/banners/factory-production-line.jpg", alt: "Factory Production Line", link: null },
+  { src: "/banners/factory-steel-coils.jpg", alt: "Factory Steel Coils", link: null },
+  { src: "/banners/factory-steel-products.jpg", alt: "Factory Steel Products", link: null },
+];
 
 export function HeroBannerCarousel() {
-  const [slides, setSlides] = useState([HERO_SLIDE]);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
-  // 从后端拉取 banner 文件列表
-  useEffect(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-    fetch(`${apiBase}/api/v1/banners/slides`)
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.code === 0 && Array.isArray(res.data) && res.data.length > 0) {
-          const dynamicSlides = res.data.map((name: string) => ({
-            src: `/banners/${name}`,
-            alt: fileToAlt(name),
-            link: null,
-          }));
-          setSlides([HERO_SLIDE, ...dynamicSlides]);
-        }
-      })
-      .catch(() => {
-        // 接口不可用时保持 hero 单图
-      });
-  }, []);
-
-  const count = slides.length;
+  const count = SLIDES.length;
 
   const goTo = useCallback(
     (idx: number) => setCurrent(((idx % count) + count) % count),
@@ -68,7 +53,7 @@ export function HeroBannerCarousel() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {slides.map((slide, i) => {
+      {SLIDES.map((slide, i) => {
         const img = (
           <img
             src={slide.src}
@@ -116,7 +101,7 @@ export function HeroBannerCarousel() {
       {/* 圆点指示器 */}
       {count > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-          {slides.map((_, i) => (
+          {SLIDES.map((_, i) => (
             <button
               key={i}
               onClick={() => goTo(i)}

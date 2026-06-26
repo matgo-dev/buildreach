@@ -13,6 +13,11 @@ import { FloorElevator, type FloorItem } from "./FloorElevator";
  */
 const FLOOR_CONFIGS: FloorConfig[] = [
   {
+    id: "floor-tools",
+    nameKey: "floorToolsConsumables",
+    bgImage: "/images/floors/tools.png",
+  },
+  {
     id: "floor-safety",
     nameKey: "floorSafetyProtection",
     bgImage: "/images/floors/safety.png",
@@ -36,11 +41,6 @@ const FLOOR_CONFIGS: FloorConfig[] = [
     id: "floor-decoration",
     nameKey: "floorDecorationBuilding",
     bgImage: "/images/floors/decoration.png",
-  },
-  {
-    id: "floor-tools",
-    nameKey: "floorToolsConsumables",
-    bgImage: "/images/floors/tools.png",
   },
 ];
 

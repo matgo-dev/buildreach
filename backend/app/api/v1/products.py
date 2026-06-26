@@ -39,6 +39,11 @@ HOME_FLOOR_CACHE_SECONDS = 300
 
 HOME_FLOOR_CONFIGS = [
     {
+        "id": "floor-tools",
+        "category_paths": [["工具耗材"], ["手动工具"]],
+        "exclude_category_paths": [["手动工具", "园林工具"], ["手动工具", "土杂工具"]],
+    },
+    {
         "id": "floor-safety",
         "category_paths": [["安全防护"], ["劳保"], ["安防"], ["临建设施"]],
         "exclude_category_paths": [],
@@ -74,11 +79,6 @@ HOME_FLOOR_CONFIGS = [
         "exclude_category_paths": [
             ["装饰材料", "门窗幕墙"], ["装饰材料", "门窗型材"],
         ],
-    },
-    {
-        "id": "floor-tools",
-        "category_paths": [["工具耗材"], ["手动工具"]],
-        "exclude_category_paths": [["手动工具", "园林工具"], ["手动工具", "土杂工具"]],
     },
 ]
 
