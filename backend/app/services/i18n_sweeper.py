@@ -65,6 +65,11 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
 
                     batch_failed = await _batch_translate_rows(rows, spec.fields, stats)
 
+                    # product_attrs 翻译后可能产生重复 (product_id, attr_key_en, attr_value_en)
+                    # flush 前回滚冲突行,避免唯一约束报错
+                    if table_name == "product_attrs":
+                        await _dedup_attr_translations(session, rows)
+
                     await session.commit()
                     logger.info("sweep: %s 本批 %d 行已提交", table_name, len(rows))
 
@@ -84,6 +89,62 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
         stats["scanned"], stats["translated"], stats["failed"],
     )
     return stats
+
+
+async def _dedup_attr_translations(session: Any, rows: list) -> None:
+    """翻译后 attr_key_en + attr_value_en 可能撞唯一约束,回滚冲突行的翻译结果。
+
+    同一 product_id 下如果多行翻译后产生相同 (attr_key_en, attr_value_en),
+    只保留第一行的翻译,后续重复行还原为中文值。
+    同时检查 DB 中已有的非本批数据,避免跨批次冲突。
+    """
+    from collections import defaultdict
+    from app.db.models.product_attr import ProductAttr
+
+    groups: dict[int, list] = defaultdict(list)
+    batch_ids: set[int] = set()
+    for row in rows:
+        pid = getattr(row, "product_id", None)
+        if pid is not None:
+            groups[pid].append(row)
+            batch_ids.add(getattr(row, "id", 0))
+
+    reverted = 0
+    for pid, attrs in groups.items():
+        # 先加载该 product 已有的(非本批) attr_key_en + attr_value_en
+        existing = await session.execute(
+            select(ProductAttr.attr_key_en, ProductAttr.attr_value_en)
+            .where(
+                ProductAttr.product_id == pid,
+                ProductAttr.sku_id.is_(None),
+                ProductAttr.id.notin_(batch_ids),
+            )
+        )
+        seen: set[tuple[str, str]] = {(r[0], r[1]) for r in existing}
+
+        for attr in attrs:
+            key_en = getattr(attr, "attr_key_en", None) or ""
+            val_en = getattr(attr, "attr_value_en", None) or ""
+            combo = (key_en, val_en)
+            if combo in seen:
+                key_zh = getattr(attr, "attr_key_zh", None) or key_en
+                val_zh = getattr(attr, "attr_value_zh", None) or val_en
+                attr.attr_key_en = key_zh
+                attr.attr_value_en = val_zh
+                meta = _get_meta(attr)
+                meta["attr_key_en"] = "conflict_skipped"
+                meta["attr_value_en"] = "conflict_skipped"
+                _set_meta(attr, meta)
+                reverted += 1
+                logger.warning(
+                    "sweep: product_attrs#%d 翻译冲突,还原为中文 (%s, %s)",
+                    getattr(attr, "id", "?"), key_zh[:30], val_zh[:30],
+                )
+            else:
+                seen.add(combo)
+
+    if reverted:
+        logger.info("sweep: product_attrs 去重回滚 %d 行", reverted)
 
 
 async def _batch_translate_rows(
