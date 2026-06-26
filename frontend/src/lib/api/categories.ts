@@ -33,6 +33,7 @@ export interface CategoryTreeNode {
 export interface CategoryThumbnail {
   code: string;
   name: string;
+  name_zh: string;
   thumbnail: string | null;
 }
 

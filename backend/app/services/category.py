@@ -104,20 +104,54 @@ async def get_l1_thumbnails(db: AsyncSession) -> list[dict]:
     """每个 L1 品类取一张代表商品图，用于移动端宫格入口。
 
     策略: 对每个 L1 品类，找其下所有子品类中有主图的 ACTIVE 商品，
-    取 view_count 最高的那张作为代表图。
+    取最新的那张作为代表图。排除不适合首页展示的子品类。
     """
+    # 首页缩略图排除的子品类(name_zh 路径)
+    EXCLUDE_PATHS = [
+        ["手动工具", "园林工具"],
+        ["手动工具", "土杂工具"],
+    ]
+
     # 1. 拿所有 L1 品类
     l1_cats = await list_flat(db, level=1, is_active=True)
 
-    # 2. 拿所有品类(用于匹配 L1 前缀)
-    all_cats_stmt = select(Category.code).where(Category.is_active.is_(True))
-    all_codes = [r[0] for r in (await db.execute(all_cats_stmt)).all()]
+    # 2. 拿所有品类(用于匹配 L1 前缀 + 排除)
+    all_cats_stmt = select(Category.code, Category.name_zh, Category.parent_code).where(
+        Category.is_active.is_(True),
+    )
+    all_cat_rows = (await db.execute(all_cats_stmt)).all()
+    all_codes = [r[0] for r in all_cat_rows]
 
-    # 3. 为每个 L1 找所有后代 code
+    # 构建 code → name_zh 和 code → parent_code 映射，用于排除判断
+    code_to_name: dict[str, str] = {r[0]: r[1] for r in all_cat_rows}
+    code_to_parent: dict[str, str | None] = {r[0]: r[2] for r in all_cat_rows}
+
+    # 解析排除路径为 code 集合
+    excluded_codes: set[str] = set()
+    for path in EXCLUDE_PATHS:
+        # 找到匹配路径的品类 code
+        for code, name_zh in code_to_name.items():
+            if name_zh != path[-1]:
+                continue
+            # 验证父级路径匹配
+            if len(path) == 2:
+                parent = code_to_parent.get(code)
+                if parent and code_to_name.get(parent) == path[0]:
+                    excluded_codes.add(code)
+                    # 也排除该品类下所有后代
+                    prefix = code + "."
+                    for c in all_codes:
+                        if c.startswith(prefix):
+                            excluded_codes.add(c)
+
+    # 3. 为每个 L1 找所有后代 code(排除不适合的)
     l1_to_codes: dict[str, list[str]] = {}
     for l1 in l1_cats:
         prefix = l1.code + "."
-        descendants = [c for c in all_codes if c == l1.code or c.startswith(prefix)]
+        descendants = [
+            c for c in all_codes
+            if (c == l1.code or c.startswith(prefix)) and c not in excluded_codes
+        ]
         l1_to_codes[l1.code] = descendants
 
     # 4. 一次查所有 L1 后代品类中 ACTIVE 商品的主图
@@ -175,6 +209,7 @@ async def get_l1_thumbnails(db: AsyncSession) -> list[dict]:
         {
             "code": l1.code,
             "name": l1.name,
+            "name_zh": l1.name_zh,
             "thumbnail": l1_thumb.get(l1.code),
         }
         for l1 in l1_cats

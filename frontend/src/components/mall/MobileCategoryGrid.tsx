@@ -14,7 +14,7 @@ const DEFAULT_VISIBLE = 10;
 /**
  * 移动端品类宫格入口 — 仅 < lg 显示。
  * 默认展示 10 个热门品类，可展开查看全部。
- * 每个品类用代表商品图做缩略图。
+ * 用品类下代表商品的真实图片做缩略图。
  */
 export function MobileCategoryGrid() {
   const router = useRouter();
@@ -47,16 +47,16 @@ export function MobileCategoryGrid() {
           <button
             key={cat.code}
             onClick={() => router.push(`/${locale}/mall?cat=${cat.code}`)}
-            className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors active:bg-teal-50"
+            className="flex flex-col items-center gap-1.5 py-2 px-1 rounded-lg transition-colors active:bg-teal-50"
           >
-            <div className="w-11 h-11 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center">
               {cat.thumbnail ? (
                 <Image
                   src={cat.thumbnail}
                   alt={cat.name}
-                  width={44}
-                  height={44}
-                  className="w-full h-full object-cover"
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-contain"
                   unoptimized
                 />
               ) : (
