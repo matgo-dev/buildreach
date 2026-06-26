@@ -156,7 +156,7 @@ async def get_l1_thumbnails(db: AsyncSession) -> list[dict]:
             Product.deleted_at.is_(None),
             Product.category_code.in_(all_descendant_codes),
         )
-        .order_by(Product.view_count.desc().nulls_last(), Product.id.desc())
+        .order_by(Product.id.desc())
     )
     rows = (await db.execute(stmt)).all()
 
