@@ -54,10 +54,9 @@ BANNER_META: dict[str, dict] = {
 }
 
 
-def _image_url(filename: str) -> str:
-    """构建完整的图片 URL。"""
-    base = settings.IMAGE_BASE_URL.rstrip("/")
-    return f"{base}/uploads/banners/{filename}"
+def _image_key(filename: str) -> str:
+    """返回相对路径，不含域名/端口，API 层动态拼 IMAGE_BASE_URL。"""
+    return f"uploads/banners/{filename}"
 
 
 def seed_banners(db: Session, *, dry_run: bool = False) -> int:
@@ -77,17 +76,17 @@ def seed_banners(db: Session, *, dry_run: bool = False) -> int:
 
     log.info("发现 %d 张图片", len(images))
 
-    # 查询已有记录
-    existing_urls: set[str] = set()
+    # 查询已有记录（按相对路径匹配）
+    existing_keys: set[str] = set()
     for row in db.execute(select(BannerSlide.image_url)).scalars().all():
-        existing_urls.add(row)
+        existing_keys.add(row)
 
     inserted = 0
     skipped = 0
 
     for img in images:
-        url = _image_url(img.name)
-        if url in existing_urls:
+        key = _image_key(img.name)
+        if key in existing_keys:
             log.info("  跳过(已存在): %s", img.name)
             skipped += 1
             continue
@@ -105,7 +104,7 @@ def seed_banners(db: Session, *, dry_run: bool = False) -> int:
             title_zh=meta.get("title_zh"),
             title_en=meta.get("title_en"),
             title_sw=meta.get("title_sw"),
-            image_url=url,
+            image_url=key,
             link_url=None,
             sort_order=meta.get("sort_order", 99),
             is_active=True,

@@ -4,9 +4,18 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.i18n import get_localized
 from app.db.models.banner_slide import BannerSlide
 from app.schemas.banner import BannerCreate, BannerDetailOut, BannerOut, BannerUpdate
+
+
+def _full_image_url(image_url: str) -> str:
+    """相对路径 → 绝对 URL；已是绝对 URL 的直接返回（兼容旧数据）。"""
+    if image_url.startswith(("http://", "https://")):
+        return image_url
+    base = settings.IMAGE_BASE_URL.rstrip("/")
+    return f"{base}/{image_url.lstrip('/')}"
 
 
 async def list_active(
@@ -26,6 +35,7 @@ async def list_active(
     for r in rows:
         out = BannerOut.model_validate(r)
         out.title = get_localized(r, "title")
+        out.image_url = _full_image_url(out.image_url)
         results.append(out)
     return results
 
@@ -40,7 +50,12 @@ async def list_all(
     if position is not None:
         stmt = stmt.where(BannerSlide.position == position)
     rows = (await db.execute(stmt)).scalars().all()
-    return [BannerDetailOut.model_validate(r) for r in rows]
+    results = []
+    for r in rows:
+        out = BannerDetailOut.model_validate(r)
+        out.image_url = _full_image_url(out.image_url)
+        results.append(out)
+    return results
 
 
 async def create(db: AsyncSession, payload: BannerCreate) -> BannerDetailOut:
@@ -48,7 +63,9 @@ async def create(db: AsyncSession, payload: BannerCreate) -> BannerDetailOut:
     db.add(obj)
     await db.flush()
     await db.refresh(obj)
-    return BannerDetailOut.model_validate(obj)
+    out = BannerDetailOut.model_validate(obj)
+    out.image_url = _full_image_url(out.image_url)
+    return out
 
 
 async def update(
@@ -62,7 +79,9 @@ async def update(
         setattr(obj, k, v)
     await db.flush()
     await db.refresh(obj)
-    return BannerDetailOut.model_validate(obj)
+    out = BannerDetailOut.model_validate(obj)
+    out.image_url = _full_image_url(out.image_url)
+    return out
 
 
 async def delete(db: AsyncSession, banner_id: int) -> bool:
