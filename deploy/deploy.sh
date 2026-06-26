@@ -25,7 +25,7 @@ HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-60}"
 DEPLOY_REF="${DEPLOY_REF:-origin/dev}"
 BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-8001}"
 FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-3001}"
-IMAGE_TAG="${IMAGE_TAG:-main-latest}"
+IMAGE_TAG="${IMAGE_TAG:-}"
 COMPOSE_FILE="docker-compose.production.yml"
 
 cd "$APP_DIR"
@@ -33,7 +33,6 @@ cd "$APP_DIR"
 echo "[deploy] =================================================="
 echo "[deploy] 开始部署 $(date -Iseconds)"
 echo "[deploy] APP_DIR=$APP_DIR"
-echo "[deploy] IMAGE_TAG=$IMAGE_TAG"
 echo "[deploy] COMPOSE_FILE=$COMPOSE_FILE"
 echo "[deploy] =================================================="
 
@@ -50,6 +49,9 @@ set -a
 source .env.production
 set +a
 
+IMAGE_TAG="${IMAGE_TAG:-${RELEASE_TAG:-main-latest}}"
+echo "[deploy] IMAGE_TAG=$IMAGE_TAG"
+
 # 允许 CI / 手动部署在不改 ECS .env.production 的情况下覆盖本次发布参数。
 if [ -n "${DEPLOY_CORS_ORIGINS:-}" ]; then
     export CORS_ORIGINS="$DEPLOY_CORS_ORIGINS"
@@ -63,7 +65,12 @@ if [ -z "$PUBLIC_ORIGIN" ]; then
     PUBLIC_ORIGIN="http://localhost"
     echo "[deploy] ⚠️  PUBLIC_ORIGIN 未设置,使用 $PUBLIC_ORIGIN"
 fi
-export BACKEND_HOST_PORT FRONTEND_HOST_PORT IMAGE_TAG
+if [ -n "${DEPLOY_API_BASE_URL:-}" ]; then
+    export API_BASE_URL="${DEPLOY_API_BASE_URL%/}"
+elif [ -n "${DEPLOY_PUBLIC_ORIGIN:-}" ]; then
+    export API_BASE_URL="$PUBLIC_ORIGIN"
+fi
+export BACKEND_HOST_PORT FRONTEND_HOST_PORT IMAGE_TAG API_BASE_URL
 
 # ---- 1. 备份数据库(只在 DB 容器已运行时备份)----
 mkdir -p "$BACKUP_DIR"

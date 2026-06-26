@@ -44,7 +44,7 @@ services:
     logging: *default-logging
 
   backend:
-    image: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01/backend:${IMAGE_TAG:-main-latest}
+    image: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01/backend:${IMAGE_TAG:-${RELEASE_TAG:-main-latest}}
     restart: unless-stopped
     depends_on:
       db:
@@ -57,13 +57,13 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
       SUPER_ADMIN_INITIAL_PASSWORD: ${SUPER_ADMIN_INITIAL_PASSWORD}
-      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-true}
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-false}
       CORS_ORIGINS: ${CORS_ORIGINS}
       CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
       REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-refresh_token}
       REFRESH_COOKIE_PATH: ${REFRESH_COOKIE_PATH:-/api/v1/auth}
       REFRESH_COOKIE_MAX_AGE: ${REFRESH_COOKIE_MAX_AGE:-604800}
-      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-true}
       REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
       LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}
       LOGIN_RATE_LIMIT_MAX_FAILURES: ${LOGIN_RATE_LIMIT_MAX_FAILURES:-5}
@@ -85,7 +85,7 @@ services:
     logging: *default-logging
 
   frontend:
-    image: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01/frontend:${IMAGE_TAG:-main-latest}
+    image: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01/frontend:${IMAGE_TAG:-${RELEASE_TAG:-main-latest}}
     restart: unless-stopped
     depends_on:
       - backend

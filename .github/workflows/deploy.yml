@@ -198,6 +198,7 @@ jobs:
             BACKEND_HOST_PORT=${{ steps.ports.outputs.backend_port }} \
             FRONTEND_HOST_PORT=${{ steps.ports.outputs.frontend_port }} \
             DEPLOY_PUBLIC_ORIGIN=${{ needs.build.outputs.public_origin }} \
+            DEPLOY_API_BASE_URL=${{ needs.build.outputs.public_origin }} \
             DEPLOY_CORS_ORIGINS=${{ needs.build.outputs.public_origin }},http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }} \
             DEPLOY_IMAGE_BASE_URL=${{ needs.build.outputs.public_origin }}/static \
               bash deploy/deploy.sh

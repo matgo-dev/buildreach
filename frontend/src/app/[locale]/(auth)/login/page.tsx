@@ -53,15 +53,14 @@ function LoginContent() {
     if (isPhone) setPhoneRegion(guessPhoneRegion(identifier));
   }, [identifier, isPhone]);
 
-  // 注册成功跳转过来时,自动填充刚才提交的凭证(sessionStorage,一次性消费)
+  // 注册成功跳转过来时,自动填充账号(sessionStorage,一次性消费)
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("prefill_login");
       if (!raw) return;
       sessionStorage.removeItem("prefill_login");
-      const data = JSON.parse(raw) as { identifier?: string; password?: string };
+      const data = JSON.parse(raw) as { identifier?: string };
       if (data.identifier) setIdentifier(data.identifier);
-      if (data.password) setPassword(data.password);
     } catch {
       // JSON 解析失败或 sessionStorage 不可用 → 静默忽略,正常空白登录
     }

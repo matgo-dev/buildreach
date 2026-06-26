@@ -92,8 +92,8 @@ class Settings(BaseSettings):
     # 图片 CDN / 静态文件基础 URL
     IMAGE_BASE_URL: str = "http://localhost:8000/static"
 
-    # 调试 API(/api/_debug/*)是否开启;生产应关闭
-    ENABLE_DEBUG_API: bool = True
+    # 调试/测试 API(/api/v1/_debug/*, /api/v1/test/*)是否开启;默认关闭,需要时显式打开
+    ENABLE_DEBUG_API: bool = False
 
     # Trace ID:仅当前置可信反向代理(由网关设置并覆盖 X-Trace-Id)时置 true;
     # 公网直连 / 无网关时保持 false,一律服务端生成。
