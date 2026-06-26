@@ -99,36 +99,39 @@ export function FilterBar({
 
   return (
     <div className="rounded-xl border border-line bg-white shadow-mall-sm">
-      {/* 品牌筛选行 */}
-      {brandItems.length > 0 && (
-        <FilterPanel
-          label={t("filterBrand") + "："}
-          items={brandItems}
-          selected={selectedBrands}
-          onSelect={handleBrandSelect}
-          onMultiSelect={handleBrandMultiSelect}
-          allLabel={t("filterAllBrands")}
-          onClearAll={() => onBrandChange("")}
-        />
-      )}
-
-      {/* 品类筛选行 */}
-      {categoryItems.length > 0 && (
-        <>
-          {brandItems.length > 0 && <div className="border-t border-line" />}
+      {/* 品牌+品类筛选行 — 移动端隐藏，桌面端展示 */}
+      <div className="hidden lg:block">
+        {/* 品牌筛选行 */}
+        {brandItems.length > 0 && (
           <FilterPanel
-            label={t("filterCategory") + "："}
-            items={categoryItems}
-            selected={activeCategoryCode ? [activeCategoryCode] : []}
-            onSelect={handleCategorySelect}
-            allLabel={t("filterAllCategories")}
-            onClearAll={() => onCategoryChange("")}
+            label={t("filterBrand") + "："}
+            items={brandItems}
+            selected={selectedBrands}
+            onSelect={handleBrandSelect}
+            onMultiSelect={handleBrandMultiSelect}
+            allLabel={t("filterAllBrands")}
+            onClearAll={() => onBrandChange("")}
           />
-        </>
-      )}
+        )}
 
-      {/* 分隔线 */}
-      <div className="border-t border-line" />
+        {/* 品类筛选行 */}
+        {categoryItems.length > 0 && (
+          <>
+            {brandItems.length > 0 && <div className="border-t border-line" />}
+            <FilterPanel
+              label={t("filterCategory") + "："}
+              items={categoryItems}
+              selected={activeCategoryCode ? [activeCategoryCode] : []}
+              onSelect={handleCategorySelect}
+              allLabel={t("filterAllCategories")}
+              onClearAll={() => onCategoryChange("")}
+            />
+          </>
+        )}
+
+        {/* 分隔线 */}
+        <div className="border-t border-line" />
+      </div>
 
       {/* 行2: 排序 + 快筛 + 清除 | 商品总数 */}
       <div className="px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">
