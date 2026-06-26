@@ -1,20 +1,15 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { Package } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
-import { MallButton } from "./MallButton";
 
 /**
  * 精简商品卡 — 品类楼层专用。
  * 相比列表页 ProductCard，去掉描述/徽章/供应模式/购物车按钮，更紧凑。
  */
 export function ProductCardCompact({ product }: { product: ProductPublic }) {
-  const t = useTranslations("mall");
-  const router = useRouter();
-  const isMockProduct = product.spu_code.startsWith("MOCK-");
 
   return (
     <Link
@@ -50,21 +45,6 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
             {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
           </p>
         )}
-
-        {/* 询价按钮 */}
-        <MallButton
-          variant="teal"
-          size="sm"
-          block
-          className="text-[12px]"
-          onClick={(e: React.MouseEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            router.push(isMockProduct ? "/buyer/rfqs/create" : `/buyer/rfqs/create?product_id=${product.id}`);
-          }}
-        >
-          {t("startInquiry")}
-        </MallButton>
       </div>
     </Link>
   );

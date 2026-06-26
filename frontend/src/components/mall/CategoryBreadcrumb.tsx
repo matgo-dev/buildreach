@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 
 /**
  * 从品类树中 DFS 查找目标 code 的完整路径。
@@ -122,6 +123,7 @@ export function CategoryBreadcrumb({
   const locale = useLocale();
   const router = useRouter();
   const t = useTranslations("mall");
+  const { buildLink, configured } = useWhatsApp();
 
   const crumbs = categoryCode ? buildCategoryPath(categoryTree, categoryCode) : [];
 
@@ -136,37 +138,51 @@ export function CategoryBreadcrumb({
   };
 
   return (
-    <nav aria-label="Breadcrumb" className="overflow-x-auto">
-      <div className="flex items-center gap-2 text-sm whitespace-nowrap py-1">
-        {/* 全部结果 */}
-        <button
-          onClick={handleAllResults}
-          className="text-gray-500 hover:text-teal-700 transition-colors shrink-0"
-        >
-          {t("allResults")}
-        </button>
+    <nav aria-label="Breadcrumb">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1">
+        {/* 面包屑路径 */}
+        <div className="flex items-center gap-2 text-sm whitespace-nowrap overflow-x-auto">
+          <button
+            onClick={handleAllResults}
+            className="text-gray-500 hover:text-teal-700 transition-colors shrink-0"
+          >
+            {t("allResults")}
+          </button>
 
-        {crumbs.map((crumb, idx) => {
-          const siblings = getSiblings(categoryTree, crumbs, idx);
-          return (
-            <React.Fragment key={crumb.code}>
+          {crumbs.map((crumb, idx) => {
+            const siblings = getSiblings(categoryTree, crumbs, idx);
+            return (
+              <React.Fragment key={crumb.code}>
+                <span className="text-gray-300">/</span>
+                <CrumbDropdown
+                  crumb={crumb}
+                  siblings={siblings}
+                  onSelect={handleSelect}
+                />
+              </React.Fragment>
+            );
+          })}
+
+          {tail && (
+            <>
               <span className="text-gray-300">/</span>
-              <CrumbDropdown
-                crumb={crumb}
-                siblings={siblings}
-                onSelect={handleSelect}
-              />
-            </React.Fragment>
-          );
-        })}
+              <span className="max-w-[200px] truncate text-sm font-medium text-gray-700">
+                {tail}
+              </span>
+            </>
+          )}
+        </div>
 
-        {tail && (
-          <>
-            <span className="text-gray-300">/</span>
-            <span className="max-w-[200px] truncate text-sm font-medium text-gray-700">
-              {tail}
-            </span>
-          </>
+        {/* 右侧客服入口 — 移动端换行，桌面端推到右侧 */}
+        {configured && (
+          <a
+            href={buildLink() || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto shrink-0 text-xs text-gray-400 hover:text-teal-600 transition-colors whitespace-nowrap"
+          >
+            {t("cantFindCategory")}
+          </a>
         )}
       </div>
     </nav>

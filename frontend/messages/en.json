@@ -409,6 +409,7 @@
   "mall": {
     "home": "Home",
     "allResults": "All Results",
+    "cantFindCategory": "Can't find what you need? Contact us",
     "loading": "Loading...",
     "searchPlaceholder": "Search by name, brand, code...",
     "sortNewest": "Newest",
