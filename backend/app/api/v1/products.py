@@ -36,6 +36,8 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 HOME_FLOOR_PRODUCT_SIZE = 8
 HOME_FLOOR_CACHE_SECONDS = 300
+BRAND_CACHE_SECONDS = 600
+_BRAND_CACHE: dict[str, tuple[float, list[str]]] = {}
 
 HOME_FLOOR_CONFIGS = [
     {
@@ -267,13 +269,20 @@ async def list_products(
     })
 
 
-@router.get("/brands", summary="品牌筛选选项")
+@router.get("/brands", summary="品牌筛选选项（Top 50，缓存 10 分钟）")
 async def brand_options(
     category_code: str | None = Query(None, description="按品类缩小范围"),
     db: AsyncSession = Depends(get_db),
 ):
-    """聚合所有上架商品的品牌值（locale 感知），供前端筛选下拉使用。"""
+    """按商品数量降序返回 Top 50 品牌，结果缓存 10 分钟。"""
+    cache_key = category_code or "__all__"
+    now = monotonic()
+    cached = _BRAND_CACHE.get(cache_key)
+    if cached and now - cached[0] < BRAND_CACHE_SECONDS:
+        return success(cached[1][:])
+
     brands = await product_svc.list_brand_options(db, category_code=category_code)
+    _BRAND_CACHE[cache_key] = (now, brands)
     return success(brands)
 
 

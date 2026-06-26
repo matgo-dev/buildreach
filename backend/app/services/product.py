@@ -803,19 +803,24 @@ async def list_brand_options(
     db: AsyncSession,
     *,
     category_code: str | None = None,
+    limit: int = 50,
 ) -> list[str]:
-    """聚合所有上架商品的品牌值，去重排序，用于筛选下拉。品牌名统一用 brand_zh。"""
+    """按商品数量降序返回 Top N 品牌，用于筛选下拉。"""
+    from sqlalchemy import func
+
     brand_col = Product.brand_zh
+    cnt = func.count().label("cnt")
     q = (
-        select(brand_col)
+        select(brand_col, cnt)
         .where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
         .where(brand_col.isnot(None), brand_col != "")
-        .distinct()
+        .group_by(brand_col)
+        .order_by(cnt.desc())
+        .limit(limit)
     )
     if category_code:
         codes = await _descendant_category_codes(db, category_code)
         q = q.where(Product.category_code.in_(codes))
-    q = q.order_by(brand_col)
     rows = await db.execute(q)
     return [row[0] for row in rows]
 
