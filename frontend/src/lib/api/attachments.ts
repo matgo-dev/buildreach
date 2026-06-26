@@ -25,22 +25,25 @@ const ALLOWED_TYPES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/x-rar-compressed",
+  "application/vnd.rar",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_SIZE_IMAGE = 5 * 1024 * 1024;
-const MAX_SIZE_DOC = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 export const MAX_ATTACHMENTS = 6;
 
 /** 返回 i18n key(rfq namespace),null 表示校验通过 */
 export function validateFile(file: File): string | null {
   // 扩展名检查(浏览器 MIME 不可靠时兜底)
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-  const allowedExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".pdf", ".xlsx", ".xls"]);
+  const allowedExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".pdf", ".xlsx", ".xls", ".zip", ".rar", ".doc", ".docx"]);
   if (!ALLOWED_TYPES.has(file.type) && !allowedExts.has(ext)) {
     return "attachment.invalidType";
   }
-  const max = IMAGE_TYPES.has(file.type) ? MAX_SIZE_IMAGE : MAX_SIZE_DOC;
-  if (file.size > max) return "attachment.tooLarge";
+  if (file.size > MAX_FILE_SIZE) return "attachment.tooLarge";
   return null;
 }
 

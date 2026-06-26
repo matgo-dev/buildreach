@@ -1044,11 +1044,11 @@
     "draftSaved": "Rasimu imehifadhiwa",
     "attachment": {
       "label": "Viambatisho",
-      "upload": "Bonyeza au buruta kupakia (picha / PDF / Excel)",
-      "hint": "Inasaidia JPG, PNG, WEBP (≤5 MB), PDF, XLSX (≤10 MB). Hadi faili 6.",
+      "upload": "Bonyeza au buruta kupakia (picha / PDF / Excel / kumbukumbu)",
+      "hint": "Inasaidia JPG, PNG, WEBP, PDF, XLSX, DOC/DOCX, ZIP, RAR (≤50 MB). Hadi faili 6.",
       "maxReached": "Viambatisho 6 vinaruhusiwa tu",
-      "invalidType": "Aina ya faili haihimiliwi. Inaruhusiwa: JPG, PNG, WEBP, PDF, XLSX",
-      "tooLarge": "Faili kubwa mno. Picha ≤5 MB, hati ≤10 MB",
+      "invalidType": "Aina ya faili haihimiliwi. Inaruhusiwa: JPG, PNG, WEBP, PDF, XLSX, DOC/DOCX, ZIP, RAR",
+      "tooLarge": "Faili kubwa mno. Upeo 50 MB kwa faili",
       "download": "Pakua"
     },
     "backToCartEdit": "Rudi kwenye Kikapu",

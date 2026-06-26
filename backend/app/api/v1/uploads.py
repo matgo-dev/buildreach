@@ -23,8 +23,7 @@ ALLOWED_MIME_TYPES = {
     "application/vnd.ms-excel",  # .xls
 }
 IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
-MAX_SIZE_IMAGE = 5 * 1024 * 1024       # 5MB
-MAX_SIZE_DOCUMENT = 10 * 1024 * 1024   # 10MB
+MAX_FILE_SIZE = 50 * 1024 * 1024       # 50MB
 
 MIME_TO_EXT: dict[str, str] = {
     "image/jpeg": ".jpg",
@@ -53,9 +52,8 @@ async def upload_file(
 
     # 读取全部内容后再校验大小，避免流式读到一半判断
     contents = await file.read()
-    max_size = MAX_SIZE_IMAGE if content_type in IMAGE_MIMES else MAX_SIZE_DOCUMENT
-    if len(contents) > max_size:
-        max_mb = max_size // (1024 * 1024)
+    if len(contents) > MAX_FILE_SIZE:
+        max_mb = MAX_FILE_SIZE // (1024 * 1024)
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"File too large, maximum {max_mb}MB",

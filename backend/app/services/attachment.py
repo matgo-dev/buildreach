@@ -42,8 +42,7 @@ logger = logging.getLogger(__name__)
 
 # ── 配置常量 ──────────────────────────────────────────────
 
-MAX_SIZE_IMAGE = 5 * 1024 * 1024       # 5MB
-MAX_SIZE_DOCUMENT = 10 * 1024 * 1024   # 10MB
+MAX_FILE_SIZE = 50 * 1024 * 1024       # 50MB
 MAX_ATTACHMENTS_PER_OWNER = 6
 ORPHAN_TTL_HOURS = 72
 ORPHAN_QUOTA_COUNT = 20
@@ -56,25 +55,25 @@ ALLOWED_FAMILIES: dict[str, dict] = {
         "mimes": {"image/jpeg"},
         "ext": {".jpg", ".jpeg"},
         "canonical": "image/jpeg",
-        "max_size": MAX_SIZE_IMAGE,
+        "max_size": MAX_FILE_SIZE,
     },
     "image/png": {
         "mimes": {"image/png"},
         "ext": {".png"},
         "canonical": "image/png",
-        "max_size": MAX_SIZE_IMAGE,
+        "max_size": MAX_FILE_SIZE,
     },
     "image/webp": {
         "mimes": {"image/webp"},
         "ext": {".webp"},
         "canonical": "image/webp",
-        "max_size": MAX_SIZE_IMAGE,
+        "max_size": MAX_FILE_SIZE,
     },
     "application/pdf": {
         "mimes": {"application/pdf"},
         "ext": {".pdf"},
         "canonical": "application/pdf",
-        "max_size": MAX_SIZE_DOCUMENT,
+        "max_size": MAX_FILE_SIZE,
     },
     "spreadsheet_xlsx": {
         "mimes": {
@@ -84,13 +83,37 @@ ALLOWED_FAMILIES: dict[str, dict] = {
         },
         "ext": {".xlsx"},
         "canonical": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "max_size": MAX_SIZE_DOCUMENT,
+        "max_size": MAX_FILE_SIZE,
     },
     "spreadsheet_xls": {
         "mimes": {"application/vnd.ms-excel", "application/octet-stream"},
         "ext": {".xls"},
         "canonical": "application/vnd.ms-excel",
-        "max_size": MAX_SIZE_DOCUMENT,
+        "max_size": MAX_FILE_SIZE,
+    },
+    "archive_zip": {
+        "mimes": {"application/zip", "application/x-zip-compressed", "application/octet-stream"},
+        "ext": {".zip"},
+        "canonical": "application/zip",
+        "max_size": MAX_FILE_SIZE,
+    },
+    "archive_rar": {
+        "mimes": {"application/x-rar-compressed", "application/vnd.rar", "application/octet-stream"},
+        "ext": {".rar"},
+        "canonical": "application/x-rar-compressed",
+        "max_size": MAX_FILE_SIZE,
+    },
+    "document_docx": {
+        "mimes": {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream"},
+        "ext": {".docx"},
+        "canonical": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "max_size": MAX_FILE_SIZE,
+    },
+    "document_doc": {
+        "mimes": {"application/msword", "application/octet-stream"},
+        "ext": {".doc"},
+        "canonical": "application/msword",
+        "max_size": MAX_FILE_SIZE,
     },
 }
 
@@ -217,7 +240,7 @@ async def upload_attachment(
         raise AttachmentTypeNotAllowedError()
 
     # 流式读取(限制最大大小)
-    max_possible = MAX_SIZE_DOCUMENT  # 先按最大限制读
+    max_possible = MAX_FILE_SIZE  # 先按最大限制读
     chunks: list[bytes] = []
     total = 0
     while True:
