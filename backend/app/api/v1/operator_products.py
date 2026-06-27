@@ -77,7 +77,7 @@ def _enrich_attrs(attrs, template_map: dict) -> list[dict]:
 
 def _img_to_dict(img) -> dict:
     d = ProductImageSchema.model_validate(img).model_dump()
-    d["full_url"] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
+    d["full_url"] = f"{settings.IMAGE_PATH_PREFIX}/{img.image_key}"
     return d
 
 
@@ -93,7 +93,7 @@ def _get_main_image_url(p) -> str | None:
     main = next((i for i in imgs if i.image_type == ImageType.MAIN), None)
     if not main:
         main = sorted(imgs, key=lambda i: i.sort_order)[0]
-    return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
+    return f"{settings.IMAGE_PATH_PREFIX}/{main.image_key}"
 
 
 def _default_sku(p):
@@ -176,7 +176,7 @@ def _to_operator(p, creator_name_map: dict | None = None, main_image_url: str | 
         name_en=p.name_en,
         category_code=p.category_code,
         origin=get_localized(p, "origin"),
-        brand=p.brand_zh or None,
+        brand=get_localized(p, "brand") or None,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
         main_image=main_image_url,
@@ -354,7 +354,7 @@ async def get_product(
         origin=get_localized(p, "origin"),
         origin_zh=p.origin_zh,
         origin_en=p.origin_en,
-        brand=p.brand_zh or None,
+        brand=get_localized(p, "brand") or None,
         brand_zh=p.brand_zh,
         brand_en=p.brand_en,
         hs_code=p.hs_code,
