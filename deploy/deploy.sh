@@ -97,11 +97,17 @@ fi
 
 # ---- 3. 拉取镜像 ----
 echo "[deploy] [3/6] 拉取镜像(IMAGE_TAG=$IMAGE_TAG)"
-# GHCR 登录（token 由 CI 传入或从 .env.production 读取）
-if [ -n "${GHCR_TOKEN:-}" ]; then
+# 镜像仓库登录：ECS 用 ACR（IMAGE_REGISTRY 含 aliyuncs），OVH 用 GHCR
+if echo "${IMAGE_REGISTRY:-}" | grep -q "aliyuncs.com"; then
+    if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
+        echo "[deploy]       登录阿里云 ACR..."
+        echo "$ACR_PASSWORD" | docker login --username "$ACR_USERNAME" --password-stdin "${IMAGE_REGISTRY%%/*}"
+    fi
+elif [ -n "${GHCR_TOKEN:-}" ]; then
     echo "[deploy]       登录 GHCR..."
     echo "$GHCR_TOKEN" | docker login ghcr.io --username github-actions --password-stdin
 fi
+export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/buildlink-dev/buildlink-ea}"
 docker compose -f "$COMPOSE_FILE" --env-file .env.production pull backend frontend
 
 # ---- 4. 记录旧镜像（回滚用）----
