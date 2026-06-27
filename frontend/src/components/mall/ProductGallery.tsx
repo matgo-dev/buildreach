@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { imageUrl } from "@/lib/env";
 import type { ProductImage } from "@/lib/api/products";
 
 interface ProductGalleryProps {
@@ -92,7 +93,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={activeImage.full_url}
+              src={imageUrl(activeImage.full_url)}
               alt=""
               className={`h-full w-full object-contain transition-opacity duration-150 ${zooming ? "opacity-0" : "opacity-100"}`}
             />
@@ -101,7 +102,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
               <div
                 className="absolute inset-0"
                 style={{
-                  backgroundImage: `url(${activeImage.full_url})`,
+                  backgroundImage: `url(${imageUrl(activeImage.full_url)})`,
                   backgroundSize: `${ZOOM_SCALE * 100}%`,
                   backgroundPosition: `${zoomPos.x * 100}% ${zoomPos.y * 100}%`,
                   backgroundRepeat: "no-repeat",
@@ -133,7 +134,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.full_url}
+                src={imageUrl(img.full_url)}
                 alt=""
                 className="h-full w-full object-cover"
               />
@@ -174,7 +175,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
           {/* 大图 — 小图也撑到合理尺寸 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={activeImage.full_url}
+            src={imageUrl(activeImage.full_url)}
             alt=""
             className="max-h-[85vh] max-w-[90vw] min-h-[50vh] min-w-[40vw] object-contain"
             onClick={(e) => e.stopPropagation()}
@@ -203,7 +204,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.full_url} alt="" className="h-full w-full object-cover" />
+                  <img src={imageUrl(img.full_url)} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

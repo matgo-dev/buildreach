@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api";
 import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 import type { AttachmentPublic } from "@/lib/api/attachments";
+import { imageUrl } from "@/lib/env";
 import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
@@ -404,7 +405,7 @@ function ProductSearchModal({
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
                         {p.main_image ? (
                           <img
-                            src={p.main_image}
+                            src={imageUrl(p.main_image)}
                             alt={p.name}
                             className="h-full w-full object-cover"
                           />

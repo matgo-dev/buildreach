@@ -29,6 +29,7 @@ import {
   type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
 } from "@/lib/api/quotes";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import { imageUrl } from "@/lib/env";
 
 // 需要拉报价的状态集合
 const QUOTE_VISIBLE_STATUSES = new Set(["QUOTED", "ACCEPTED", "REJECTED", "EXPIRED"]);
@@ -702,7 +703,7 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                     {item.main_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={item.main_image}
+                        src={imageUrl(item.main_image)}
                         alt=""
                         className={`h-16 w-16 flex-shrink-0 rounded-lg border border-gray-100 object-cover ${unavailable ? "opacity-40 grayscale" : ""}`}
                       />

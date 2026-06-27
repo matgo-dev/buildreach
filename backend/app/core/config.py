@@ -89,8 +89,8 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT_MAX_FAILURES: int = 5
     LOGIN_RATE_LIMIT_LOCK_SECONDS: int = 300
 
-    # 图片 CDN / 静态文件基础 URL
-    IMAGE_BASE_URL: str = "http://localhost:8000/static"
+    # 图片静态文件前缀（相对路径，前端用 API_BASE_URL 拼完整地址）
+    IMAGE_PATH_PREFIX: str = "/static"
 
     # 调试/测试 API(/api/v1/_debug/*, /api/v1/test/*)是否开启;默认关闭,需要时显式打开
     ENABLE_DEBUG_API: bool = False

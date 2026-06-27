@@ -27,6 +27,7 @@ import { searchBuyerOrgs, type BuyerOrgBrief } from "@/lib/api/operatorBuyers";
 import { useAuthStore } from "@/stores/authStore";
 import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 import type { AttachmentPublic } from "@/lib/api/attachments";
+import { imageUrl } from "@/lib/env";
 
 // ---------- 本地行项类型 ----------
 
@@ -331,7 +332,7 @@ function AddItemModal({ existingKeys, onClose, onAdd }: AddItemModalProps) {
                       {/* 商品图 */}
                       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
                         {p.main_image ? (
-                          <img src={p.main_image} alt={p.name} className="h-full w-full object-cover" />
+                          <img src={imageUrl(p.main_image)} alt={p.name} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <Package className="h-5 w-5 text-gray-300" />
@@ -946,7 +947,7 @@ function CreateOnBehalfContent() {
                           <div className="flex gap-3">
                             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
                               {item.main_image_url ? (
-                                <img src={item.main_image_url} alt="" className="h-full w-full object-cover" />
+                                <img src={imageUrl(item.main_image_url)} alt="" className="h-full w-full object-cover" />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                   <Package className="h-4 w-4 text-gray-300" />

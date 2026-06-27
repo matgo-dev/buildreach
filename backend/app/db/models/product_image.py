@@ -1,7 +1,7 @@
 """商品图片。
 
 image_type: MAIN(主图) / GALLERY(轮播图) / DETAIL(详情描述图)
-image_key: 存储相对路径，完整 URL 由后端按 IMAGE_BASE_URL 拼接。
+image_key: 存储相对路径，后端返回 /static/{key}，前端用 API_BASE_URL 拼完整地址。
 sku_id: NULL=SPU 级图片，非空=SKU 级图片。
 """
 from __future__ import annotations

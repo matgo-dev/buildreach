@@ -98,8 +98,8 @@ services:
       # 调试 API 开关(生产建议 false)
       ENABLE_DEBUG_API: ${ENABLE_DEBUG_API:-false}
 
-      # 图片访问基础 URL
-      IMAGE_BASE_URL: ${IMAGE_BASE_URL:-http://localhost:8000/static}
+      # 图片静态文件前缀（相对路径）
+      IMAGE_PATH_PREFIX: ${IMAGE_PATH_PREFIX:-/static}
       # 翻译服务
       TRANSLATION_PROVIDER: ${TRANSLATION_PROVIDER:-mock}
       ALIYUN_TRANSLATE_ACCESS_KEY_ID: ${ALIYUN_TRANSLATE_ACCESS_KEY_ID:-}

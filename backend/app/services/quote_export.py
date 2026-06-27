@@ -74,7 +74,7 @@ def _format_date(dt: datetime | str | None, locale: str) -> str:
 def _image_key_to_file_uri(image_key: str | None) -> str | None:
     """Return a local file URI for product images used by PDF rendering.
 
-    WeasyPrint would otherwise fetch IMAGE_BASE_URL over HTTP while the request
+    WeasyPrint would otherwise fetch IMAGE_PATH_PREFIX over HTTP while the request
     is already inside the backend container. On ECS that self-roundtrip can add
     seconds and can fail independently of PDF generation.
     """

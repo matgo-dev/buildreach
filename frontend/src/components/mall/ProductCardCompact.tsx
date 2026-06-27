@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { Package } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
+import { imageUrl } from "@/lib/env";
 
 /**
  * 精简商品卡 — 品类楼层专用。
@@ -23,7 +24,7 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
       >
         {product.main_image ? (
           <img
-            src={product.main_image}
+            src={imageUrl(product.main_image)}
             alt={product.name}
             className="h-full w-full object-contain"
             loading="lazy"

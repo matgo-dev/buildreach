@@ -7,6 +7,7 @@ import { useLocale } from "next-intl";
 import useSWR from "swr";
 
 import { getRecentViews, removeRecentView, type RecentViewProduct } from "@/lib/api/buyerEvents";
+import { imageUrl } from "@/lib/env";
 
 /**
  * 最近浏览商品横栏 — 商城列表页顶部。
@@ -68,7 +69,7 @@ export function RecentViews() {
               <div className="mb-1.5 aspect-square w-full overflow-hidden rounded bg-white">
                 {item.main_image ? (
                   <img
-                    src={item.main_image}
+                    src={imageUrl(item.main_image)}
                     alt={item.name}
                     className="h-full w-full object-contain"
                   />

@@ -200,7 +200,7 @@ jobs:
             DEPLOY_PUBLIC_ORIGIN=${{ needs.build.outputs.public_origin }} \
             DEPLOY_API_BASE_URL=${{ needs.build.outputs.public_origin }} \
             DEPLOY_CORS_ORIGINS=${{ needs.build.outputs.public_origin }},http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }} \
-            DEPLOY_IMAGE_BASE_URL=${{ needs.build.outputs.public_origin }}/static \
+            DEPLOY_IMAGE_PATH_PREFIX=/static \
               bash deploy/deploy.sh
 
       - name: 通知

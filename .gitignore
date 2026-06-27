@@ -58,3 +58,4 @@ data/banners/
 # ---- 内部设计文档(本地保留,不入库) ----
 docs/
 CLAUDE.md
+frontend/pnpm-workspace.yaml

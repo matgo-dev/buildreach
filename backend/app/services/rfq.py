@@ -531,7 +531,7 @@ def _resolve_main_image_from_product(product) -> str | None:
     if product is None or not product.images:
         return None
 
-    base = settings.IMAGE_BASE_URL
+    base = settings.IMAGE_PATH_PREFIX
     prod_images = [i for i in product.images if not getattr(i, "deleted_at", None)]
     if not prod_images:
         return None

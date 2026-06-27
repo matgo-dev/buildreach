@@ -29,6 +29,7 @@ import {
 } from "@/lib/api/cart";
 import { useCartStore } from "@/stores/cartStore";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { imageUrl } from "@/lib/env";
 
 // ---------- 主页面 ----------
 
@@ -256,7 +257,7 @@ function CartContent() {
                 <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.main_image} alt="" className="h-full w-full object-contain" />
+                    <img src={imageUrl(item.main_image)} alt="" className="h-full w-full object-contain" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-gray-300">
                       <PackageOpen className="h-7 w-7" />

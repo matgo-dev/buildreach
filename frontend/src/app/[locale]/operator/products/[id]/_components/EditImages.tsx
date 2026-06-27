@@ -6,6 +6,7 @@ import { Plus, X, Star } from "lucide-react";
 import { ProductImage } from "@/lib/api/operatorProducts";
 import { useToast } from "@/components/ui/Toast";
 import { compressImage } from "@/lib/image-compress";
+import { imageUrl } from "@/lib/env";
 
 export interface ImageChange {
   added: File[];
@@ -121,7 +122,7 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
             onDragEnd={() => { setDragOverIdx(null); setDragStartIdx(null); }}
             className={`relative w-24 h-24 rounded-lg overflow-hidden border-2 group cursor-move ${currentMainId === img.id ? "border-blue-500" : "border-slate-200"} ${dragOverIdx === idx ? "ring-2 ring-blue-300" : ""} bg-slate-100`}
           >
-            <img src={img.full_url} alt="" className="w-full h-full object-cover" />
+            <img src={imageUrl(img.full_url)} alt="" className="w-full h-full object-cover" />
             {currentMainId === img.id && (
               <span className="absolute top-0 left-0 bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>
             )}

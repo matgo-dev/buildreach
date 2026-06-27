@@ -81,7 +81,7 @@ class LocalDiskStorage:
         return self._path(file_key).is_file()
 
     def public_url(self, key: str) -> str:
-        return f"{settings.IMAGE_BASE_URL}/{key}"
+        return f"{settings.IMAGE_PATH_PREFIX}/{key}"
 
 
 # ── 单例(启动时初始化) ──

@@ -217,7 +217,7 @@ async def _get_product_main_image(db: AsyncSession, product_id: int) -> str | No
     )
     key = (await db.execute(q)).scalar_one_or_none()
     if key:
-        return f"{settings.IMAGE_BASE_URL}/{key}"
+        return f"{settings.IMAGE_PATH_PREFIX}/{key}"
     return None
 
 
