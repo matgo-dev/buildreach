@@ -156,7 +156,7 @@ bash deploy/deploy.sh
 | api | /api/ | http://127.0.0.1:17857 | 禁用 |
 | static | /static/ | http://127.0.0.1:17857 | 7天 |
 | env-js | /__env.js | http://127.0.0.1:7857 | 禁用 |
-| healthz | /healthz | http://127.0.0.1:7857 | 禁用 |
+| healthz | /healthz | http://127.0.0.1:17857 | 禁用 |
 | next-static | /_next/static/ | http://127.0.0.1:7857 | 365天 |
 | root | / | http://127.0.0.1:7857 | 禁用 |
 
