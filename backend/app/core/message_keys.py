@@ -94,8 +94,6 @@ class MessageKey:
     RFQ_ITEM_NOT_FOUND = "error.rfq.item_not_found"
     RFQ_NOT_ASSIGNED_TO_YOU = "error.rfq.not_assigned_to_you"
     RFQ_MIN_ONE_ITEM = "error.rfq.min_one_item"
-    RFQ_TOO_MANY_ATTACHMENTS = "error.rfq.too_many_attachments"
-    RFQ_INVALID_ATTACHMENT_URL = "error.rfq.invalid_attachment_url"
     RFQ_NO_QUOTE_TO_EXPORT = "error.rfq.no_quote_to_export"
     RFQ_ITEMS_OR_REMARK_REQUIRED = "error.rfq.items_or_remark_required"
 

@@ -45,7 +45,6 @@ class RfqCreate(BaseModel):
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
-    attachment_urls: list[str] | None = None
     attachment_ids: list[int] | None = None
     remark: str | None = None
 
@@ -74,7 +73,6 @@ class RfqUpdate(BaseModel):
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
-    attachment_urls: list[str] | None = None
     attachment_ids: list[int] | None = None
     remark: str | None = None
 
@@ -163,7 +161,6 @@ class RfqBuyerPublic(BaseModel):
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
-    attachment_urls: list[str] | None = None
     attachments: list[AttachmentPublic] = []
 
     # 时间
@@ -209,7 +206,6 @@ class RfqOperatorView(BaseModel):
     expected_delivery_date: datetime | None = None
     target_currency: str | None = None
     required_certifications: list[str] | None = None
-    attachment_urls: list[str] | None = None
     attachments: list[AttachmentPublic] = []
 
     # 时间

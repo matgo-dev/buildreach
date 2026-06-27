@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 
 from tests.conftest import register_buyer_tz, _make_test_image, _next_phone
+from app.db.models.buyer_org_image import BuyerOrgImage, BuyerOrgImageType
+from app.db.models.buyer_organization import BuyerOrganization
 
 
 @pytest.mark.asyncio
@@ -39,6 +42,7 @@ async def test_register_buyer_missing_required_fields(client):
             "name": "Test",
             "company_name": "Shop",
             "business_category_codes": "01",
+            "email": f"buyertz{_next_phone().replace('+', '')}@example.com",
         },
         files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
     )
@@ -57,6 +61,7 @@ async def test_register_buyer_no_image(client):
             "company_name": "Shop",
             "address": "Dar es Salaam",
             "business_category_codes": "01",
+            "email": f"buyertz{_next_phone().replace('+', '')}@example.com",
         },
     )
     assert r.status_code == 422
@@ -75,6 +80,7 @@ async def test_register_buyer_invalid_phone_format(client):
             "company_name": "Shop",
             "address": "Dar es Salaam",
             "business_category_codes": "01",
+            "email": f"buyertz{_next_phone().replace('+', '')}@example.com",
         },
         files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
     )
@@ -106,3 +112,44 @@ async def test_register_buyer_auto_login_token_works(client):
     data = me.json()["data"]
     assert "BUYER" in data["roles"]
     assert data["organization"]["type"] == "BUYER_ORG"
+
+
+@pytest.mark.asyncio
+async def test_register_buyer_images_saved_to_private_uploads(client, db_session, tmp_path, monkeypatch):
+    """门店照和证照图片都写入 private_uploads,不进入公开 uploads。"""
+    from app.services import _buyer_utils
+
+    public_root = tmp_path / "uploads"
+    private_root = tmp_path / "private_uploads"
+    monkeypatch.setattr(_buyer_utils, "UPLOAD_BASE_DIR", public_root)
+    monkeypatch.setattr(_buyer_utils, "PRIVATE_UPLOAD_BASE_DIR", private_root)
+
+    company_name = f"Private Shop {_next_phone().replace('+', '')}"
+    result = await register_buyer_tz(
+        client,
+        company_name=company_name,
+        with_license=True,
+    )
+    assert result["response"].status_code == 200, result["response"].text
+
+    org = (
+        await db_session.execute(
+            select(BuyerOrganization).where(BuyerOrganization.name == company_name)
+        )
+    ).scalar_one()
+    images = (
+        await db_session.execute(
+            select(BuyerOrgImage).where(BuyerOrgImage.buyer_org_id == org.id)
+        )
+    ).scalars().all()
+
+    by_type = {img.image_type: img for img in images}
+    storefront = by_type[BuyerOrgImageType.STOREFRONT]
+    license_img = by_type[BuyerOrgImageType.LICENSE]
+
+    assert storefront.image_key.startswith("buyer_orgs/storefront/")
+    assert license_img.image_key.startswith("buyer_orgs/licenses/")
+    assert (private_root / storefront.image_key).is_file()
+    assert (private_root / license_img.image_key).is_file()
+    assert not (public_root / storefront.image_key).exists()
+    assert not (public_root / license_img.image_key).exists()
