@@ -11,8 +11,8 @@ from app.schemas.banner import BannerCreate, BannerDetailOut, BannerOut, BannerU
 
 
 def _full_image_url(image_url: str) -> str:
-    """相对路径 → 绝对 URL，统一由 IMAGE_BASE_URL 拼接。"""
-    base = settings.IMAGE_BASE_URL.rstrip("/")
+    """相对路径 → /static/ 开头的路径，前端用 API_BASE_URL 拼完整地址。"""
+    base = settings.IMAGE_PATH_PREFIX.rstrip("/")
     return f"{base}/{image_url.lstrip('/')}"
 
 

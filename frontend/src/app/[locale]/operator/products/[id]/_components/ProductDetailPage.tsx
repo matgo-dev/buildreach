@@ -30,6 +30,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import EditBasicInfo from "./EditBasicInfo";
 import SkuEditModal, { SkuFormData } from "./SkuEditModal";
+import { imageUrl } from "@/lib/env";
 
 // 状态颜色映射（label 通过 t() 读取，不在此硬编码）
 const STATUS_STYLES: Record<string, { dot: string; bg: string; text: string; labelKey: string }> = {
@@ -597,9 +598,9 @@ export default function ProductDetailPage() {
                 <div
                   key={img.id}
                   className={`relative group w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
-                  onClick={() => !isEditing && setLightbox({ images: spuImages.map((i) => ({ url: i.full_url })), index: idx })}
+                  onClick={() => !isEditing && setLightbox({ images: spuImages.map((i) => ({ url: imageUrl(i.full_url) })), index: idx })}
                 >
-                  <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <img src={imageUrl(img.full_url)} alt="" className="w-full h-full object-cover" loading="lazy" />
                   {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
@@ -946,9 +947,9 @@ function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { 
                   <div
                     key={img.id}
                     className="w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-shadow"
-                    onClick={() => onImageClick?.(sku.images.map((i) => ({ url: i.full_url })), idx)}
+                    onClick={() => onImageClick?.(sku.images.map((i) => ({ url: imageUrl(i.full_url) })), idx)}
                   >
-                    <img src={img.full_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    <img src={imageUrl(img.full_url)} alt="" className="w-full h-full object-cover" loading="lazy" />
                   </div>
                 ))}
               </div>

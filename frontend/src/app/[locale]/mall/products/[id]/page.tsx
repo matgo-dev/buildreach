@@ -25,6 +25,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { getMockFloorProductDetail } from "@/components/mall/floorMockData";
+import { imageUrl } from "@/lib/env";
 
 
 // ---- 色板缩略图（点击可放大预览） ----
@@ -129,7 +130,7 @@ function InlineAttrItem({
                 } ${canSelect ? "cursor-pointer" : "cursor-default"}`}
               >
                 {swatchOk ? (
-                  <SwatchThumb src={v.swatch_image!} alt={v.value} />
+                  <SwatchThumb src={imageUrl(v.swatch_image!)} alt={v.value} />
                 ) : (
                   <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-600">
                     {v.value}
@@ -307,7 +308,7 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
             <div key={img.id} className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.full_url}
+                src={imageUrl(img.full_url)}
                 alt=""
                 className="mx-auto w-full object-contain"
                 loading="lazy"

@@ -55,7 +55,7 @@ BANNER_META: dict[str, dict] = {
 
 
 def _image_key(filename: str) -> str:
-    """返回相对路径，不含域名/端口，API 层动态拼 IMAGE_BASE_URL。"""
+    """返回相对路径，不含域名/端口，API 层动态拼 IMAGE_PATH_PREFIX。"""
     return f"uploads/banners/{filename}"
 
 

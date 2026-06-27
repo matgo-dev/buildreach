@@ -21,6 +21,7 @@ import {
 } from "@/lib/api/operatorProducts";
 import { Permissions } from "@/lib/permissions";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { imageUrl } from "@/lib/env";
 
 const PAGE_SIZE = 20;
 
@@ -545,7 +546,7 @@ function ProductListInner() {
                         {item.main_image ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
-                            src={item.main_image}
+                            src={imageUrl(item.main_image)}
                             alt={item.name}
                             className="h-11 w-11 rounded-lg object-cover bg-slate-100"
                             onError={(e) => {

@@ -27,3 +27,14 @@ export function getApiBase(): string {
   }
   return base;
 }
+
+/**
+ * 将后端返回的相对图片路径（/static/...）拼成完整 URL。
+ *
+ * 已是绝对 URL（http/https 开头）则原样返回，兼容历史数据。
+ */
+export function imageUrl(path: string | null | undefined): string {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${getApiBase()}${path}`;
+}

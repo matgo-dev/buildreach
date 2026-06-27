@@ -983,7 +983,7 @@ async def _create_product_with_image(db_session: AsyncSession) -> tuple[int, str
     db_session.add(img)
     await db_session.flush()
 
-    expected_url = f"{settings.IMAGE_BASE_URL}/{image_key}"
+    expected_url = f"{settings.IMAGE_PATH_PREFIX}/{image_key}"
     return product.id, expected_url
 
 

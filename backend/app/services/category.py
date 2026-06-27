@@ -195,7 +195,7 @@ async def get_l1_thumbnails(db: AsyncSession) -> list[dict]:
     rows = (await db.execute(stmt)).all()
 
     # 5. 按 L1 分组取第一张
-    base = settings.IMAGE_BASE_URL
+    base = settings.IMAGE_PATH_PREFIX
     l1_thumb: dict[str, str] = {}
     for cat_code, image_key in rows:
         for l1_code, desc_codes in l1_to_codes.items():

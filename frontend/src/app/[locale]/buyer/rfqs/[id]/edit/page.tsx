@@ -25,6 +25,7 @@ import { getRfq, updateRfq, submitRfq } from "@/lib/api/rfqs";
 import { listProducts, type ProductPublic } from "@/lib/api/products";
 import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 import type { AttachmentPublic } from "@/lib/api/attachments";
+import { imageUrl } from "@/lib/env";
 
 const CURRENCIES = ["USD", "KES", "CNY"];
 
@@ -205,7 +206,7 @@ function ProductSearchModal({
                       </div>
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
                         {p.main_image ? (
-                          <img src={p.main_image} alt={p.name} className="h-full w-full object-cover" />
+                          <img src={imageUrl(p.main_image)} alt={p.name} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center"><Package className="h-6 w-6 text-gray-300" /></div>
                         )}

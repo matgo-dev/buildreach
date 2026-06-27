@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 import { MallButton } from "./MallButton";
+import { imageUrl } from "@/lib/env";
 
 /** 飞入购物车动画：暖金流星效果 */
 function flyToCart(startEl: HTMLElement) {
@@ -141,7 +142,7 @@ export function ProductCard({
       >
         {product.main_image ? (
           <img
-            src={product.main_image}
+            src={imageUrl(product.main_image)}
             alt={product.name}
             className="h-full w-full object-contain"
             loading="lazy"
