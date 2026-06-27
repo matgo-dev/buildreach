@@ -22,6 +22,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 TARGET_SIZE = (800, 800)
 JPEG_QUALITY = 85
 UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
+PRIVATE_UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "private_uploads"
 
 # ── 手机号正则 ───────────────────────────────────────────────
 _TZ_E164_RE = re.compile(r"^\+255\d{9}$")
@@ -81,13 +82,19 @@ async def validate_active_level1_categories(
         )
 
 
-def save_uploaded_image(
+def _safe_upload_dir(base_dir: Path, subdir: str) -> Path:
+    subdir_path = Path(subdir)
+    if subdir_path.is_absolute() or ".." in subdir_path.parts:
+        raise ValueError("Invalid upload subdir")
+    return base_dir / subdir_path
+
+
+def _prepare_image(
     file_content: bytes,
     filename: str,
-    subdir: str,
     square: bool = False,
-) -> tuple[str, int, int, int]:
-    """处理并保存上传图片,返回 (relative_key, width, height, file_size)。"""
+) -> tuple[bytes, int, int]:
+    """校验并处理上传图片,返回 (jpeg_bytes, width, height)。"""
     # a. 校验扩展名
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -125,21 +132,68 @@ def save_uploaded_image(
         bg.paste(img, offset)
         img = bg
 
-    # g/h. 保存为 JPEG
-    dest_dir = UPLOAD_BASE_DIR / subdir
+    # g. 编码为 JPEG
+    buf = BytesIO()
+    img.save(buf, format="JPEG", quality=JPEG_QUALITY)
+    return buf.getvalue(), img.width, img.height
+
+
+def _save_uploaded_image_to_base(
+    file_content: bytes,
+    filename: str,
+    base_dir: Path,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    file_bytes, width, height = _prepare_image(file_content, filename, square)
+
+    dest_dir = _safe_upload_dir(base_dir, subdir)
     dest_dir.mkdir(parents=True, exist_ok=True)
     file_id = uuid.uuid4().hex
     dest_path = dest_dir / f"{file_id}.jpg"
 
-    buf = BytesIO()
-    img.save(buf, format="JPEG", quality=JPEG_QUALITY)
-    file_bytes = buf.getvalue()
-
     dest_path.write_bytes(file_bytes)
 
-    # i. 返回相对路径 key + 尺寸 + 大小
     relative_key = f"{subdir}/{file_id}.jpg"
-    return relative_key, img.width, img.height, len(file_bytes)
+    return relative_key, width, height, len(file_bytes)
+
+
+def save_uploaded_image(
+    file_content: bytes,
+    filename: str,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    """处理并保存公开上传图片,返回 (relative_key, width, height, file_size)。"""
+    return _save_uploaded_image_to_base(
+        file_content,
+        filename,
+        UPLOAD_BASE_DIR,
+        subdir,
+        square=square,
+    )
+
+
+def save_private_buyer_image(
+    file_content: bytes,
+    filename: str,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    """处理并保存买方注册私有图片,返回相对 private_uploads 的 key。"""
+    return _save_uploaded_image_to_base(
+        file_content,
+        filename,
+        PRIVATE_UPLOAD_BASE_DIR,
+        subdir,
+        square=square,
+    )
+
+
+def delete_private_buyer_image(image_key: str) -> None:
+    """删除买方注册私有图片(best-effort 调用方自行吞异常)。"""
+    path = _safe_upload_dir(PRIVATE_UPLOAD_BASE_DIR, image_key)
+    path.unlink(missing_ok=True)
 
 
 def validate_image_file(filename: str, content_length: int) -> None:

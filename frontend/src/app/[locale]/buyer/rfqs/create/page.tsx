@@ -84,7 +84,6 @@ interface DraftData {
   certifications: string[];
   remark: string;
   manualItems: ManualItem[];
-  attachment_urls: string[];
   attachments: AttachmentPublic[];
 }
 
@@ -101,7 +100,6 @@ function emptyDraft(): DraftData {
     certifications: [],
     remark: "",
     manualItems: [],
-    attachment_urls: [],
     attachments: [],
   };
 }
@@ -606,7 +604,6 @@ function RfqCreateContent() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (!parsed.manualItems) parsed.manualItems = [];
-          if (!parsed.attachment_urls) parsed.attachment_urls = [];
           if (!parsed.attachments) parsed.attachments = [];
           return parsed;
         }
@@ -788,7 +785,6 @@ function RfqCreateContent() {
           required_certifications:
             draft.certifications.length > 0 ? draft.certifications : undefined,
           remark: draft.remark || undefined,
-          attachment_urls: draft.attachment_urls.length > 0 ? draft.attachment_urls : undefined,
           attachment_ids: draft.attachments.length > 0 ? draft.attachments.map(a => a.id) : undefined,
         },
         idemRef.current,
