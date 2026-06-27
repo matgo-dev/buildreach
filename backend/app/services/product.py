@@ -484,7 +484,7 @@ async def _batch_main_images(
         .distinct(ProductImage.product_id)
     )
     rows = (await db.execute(q)).all()
-    base = settings.IMAGE_BASE_URL
+    base = settings.IMAGE_PATH_PREFIX
     return {pid: f"{base}/{key}" for pid, key in rows}
 
 
@@ -576,8 +576,7 @@ async def list_products_public(
         q = q.where(Product.supply_mode == supply_mode)
         count_q = count_q.where(Product.supply_mode == supply_mode)
     if brand:
-        # 品牌名是专有名词，统一用 brand_zh 筛选，不做 locale 切换
-        brand_col = Product.brand_zh
+        brand_col = _brand_col_by_locale()
         brand_list = [b.strip() for b in brand.split(",") if b.strip()]
         if len(brand_list) == 1:
             brand_filter = brand_col == brand_list[0]
@@ -799,16 +798,26 @@ async def list_certification_options(db: AsyncSession) -> list[str]:
     return [row[0] for row in result]
 
 
+def _brand_col_by_locale():
+    """按当前 locale 选择品牌列，sw 回退 en。"""
+    locale = get_current_locale()
+    if locale == "en":
+        return func.coalesce(func.nullif(Product.brand_en, ''), Product.brand_zh)
+    if locale == "sw":
+        return func.coalesce(func.nullif(Product.brand_sw, ''), func.nullif(Product.brand_en, ''), Product.brand_zh)
+    return Product.brand_zh
+
+
 async def list_brand_options(
     db: AsyncSession,
     *,
     category_code: str | None = None,
     limit: int = 50,
 ) -> list[str]:
-    """按商品数量降序返回 Top N 品牌，用于筛选下拉。"""
+    """按商品数量降序返回 Top N 品牌（按当前 locale），用于筛选下拉。"""
     from sqlalchemy import func
 
-    brand_col = Product.brand_zh
+    brand_col = _brand_col_by_locale()
     cnt = func.count().label("cnt")
     q = (
         select(brand_col, cnt)

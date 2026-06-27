@@ -143,7 +143,7 @@ def _build_attribute_groups(attrs, locale: str) -> list[dict]:
 
         swatch = None
         if attr.value_type == "image" and attr.swatch_image:
-            swatch = f"{settings.IMAGE_BASE_URL}/{attr.swatch_image}"
+            swatch = f"{settings.IMAGE_PATH_PREFIX}/{attr.swatch_image}"
 
         key_map[key]["values"].append(
             AttrValue(value=value, value_type=attr.value_type or "text", swatch_image=swatch).model_dump()
@@ -167,7 +167,7 @@ def _localized_attr(attr, field: str, locale: str) -> str:
 
 def _img_to_dict(img) -> dict:
     d = ProductImageSchema.model_validate(img).model_dump()
-    d["full_url"] = f"{settings.IMAGE_BASE_URL}/{img.image_key}"
+    d["full_url"] = f"{settings.IMAGE_PATH_PREFIX}/{img.image_key}"
     return d
 
 
@@ -183,7 +183,7 @@ def _get_main_image_url(p) -> str | None:
     main = next((i for i in imgs if i.image_type == ImageType.MAIN), None)
     if not main:
         main = sorted(imgs, key=lambda i: i.sort_order)[0]
-    return f"{settings.IMAGE_BASE_URL}/{main.image_key}"
+    return f"{settings.IMAGE_PATH_PREFIX}/{main.image_key}"
 
 
 def _to_public(p, *, main_image_url: str | None = None) -> dict:
@@ -194,7 +194,7 @@ def _to_public(p, *, main_image_url: str | None = None) -> dict:
         description=get_localized(p, "description"),
         category_code=p.category_code,
         origin=get_localized(p, "origin"),
-        brand=p.brand_zh or None,
+        brand=get_localized(p, "brand") or None,
         certifications=p.certifications,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
@@ -275,7 +275,8 @@ async def brand_options(
     db: AsyncSession = Depends(get_db),
 ):
     """按商品数量降序返回 Top 50 品牌，结果缓存 10 分钟。"""
-    cache_key = category_code or "__all__"
+    locale = get_current_locale()
+    cache_key = f"{locale}:{category_code or '__all__'}"
     now = monotonic()
     cached = _BRAND_CACHE.get(cache_key)
     if cached and now - cached[0] < BRAND_CACHE_SECONDS:
@@ -349,7 +350,7 @@ async def get_product(
         detail_description=get_localized(p, "detail_description") or None,
         category_code=p.category_code,
         origin=get_localized(p, "origin"),
-        brand=p.brand_zh or None,
+        brand=get_localized(p, "brand") or None,
         hs_code=p.hs_code,
         certifications=p.certifications,
         selling_points=get_localized(p, "selling_points"),

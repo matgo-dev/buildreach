@@ -100,8 +100,8 @@ export function FilterPanel({
       <div className="flex-1 min-w-0">
         <div
           ref={containerRef}
-          className={`flex flex-wrap gap-1 transition-all duration-200 ${
-            expanded ? "max-h-[150px] sm:max-h-[140px] overflow-y-auto" : "max-h-[34px] overflow-hidden"
+          className={`flex flex-wrap gap-1 sm:grid sm:grid-cols-8 sm:gap-x-0 sm:gap-y-0.5 transition-all duration-200 ${
+            expanded ? "max-h-[150px] sm:max-h-[200px] overflow-y-auto" : "max-h-[34px] sm:max-h-[32px] overflow-hidden"
           }`}
         >
           {/* "全部"选项 */}
@@ -154,7 +154,7 @@ export function FilterPanel({
               <button
                 key={item.key}
                 onClick={() => onSelect(item.key)}
-                className={`h-[28px] rounded-md px-2.5 text-[12px] font-medium transition-all ${
+                className={`h-[28px] rounded-md px-2.5 text-[12px] font-medium text-left truncate transition-all ${
                   isSelected
                     ? "text-teal-700 font-bold"
                     : "text-ink hover:text-teal-700"

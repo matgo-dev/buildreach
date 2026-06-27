@@ -34,3 +34,6 @@ Thumbs.db
 # 误留的 npm 锁(本项目锁定 pnpm)
 package-lock.json
 yarn.lock
+
+# pnpm workspace 配置(非 monorepo,进入容器会导致构建失败)
+pnpm-workspace.yaml
