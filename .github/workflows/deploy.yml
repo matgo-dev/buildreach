@@ -1,35 +1,17 @@
-name: Deploy to ECS
+name: Build & Deploy
 
-# 仅手动触发(代码提交 / 合并 main 不会自动部署)
-# 触发方式:
-#   - GitHub 网页:repo -> Actions -> "Deploy to ECS" -> Run workflow
-#   - 命令行:gh workflow run "Deploy to ECS"
+# 手动触发:GitHub 网页 → Actions → "Build & Deploy" → Run workflow
 on:
   workflow_dispatch:
-    inputs:
-      frontend_host_port:
-        description: "Frontend host port"
-        required: true
-        default: "3001"
-      backend_host_port:
-        description: "Backend host port"
-        required: true
-        default: "8001"
-      public_origin:
-        description: "Public origin, e.g. https://www.example.com. Defaults to http://ECS_HOST"
-        required: false
-        default: ""
 
-# 同时只允许一个部署在跑,后到的排队等(不取消正在进行的)
+# 同时只允许一个部署在跑,后到的排队等
 concurrency:
-  group: deploy-production
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/buildlink-dev/buildlink-ea
-  ACR_REGISTRY: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com
-  ACR_IMAGE_PREFIX: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01
+  IMAGE_REGISTRY: ghcr.io/buildlink-dev/buildlink-ea
 
 jobs:
   # ── 迁移安全检查 ──
@@ -42,18 +24,14 @@ jobs:
           fetch-depth: 0
 
       - name: 检查破坏性迁移
-        env:
-          BASE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
         run: |
-          # commit message 含 [allow-destructive-migration] -> 跳过
           if git log -1 --pretty=%B | grep -q '\[allow-destructive-migration\]'; then
             echo "已授权破坏性迁移,跳过检查"
             exit 0
           fi
           bash deploy/check-migration-safety.sh
 
-  # ── Job 1: 构建镜像并推送到 ghcr.io ──
+  # ── 构建镜像并推送到 GHCR ──
   build:
     name: 构建并推送镜像
     needs: check-migration
@@ -63,7 +41,6 @@ jobs:
       packages: write
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
-      public_origin: ${{ steps.public.outputs.public_origin }}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,48 +55,12 @@ jobs:
           echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
           echo "镜像 Tag: $IMAGE_TAG / $LATEST_TAG"
 
-      # dev 分支自动用 3003/8003，main 用 3001/8001，手动填的优先
-      - name: 解析端口(构建 frontend 需要 API URL)
-        id: ports
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          INPUT_FE="${{ inputs.frontend_host_port }}"
-          INPUT_BE="${{ inputs.backend_host_port }}"
-          if [ "$BRANCH" = "dev" ]; then
-            FE="${INPUT_FE:-3003}"; [ "$INPUT_FE" = "3001" ] && FE="3003"
-            BE="${INPUT_BE:-8003}"; [ "$INPUT_BE" = "8001" ] && BE="8003"
-          else
-            FE="${INPUT_FE:-3001}"
-            BE="${INPUT_BE:-8001}"
-          fi
-          echo "frontend_port=$FE" >> "$GITHUB_OUTPUT"
-          echo "backend_port=$BE" >> "$GITHUB_OUTPUT"
-          echo "Branch=$BRANCH -> frontend=$FE, backend=$BE"
-
-      - name: 解析公网入口
-        id: public
-        run: |
-          ORIGIN="${{ inputs.public_origin }}"
-          if [ -z "$ORIGIN" ]; then
-            ORIGIN="http://${{ secrets.ECS_HOST }}"
-          fi
-          ORIGIN="${ORIGIN%/}"
-          echo "public_origin=$ORIGIN" >> "$GITHUB_OUTPUT"
-          echo "Public origin=$ORIGIN"
-
-      - name: 登录 ghcr.io
+      - name: 登录 GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 登录阿里云 ACR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.ACR_REGISTRY }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -131,10 +72,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/backend:${{ steps.meta.outputs.image_tag }}
-            ${{ env.IMAGE_PREFIX }}/backend:${{ steps.meta.outputs.latest_tag }}
-            ${{ env.ACR_IMAGE_PREFIX }}/backend:${{ steps.meta.outputs.image_tag }}
-            ${{ env.ACR_IMAGE_PREFIX }}/backend:${{ steps.meta.outputs.latest_tag }}
+            ${{ env.IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.image_tag }}
+            ${{ env.IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_TIME=${{ github.event.head_commit.timestamp }}
@@ -148,39 +87,21 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.image_tag }}
-            ${{ env.IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.latest_tag }}
-            ${{ env.ACR_IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.image_tag }}
-            ${{ env.ACR_IMAGE_PREFIX }}/frontend:${{ steps.meta.outputs.latest_tag }}
+            ${{ env.IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.image_tag }}
+            ${{ env.IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
             NEXT_PUBLIC_DEMO_EMAILS=${{ vars.DEMO_EMAILS }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-  # ── Job 2: 部署到 ECS ──
-  deploy:
-    name: 部署到 ECS
+  # ── 部署到 ECS（测试/预发环境）──
+  deploy-ecs:
+    name: 部署到 ECS (Staging)
     needs: build
     runs-on: ubuntu-latest
+    environment: staging
     steps:
-      # dev 分支自动用 3003/8003，main 用 3001/8001
-      - name: 解析端口
-        id: ports
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          INPUT_FE="${{ inputs.frontend_host_port }}"
-          INPUT_BE="${{ inputs.backend_host_port }}"
-          if [ "$BRANCH" = "dev" ]; then
-            FE="${INPUT_FE:-3003}"; [ "$INPUT_FE" = "3001" ] && FE="3003"
-            BE="${INPUT_BE:-8003}"; [ "$INPUT_BE" = "8001" ] && BE="8003"
-          else
-            FE="${INPUT_FE:-3001}"
-            BE="${INPUT_BE:-8001}"
-          fi
-          echo "frontend_port=$FE" >> "$GITHUB_OUTPUT"
-          echo "backend_port=$BE" >> "$GITHUB_OUTPUT"
-
-      - name: SSH 触发 deploy.sh
+      - name: SSH 部署
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ECS_HOST }}
@@ -190,26 +111,60 @@ jobs:
           command_timeout: 15m
           script_stop: true
           script: |
-            cd ${APP_DIR:-/opt/buildreach}
+            cd /opt/buildreach
             git fetch origin
             git reset --hard origin/${{ github.ref_name }}
             DEPLOY_REF=origin/${{ github.ref_name }} \
             IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
-            BACKEND_HOST_PORT=${{ steps.ports.outputs.backend_port }} \
-            FRONTEND_HOST_PORT=${{ steps.ports.outputs.frontend_port }} \
-            DEPLOY_PUBLIC_ORIGIN=${{ needs.build.outputs.public_origin }} \
-            DEPLOY_API_BASE_URL=${{ needs.build.outputs.public_origin }} \
-            DEPLOY_CORS_ORIGINS=${{ needs.build.outputs.public_origin }},http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }} \
-            DEPLOY_IMAGE_PATH_PREFIX=/static \
+            GHCR_TOKEN=${{ secrets.GHCR_TOKEN }} \
+            DEPLOY_API_BASE_URL=http://${{ secrets.ECS_HOST }} \
+            DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }} \
               bash deploy/deploy.sh
 
-      - name: 通知
+      - name: 部署结果
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "部署完成 -> ${{ needs.build.outputs.public_origin }}"
-            echo "调试直连 -> http://${{ secrets.ECS_HOST }}:${{ steps.ports.outputs.frontend_port }}"
-            echo "镜像版本: ${{ needs.build.outputs.image_tag }}"
+            echo "✅ ECS 部署成功"
+            echo "   镜像: ${{ needs.build.outputs.image_tag }}"
+            echo "   地址: http://${{ secrets.ECS_HOST }}"
           else
-            echo "部署失败,登录 ECS 排查:ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}"
+            echo "❌ ECS 部署失败"
+          fi
+
+  # ── 部署到 OVH（生产环境）──
+  deploy-ovh:
+    name: 部署到 OVH (Production)
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVH_HOST }}
+          username: ${{ secrets.OVH_USER }}
+          key: ${{ secrets.OVH_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            cd /opt/buildreach
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            DEPLOY_REF=origin/${{ github.ref_name }} \
+            IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
+            GHCR_TOKEN=${{ secrets.GHCR_TOKEN }} \
+            DEPLOY_API_BASE_URL=${{ secrets.OVH_PUBLIC_ORIGIN }} \
+            DEPLOY_CORS_ORIGINS=${{ secrets.OVH_PUBLIC_ORIGIN }} \
+              bash deploy/deploy.sh
+
+      - name: 部署结果
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ OVH 生产部署成功"
+            echo "   镜像: ${{ needs.build.outputs.image_tag }}"
+          else
+            echo "❌ OVH 生产部署失败"
           fi
