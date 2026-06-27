@@ -152,7 +152,6 @@ class Rfq(Base, TimestampUpdateMixin, SoftDeleteMixin):
     )
     target_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     required_certifications: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
-    attachment_urls: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
 
     # relationships
     items: Mapped[list["RfqItem"]] = relationship(

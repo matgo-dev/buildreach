@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -30,7 +29,6 @@ from app.core.exceptions import (
     BuyerOrgRequiredError,
     RfqAlreadyClaimedError,
     RfqDuplicateItemError,
-    RfqInvalidAttachmentUrlError,
     RfqItemNotFoundError,
     RfqMinOneItemError,
     RfqNotAssignedToYouError,
@@ -39,7 +37,6 @@ from app.core.exceptions import (
     RfqNoValidItemsError,
     RfqNotFoundError,
     RfqStateInvalidError,
-    RfqTooManyAttachmentsError,
 )
 from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
@@ -73,22 +70,6 @@ logger = logging.getLogger(__name__)
 
 # rfq_no 并发重试上限
 _RFQ_NO_MAX_RETRIES = 5
-
-# ── attachment_urls 校验 ─────────────────────────────
-
-_ATTACHMENT_URL_PATTERN = re.compile(r"^/static/rfq-attachments/[0-9a-f\-]{36}\.\w{2,5}$")
-_MAX_ATTACHMENTS = 6
-
-def validate_attachment_urls(urls: list[str] | None) -> None:
-    """校验附件 URL：路径白名单 + 数量上限。"""
-    if not urls:
-        return
-    if len(urls) > _MAX_ATTACHMENTS:
-        raise RfqTooManyAttachmentsError()
-    for url in urls:
-        if not _ATTACHMENT_URL_PATTERN.match(url):
-            raise RfqInvalidAttachmentUrlError()
-
 
 # ── 组织解析 ───────────────────────────────────────────
 
@@ -227,13 +208,10 @@ async def create_rfq(
         if offending:
             raise RfqProductNotAvailableError(offending)
 
-    # ── 3. attachment_urls 校验 ──
-    validate_attachment_urls(payload.attachment_urls)
-
-    # ── 4. 生成 rfq_no ──
+    # ── 3. 生成 rfq_no ──
     rfq_no = await _generate_rfq_no(db)
 
-    # ── 5. SAVEPOINT 内只插 Rfq ──
+    # ── 4. SAVEPOINT 内只插 Rfq ──
     rfq: Rfq | None = None
     for attempt in range(_RFQ_NO_MAX_RETRIES):
         nested = await db.begin_nested()
@@ -256,7 +234,6 @@ async def create_rfq(
                 expected_delivery_date=to_naive_utc(payload.expected_delivery_date),
                 target_currency=payload.target_currency,
                 required_certifications=payload.required_certifications or [],
-                attachment_urls=payload.attachment_urls or [],
             )
             db.add(rfq)
             await db.flush()
@@ -291,7 +268,7 @@ async def create_rfq(
     if rfq is None:
         raise RfqNoGenerationFailedError()
 
-    # ── 6. SAVEPOINT 成功后 add RfqItem ──
+    # ── 5. SAVEPOINT 成功后 add RfqItem ──
     for row in item_rows:
         db.add(RfqItem(
             rfq_id=rfq.id,
@@ -305,14 +282,14 @@ async def create_rfq(
             remark=row.get("remark"),
         ))
 
-    # ── 6.5 附件关联 ──
+    # ── 5.5 附件关联 ──
     if payload.attachment_ids:
         from app.db.models.attachment import OwnerType
         await validate_and_link_attachments(
             db, created_by_user_id, OwnerType.RFQ, rfq.id, payload.attachment_ids,
         )
 
-    # ── 7. 审计 + 单次 commit ──
+    # ── 6. 审计 + 单次 commit ──
     if source == RfqSource.OPERATOR_PROXY:
         audit_action = AuditAction.PROXY_CREATE
     elif payload.as_draft:
@@ -690,7 +667,6 @@ def _serialize_rfq(
             expected_delivery_date=rfq.expected_delivery_date,
             target_currency=rfq.target_currency,
             required_certifications=rfq.required_certifications,
-            attachment_urls=rfq.attachment_urls,
             attachments=att_list,
             created_at=rfq.created_at,
             updated_at=rfq.updated_at,
@@ -715,7 +691,6 @@ def _serialize_rfq(
         expected_delivery_date=rfq.expected_delivery_date,
         target_currency=rfq.target_currency,
         required_certifications=rfq.required_certifications,
-        attachment_urls=rfq.attachment_urls,
         attachments=att_list,
         created_at=rfq.created_at,
         updated_at=rfq.updated_at,
@@ -929,9 +904,6 @@ async def update_rfq(
             remark=row.get("remark"),
         ))
 
-    # ── attachment_urls 校验 ──
-    validate_attachment_urls(payload.attachment_urls)
-
     # ── 附件关联 ──
     if payload.attachment_ids is not None:
         from app.db.models.attachment import OwnerType
@@ -948,7 +920,6 @@ async def update_rfq(
     rfq.expected_delivery_date = to_naive_utc(payload.expected_delivery_date)
     rfq.target_currency = payload.target_currency
     rfq.required_certifications = payload.required_certifications or []
-    rfq.attachment_urls = payload.attachment_urls or []
     rfq.remark = payload.remark
 
     await write_audit(

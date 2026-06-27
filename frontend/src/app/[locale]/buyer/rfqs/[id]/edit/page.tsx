@@ -290,7 +290,6 @@ function RfqEditContent() {
   const [currency, setCurrency] = useState("USD");
   const [certifications, setCertifications] = useState<string[]>([]);
   const [remark, setRemark] = useState("");
-  const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<AttachmentPublic[]>([]);
 
   // 加载已有数据
@@ -324,7 +323,6 @@ function RfqEditContent() {
         setCurrency(rfq.target_currency ?? "USD");
         setCertifications(rfq.required_certifications ?? []);
         setRemark(rfq.remark ?? "");
-        setAttachmentUrls(rfq.attachment_urls ?? []);
         setAttachments(rfq.attachments ?? []);
       })
       .catch(() => {
@@ -368,9 +366,8 @@ function RfqEditContent() {
     target_currency: currency || undefined,
     required_certifications: certifications.length > 0 ? certifications : undefined,
     remark: remark || undefined,
-    attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
     attachment_ids: attachments.length > 0 ? attachments.map(a => a.id) : undefined,
-  }), [availableItems, contactName, contactPhone, contactEmail, deliveryPlace, destinationPort, preferredTradeTerm, deliveryDate, currency, certifications, remark, attachmentUrls, attachments]);
+  }), [availableItems, contactName, contactPhone, contactEmail, deliveryPlace, preferredTradeTerm, destinationPort, deliveryDate, currency, certifications, remark, attachments]);
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);

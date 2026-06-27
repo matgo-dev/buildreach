@@ -652,26 +652,6 @@ class CartDuplicateVariantError(BusinessError):
         )
 
 
-class RfqTooManyAttachmentsError(BusinessError):
-    """40521 — RFQ 附件数超过上限(6)。"""
-    def __init__(self):
-        super().__init__(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, 40521,
-            "Too many attachments, maximum 6 allowed",
-            message_key=MessageKey.RFQ_TOO_MANY_ATTACHMENTS,
-        )
-
-
-class RfqInvalidAttachmentUrlError(BusinessError):
-    """40522 — RFQ 附件 URL 非法。"""
-    def __init__(self):
-        super().__init__(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, 40522,
-            "Invalid attachment URL",
-            message_key=MessageKey.RFQ_INVALID_ATTACHMENT_URL,
-        )
-
-
 # ── 附件域 405xx ──────────────────────────────────────────
 
 

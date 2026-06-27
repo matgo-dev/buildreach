@@ -169,12 +169,13 @@ async def register_buyer_tz(
     client,
     *,
     phone: str | None = None,
-    password: str = "Aa123456789!",
+    password: str = "Aa123456789",
     name: str = "Test User",
     company_name: str = "Test Shop",
     address: str = "Dar es Salaam",
     email: str | None = None,
     cat_code: str = "01",
+    with_license: bool = False,
 ) -> dict:
     """注册坦桑买方,返回 response JSON。
 
@@ -182,6 +183,8 @@ async def register_buyer_tz(
     """
     if phone is None:
         phone = _next_phone()
+    if email is None:
+        email = f"buyertz{phone.replace('+', '')}@gmail.com"
     img = _make_test_image()
     data = {
         "phone": phone,
@@ -190,13 +193,15 @@ async def register_buyer_tz(
         "company_name": company_name,
         "address": address,
         "business_category_codes": cat_code,
+        "email": email,
     }
-    if email:
-        data["email"] = email
+    files = [("storefront_images", ("shop.jpg", img, "image/jpeg"))]
+    if with_license:
+        files.append(("license_images", ("license.jpg", _make_test_image(), "image/jpeg")))
     r = await client.post(
         "/api/v1/auth/register/buyer",
         data=data,
-        files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
+        files=files,
     )
     return {"response": r, "phone": phone, "password": password, "email": email}
 
@@ -241,5 +246,3 @@ async def superadmin_headers(client) -> dict[str, str]:
     assert r3.status_code == 200
     new_token = r3.json()["data"]["access_token"]
     return {"Authorization": f"Bearer {new_token}"}
-
-

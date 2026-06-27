@@ -29,7 +29,6 @@ export interface RfqCreate {
   expected_delivery_date?: string;
   target_currency?: string;
   required_certifications?: string[];
-  attachment_urls?: string[];
   attachment_ids?: number[];
   remark?: string;
 }
@@ -45,7 +44,6 @@ export interface RfqUpdatePayload {
   expected_delivery_date?: string;
   target_currency?: string;
   required_certifications?: string[];
-  attachment_urls?: string[];
   attachment_ids?: number[];
   remark?: string;
 }
@@ -96,7 +94,6 @@ export interface RfqBuyerPublic {
   expected_delivery_date: string | null;
   target_currency: string | null;
   required_certifications: string[] | null;
-  attachment_urls: string[] | null;
   attachments: AttachmentPublic[];
   created_at: string | null;
   updated_at: string | null;

@@ -185,8 +185,10 @@ _uploads_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_uploads_dir)), name="static")
 
 # 附件私有存储目录(不经 /static 公开)
-_private_uploads_dir = Path(__file__).resolve().parent.parent / "private_uploads" / "attachments"
-_private_uploads_dir.mkdir(parents=True, exist_ok=True)
+_private_uploads_root = Path(__file__).resolve().parent.parent / "private_uploads"
+(_private_uploads_root / "attachments").mkdir(parents=True, exist_ok=True)
+(_private_uploads_root / "buyer_orgs" / "storefront").mkdir(parents=True, exist_ok=True)
+(_private_uploads_root / "buyer_orgs" / "licenses").mkdir(parents=True, exist_ok=True)
 
 
 # ----- 业务路由 -----
