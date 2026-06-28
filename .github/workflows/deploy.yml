@@ -4,10 +4,10 @@ name: Build & Deploy
 on:
   workflow_dispatch:
 
-# 同时只允许一个部署在跑,后到的排队等
+# 同分支新触发时取消旧的，不排队等待
 concurrency:
   group: deploy-${{ github.ref_name }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
