@@ -6,7 +6,7 @@
  */
 export const BRAND = {
   /** 短品牌名:Logo 旁、Header、登录页 H1、首页 H1 */
-  name: "MATGO",
+  name: "Matgo",
 
   /** 中文品牌名 */
   nameZh: "筑达",
@@ -31,7 +31,7 @@ export const BRAND = {
     "China Building Materials for East Africa · 中国建材直采服务东非市场",
 
   /** 浏览器 tab 完整 title */
-  fullTitle: "MATGO 筑达 - China Building Materials for East Africa",
+  fullTitle: "Matgo 筑达 - China Building Materials for East Africa",
 
   /** SEO description meta + 首页 hero 描述段 */
   description:

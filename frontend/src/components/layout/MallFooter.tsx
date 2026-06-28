@@ -63,7 +63,7 @@ export function MallFooter() {
 
       {/* 底部版权 */}
       <div className="border-t border-white/10 py-3.5 px-6 text-center text-[12px] text-[#b4d7d5]">
-        © {new Date().getFullYear()} MATGO. All rights reserved.
+        © {new Date().getFullYear()} Matgo. All rights reserved.
       </div>
     </footer>
   );
