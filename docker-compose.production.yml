@@ -91,8 +91,8 @@ services:
 
 volumes:
   pgdata:
-    name: overseas_platform_pgdata
+    name: ${PGDATA_VOLUME_NAME:-overseas_platform_pgdata}
   uploads:
-    name: overseas_platform_uploads
+    name: ${UPLOADS_VOLUME_NAME:-overseas_platform_uploads}
   private_uploads:
-    name: overseas_platform_private_uploads
+    name: ${PRIVATE_UPLOADS_VOLUME_NAME:-overseas_platform_private_uploads}
