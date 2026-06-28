@@ -91,6 +91,14 @@ def _normalize_unit(raw: str | None) -> str:
     return _UNIT_MAP_SUPPLEMENT.get(raw.strip(), "PCS")
 
 
+def _extract_sale_attr(sku_raw: dict, names: tuple[str, ...]) -> str | None:
+    """从 SKU 的 saleAttributes 中提取匹配的变体值,用于冗余填充固定列。"""
+    for sa in (sku_raw.get("saleAttributes") or []):
+        if isinstance(sa, dict) and sa.get("name") in names:
+            return (sa.get("value") or "").strip() or None
+    return None
+
+
 # ────────────────────── 数据结构 ──────────────────────
 
 
@@ -660,6 +668,9 @@ def import_offer(
             name_zh=sku_name_zh,
             name_en=None,
             manufacturer_model=sku_model,
+            # 颜色/材质冗余列:仅当它们是变体轴(出现在 saleAttributes)时才填
+            color_zh=_extract_sale_attr(sku_raw, ("颜色", "色彩", "颜色系列")),
+            material_zh=_extract_sale_attr(sku_raw, ("材质", "材料", "材质牌号")),
             moq=sku_moq,
             packing_quantity=packing_qty,
             gross_weight_kg=weight,
