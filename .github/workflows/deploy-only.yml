@@ -1,0 +1,107 @@
+name: Deploy Only (Re-deploy)
+
+# 仅部署，跳过构建。用于镜像已构建成功但部署失败时手动重试。
+# GitHub 网页 → Actions → "Deploy Only (Re-deploy)" → Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '部署目标'
+        required: true
+        type: choice
+        options:
+          - ecs
+          - ovh
+          - both
+        default: both
+
+env:
+  IMAGE_REGISTRY: ghcr.io/matgo-dev/buildreach
+  ACR_IMAGE_REGISTRY: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01
+
+jobs:
+  resolve-tag:
+    name: 解析镜像 Tag
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+    steps:
+      - name: 计算镜像 Tag
+        id: tag
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          IMAGE_TAG="${BRANCH}-latest"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "使用镜像 Tag: $IMAGE_TAG"
+
+  deploy-ecs:
+    name: 部署到 ECS (Staging)
+    needs: resolve-tag
+    if: inputs.target == 'ecs' || inputs.target == 'both'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USER }}
+          key: ${{ secrets.ECS_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            cd /opt/buildreach
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            DEPLOY_REF=origin/${{ github.ref_name }} \
+            IMAGE_TAG=${{ needs.resolve-tag.outputs.image_tag }} \
+            IMAGE_REGISTRY=${{ env.ACR_IMAGE_REGISTRY }} \
+            DEPLOY_API_BASE_URL=http://${{ secrets.ECS_HOST }} \
+            DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }} \
+              bash deploy/deploy.sh
+
+      - name: 部署结果
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ ECS 部署成功 (镜像: ${{ needs.resolve-tag.outputs.image_tag }})"
+          else
+            echo "❌ ECS 部署失败"
+          fi
+
+  deploy-ovh:
+    name: 部署到 OVH (Production)
+    needs: resolve-tag
+    if: inputs.target == 'ovh' || inputs.target == 'both'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVH_HOST }}
+          username: ${{ secrets.OVH_USER }}
+          key: ${{ secrets.OVH_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            cd /opt/buildreach
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            DEPLOY_REF=origin/${{ github.ref_name }} \
+            IMAGE_TAG=${{ needs.resolve-tag.outputs.image_tag }} \
+            GHCR_TOKEN=${{ secrets.GHCR_TOKEN }} \
+            DEPLOY_API_BASE_URL=${{ secrets.OVH_PUBLIC_ORIGIN }} \
+            DEPLOY_CORS_ORIGINS=${{ secrets.OVH_PUBLIC_ORIGIN }} \
+              bash deploy/deploy.sh
+
+      - name: 部署结果
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ OVH 生产部署成功 (镜像: ${{ needs.resolve-tag.outputs.image_tag }})"
+          else
+            echo "❌ OVH 生产部署失败"
+          fi
