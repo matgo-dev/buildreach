@@ -20,19 +20,20 @@ class ProductAttr(Base, I18nMixin):
     __table_args__ = (
         Index("ix_product_attrs_product_id", "product_id"),
         Index("ix_product_attrs_sku_id", "sku_id"),
-        # 商品级:同 attr_key_en + attr_value_en 不可重复(允许同 key 多值)
+        # 商品级:同 attr_key + attr_value 不可重复(允许同 key 多值)
+        # en 改 nullable 后,PostgreSQL 中 NULL 不参与唯一约束判定,不会误冲突
         Index(
             "uq_product_attrs_product_key_val",
             "product_id", "attr_key_en", "attr_value_en",
             unique=True,
-            postgresql_where="sku_id IS NULL",
+            postgresql_where="sku_id IS NULL AND deleted_at IS NULL",
         ),
         # SKU 级:同理
         Index(
             "uq_product_attrs_sku_key_val",
             "sku_id", "attr_key_en", "attr_value_en",
             unique=True,
-            postgresql_where="sku_id IS NOT NULL",
+            postgresql_where="sku_id IS NOT NULL AND deleted_at IS NULL",
         ),
     )
 
@@ -49,11 +50,12 @@ class ProductAttr(Base, I18nMixin):
     )
 
     # i18n 规范化：统一 {field}_{locale} 命名
-    attr_key_en: Mapped[str] = mapped_column(String(50), nullable=False)
+    # en/zh/sw 均 nullable — 鑫方盛等纯中文数据源只填 zh,en/sw 由 i18n 管道补译
+    attr_key_en: Mapped[str | None] = mapped_column(String(50), nullable=True)
     attr_key_zh: Mapped[str | None] = mapped_column(String(50), nullable=True)
     attr_key_sw: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
-    attr_value_en: Mapped[str] = mapped_column(String(200), nullable=False)
+    attr_value_en: Mapped[str | None] = mapped_column(String(200), nullable=True)
     attr_value_zh: Mapped[str | None] = mapped_column(String(500), nullable=True)
     attr_value_sw: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
