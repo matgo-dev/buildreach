@@ -4,7 +4,7 @@
     <path d="M326.2 172.8 A87.0 87.0 0 1 1 199.8 322.6" stroke="#006466" stroke-width="54" stroke-linecap="round"/>
     <circle cx="181.0" cy="299.7" r="25" fill="#DB9E00"/>
   </g>
-  <text x="310" y="115" font-family="Avenir Next, Arial, sans-serif" font-weight="700" font-size="58" fill="#071C34">MATGO</text>
+  <text x="310" y="115" font-family="Avenir Next, Arial, sans-serif" font-weight="700" font-size="58" fill="#071C34">Matgo</text>
   <text x="650" y="119" font-family="STHeiti, PingFang SC, sans-serif" font-size="40" fill="#006466">筑达</text>
   <rect x="310" y="131" width="86" height="6" rx="3" fill="#DB9E00"/>
   <text x="310" y="171" font-family="Arial, sans-serif" font-size="17" fill="#4C606E">China Building Materials for East Africa</text>
