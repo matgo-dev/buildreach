@@ -398,6 +398,10 @@ def import_offer(
         if meta_obj.get("scrapeTime"):
             source_meta["crawled_at"] = meta_obj["scrapeTime"]
     source_meta["spuCode"] = raw_spu
+    # categoryName 存 source_meta,不丢弃(categoryPath 用于匹配,categoryName 用于溯源)
+    cat_name = (data.get("categoryName") or "").strip()
+    if cat_name:
+        source_meta["categoryName"] = cat_name
 
     # ── 3. SPU 字段映射 ──
     name_zh = (data.get("spuName") or "").strip()
@@ -687,8 +691,37 @@ def import_offer(
                 value_type="text",
                 sort_order=sku_attr_sort,
                 selectable=False,
+                source_lang="zh",
+                trans_meta={
+                    "attr_key_zh": "src",
+                    "attr_key_en": "src",  # barcode/规格属性 的 key 已有英文
+                    "attr_key_sw": "pending",
+                    "attr_value_zh": "src",
+                    "attr_value_en": "pending",
+                    "attr_value_sw": "pending",
+                },
+                i18n_pending_at=_utcnow(),
             ))
             sku_attr_sort += 1
+
+        # 记录未处理的 skuRawFields 键,便于排查数据遗漏
+        _KNOWN_RAW_KEYS = {"weight", "volume", "barcode", "arrivalCycle",
+                           "specificationProperties", "maxLength", "minLength", "subLength"}
+        unknown_keys = set(raw_fields.keys()) - _KNOWN_RAW_KEYS
+        if unknown_keys:
+            log.warning("  [%s] SKU %s 有未处理的 skuRawFields: %s",
+                        raw_spu, sku_code_raw, ", ".join(sorted(unknown_keys)))
+
+    # ── 7.5 SPU manufacturer_model 回填:取默认 SKU 的型号,方便搜索和列表展示 ──
+    if skus_raw:
+        default_sku_model = None
+        for sa in (skus_raw[0].get("saleAttributes") or []):
+            if isinstance(sa, dict) and sa.get("name") in ("型号", "规格型号"):
+                default_sku_model = (sa.get("value") or "").strip() or None
+                break
+        if default_sku_model:
+            product.manufacturer_model = default_sku_model
+            db.flush()
 
     # ── 8. SPU 级图片:images[] + detailImages[] ──
     img_sort = 0
