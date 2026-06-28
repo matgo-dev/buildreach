@@ -81,7 +81,7 @@ export function MallHeader() {
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">
         {/* 上层：品牌 + 购物车/语言 */}
-        <div className="flex items-center justify-between min-h-[56px] md:min-h-[96px] md:grid md:grid-cols-[200px_minmax(400px,1fr)_auto] md:gap-5">
+        <div className="flex items-center justify-between min-h-[56px] md:min-h-[96px] md:grid md:grid-cols-[auto_minmax(400px,1fr)_auto] md:gap-5">
         {/* 左:品牌 */}
         <Link
           href="/"
