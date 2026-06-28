@@ -406,7 +406,13 @@ def import_offer(
     # ── 3. SPU 字段映射 ──
     name_zh = (data.get("spuName") or "").strip()
     brand_zh = (data.get("brandName") or "").strip() or None
-    # SPU 级不存 manufacturer_model — 型号是 SKU 级概念,每个 SKU 可能不同
+
+    # manufacturer_model:SPU 级概念,从 spuBasicAttributes 提取
+    manufacturer_model = None
+    for attr in (data.get("spuBasicAttributes") or []):
+        if isinstance(attr, dict) and attr.get("name") in ("型号", "规格型号", "产品型号"):
+            manufacturer_model = (attr.get("value") or "").strip() or None
+            break
 
     # 单位:取第一个 SKU(默认 SKU)的 unitName
     skus_raw = data.get("skus", [])
@@ -447,6 +453,8 @@ def import_offer(
             product.moq = moq_value
         product.moq_unit = unit
         product.unit = unit
+        if manufacturer_model:
+            product.manufacturer_model = manufacturer_model
         if source_meta:
             product.source_meta = source_meta
         product.trans_meta = _trans_meta
@@ -472,7 +480,7 @@ def import_offer(
             origin_en=None,
             detail_description_zh=None,
             detail_description_en=None,
-            manufacturer_model=None,
+            manufacturer_model=manufacturer_model,
             unit=unit,
             moq=moq_value,
             moq_unit=unit,
@@ -541,9 +549,9 @@ def import_offer(
             product_id=product.id,
             sku_id=None,
             attr_key_zh=key[:50],
-            attr_key_en=key[:50],   # NOT NULL,先用中文填充,等翻译管道补译
+            attr_key_en=None,       # 纯中文数据源,英文由 i18n 管道补译
             attr_value_zh=value[:500],
-            attr_value_en=value[:500],
+            attr_value_en=None,
             attr_group=None,
             value_type="text",
             sort_order=attr_sort,
@@ -562,9 +570,42 @@ def import_offer(
         ))
         attr_sort += 1
 
-    # spuSaleAttributes 不单独入库——它是规格轴的"可选值全集",
-    # 可以从所有 SKU 的 saleAttributes 聚合还原,存两遍会造成数据重复。
-    # 原始数据保留在 offer.json 里,需要时从 source_meta 溯源即可。
+    # ── 6.5 SPU 销售属性(变体轴定义):spuSaleAttributes → ProductAttr(sku_id=NULL, selectable=True) ──
+    # 定义了 SPU 下有哪些变体维度及所有可选值,前端渲染变体选择器需要这些数据
+    for sa_def in data.get("spuSaleAttributes", []):
+        sa_name = (sa_def.get("name") or "").strip()
+        if not sa_name:
+            continue
+        sa_values = sa_def.get("values", [])
+        if isinstance(sa_values, str):
+            sa_values = [v.strip() for v in sa_values.split(",") if v.strip()]
+        for sa_val in sa_values:
+            if not sa_val:
+                continue
+            dedup_key = (sa_name, str(sa_val))
+            if dedup_key in seen_attr_keys:
+                continue
+            seen_attr_keys.add(dedup_key)
+            db.add(ProductAttr(
+                product_id=product.id,
+                sku_id=None,
+                attr_key_zh=sa_name[:50],
+                attr_key_en=None,
+                attr_value_zh=str(sa_val)[:500],
+                attr_value_en=None,
+                attr_group=None,
+                value_type="text",
+                sort_order=attr_sort,
+                selectable=True,
+                swatch_image=None,
+                source_lang="zh",
+                trans_meta={
+                    "attr_key_zh": "src", "attr_key_en": "pending", "attr_key_sw": "pending",
+                    "attr_value_zh": "src", "attr_value_en": "pending", "attr_value_sw": "pending",
+                },
+                i18n_pending_at=_utcnow(),
+            ))
+            attr_sort += 1
 
     # ── 7. SKU 创建 ──
     for sku_idx, sku_raw in enumerate(skus_raw):
@@ -586,23 +627,11 @@ def import_offer(
         else:
             sku_moq = 1  # ProductSku.moq NOT NULL,给默认值
 
-        # 从 skuRawFields 提取物流参数和其他数据
+        # 从 skuRawFields 提取可映射到模型固定列的字段
         raw_fields = sku_raw.get("skuRawFields") or {}
         weight = _parse_decimal(raw_fields.get("weight"))
         volume = _parse_decimal(raw_fields.get("volume"))
-        barcode = (raw_fields.get("barcode") or "").strip() or None
         arrival_cycle = _parse_decimal(raw_fields.get("arrivalCycle"))
-
-        # SKU 级厂家型号:只在 saleAttributes 里有叫"型号"/"规格型号"的轴时才取
-        # 其他变体轴(颜色、长度、厚度等)不是型号,不往这里塞
-        # 所有变体值已经通过 7.1 步存到 ProductAttr(selectable=True) 了
-        sku_model = None
-        for sa in (sku_raw.get("saleAttributes") or []):
-            if isinstance(sa, dict) and sa.get("name") in ("型号", "规格型号"):
-                sku_model = (sa.get("value") or "").strip() or None
-                break
-
-        # lead_time: arrivalCycle (天) → lead_time_max
         lead_time_max = int(arrival_cycle) if arrival_cycle else None
 
         sku = ProductSku(
@@ -610,13 +639,13 @@ def import_offer(
             sku_code=sku_code,
             name_zh=sku_name_zh,
             name_en=None,
-            manufacturer_model=sku_model,
+            manufacturer_model=None,  # 型号是 SPU 级概念,SKU 的变体值走 ProductAttr
             moq=sku_moq,
             packing_quantity=None,
             gross_weight_kg=weight,
             volume_cbm=volume,
             lead_time_max=lead_time_max,
-            is_default=(sku_idx == 0),  # 第一个 SKU 为默认
+            is_default=(sku_idx == 0),
             status=SkuStatus.ACTIVE,
             source_lang="zh",
             trans_meta={
@@ -627,27 +656,28 @@ def import_offer(
             i18n_pending_at=_utcnow(),
         )
         db.add(sku)
-        db.flush()  # 拿到 sku.id
+        db.flush()
 
         # ── 7.1 SKU 级 saleAttributes → ProductAttr(selectable=True) ──
         sku_attr_sort = 0
-        seen_sku_attr_keys: set[str] = set()
+        seen_sku_attr_keys: set[tuple[str, str]] = set()
         for sa in (sku_raw.get("saleAttributes") or []):
             sa_name = (sa.get("name") or "").strip()
             sa_value = (sa.get("value") or "").strip()
             if not sa_name or not sa_value:
                 continue
-            if sa_name in seen_sku_attr_keys:
+            dedup = (sa_name, sa_value)
+            if dedup in seen_sku_attr_keys:
                 continue
-            seen_sku_attr_keys.add(sa_name)
+            seen_sku_attr_keys.add(dedup)
 
             db.add(ProductAttr(
                 product_id=product.id,
                 sku_id=sku.id,
                 attr_key_zh=sa_name[:50],
-                attr_key_en=sa_name[:50],
+                attr_key_en=None,
                 attr_value_zh=sa_value[:500],
-                attr_value_en=sa_value[:500],
+                attr_value_en=None,
                 attr_group=None,
                 value_type="text",
                 sort_order=sku_attr_sort,
@@ -655,73 +685,41 @@ def import_offer(
                 swatch_image=None,
                 source_lang="zh",
                 trans_meta={
-                    "attr_key_zh": "src",
-                    "attr_key_en": "pending",
-                    "attr_key_sw": "pending",
-                    "attr_value_zh": "src",
-                    "attr_value_en": "pending",
-                    "attr_value_sw": "pending",
+                    "attr_key_zh": "src", "attr_key_en": "pending", "attr_key_sw": "pending",
+                    "attr_value_zh": "src", "attr_value_en": "pending", "attr_value_sw": "pending",
                 },
                 i18n_pending_at=_utcnow(),
             ))
             sku_attr_sort += 1
 
-        # ── 7.2 SKU 级独有数据 → ProductAttr ──
-        # 只存真正 SKU 级别的字段(每个 SKU 值不同的),避免 SPU 级重复数据
-        _SKU_UNIQUE_FIELDS = {
-            "barcode": ("条形码", "Barcode"),
-            "specificationProperties": ("规格属性", "Specification"),
-        }
-        for rf_key, (label_zh, label_en) in _SKU_UNIQUE_FIELDS.items():
-            rf_val = None
-            if rf_key == "barcode":
-                rf_val = barcode
-            else:
-                rf_val = (str(raw_fields.get(rf_key, "")).strip()) if raw_fields.get(rf_key) else None
-            if not rf_val:
+        # ── 7.2 skuRawFields 全量存为 ProductAttr ──
+        # 已映射到模型固定列的字段不重复存属性表
+        _MAPPED_TO_COLUMN = {"weight", "volume", "arrivalCycle"}
+        for rf_key, rf_val in raw_fields.items():
+            if rf_key in _MAPPED_TO_COLUMN:
+                continue
+            val_str = str(rf_val).strip() if rf_val is not None else ""
+            if not val_str:
                 continue
             db.add(ProductAttr(
                 product_id=product.id,
                 sku_id=sku.id,
-                attr_key_zh=label_zh,
-                attr_key_en=label_en,
-                attr_value_zh=rf_val[:500],
-                attr_value_en=rf_val[:500],
+                attr_key_zh=rf_key[:50],
+                attr_key_en=None,
+                attr_value_zh=val_str[:500],
+                attr_value_en=None,
                 attr_group=None,
                 value_type="text",
                 sort_order=sku_attr_sort,
                 selectable=False,
                 source_lang="zh",
                 trans_meta={
-                    "attr_key_zh": "src",
-                    "attr_key_en": "src",  # barcode/规格属性 的 key 已有英文
-                    "attr_key_sw": "pending",
-                    "attr_value_zh": "src",
-                    "attr_value_en": "pending",
-                    "attr_value_sw": "pending",
+                    "attr_key_zh": "src", "attr_key_en": "pending", "attr_key_sw": "pending",
+                    "attr_value_zh": "src", "attr_value_en": "pending", "attr_value_sw": "pending",
                 },
                 i18n_pending_at=_utcnow(),
             ))
             sku_attr_sort += 1
-
-        # 记录未处理的 skuRawFields 键,便于排查数据遗漏
-        _KNOWN_RAW_KEYS = {"weight", "volume", "barcode", "arrivalCycle",
-                           "specificationProperties", "maxLength", "minLength", "subLength"}
-        unknown_keys = set(raw_fields.keys()) - _KNOWN_RAW_KEYS
-        if unknown_keys:
-            log.warning("  [%s] SKU %s 有未处理的 skuRawFields: %s",
-                        raw_spu, sku_code_raw, ", ".join(sorted(unknown_keys)))
-
-    # ── 7.5 SPU manufacturer_model 回填:取默认 SKU 的型号,方便搜索和列表展示 ──
-    if skus_raw:
-        default_sku_model = None
-        for sa in (skus_raw[0].get("saleAttributes") or []):
-            if isinstance(sa, dict) and sa.get("name") in ("型号", "规格型号"):
-                default_sku_model = (sa.get("value") or "").strip() or None
-                break
-        if default_sku_model:
-            product.manufacturer_model = default_sku_model
-            db.flush()
 
     # ── 8. SPU 级图片:images[] + detailImages[] ──
     img_sort = 0
