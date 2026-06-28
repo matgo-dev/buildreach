@@ -11,7 +11,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_REGISTRY: ghcr.io/buildlink-dev/buildlink-ea
+  IMAGE_REGISTRY: ghcr.io/matgo-dev/buildreach
   ACR_REGISTRY: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com
   ACR_IMAGE_REGISTRY: crpi-mduxqqlcuiv1a644.cn-hangzhou.personal.cr.aliyuncs.com/buildlink01
 
@@ -87,7 +87,7 @@ jobs:
             ${{ env.ACR_IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
