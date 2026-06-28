@@ -85,6 +85,8 @@ services:
       - backend
     environment:
       API_BASE_URL: ${API_BASE_URL}
+    volumes:
+      - ${BANNER_DIR:-./data/banners}:/app/public/banners:ro
     ports:
       - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_HOST_PORT:-7857}:3000"
     logging: *default-logging
