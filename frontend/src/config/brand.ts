@@ -6,7 +6,7 @@
  */
 export const BRAND = {
   /** 短品牌名:Logo 旁、Header、登录页 H1、首页 H1 */
-  name: "BuildReach",
+  name: "MATGO",
 
   /** 中文品牌名 */
   nameZh: "筑达",
@@ -24,14 +24,14 @@ export const BRAND = {
   logoHorizontal: "/logos/logo-horizontal.png",
 
   /** Logo icon 路径(favicon / apple-touch-icon) */
-  logoIcon: "/logos/buildreach-icon.png",
+  logoIcon: "/logos/matgo-icon.png",
 
   /** 长定位语:平台属性短句(slogan) */
   tagline:
     "China Building Materials for East Africa · 中国建材直采服务东非市场",
 
   /** 浏览器 tab 完整 title */
-  fullTitle: "BuildReach 筑达 - China Building Materials for East Africa",
+  fullTitle: "MATGO 筑达 - China Building Materials for East Africa",
 
   /** SEO description meta + 首页 hero 描述段 */
   description:

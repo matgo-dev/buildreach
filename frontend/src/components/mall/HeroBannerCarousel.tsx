@@ -10,7 +10,7 @@ const AUTOPLAY_INTERVAL = 2000;
 const SLIDES: { src: string; alt: string; link: string | null }[] = [
   {
     src: "/banners/hero-main.jpg",
-    alt: "BuildReach - Source China Building Materials for East Africa",
+    alt: "MATGO - Source China Building Materials for East Africa",
     link: "/mall",
   },
   { src: "/banners/factory-aerial-view.jpg", alt: "Factory Aerial View", link: null },
