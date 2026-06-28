@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -413,6 +414,11 @@ async def update_product_status(
             raise PublishValidationFailedError(errors)
 
     product.status = new_status
+    # 上架写入时间，下架清空
+    if new_status == ProductStatus.ACTIVE:
+        product.published_at = datetime.now(timezone.utc)
+    elif new_status == ProductStatus.INACTIVE:
+        product.published_at = None
     await db.commit()
     await db.refresh(product)
     return product
@@ -616,7 +622,8 @@ async def list_products_public(
         else:
             q = q.order_by(price_sub.c.min_price.desc().nulls_last())
     else:
-        q = q.order_by(Product.created_at.desc())
+        # 默认按上架时间倒序，未上架的（published_at=NULL）排最后
+        q = q.order_by(Product.published_at.desc().nulls_last(), Product.id.desc())
 
     total = (await db.execute(count_q)).scalar() or 0
     q = q.offset((page - 1) * size).limit(size)

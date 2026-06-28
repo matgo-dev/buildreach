@@ -9,8 +9,10 @@ SKU 变体(颜色/材质/型号)在 product_skus 表。
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import (
-    JSON, Boolean, DECIMAL, ForeignKey, Index, Integer, String, Text,
+    JSON, Boolean, DECIMAL, DateTime, ForeignKey, Index, Integer, String, Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -129,6 +131,8 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         server_default=SupplyMode.SUPPLIER_DIRECT,
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
+    # 上架时间：ACTIVE 时写入，下架时清空，重新上架时更新
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     created_by: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", name="fk_products_created_by"),

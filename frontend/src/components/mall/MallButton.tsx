@@ -60,7 +60,7 @@ type LinkProps = CommonProps & { href: string; target?: string; rel?: string };
 export function MallButton(props: ButtonProps | LinkProps) {
   const { variant = "teal", size = "md", block = false, children, className = "", ...rest } = props;
   const v = STYLES[variant];
-  const base = `inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all hover:-translate-y-px ${SIZE_CLS[size]} ${v.className} ${block ? "w-full" : ""} ${className}`;
+  const base = `inline-flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden transition-all hover:-translate-y-px ${SIZE_CLS[size]} ${v.className} ${block ? "w-full" : ""} ${className}`;
 
   if ("href" in rest && rest.href) {
     const { href, ...linkRest } = rest as LinkProps;

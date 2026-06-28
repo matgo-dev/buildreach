@@ -198,11 +198,11 @@ export function ProductCard({
         )}
 
         {/* 底部操作 */}
-        <div className="grid grid-cols-[1fr_40px] gap-2 pt-1">
+        <div className="flex gap-2 pt-1">
           <MallButton
             variant="teal"
             size="md"
-            className="text-[13px]"
+            className="text-[13px] min-w-0 flex-1"
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
@@ -216,7 +216,7 @@ export function ProductCard({
             type="button"
             onClick={handleAddToCart}
             disabled={adding}
-            className="h-10 w-10 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-10 w-10 shrink-0 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={t("addToInquiryCart")}
           >
             {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
