@@ -26,6 +26,7 @@ import argparse
 import hashlib
 import json
 import logging
+import re
 import shutil
 import sys
 import uuid
@@ -407,12 +408,9 @@ def import_offer(
     name_zh = (data.get("spuName") or "").strip()
     brand_zh = (data.get("brandName") or "").strip() or None
 
-    # manufacturer_model:SPU 级概念,从 spuBasicAttributes 提取
+    # SPU manufacturer_model:只在源站明确给了"系列/整款共用型号"时才填。
+    # XFS 的"型号/规格型号"大多在 SKU 级(不同 SKU 型号不同),SPU 级不硬填。
     manufacturer_model = None
-    for attr in (data.get("spuBasicAttributes") or []):
-        if isinstance(attr, dict) and attr.get("name") in ("型号", "规格型号", "产品型号"):
-            manufacturer_model = (attr.get("value") or "").strip() or None
-            break
 
     # 单位:取第一个 SKU(默认 SKU)的 unitName
     skus_raw = data.get("skus", [])
@@ -634,14 +632,36 @@ def import_offer(
         arrival_cycle = _parse_decimal(raw_fields.get("arrivalCycle"))
         lead_time_max = int(arrival_cycle) if arrival_cycle else None
 
+        # SKU manufacturer_model:优先从 saleAttributes 提取,有 fallback 链
+        # 同时该值仍保留在 ProductAttr(selectable=True),固定列用于检索/运营
+        _MODEL_KEYS = ("型号", "规格型号", "厂家型号", "货号", "订货号")
+        sku_model = None
+        for sa in (sku_raw.get("saleAttributes") or []):
+            if isinstance(sa, dict) and sa.get("name") in _MODEL_KEYS:
+                sku_model = (sa.get("value") or "").strip() or None
+                break
+        # fallback: factoryCode → specificationProperties
+        if not sku_model:
+            sku_model = (raw_fields.get("factoryCode") or "").strip() or None
+        if not sku_model:
+            sku_model = (raw_fields.get("specificationProperties") or "").strip() or None
+
+        # partsNumber → packing_quantity(件装数量,如"1台/件"→解析数字)
+        packing_qty = None
+        parts_num = raw_fields.get("partsNumber")
+        if parts_num:
+            m = re.search(r"(\d+)", str(parts_num))
+            if m:
+                packing_qty = int(m.group(1))
+
         sku = ProductSku(
             product_id=product.id,
             sku_code=sku_code,
             name_zh=sku_name_zh,
             name_en=None,
-            manufacturer_model=None,  # 型号是 SPU 级概念,SKU 的变体值走 ProductAttr
+            manufacturer_model=sku_model,
             moq=sku_moq,
-            packing_quantity=None,
+            packing_quantity=packing_qty,
             gross_weight_kg=weight,
             volume_cbm=volume,
             lead_time_max=lead_time_max,
