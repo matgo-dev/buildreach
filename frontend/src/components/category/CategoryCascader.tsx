@@ -8,10 +8,8 @@ import { cn } from "@/lib/utils";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 
 export interface SelectedCategory {
-  level1Code: string | null;
-  level2Code: string | null;
-  /** 叶子节点 code,业务关联用 */
-  level3Code: string | null;
+  /** 从 L1 到最深选中层的 code 列表，如 ["01", "01.002", "01.002.003"] */
+  codes: string[];
 }
 
 export interface CategoryCascaderProps {
@@ -23,11 +21,12 @@ export interface CategoryCascaderProps {
   className?: string;
 }
 
-const EMPTY: SelectedCategory = {
-  level1Code: null,
-  level2Code: null,
-  level3Code: null,
-};
+export const EMPTY_CATEGORY: SelectedCategory = { codes: [] };
+
+/** 取最深层选中的 code（即 codes 数组最后一个元素） */
+export function getLeafCode(cat: SelectedCategory): string | null {
+  return cat.codes.length > 0 ? cat.codes[cat.codes.length - 1] : null;
+}
 
 const SELECT_CLS = cn(
   "h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm",
@@ -37,15 +36,18 @@ const SELECT_CLS = cn(
 
 const LABEL_CLS = "text-sm font-medium text-slate-700";
 
+const LEVEL_KEYS = ["level1", "level2", "level3", "level4"] as const;
+const SELECT_KEYS = ["select_level1", "select_level2", "select_level3", "select_level4"] as const;
+
 /**
- * 三级分类联动选择器(对齐 docs/商品三级分类-PRD-v1.0.md §6)。
+ * 动态分类联动选择器，支持任意层级深度。
  *
  * 行为:
  * - 初次渲染 SWR 拉树,加载中所有 select disabled
- * - L1 变更 → 清空 L2/L3,L2 下拉重算
- * - L2 变更 → 清空 L3,L3 下拉重算
+ * - 任一级变更 → 清空该级以下所有选择
  * - 上级未选 → 下级 disabled
- * - 数据为空 → 显示"暂无数据,请联系管理员"
+ * - 选中非叶子节点 → 自动出现下一级 select
+ * - 选中叶子节点 → 不再出现新 select
  */
 export function CategoryCascader({
   value,
@@ -57,47 +59,44 @@ export function CategoryCascader({
   const t = useTranslations("category");
   const { tree, isLoading, error } = useCategoryTree();
 
-  const level1Node = React.useMemo<CategoryTreeNode | undefined>(
-    () => tree.find((n) => n.code === value.level1Code),
-    [tree, value.level1Code]
-  );
-  const level2Options = React.useMemo<CategoryTreeNode[]>(
-    () => level1Node?.children ?? [],
-    [level1Node]
-  );
-
-  const level2Node = React.useMemo<CategoryTreeNode | undefined>(
-    () => level2Options.find((n) => n.code === value.level2Code),
-    [level2Options, value.level2Code]
-  );
-  const level3Options = React.useMemo<CategoryTreeNode[]>(
-    () => level2Node?.children ?? [],
-    [level2Node]
-  );
+  // 计算每级的选项列表
+  const levels = React.useMemo(() => {
+    const result: { options: CategoryTreeNode[]; selectedCode: string | null; level: number }[] = [];
+    let currentOptions = tree;
+    for (let i = 0; i < value.codes.length; i++) {
+      const code = value.codes[i];
+      result.push({ options: currentOptions, selectedCode: code, level: i + 1 });
+      const node = currentOptions.find((n) => n.code === code);
+      if (node?.children?.length) {
+        currentOptions = node.children;
+      } else {
+        // 叶子节点或无子节点，停止
+        return result;
+      }
+    }
+    // 还有下一级可选（当前选中的节点有子节点），追加空 select
+    if (currentOptions.length > 0) {
+      result.push({ options: currentOptions, selectedCode: null, level: value.codes.length + 1 });
+    }
+    return result;
+  }, [tree, value.codes]);
 
   const baseDisabled = disabled || isLoading;
 
-  const handleL1 = (code: string) => {
-    onChange({
-      level1Code: code || null,
-      level2Code: null,
-      level3Code: null,
-    });
-  };
-  const handleL2 = (code: string) => {
-    onChange({
-      level1Code: value.level1Code,
-      level2Code: code || null,
-      level3Code: null,
-    });
-  };
-  const handleL3 = (code: string) => {
-    onChange({
-      level1Code: value.level1Code,
-      level2Code: value.level2Code,
-      level3Code: code || null,
-    });
-  };
+  const handleChange = React.useCallback(
+    (levelIndex: number, code: string) => {
+      if (code) {
+        // 选中：保留前面的，设置当前，清空后面的
+        const next = value.codes.slice(0, levelIndex);
+        next.push(code);
+        onChange({ codes: next });
+      } else {
+        // 清空当前级及以下
+        onChange({ codes: value.codes.slice(0, levelIndex) });
+      }
+    },
+    [value.codes, onChange]
+  );
 
   if (error) {
     return (
@@ -115,70 +114,46 @@ export function CategoryCascader({
     );
   }
 
+  // 根据实际级数动态计算 grid 列数
+  const gridCols = levels.length <= 1 ? "sm:grid-cols-1"
+    : levels.length === 2 ? "sm:grid-cols-2"
+    : levels.length === 3 ? "sm:grid-cols-3"
+    : "sm:grid-cols-4";
+
   return (
-    <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-3", className)}>
-      <div className="space-y-1">
-        <label className={LABEL_CLS}>
-          {t("level1")}{required && <span className="ml-1 text-red-500">*</span>}
-        </label>
-        <select
-          className={SELECT_CLS}
-          value={value.level1Code ?? ""}
-          onChange={(e) => handleL1(e.target.value)}
-          disabled={baseDisabled}
-        >
-          <option value="">{isLoading ? t("loading") : t("select_level1")}</option>
-          {tree.map((n) => (
-            <option key={n.code} value={n.code}>
-              {n.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-1">
-        <label className={LABEL_CLS}>
-          {t("level2")}{required && <span className="ml-1 text-red-500">*</span>}
-        </label>
-        <select
-          className={SELECT_CLS}
-          value={value.level2Code ?? ""}
-          onChange={(e) => handleL2(e.target.value)}
-          disabled={baseDisabled || !value.level1Code}
-        >
-          <option value="">
-            {value.level1Code ? t("select_level2") : t("select_parent_first")}
-          </option>
-          {level2Options.map((n) => (
-            <option key={n.code} value={n.code}>
-              {n.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-1">
-        <label className={LABEL_CLS}>
-          {t("level3")}{required && <span className="ml-1 text-red-500">*</span>}
-        </label>
-        <select
-          className={SELECT_CLS}
-          value={value.level3Code ?? ""}
-          onChange={(e) => handleL3(e.target.value)}
-          disabled={baseDisabled || !value.level2Code}
-        >
-          <option value="">
-            {value.level2Code ? t("select_level3") : t("select_parent_first")}
-          </option>
-          {level3Options.map((n) => (
-            <option key={n.code} value={n.code} disabled={!n.is_leaf}>
-              {n.name}{!n.is_leaf ? ` (${t("has_subcategory")})` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className={cn("grid grid-cols-1 gap-3", gridCols, className)}>
+      {levels.map(({ options, selectedCode, level }, idx) => {
+        const labelKey = LEVEL_KEYS[level - 1] ?? null;
+        const selectKey = SELECT_KEYS[level - 1] ?? null;
+        const parentSelected = idx === 0 || value.codes[idx - 1];
+        return (
+          <div key={idx} className="space-y-1">
+            <label className={LABEL_CLS}>
+              {labelKey ? t(labelKey) : `${t("level_prefix")} ${level}`}
+              {required && <span className="ml-1 text-red-500">*</span>}
+            </label>
+            <select
+              className={SELECT_CLS}
+              value={selectedCode ?? ""}
+              onChange={(e) => handleChange(idx, e.target.value)}
+              disabled={baseDisabled || !parentSelected}
+            >
+              <option value="">
+                {idx === 0 && isLoading
+                  ? t("loading")
+                  : parentSelected
+                    ? (selectKey ? t(selectKey) : t("select_parent_first"))
+                    : t("select_parent_first")}
+              </option>
+              {options.map((n) => (
+                <option key={n.code} value={n.code}>
+                  {n.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
     </div>
   );
 }
-
-export const EMPTY_CATEGORY: SelectedCategory = EMPTY;

@@ -205,17 +205,15 @@ export default function ProductDetailPage() {
       }
       return null;
     };
+    // 按 code 段数动态拼接完整路径（支持任意层级）
     const parts = code.split(".");
-    if (parts.length === 3) {
-      const l1Code = parts[0];
-      const l2Code = `${parts[0]}.${parts[1]}`;
-      const l1Name = findNode(categoryTree, l1Code);
-      const l2Name = findNode(categoryTree, l2Code);
-      const l3Name = findNode(categoryTree, code);
-      const names = [l1Name, l2Name, l3Name].filter(Boolean);
-      if (names.length) return names.join(" > ");
+    const names: string[] = [];
+    for (let i = 1; i <= parts.length; i++) {
+      const ancestorCode = parts.slice(0, i).join(".");
+      const name = findNode(categoryTree, ancestorCode);
+      if (name) names.push(name);
     }
-    return findNode(categoryTree, code) || code;
+    return names.length > 0 ? names.join(" > ") : (findNode(categoryTree, code) || code);
   }, [product, categoryTree]);
 
   // 供应商汇总
