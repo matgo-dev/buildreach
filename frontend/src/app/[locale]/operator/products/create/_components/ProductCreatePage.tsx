@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { v4 as uuidv4 } from "uuid";
 
-import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory } from "@/components/category/CategoryCascader";
+import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory, getLeafCode } from "@/components/category/CategoryCascader";
 import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type PriceTierInput, type AggregateSkuInput } from "@/lib/api/operatorProducts";
 import { SKU_UNITS, type SkuUnitCode } from "@/lib/api/operatorProducts";
 import { ApiError } from "@/lib/api";
@@ -136,7 +136,17 @@ function loadDraft(): DraftState | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as DraftState;
+    const parsed = JSON.parse(raw);
+    // 兼容旧格式 { level1Code, level2Code, level3Code } → { codes: [] }
+    if (parsed.category && !parsed.category.codes) {
+      const old = parsed.category as { level1Code?: string | null; level2Code?: string | null; level3Code?: string | null };
+      const codes: string[] = [];
+      if (old.level1Code) codes.push(old.level1Code);
+      if (old.level2Code) codes.push(old.level2Code);
+      if (old.level3Code) codes.push(old.level3Code);
+      parsed.category = { codes };
+    }
+    return parsed as DraftState;
   } catch { return null; }
 }
 
@@ -159,7 +169,8 @@ export function ProductCreatePage() {
 
   // 品类选择
   const [category, setCategory] = useState<SelectedCategory>(EMPTY_CATEGORY);
-  const isLeafSelected = !!category.level3Code;
+  const leafCode = getLeafCode(category);
+  const isLeafSelected = !!leafCode;
 
   // 属性模板
   const [attrTemplates, setAttrTemplates] = useState<AttrTemplate[]>([]);
@@ -182,9 +193,10 @@ export function ProductCreatePage() {
     setPendingDraft(null);
     setDraftRestored(true);
     // 拉属性模板
-    if (pendingDraft.category.level3Code) {
+    const draftLeaf = getLeafCode(pendingDraft.category);
+    if (draftLeaf) {
       setAttrLoading(true);
-      operatorProductsApi.getAttrTemplates(pendingDraft.category.level3Code)
+      operatorProductsApi.getAttrTemplates(draftLeaf)
         .then(setAttrTemplates)
         .catch(() => setAttrTemplates([]))
         .finally(() => setAttrLoading(false));
@@ -241,10 +253,11 @@ export function ProductCreatePage() {
   const handleCategoryChange = useCallback(async (val: SelectedCategory) => {
     setCategory(val);
     clearFieldError("category");
-    if (val.level3Code) {
+    const changedLeaf = getLeafCode(val);
+    if (changedLeaf) {
       setAttrLoading(true);
       try {
-        const templates = await operatorProductsApi.getAttrTemplates(val.level3Code);
+        const templates = await operatorProductsApi.getAttrTemplates(changedLeaf);
         setAttrTemplates(templates);
       } catch {
         setAttrTemplates([]);
@@ -335,7 +348,7 @@ export function ProductCreatePage() {
     if (!existingId) {
       // 前端预校验 — 草稿仅需品类+名称；上架需完整校验
       const errors: Record<string, string> = {};
-      if (!category.level3Code) errors.category = t("validate_category_required");
+      if (!leafCode) errors.category = t("validate_category_required");
       if (!spu.name.trim()) errors.name = t("validate_name_required");
       // ADR-0006 方案 C：不强制 SKU，上架只需品类+名称+图片
       if (publish && spuImageFiles.length === 0) errors.images = t("validate_image_required");
@@ -388,7 +401,7 @@ export function ProductCreatePage() {
           });
 
           const result = await operatorProductsApi.createAggregate({
-            category_code: category.level3Code!,
+            category_code: leafCode!,
             spu_code: spu.spu_code || undefined,
             name: spu.name,
             description: spu.description || undefined,
@@ -417,7 +430,7 @@ export function ProductCreatePage() {
         } else {
           // 无 SKU → SPU-only 建壳
           const result = await operatorProductsApi.create({
-            category_code: category.level3Code!,
+            category_code: leafCode!,
             spu_code: spu.spu_code || undefined,
             name: spu.name,
             description: spu.description || undefined,
