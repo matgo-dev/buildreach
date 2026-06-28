@@ -107,7 +107,7 @@ elif [ -n "${GHCR_TOKEN:-}" ]; then
     echo "[deploy]       登录 GHCR..."
     echo "$GHCR_TOKEN" | docker login ghcr.io --username github-actions --password-stdin
 fi
-export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/buildlink-dev/buildlink-ea}"
+export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/matgo-dev/buildreach}"
 docker compose -f "$COMPOSE_FILE" --env-file .env.production pull backend frontend
 
 # ---- 4. 记录旧镜像（回滚用）----

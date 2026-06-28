@@ -40,7 +40,7 @@ GitHub Actions ─── Build ─── 推送镜像到 GHCR
 
 ```bash
 # 触发部署
-gh workflow run "Build & Deploy" --repo buildlink-dev/buildlink-ea --ref dev
+gh workflow run "Build & Deploy" --repo matgo-dev/buildreach --ref dev
 
 # 查看进度
 gh run watch
@@ -132,7 +132,7 @@ sudo mkdir -p /opt/buildreach && sudo chown $USER:$USER /opt/buildreach
 
 # 克隆代码
 cd /opt/buildreach
-git clone git@github.com:buildlink-dev/buildlink-ea.git .
+git clone git@github.com:matgo-dev/buildreach.git .
 
 # 配置环境变量
 cp .env.production.example .env.production

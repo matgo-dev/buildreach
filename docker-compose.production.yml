@@ -38,7 +38,7 @@ services:
     logging: *default-logging
 
   backend:
-    image: ${IMAGE_REGISTRY:-ghcr.io/buildlink-dev/buildlink-ea}/backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/matgo-dev/buildreach}/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -79,7 +79,7 @@ services:
     logging: *default-logging
 
   frontend:
-    image: ${IMAGE_REGISTRY:-ghcr.io/buildlink-dev/buildlink-ea}/frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/matgo-dev/buildreach}/frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - backend
