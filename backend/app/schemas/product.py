@@ -309,6 +309,7 @@ class ProductOperator(BaseModel):
     price_max: Decimal | None = None
     currency: str | None = None
     sku_count: int = 0
+    published_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

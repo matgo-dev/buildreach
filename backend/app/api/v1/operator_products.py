@@ -186,6 +186,7 @@ def _to_operator(p, creator_name_map: dict | None = None, main_image_url: str | 
         price_max=prices["price_max"],
         currency=prices["currency"],
         sku_count=active_count,
+        published_at=getattr(p, "published_at", None),
         created_at=p.created_at,
         updated_at=p.updated_at,
     ).model_dump()
