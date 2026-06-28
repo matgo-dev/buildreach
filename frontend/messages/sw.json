@@ -12,9 +12,9 @@
     "err_email_domain": "Kikoa hiki cha barua pepe hakikubaliki, tafadhali tumia anwani halisi (mfano .com, .cn)"
   },
   "brand": {
-    "name": "BuildReach",
+    "name": "MATGO",
     "tagline": "Vifaa vya Ujenzi kutoka China kwa Afrika Mashariki",
-    "full_title": "BuildReach - Vifaa vya Ujenzi kutoka China kwa Afrika Mashariki",
+    "full_title": "MATGO - Vifaa vya Ujenzi kutoka China kwa Afrika Mashariki",
     "description": "Jukwaa la ununuzi wa vifaa vya ujenzi B2B kwa maduka, wauzaji wa jumla, wakandarasi na wanunuzi wa miradi Tanzania"
   },
   "auth": {
@@ -494,7 +494,7 @@
     "trustPriceDesc": "Moja kwa moja kutoka kiwandani, punguzo la wingi",
     "trustDelivery": "Uwasilishaji wa Haraka",
     "trustDeliveryDesc": "Usafirishaji wa kontena la pamoja moja kwa moja hadi Dar es Salaam",
-    "brandName": "BuildReach",
+    "brandName": "MATGO",
     "brandNameSub": "Vifaa vya Ujenzi vya China kwa Afrika Mashariki",
     "roleBuyer": "Mnunuzi",
     "roleSupplier": "Msambazaji",
@@ -569,13 +569,13 @@
     "headerRfqCart": "Kikapu cha Maombi",
     "headerMyAccount": "Akaunti Yangu",
     "headerAccountSub": "Akaunti Yangu",
-    "stripAnnouncement": "BuildReach | Vifaa vya ujenzi kutoka China, hadi Afrika Mashariki.",
+    "stripAnnouncement": "MATGO | Vifaa vya ujenzi kutoka China, hadi Afrika Mashariki.",
     "helpCenter": "Kituo cha Msaada",
     "headerLogin": "Ingia",
     "headerRegister": "Jisajili Bure",
     "stripProfile": "Wasifu Wangu",
     "stripPersonalCenter": "Akaunti Yangu",
-    "welcomeGuest": "Karibu BuildReach",
+    "welcomeGuest": "Karibu MATGO",
     "welcomeBack": "Karibu tena",
     "registerNow": "Jisajili",
     "signIn": "Ingia",
@@ -659,7 +659,7 @@
     "noMoreProducts": "— Hakuna bidhaa zaidi —",
     "floatWaTitle": "Msaada wa Wateja",
     "floatWaHint": "Majibu ya haraka mtandaoni",
-    "floatWaAgent": "Msaada wa BuildReach",
+    "floatWaAgent": "Msaada wa MATGO",
     "floatWaPowered": "Wasiliana nasi kupitia WhatsApp",
     "floatWaTab": "Ongea",
     "floatWaCta": "Tuambie mahitaji yako",
@@ -1287,7 +1287,7 @@
   },
   "howToBuy": {
     "heroTitle": "Jinsi ya Kununua — Mwongozo Kamili wa Ununuzi",
-    "heroDesc": "BuildReach inaunganisha wanunuzi wa Afrika Mashariki na wasambazaji wa vifaa vya ujenzi kutoka China. Tunashughulikia utafutaji, ukaguzi wa ubora, na usafirishaji wa pamoja — ili uweze kununua vifaa vya ujenzi vya China kwa urahisi.",
+    "heroDesc": "MATGO inaunganisha wanunuzi wa Afrika Mashariki na wasambazaji wa vifaa vya ujenzi kutoka China. Tunashughulikia utafutaji, ukaguzi wa ubora, na usafirishaji wa pamoja — ili uweze kununua vifaa vya ujenzi vya China kwa urahisi.",
     "ctaBrowse": "Tembelea Bidhaa",
     "ctaRfq": "Omba Bei Sasa",
     "stepsTitle": "Hatua 7 za Ununuzi wa Kimataifa",
@@ -1312,7 +1312,7 @@
     "step7Title": "Hatua 7: Pokea na Kamilisha",
     "step7Desc": "Lipa salio la 70% kabla ya kufika bandarini. Tunasaidia na forodha ya bandari ya marudio. Thibitisha kupokea ili kukamilisha agizo.",
     "step7Detail": "Unahitaji vibali vya kuagiza (k.m. uthibitisho wa TBS)? Tujulishe katika RFQ yako na tunaweza kusaidia kuandaa hati zinazohitajika.",
-    "advantagesTitle": "Kwa nini BuildReach?",
+    "advantagesTitle": "Kwa nini MATGO?",
     "adv1Icon": "🏭",
     "adv1Title": "Moja kwa Moja Kiwandani",
     "adv1Desc": "Nunua moja kwa moja kutoka viwanda vya China, ukiondoa wakala wa kati kwa bei za kiwanda",
@@ -1411,7 +1411,7 @@
     "boundaryTitle": "Mipaka ya Huduma",
     "boundaryIncluded": "Imejumuishwa",
     "boundaryExcluded": "Haijajumuishwa",
-    "boundaryDesc": "BuildReach inatoa huduma kamili kutoka viwanda vya China hadi bandari ya Dar es Salaam, ikiwa ni pamoja na uchunguzi wa wasambazaji, ununuzi wa pamoja, ukaguzi wa ubora, ujumuishaji, tamko la forodha, usafirishaji wa baharini, na forodha ya marudio. Usafiri wa ndani (bandari hadi tovuti) unapangwa na mnunuzi au lojistiki ya ndani. Jukwaa halitoi mikopo ya kifedha, uwakala wa bima, au huduma nyingine za kifedha."
+    "boundaryDesc": "MATGO inatoa huduma kamili kutoka viwanda vya China hadi bandari ya Dar es Salaam, ikiwa ni pamoja na uchunguzi wa wasambazaji, ununuzi wa pamoja, ukaguzi wa ubora, ujumuishaji, tamko la forodha, usafirishaji wa baharini, na forodha ya marudio. Usafiri wa ndani (bandari hadi tovuti) unapangwa na mnunuzi au lojistiki ya ndani. Jukwaa halitoi mikopo ya kifedha, uwakala wa bima, au huduma nyingine za kifedha."
   },
   "noPermission": {
     "title": "Ufikiaji Umekataliwa",
@@ -1489,8 +1489,8 @@
     "contactHint": "Hukupata jibu unalotaka?",
     "platform_title": "Mwongozo wa Kutumia Jukwaa",
     "platform_subtitle": "Usajili, kuvinjari, ombi la bei, kuagiza na shughuli nyingine za msingi",
-    "platform_q1": "BuildReach ni jukwaa la aina gani?",
-    "platform_a1": "BuildReach ni jukwaa la ununuzi wa vifaa vya ujenzi kutoka nchi za nje kwa hatua moja. Linaunganisha viwanda bora vya China na wateja wa Afrika Mashariki. Jukwaa linatoa huduma za kuvinjari bidhaa, ombi la bei mtandaoni (RFQ), uthibitisho wa bei, uratibu wa nyaraka za kufuata sheria, usafirishaji wa makontena ya pamoja, na zaidi — kukusaidia kukamilisha ununuzi wako wa kimataifa kwa ufanisi na usalama.",
+    "platform_q1": "MATGO ni jukwaa la aina gani?",
+    "platform_a1": "MATGO ni jukwaa la ununuzi wa vifaa vya ujenzi kutoka nchi za nje kwa hatua moja. Linaunganisha viwanda bora vya China na wateja wa Afrika Mashariki. Jukwaa linatoa huduma za kuvinjari bidhaa, ombi la bei mtandaoni (RFQ), uthibitisho wa bei, uratibu wa nyaraka za kufuata sheria, usafirishaji wa makontena ya pamoja, na zaidi — kukusaidia kukamilisha ununuzi wako wa kimataifa kwa ufanisi na usalama.",
     "platform_q2": "Jinsi ya kusajili akaunti?",
     "platform_a2": "Bofya \"Sajili Bure\" kwenye kona ya juu kulia ya ukurasa, jaza barua pepe, nambari ya simu na nenosiri ili kukamilisha usajili. Hakuna haja ya kusubiri idhini — baada ya kusajili unaweza moja kwa moja kuvinjari bidhaa na kutuma ombi la bei.",
     "platform_q3": "Jinsi ya kutafuta na kuvinjari bidhaa?",
@@ -1615,9 +1615,9 @@
       "title": "Masharti ya Huduma",
       "lastUpdated": "Ilisasishwa mwisho: Juni 2026",
       "s1_title": "Acceptance of Terms",
-      "s1_content": "Welcome to BuildReach. These Terms of Service apply to your access to, registration for, and use of the BuildReach website, mobile pages, quotation system, order tracking, customer communications, and related procurement services.\n\nThe platform is operated by BuildReach Ltd., with registered address [To be completed: registered office address], company registration number [To be completed: company registration number], and contact email info@buildreach.co.tz. Unless otherwise agreed in writing, these terms are entered into between you and BuildReach Ltd.\n\nBy registering an account, submitting an RFQ, confirming a quotation, uploading materials, or continuing to use the platform, you confirm that you have read, understood, and agreed to these terms.\n\nIf you use the platform on behalf of a company, shop, contractor, wholesaler, or other organization, you confirm that you are authorized to accept these terms on behalf of that organization. If you are not authorized, you must stop using the platform.\n\nThe platform may display, confirm, and record transactions electronically. Under applicable Tanzanian electronic transactions laws, electronic records, electronic confirmations, and platform system records may be used as evidence of transactions and communications.",
+      "s1_content": "Welcome to MATGO. These Terms of Service apply to your access to, registration for, and use of the MATGO website, mobile pages, quotation system, order tracking, customer communications, and related procurement services.\n\nThe platform is operated by MATGO Ltd., with registered address [To be completed: registered office address], company registration number [To be completed: company registration number], and contact email info@buildreach.co.tz. Unless otherwise agreed in writing, these terms are entered into between you and MATGO Ltd.\n\nBy registering an account, submitting an RFQ, confirming a quotation, uploading materials, or continuing to use the platform, you confirm that you have read, understood, and agreed to these terms.\n\nIf you use the platform on behalf of a company, shop, contractor, wholesaler, or other organization, you confirm that you are authorized to accept these terms on behalf of that organization. If you are not authorized, you must stop using the platform.\n\nThe platform may display, confirm, and record transactions electronically. Under applicable Tanzanian electronic transactions laws, electronic records, electronic confirmations, and platform system records may be used as evidence of transactions and communications.",
       "s2_title": "Platform Role and Scope of Services",
-      "s2_content": "BuildReach is a B2B cross-border building materials procurement platform for the East African market, connecting building material suppliers, factories, logistics providers, inspection agencies, and East African buyers.\n\nThe platform may provide product display, specification information, procurement information organization, online RFQ submission, quotation collection, quotation comparison, supplier sourcing, procurement coordination, inspection coordination, support for PVoC, CoC, TBS, KEBS, or other import compliance documents, consolidated shipping, international logistics coordination, order tracking, and after-sales coordination.\n\nUnless BuildReach and the buyer separately sign a sales contract, pro forma invoice, purchase order, or other written document expressly stating that BuildReach acts as seller, BuildReach generally acts as a procurement service provider, coordinator, or information service provider, and not as the manufacturer of goods. Product quality, origin, certification, production capacity, and delivery capability remain the responsibility of the actual supplier, manufacturer, logistics provider, or relevant third party under applicable law and contract.",
+      "s2_content": "MATGO is a B2B cross-border building materials procurement platform for the East African market, connecting building material suppliers, factories, logistics providers, inspection agencies, and East African buyers.\n\nThe platform may provide product display, specification information, procurement information organization, online RFQ submission, quotation collection, quotation comparison, supplier sourcing, procurement coordination, inspection coordination, support for PVoC, CoC, TBS, KEBS, or other import compliance documents, consolidated shipping, international logistics coordination, order tracking, and after-sales coordination.\n\nUnless MATGO and the buyer separately sign a sales contract, pro forma invoice, purchase order, or other written document expressly stating that MATGO acts as seller, MATGO generally acts as a procurement service provider, coordinator, or information service provider, and not as the manufacturer of goods. Product quality, origin, certification, production capacity, and delivery capability remain the responsibility of the actual supplier, manufacturer, logistics provider, or relevant third party under applicable law and contract.",
       "s3_title": "User Eligibility and Account Security",
       "s3_content": "The platform is mainly intended for business users. You should be a duly established or lawfully operating company, shop, wholesaler, contractor, project owner, or other business entity, or a person authorized by such entity.\n\nYou must provide true, accurate, and complete registration information, including name, mobile number, WhatsApp contact, email, company name, business address, business category, storefront photos, business license, or other qualification materials where applicable.\n\nYou are responsible for safeguarding your account, password, verification codes, and login devices. Losses caused by poor custody, authorized or unauthorized use by others, false information, or improper operation shall be borne by you. If the platform identifies false registration, fraud, circumvention, abnormal login, or other risks, it may restrict, suspend, or terminate the account.",
       "s4_title": "RFQs, Quotations, and Order Formation",
@@ -1631,7 +1631,7 @@
       "s8_title": "Prohibited Conduct",
       "s8_content": "You must not submit false company, identity, storefront, qualification, delivery, or payment information; use the platform for fraud, money laundering, tax evasion, smuggling, sanctions circumvention, intellectual property infringement, or other illegal activity; circumvent the platform or induce suppliers or users to transact outside the platform; upload viruses, malicious code, illegal content, or infringing materials; scrape, copy, reverse engineer, interfere with, or harm platform systems; impersonate others, steal verification codes, attack the platform, or abuse customer service channels.\n\nIf such conduct is identified, the platform may delete content, suspend services, cancel orders, freeze accounts, preserve evidence, and report to regulators or law enforcement authorities.",
       "s9_title": "Intellectual Property",
-      "s9_content": "Trademarks, logos, page designs, images, videos, product materials, copy, databases, software, technical solutions, and other platform content belong to BuildReach or relevant rights holders.\n\nWithout written authorization, users may not copy, download, modify, distribute, display, sell, scrape, or use such content for commercial purposes. Users must ensure that uploaded materials are lawfully owned or authorized and do not infringe third-party intellectual property, trade secrets, privacy, or other rights.",
+      "s9_content": "Trademarks, logos, page designs, images, videos, product materials, copy, databases, software, technical solutions, and other platform content belong to MATGO or relevant rights holders.\n\nWithout written authorization, users may not copy, download, modify, distribute, display, sell, scrape, or use such content for commercial purposes. Users must ensure that uploaded materials are lawfully owned or authorized and do not infringe third-party intellectual property, trade secrets, privacy, or other rights.",
       "s10_title": "Third-Party Services",
       "s10_content": "Platform services may involve suppliers, factories, inspection agencies, certification bodies, logistics companies, customs brokers, ports, shipping lines, payment institutions, cloud service providers, and communications providers.\n\nThe platform will use reasonable care in selecting or coordinating third parties, but third-party services are independently provided by the relevant third party. The platform will reasonably assist in communication regarding delays, errors, losses, or costs caused by third parties, but does not assume liability beyond applicable law or written contract.",
       "s11_title": "Disclaimers and Limitation of Liability",
@@ -1645,13 +1645,13 @@
       "s15_title": "Governing Law and Dispute Resolution",
       "s15_content": "These terms are governed by and construed under the laws of the United Republic of Tanzania.\n\nDisputes arising from these terms or platform services shall first be resolved through friendly consultation. If consultation fails, either party may submit the dispute to a court of competent jurisdiction in Dar es Salaam, Tanzania, unless the parties separately agree in writing to arbitration.",
       "s16_title": "Contact",
-      "s16_content": "If you have questions about these terms, orders, accounts, or platform services, please contact:\n\nBuildReach Ltd.\nEmail: info@buildreach.co.tz\nAddress: [To be completed: registered office address]\nCustomer Service / WhatsApp: [To be completed: customer service number, preferably in +255 international format]"
+      "s16_content": "If you have questions about these terms, orders, accounts, or platform services, please contact:\n\nMATGO Ltd.\nEmail: info@buildreach.co.tz\nAddress: [To be completed: registered office address]\nCustomer Service / WhatsApp: [To be completed: customer service number, preferably in +255 international format]"
     },
     "privacy": {
       "title": "Sera ya Faragha",
       "lastUpdated": "Ilisasishwa mwisho: Juni 2026",
       "s1_title": "Scope and Controller",
-      "s1_content": "BuildReach values your privacy and personal data protection. This Privacy Policy explains how BuildReach Ltd. collects, uses, shares, stores, and protects your personal data when you access, register for, or use the platform.\n\nThis policy is prepared with reference to Tanzania’s Personal Data Protection Act, 2022 and related data protection rules. BuildReach Ltd. is the data controller under this policy, with registered address [To be completed: registered office address], company registration number [To be completed: company registration number], and contact email info@buildreach.co.tz.\n\nThis policy applies to the BuildReach website, mobile pages, RFQ system, order tracking, customer communications, WhatsApp communications, email notices, and other data processing activities related to platform services.\n\nThis policy mainly covers natural person information of business user contacts, buyer representatives, supplier representatives, logistics or service provider contacts. Company names, business licenses, storefront photos, and transaction records may also be personal data where they identify a natural person.",
+      "s1_content": "MATGO values your privacy and personal data protection. This Privacy Policy explains how MATGO Ltd. collects, uses, shares, stores, and protects your personal data when you access, register for, or use the platform.\n\nThis policy is prepared with reference to Tanzania’s Personal Data Protection Act, 2022 and related data protection rules. MATGO Ltd. is the data controller under this policy, with registered address [To be completed: registered office address], company registration number [To be completed: company registration number], and contact email info@buildreach.co.tz.\n\nThis policy applies to the MATGO website, mobile pages, RFQ system, order tracking, customer communications, WhatsApp communications, email notices, and other data processing activities related to platform services.\n\nThis policy mainly covers natural person information of business user contacts, buyer representatives, supplier representatives, logistics or service provider contacts. Company names, business licenses, storefront photos, and transaction records may also be personal data where they identify a natural person.",
       "s2_title": "Information We Collect",
       "s2_content": "To provide cross-border building materials procurement services, we may collect account and registration information such as name, mobile number, WhatsApp contact, email, account, password hash, language preference, company name, business address, business category, role, and country/region; identity and qualification information such as storefront photos, business license photos, company registration documents, tax numbers, import qualifications, authorization documents, and project or procurement qualification materials; procurement and transaction information such as browsing records, search records, RFQs, product requirements, quotations, orders, payment confirmations, invoices, logistics information, consignee information, delivery addresses, customs documents, certification documents, after-sales records, and dispute materials; communications information from platform, phone, email, WhatsApp, online customer service, attachments, photos, videos, voice messages, communication time, and handling records; device, log, and security information such as IP address, browser type, device type, operating system, access time, page visits, cookies, language settings, login records, verification code sending records, abnormal operation records, and security audit logs; and information from third parties such as suppliers, logistics providers, customs brokers, certification bodies, payment or banking service providers, public business registries, or authorized third parties where necessary.",
       "s3_title": "How We Use Information",
@@ -1679,7 +1679,7 @@
       "s14_title": "Policy Updates",
       "s14_content": "We may update this Privacy Policy due to business, legal, or technical changes. The updated policy will be published on the platform with the last updated date. For material changes, we will notify you through page prompts, in-platform notices, email, or other reasonable means.\n\nIf you do not agree to the updated policy, you should stop using the platform. Continued use after updates constitutes acceptance of the updated policy.",
       "s15_title": "Contact Us",
-      "s15_content": "If you have questions about this Privacy Policy, personal data processing, or rights requests, please contact:\n\nBuildReach Ltd.\nEmail: info@buildreach.co.tz\nAddress: [To be completed: registered office address]\nCustomer Service / WhatsApp: [To be completed: customer service number, preferably in +255 international format]\nData Protection Contact / DPO: [To be completed: responsible person or BuildReach Privacy Team, info@buildreach.co.tz]\n\nYou may also submit data protection complaints or inquiries to the Tanzania Personal Data Protection Commission (PDPC)."
+      "s15_content": "If you have questions about this Privacy Policy, personal data processing, or rights requests, please contact:\n\nMATGO Ltd.\nEmail: info@buildreach.co.tz\nAddress: [To be completed: registered office address]\nCustomer Service / WhatsApp: [To be completed: customer service number, preferably in +255 international format]\nData Protection Contact / DPO: [To be completed: responsible person or MATGO Privacy Team, info@buildreach.co.tz]\n\nYou may also submit data protection complaints or inquiries to the Tanzania Personal Data Protection Commission (PDPC)."
     }
   }
 }
