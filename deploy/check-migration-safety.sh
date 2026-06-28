@@ -30,9 +30,11 @@ DANGEROUS='op\.drop_column|op\.drop_table|op\.drop_index|op\.drop_constraint|op\
 
 UNSAFE=0
 for f in $NEW_MIGRATIONS; do
-    if grep -nE "$DANGEROUS" "$f" > /dev/null 2>&1; then
+    # 只检查 upgrade 函数内的操作，downgrade 里的 drop 是正常回滚
+    UPGRADE_BLOCK=$(sed -n '/^def upgrade/,/^def downgrade/p' "$f" 2>/dev/null || true)
+    if echo "$UPGRADE_BLOCK" | grep -E "$DANGEROUS" > /dev/null 2>&1; then
         echo "[check] ⚠️  $f 含破坏性操作:"
-        grep -nE "$DANGEROUS" "$f" | sed 's/^/    /'
+        echo "$UPGRADE_BLOCK" | grep -nE "$DANGEROUS" | sed 's/^/    /'
         echo ""
         UNSAFE=1
     fi
