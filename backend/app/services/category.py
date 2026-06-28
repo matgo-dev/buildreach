@@ -1,18 +1,46 @@
 """商品分类 service:查全表 + 内存建树(对齐 PRD §5.4)。
 
-性能预期:全表 < 2000 条,不加缓存,每次查全表 + 在应用层组装。
+品类数据几乎不变,使用进程内 TTL 缓存避免重复查询。
 """
 from __future__ import annotations
+
+import time
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.i18n import get_localized
+from app.core.locale import get_current_locale
 from app.db.models import Category
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.category import CategoryNode, CategoryTreeNode
+
+# ── 进程内 TTL 缓存 ──
+_CACHE_TTL = 300  # 5 分钟
+_cache: dict[str, tuple[float, Any]] = {}
+
+
+def _cache_get(key: str) -> Any | None:
+    entry = _cache.get(key)
+    if entry is None:
+        return None
+    ts, val = entry
+    if time.monotonic() - ts > _CACHE_TTL:
+        _cache.pop(key, None)
+        return None
+    return val
+
+
+def _cache_set(key: str, val: Any) -> None:
+    _cache[key] = (time.monotonic(), val)
+
+
+def invalidate_category_cache() -> None:
+    """品类变更时调用,清空全部缓存。"""
+    _cache.clear()
 
 
 async def list_flat(
@@ -22,7 +50,13 @@ async def list_flat(
     parent_code: str | None = None,
     is_active: bool | None = True,
 ) -> list[CategoryNode]:
-    """扁平列表,按 (level, sort_order, code) 稳定排序。"""
+    """扁平列表,按 (level, sort_order, code) 稳定排序,带进程内 TTL 缓存。"""
+    locale = get_current_locale()
+    cache_key = f"flat:{locale}:{level}:{parent_code}:{is_active}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     stmt = select(Category)
     if is_active is not None:
         stmt = stmt.where(Category.is_active == is_active)
@@ -41,6 +75,8 @@ async def list_flat(
         node.name = get_localized(r, "name")
         node.short_name = get_localized(r, "short_name")
         nodes.append(node)
+
+    _cache_set(cache_key, nodes)
     return nodes
 
 
@@ -50,10 +86,16 @@ async def get_tree(
     is_active: bool | None = True,
     max_depth: int | None = None,
 ) -> list[CategoryTreeNode]:
-    """三层嵌套树,按 (sort_order, code) 排序。
+    """嵌套树,按 (sort_order, code) 排序,带进程内 TTL 缓存。
 
     max_depth: 限制返回层级深度(1=只返回 L1, 2=L1+L2, None=全部)。
     """
+    locale = get_current_locale()
+    cache_key = f"tree:{locale}:{is_active}:{max_depth}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     stmt = select(Category)
     if is_active is not None:
         stmt = stmt.where(Category.is_active == is_active)
@@ -97,6 +139,7 @@ async def get_tree(
         else:
             parent.children.append(child)
 
+    _cache_set(cache_key, roots)
     return roots
 
 
