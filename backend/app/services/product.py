@@ -495,13 +495,15 @@ async def _batch_main_images(
 
 
 def _build_keyword_filter(keyword: str):
-    """按当前请求 locale 构建 keyword 搜索过滤（名称 + 品牌 + SPU 编码）。"""
+    """keyword 搜索过滤：名称/品牌全语言匹配 + 型号 + SPU 编码。"""
     kw = f"%{keyword}%"
-    locale = get_current_locale()
-    name_col = getattr(Product, f"name_{locale}", Product.name_en)
     return or_(
-        name_col.ilike(kw),
+        Product.name_zh.ilike(kw),
+        Product.name_en.ilike(kw),
+        Product.name_sw.ilike(kw),
         Product.brand_zh.ilike(kw),
+        Product.brand_en.ilike(kw),
+        Product.manufacturer_model.ilike(kw),
         Product.spu_code.ilike(kw),
     )
 

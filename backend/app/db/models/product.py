@@ -101,6 +101,9 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     detail_description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
     detail_description_sw: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # 厂家型号（SPU 级，如 GBM 13 RE）
+    manufacturer_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certifications: Mapped[list | None] = mapped_column(JSON, default=list)
 

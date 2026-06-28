@@ -250,6 +250,7 @@ class ProductPublic(BaseModel):
     category_name: str = ""
     origin: str
     brand: str | None = None
+    manufacturer_model: str | None = None
     certifications: list | None = None
     is_featured: bool
     supply_mode: str = SupplyMode.SUPPLIER_DIRECT
@@ -271,6 +272,7 @@ class ProductPublicDetail(BaseModel):
     category_name: str = ""
     origin: str
     brand: str | None = None
+    manufacturer_model: str | None = None
     hs_code: str | None = None
     certifications: list | None = None
     selling_points: str | None = None
