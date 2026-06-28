@@ -797,6 +797,13 @@ def import_offer(
     # 品牌:顶层 brand 字段
     brand_zh = (data.get("brand") or "").strip() or None
 
+    # 型号:从 attributes 列表中提取"型号"字段
+    manufacturer_model = None
+    for attr in (data.get("attributes") or []):
+        if isinstance(attr, dict) and attr.get("name") == "型号":
+            manufacturer_model = (attr.get("value") or "").strip() or None
+            break
+
     # 描述/selling_points/certifications/origin:鑫方盛商品描述全是图片,文本字段留空
     desc_zh = None
     detail_desc_zh = None
@@ -860,6 +867,8 @@ def import_offer(
             product.gross_weight_kg = gross_weight_kg
         if volume_cbm is not None:
             product.volume_cbm = volume_cbm
+        if manufacturer_model:
+            product.manufacturer_model = manufacturer_model
         if video_url:
             product.video_url = video_url
         if source_meta:
@@ -893,6 +902,7 @@ def import_offer(
             ref_price_tiers=None,
             gross_weight_kg=gross_weight_kg,
             volume_cbm=volume_cbm,
+            manufacturer_model=manufacturer_model,
             video_url=video_url,
             source=run_meta.source,
             source_meta=source_meta or None,

@@ -177,6 +177,7 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
   const baseRows: { label: string; value: string }[] = [];
   if (product.origin) baseRows.push({ label: t("detail.origin"), value: product.origin });
   if (product.brand) baseRows.push({ label: t("detail.brand"), value: product.brand });
+  if (product.manufacturer_model) baseRows.push({ label: t("detail.model"), value: product.manufacturer_model });
   if (product.hs_code) baseRows.push({ label: t("detail.hsCode"), value: product.hs_code });
 
   const groups = product.attribute_groups;
@@ -572,8 +573,8 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 基础信息(产地/品牌/MOQ) */}
-            {(product.origin || product.brand || product.moq != null) && (
+            {/* 基础信息(产地/品牌/型号/MOQ) */}
+            {(product.origin || product.brand || product.manufacturer_model || product.moq != null) && (
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
                 {product.moq != null && (
                   <span>{t("detail.moq")}: <span className="font-medium text-gray-700">{product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}</span></span>
@@ -583,6 +584,9 @@ function ProductDetailContent() {
                 )}
                 {product.brand && (
                   <span>{t("detail.brand")}: <span className="font-medium text-gray-700">{product.brand}</span></span>
+                )}
+                {product.manufacturer_model && (
+                  <span>{t("detail.model")}: <span className="font-medium text-gray-700">{product.manufacturer_model}</span></span>
                 )}
               </div>
             )}
