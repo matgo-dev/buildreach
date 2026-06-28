@@ -117,6 +117,7 @@ export interface ProductPublicDetail {
   category_name: string;
   origin: string;
   brand: string | null;
+  manufacturer_model: string | null;
   hs_code: string | null;
   certifications: string[] | null;
   selling_points: string | null;

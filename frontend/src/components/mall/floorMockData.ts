@@ -120,6 +120,7 @@ export function getMockFloorProductDetail(id: number): ProductPublicDetail | nul
     ...product,
     category_name: CATEGORY_NAMES[product.category_code] ?? product.category_name,
     detail_description: `${product.name}，适用于工程采购与项目现场备货。图片为本地样例素材，真实商品参数以后端上架数据为准。`,
+    manufacturer_model: null,
     hs_code: null,
     selling_points: "工程常用品类，适合批量询价与集中采购。",
     unit,
