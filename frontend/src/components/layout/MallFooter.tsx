@@ -3,12 +3,12 @@
 import { useTranslations } from "next-intl";
 import { MessageCircle, Mail } from "lucide-react";
 import { BRAND } from "@/config/brand";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useContactInfo } from "@/hooks/useWhatsApp";
 
 /** Mall 页脚 — 深青底色四列。参考 HTML footer */
 export function MallFooter() {
   const t = useTranslations("mall");
-  const wa = useWhatsApp();
+  const contact = useContactInfo();
 
   return (
     <footer className="bg-teal-950 text-[#d6eded] mt-2.5">
@@ -47,16 +47,18 @@ export function MallFooter() {
         <div>
           <h4 className="text-white text-sm font-bold mb-2.5">{t("footerContact")}</h4>
           <div className="space-y-2 text-[13px]">
-            {wa.number && (
+            {contact.whatsappNumber && (
               <p className="flex items-center gap-1.5">
                 <MessageCircle className="w-3.5 h-3.5 shrink-0" />
-                {wa.number}
+                {contact.whatsappNumber}
               </p>
             )}
-            <p className="flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 shrink-0" />
-              info@buildreach.co.tz
-            </p>
+            {contact.email && (
+              <p className="flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                {contact.email}
+              </p>
+            )}
           </div>
         </div>
       </div>

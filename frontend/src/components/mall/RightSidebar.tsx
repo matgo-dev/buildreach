@@ -23,17 +23,17 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
       <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-2 overflow-hidden"}>
 
         {/* 专属客服 — 标题+说明+电话+绿色按钮 */}
-        {wa.configured && (
         <MallCard padding="p-2.5">
           <h3 className="text-navy text-[15px] font-black mb-0.5">{t("customerSupport")}</h3>
           <p className="text-muted text-[12px] mb-2">{t("customerSupportHint")}</p>
-          <p className="text-navy text-lg font-black mb-2">{wa.number}</p>
-          <MallButton variant="whatsapp" block href={wa.buildLink()!}>
+          <p className="text-navy text-lg font-black mb-2">
+            {wa.number || <span className="inline-block w-32 h-5 bg-gray-100 rounded animate-pulse" />}
+          </p>
+          <MallButton variant="whatsapp" block href={wa.buildLink() ?? "#"}>
             <MessageCircle className="h-4 w-4" />
             {t("chatOnWhatsApp")}
           </MallButton>
         </MallCard>
-        )}
 
         {/* 平台保障 — home 模式下拉伸填满剩余空间 */}
         <MallCard padding="p-2.5" className={isSticky ? "" : "flex min-h-0 flex-1 flex-col"}>

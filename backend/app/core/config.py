@@ -100,7 +100,10 @@ class Settings(BaseSettings):
     TRUST_INBOUND_TRACE_ID: bool = False
 
     # WhatsApp 客服号码(允许带 +、空格、横线,解析时规范化)
-    WHATSAPP_DEFAULT_NUMBER: str = "+255 697 123 456"
+    WHATSAPP_DEFAULT_NUMBER: str = "+255 758 311 131"
+
+    # 客服邮箱
+    CONTACT_EMAIL: str = "info@buildreach.co.tz"
 
     # Refresh token cookie 配置(本机 http 开发用 SECURE=False;生产 https 必须 True)
     REFRESH_COOKIE_NAME: str = "refresh_token"
@@ -117,7 +120,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = "noreply@buildlink.co.tz"
+    SMTP_FROM_EMAIL: str = "noreply@matgo.co.tz"
     SMTP_USE_TLS: bool = True
 
     @computed_field  # type: ignore[misc]
