@@ -18,6 +18,7 @@ from app.constants.country_registration import (
     PHONE_ALREADY_REGISTERED_MESSAGE,
 )
 from app.core.exceptions import (
+    AccountDeactivatedError,
     AccountDisabledError,
     ConflictError,
     InvalidCredentialsError,
@@ -110,11 +111,11 @@ async def _find_user_by_identifier(
     from app.core.phone import normalize_phone_to_e164
     from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
 
-    # 只查 ACTIVE 用户:DISABLED 账号不允许登录,
-    # 且同一邮箱/手机可能同时存在 ACTIVE + DISABLED 记录导致 MultipleResultsFound
+    # 只查 ACTIVE 用户:DISABLED/DEACTIVATED 账号不允许登录,
+    # 且同一邮箱/手机可能同时存在 ACTIVE + 非活跃记录导致 MultipleResultsFound
     ident = identifier.strip()
     kind = _classify_identifier(ident)
-    active_filter = User.status != UserStatus.DISABLED
+    active_filter = User.status == UserStatus.ACTIVE
     if kind == "email":
         row = await db.execute(select(User).where(User.email == ident, active_filter))
     elif kind == "phone":
@@ -126,6 +127,32 @@ async def _find_user_by_identifier(
     else:
         row = await db.execute(select(User).where(User.username == ident, active_filter))
     return row.scalar_one_or_none()
+
+
+async def _is_deactivated_by_identifier(
+    db: AsyncSession, identifier: str, phone_region: str | None = None,
+) -> bool:
+    """identifier 对应的账号是否已注销(DEACTIVATED)。
+
+    仅在 ACTIVE 查询无结果时调用,给登录失败路径提供更明确的错误原因。
+    """
+    from app.core.phone import normalize_phone_to_e164
+    from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
+
+    ident = identifier.strip()
+    kind = _classify_identifier(ident)
+    deactivated_filter = User.status == UserStatus.DEACTIVATED
+    if kind == "email":
+        row = await db.execute(select(User.id).where(User.email == ident, deactivated_filter))
+    elif kind == "phone":
+        try:
+            e164 = normalize_phone_to_e164(ident, phone_region)
+            row = await db.execute(select(User.id).where(User.phone == e164, deactivated_filter))
+        except (PhoneFormatError, PhoneUnsupportedRegionError):
+            row = await db.execute(select(User.id).where(User.username == ident, deactivated_filter))
+    else:
+        row = await db.execute(select(User.id).where(User.username == ident, deactivated_filter))
+    return row.scalar_one_or_none() is not None
 
 
 async def register_buyer(
@@ -378,7 +405,22 @@ async def login(
     user = await _find_user_by_identifier(db, identifier, phone_region)
 
     # 用户不存在 / 密码错误 → 统一返回 401,防枚举
+    # 注意:_find_user_by_identifier 只返回 ACTIVE 用户,DISABLED/DEACTIVATED 会走此分支
     if user is None or not verify_password(password, user.password_hash):
+        # DEACTIVATED 账号给专属提示(不泄露密码对错,但业务上需要区分)
+        if user is None and await _is_deactivated_by_identifier(db, identifier, phone_region):
+            await write_audit(
+                db,
+                resource_type=AuditResourceType.AUTH,
+                action=AuditAction.LOGIN_FAILED,
+                status=AuditStatus.FAILED,
+                user_email=identifier,
+                request=request,
+                error_message="account deactivated",
+                extra={"identifier": identifier},
+            )
+            raise AccountDeactivatedError()
+
         locked_now = login_rate_limiter.record_failure(rate_key, ip)
         action = AuditAction.LOGIN_LOCKED if locked_now else AuditAction.LOGIN_FAILED
         await write_audit(
@@ -396,6 +438,8 @@ async def login(
             raise TooManyAttemptsError()
         raise InvalidCredentialsError()
 
+    # 此处 user 一定是 ACTIVE(_find_user_by_identifier 保证),
+    # 保留 DISABLED 检查作为防御性兜底(理论上不会触发)
     if user.status == UserStatus.DISABLED:
         await write_audit(
             db,

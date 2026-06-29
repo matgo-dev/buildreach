@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.exceptions import MultipleValidationError, NotAuthenticatedError, success
-from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.db.models.user import User, UserStatus
 from jose import JWTError
 from urllib.parse import urlparse
@@ -877,3 +877,31 @@ async def reset_password(
     await db.commit()
 
     return success(None, message="密码重置成功，请使用新密码登录")
+
+
+# ===== 账户注销 =====
+
+class DeactivateRequest(_BaseModel):
+    password: str
+
+
+@router.post("/deactivate", summary="注销账户(需当前密码确认)")
+async def deactivate_account(
+    body: DeactivateRequest,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """用户主动注销账户。注销后 token 立即失效,登录时给出专属提示。"""
+    # 从 DB 重新加载以获取 password_hash(CurrentUser dataclass 不含此字段)
+    user = await db.get(User, current.id)
+    if user is None:
+        raise MultipleValidationError([{"field": "password", "code": 40301, "message": "Incorrect password"}])
+
+    if not verify_password(body.password, user.password_hash):
+        raise MultipleValidationError([{"field": "password", "code": 40301, "message": "Incorrect password"}])
+
+    user.status = UserStatus.DEACTIVATED
+    user.token_version += 1
+    await db.commit()
+
+    return success({"message": "Account deactivated successfully"})

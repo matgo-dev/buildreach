@@ -81,6 +81,11 @@ class AccountDisabledError(BusinessError):
         super().__init__(status.HTTP_403_FORBIDDEN, 40005, message, message_key=MessageKey.ACCOUNT_DISABLED)
 
 
+class AccountDeactivatedError(BusinessError):
+    def __init__(self, message: str = "Account has been deactivated"):
+        super().__init__(status.HTTP_403_FORBIDDEN, 40305, message)
+
+
 class ValidationFailedError(BusinessError):
     def __init__(self, message: str = "Validation failed"):
         super().__init__(status.HTTP_400_BAD_REQUEST, 40006, message, message_key=MessageKey.VALIDATION_FAILED)
