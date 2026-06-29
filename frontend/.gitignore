@@ -5,3 +5,6 @@ out
 .env*.local
 *.tsbuildinfo
 .DS_Store
+
+# 联系方式静态资源（服务器上手动放置，不进 Repo）
+public/contact/wechat-qr.png

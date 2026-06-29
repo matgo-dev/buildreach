@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 
 /* ---------- 品类分区配置 ---------- */
 
@@ -60,7 +60,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function HelpCenterPage() {
   const t = useTranslations("helpCenter");
-  const wa = useWhatsApp();
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
 
   const current = SECTIONS.find((s) => s.id === activeSection) ?? SECTIONS[0];
@@ -116,20 +115,17 @@ export default function HelpCenterPage() {
             );
           })}
 
-          {/* WhatsApp 联系 */}
-          {wa.number && (
-            <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
-              <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
-              <a
-                href={wa.buildLink() ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
+          {/* 联系客服 */}
+          <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
+            <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
+            <ContactPopover>
+              <button
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
               >
-                WhatsApp
-              </a>
-            </div>
-          )}
+                {t("contactUs")}
+              </button>
+            </ContactPopover>
+          </div>
         </div>
 
         {/* 桌面端：左右栏布局 */}
@@ -153,20 +149,17 @@ export default function HelpCenterPage() {
               ))}
             </nav>
 
-            {/* WhatsApp 联系 */}
-            {wa.number && (
-              <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
-                <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
-                <a
-                  href={wa.buildLink() ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
+            {/* 联系客服 */}
+            <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
+              <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
+              <ContactPopover>
+                <button
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
                 >
-                  WhatsApp
-                </a>
-              </div>
-            )}
+                  {t("contactUs")}
+                </button>
+              </ContactPopover>
+            </div>
           </div>
 
           {/* 右侧内容 */}

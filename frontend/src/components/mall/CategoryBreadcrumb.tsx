@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ChevronDown, MessageCircle } from "lucide-react";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 
 /**
  * 从品类树中 DFS 查找目标 code 的完整路径。
@@ -144,7 +144,6 @@ export function CategoryBreadcrumb({
   const locale = useLocale();
   const router = useRouter();
   const t = useTranslations("mall");
-  const { buildLink, configured } = useWhatsApp();
 
   const crumbs = categoryCode ? buildCategoryPath(categoryTree, categoryCode) : [];
 
@@ -184,18 +183,17 @@ export function CategoryBreadcrumb({
         )}
 
         {/* 客服入口 — 仅列表页显示，详情页(有tail)不显示 */}
-        {configured && !tail && (
+        {!tail && (
           <div className="ml-4 flex items-center gap-2 shrink-0">
             <span className="text-[12px] text-amber-500 hidden sm:inline">{t("cantFindHint")}</span>
-            <a
-              href={buildLink() || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-1 text-[12px] font-medium text-white hover:bg-[#20bd5a] transition-colors h-[28px]"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              {t("contactService")}
-            </a>
+            <ContactPopover>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-1 text-[12px] font-medium text-white hover:bg-[#20bd5a] transition-colors h-[28px]"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {t("contactService")}
+              </button>
+            </ContactPopover>
           </div>
         )}
       </div>
