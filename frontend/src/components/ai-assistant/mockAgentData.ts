@@ -195,11 +195,11 @@ const containerAgent: AgentDef = {
 需要我帮您计算具体的装载方案吗？`,
     },
   ],
-  fallback: "感谢您的提问！我目前能处理柜型选择、装载率计算、运费估算等常见问题。\n\n如果您有更复杂的需求，我们的物流顾问可以为您提供专业方案。请通过页面右下角的 WhatsApp 联系我们 📱",
+  fallback: "感谢您的提问！我目前能处理柜型选择、装载率计算、运费估算等常见问题。\n\n如果您有更复杂的需求，我们的物流顾问可以为您提供专业方案。请通过页面右下角的 WhatsApp 联系我们 💬",
   fallbackL10n: {
-    zh: "感谢您的提问！我目前能处理柜型选择、装载率计算、运费估算等常见问题。\n\n如果您有更复杂的需求，我们的物流顾问可以为您提供专业方案。请通过页面右下角的 WhatsApp 联系我们 📱",
-    en: "Thanks for your question! I currently handle container selection, loading rate calculation, and freight estimates.\n\nFor more complex needs, our logistics team can provide a tailored solution. Contact us via WhatsApp 📱",
-    sw: "Asante kwa swali lako! Kwa sasa ninashughulikia uchaguzi wa kontena, kukokotoa kiwango cha upakiaji, na makadirio ya nauli.\n\nKwa mahitaji zaidi, timu yetu ya usafirishaji inaweza kusaidia. Wasiliana nasi kupitia WhatsApp 📱",
+    zh: "感谢您的提问！我目前能处理柜型选择、装载率计算、运费估算等常见问题。\n\n如果您有更复杂的需求，我们的物流顾问可以为您提供专业方案。请通过页面右下角的 WhatsApp 联系我们 💬",
+    en: "Thanks for your question! I currently handle container selection, loading rate calculation, and freight estimates.\n\nFor more complex needs, our logistics team can provide a tailored solution. Contact us via WhatsApp 💬",
+    sw: "Asante kwa swali lako! Kwa sasa ninashughulikia uchaguzi wa kontena, kukokotoa kiwango cha upakiaji, na makadirio ya nauli.\n\nKwa mahitaji zaidi, timu yetu ya usafirishaji inaweza kusaidia. Wasiliana nasi kupitia WhatsApp 💬",
   },
 };
 
@@ -388,11 +388,11 @@ const complianceAgent: AgentDef = {
 告诉我您的目标市场，我为您提供详细的合规路线图！`,
     },
   ],
-  fallback: "感谢您的提问！合规资质查询涉及较多专业细节，我目前能回答主要非洲国家的认证要求。\n\n如需更精确的合规方案，请通过 WhatsApp 联系我们的合规团队，我们将为您提供一对一的专业指导 📱",
+  fallback: "感谢您的提问！合规资质查询涉及较多专业细节，我目前能回答主要非洲国家的认证要求。\n\n如需更精确的合规方案，请通过 WhatsApp 联系我们的合规团队，我们将为您提供一对一的专业指导 💬",
   fallbackL10n: {
-    zh: "感谢您的提问！合规资质查询涉及较多专业细节，我目前能回答主要非洲国家的认证要求。\n\n如需更精确的合规方案，请通过 WhatsApp 联系我们的合规团队，我们将为您提供一对一的专业指导 📱",
-    en: "Thanks for your question! Compliance queries involve many details — I currently cover major African countries' certification requirements.\n\nFor tailored compliance solutions, contact our team via WhatsApp for one-on-one guidance 📱",
-    sw: "Asante kwa swali lako! Maswali ya uzingatiaji yanahusisha maelezo mengi — kwa sasa ninashughulikia mahitaji ya uthibitisho ya nchi kuu za Afrika.\n\nKwa masuluhisho maalum, wasiliana na timu yetu kupitia WhatsApp 📱",
+    zh: "感谢您的提问！合规资质查询涉及较多专业细节，我目前能回答主要非洲国家的认证要求。\n\n如需更精确的合规方案，请通过 WhatsApp 联系我们的合规团队，我们将为您提供一对一的专业指导 💬",
+    en: "Thanks for your question! Compliance queries involve many details — I currently cover major African countries' certification requirements.\n\nFor tailored compliance solutions, contact our team via WhatsApp for one-on-one guidance 💬",
+    sw: "Asante kwa swali lako! Maswali ya uzingatiaji yanahusisha maelezo mengi — kwa sasa ninashughulikia mahitaji ya uthibitisho ya nchi kuu za Afrika.\n\nKwa masuluhisho maalum, wasiliana na timu yetu kupitia WhatsApp 💬",
   },
 };
 
@@ -422,31 +422,29 @@ const procurementAgent: AgentDef = {
 🏫 **学校项目建材清单（标准 4 教室校舍）**
 
 📦 **主体结构**
-| 品类 | 规格 | 参考用量 | 采购均价（FOB） |
-|------|------|---------|----------------|
-| 螺纹钢 | Ø12/Ø16 | 15-20 吨 | $520-580/吨 |
-| 水泥 | P.O 42.5 | 建议当地采购 | — |
-| 彩钢瓦 | 0.4mm 镀锌 | 800-1200 ㎡ | $5.5-7.0/㎡ |
-| 铝合金窗 | 推拉窗 | 40-60 ㎡ | $35-50/㎡ |
+| 品类 | 规格 | 参考用量 |
+|------|------|---------|
+| 螺纹钢 | Ø12/Ø16 | 15-20 吨 |
+| 彩钢瓦 | 0.4mm 镀锌 | 800-1200 ㎡ |
+| 铝合金窗 | 推拉窗 | 40-60 ㎡ |
 
 🔧 **装饰材料**
-| 品类 | 规格 | 参考用量 | 采购均价（FOB） |
-|------|------|---------|----------------|
-| 瓷砖 | 600×600 | 600-800 ㎡ | $4.0-6.0/㎡ |
-| PVC 管 | DN20-110 | 200-300m | $0.8-3.0/m |
-| 电线 | BV 2.5/4.0 | 2000-3000m | $0.15-0.30/m |
-| 开关插座 | 86 型 | 100-150 个 | $0.8-1.5/个 |
+| 品类 | 规格 | 参考用量 |
+|------|------|---------|
+| 瓷砖 | 600×600 | 600-800 ㎡ |
+| PVC 管 | DN20-110 | 200-300m |
+| 电线 | BV 2.5/4.0 | 2000-3000m |
+| 开关插座 | 86 型 | 100-150 个 |
 
 🚢 **物流方案推荐**
-| 方案 | 柜型 | 运费预估 | 总周期 |
-|------|------|---------|--------|
-| A. 一次发运 | 2×20GP | $3,600-4,400 | 35-45 天 |
-| B. 分批发运 | 先钢材后装饰 | $4,200-5,000 | 分 2 批 |
+| 方案 | 柜型 | 总周期 |
+|------|------|--------|
+| A. 一次发运 | 2×20GP | 35-45 天 |
+| B. 分批发运 | 先钢材后装饰 | 分 2 批 |
 
 💡 **省钱建议**：
-1. 水泥在坦桑尼亚本地采购（本地产能充足，进口关税高）
-2. 钢材和瓷砖可以 **混装同柜**（重量+体积互补）
-3. 提前 2 周预订舱位，避开旺季加价
+1. 钢材和瓷砖可以 **混装同柜**（重量+体积互补）
+2. 提前 2 周预订舱位，避开旺季加价
 
 需要我为您生成详细的采购清单吗？`,
     },
@@ -532,49 +530,42 @@ const procurementAgent: AgentDef = {
 | 批量验货 | 30-50% | 多品类同批验货，分摊检验费 |
 | 指定 HS Code | 5-15% | 精准归类可能适用更低税率 |
 
-📊 **实际案例：某学校项目省钱清单**
-\`\`\`
-采购金额：$45,000
-传统方式总成本：$68,000（含运费、关税、清关）
-Matgo 筑达 方案：$52,000
-节省：$16,000（23.5%）
-\`\`\`
-
-想了解某个具体品类的省钱方案吗？`,
+想了解某个具体品类的省钱方案吗？提交询价后我们会为您定制最优方案！`,
     },
     {
       keywords: ["供应商", "推荐", "工厂", "选品"],
-      answer: `好的，为您介绍 Matgo 筑达 的供应商匹配服务：
+      answer: `好的，为您介绍 Matgo 筑达 的工厂资源：
 
-🔍 **Matgo 筑达 供应商筛选体系**
+🏭 **Matgo 筑达 — 直连中国优质工厂**
 
-📊 **筛选维度（六维评估）**
-| 维度 | 权重 | 评估内容 |
-|------|------|---------|
-| 🏭 生产能力 | 20% | 产能、设备、工艺水平 |
-| ✅ 资质认证 | 20% | ISO、CE、目的国认证 |
-| 💰 价格竞争力 | 15% | 同品类横向比价 |
-| 📦 出口经验 | 15% | 非洲市场出口记录 |
-| ⭐ 履约评分 | 15% | 交期准时率、品质合格率 |
-| 🛡️ 售后保障 | 15% | 质保政策、投诉处理 |
+我们直接对接中国各品类核心产区的优质工厂，确保产品质量和供应稳定。
 
-🏗️ **建材品类供应商分布**
-| 品类 | 核心产区 | 在库供应商 | 均价优势 |
-|------|---------|-----------|---------|
-| 瓷砖 | 佛山/淄博 | 50+ | FOB $3.8-6.0/㎡ |
-| 钢材 | 唐山/日照 | 30+ | FOB $480-600/吨 |
-| PVC管 | 佛山/台州 | 25+ | FOB $0.6-2.5/m |
-| 电线电缆 | 宁波/天津 | 20+ | FOB $0.12-0.28/m |
-| 五金件 | 永康/温州 | 40+ | 品类繁多 |
+📊 **工厂筛选标准**
+| 维度 | 评估内容 |
+|------|---------|
+| 🏭 生产能力 | 产能、设备、工艺水平 |
+| ✅ 资质认证 | ISO、CE、目的国认证 |
+| 📦 出口经验 | 非洲市场出口记录 |
+| ⭐ 履约评分 | 交期准时率、品质合格率 |
+| 🛡️ 售后保障 | 质保政策、投诉处理 |
 
-告诉我您需要采购的品类和数量，我为您推荐合适的供应商！`,
+🏗️ **建材品类核心产区**
+| 品类 | 核心产区 |
+|------|---------|
+| 瓷砖 | 佛山/淄博 |
+| 钢材 | 唐山/日照 |
+| PVC管 | 佛山/台州 |
+| 电线电缆 | 宁波/天津 |
+| 五金件 | 永康/温州 |
+
+告诉我您需要采购的品类和数量，我们为您匹配最合适的工厂！`,
     },
   ],
-  fallback: "感谢您的提问！我目前可以回答建材采购方案、物流路线规划和省钱技巧相关问题。\n\n如需获取实时报价或对接供应商，请通过 WhatsApp 联系我们的采购顾问 📱",
+  fallback: "感谢您的提问！我目前可以回答建材采购方案、物流路线规划和省钱技巧相关问题。\n\n如需获取报价或了解工厂详情，请通过 WhatsApp 联系我们的采购顾问 💬",
   fallbackL10n: {
-    zh: "感谢您的提问！我目前可以回答建材采购方案、物流路线规划和省钱技巧相关问题。\n\n如需获取实时报价或对接供应商，请通过 WhatsApp 联系我们的采购顾问 📱",
-    en: "Thanks for your question! I currently cover procurement plans, logistics routing and cost-saving tips.\n\nFor live quotes or supplier connections, contact our procurement team via WhatsApp 📱",
-    sw: "Asante kwa swali lako! Kwa sasa ninashughulikia mipango ya ununuzi, njia za usafirishaji na vidokezo vya kuokoa gharama.\n\nKwa bei za moja kwa moja au kuunganishwa na wasambazaji, wasiliana na timu yetu kupitia WhatsApp 📱",
+    zh: "感谢您的提问！我目前可以回答建材采购方案、物流路线规划和省钱技巧相关问题。\n\n如需获取报价或了解工厂详情，请通过 WhatsApp 联系我们的采购顾问 💬",
+    en: "Thanks for your question! I currently cover procurement plans, logistics routing and cost-saving tips.\n\nFor live quotes or supplier connections, contact our procurement team via WhatsApp 💬",
+    sw: "Asante kwa swali lako! Kwa sasa ninashughulikia mipango ya ununuzi, njia za usafirishaji na vidokezo vya kuokoa gharama.\n\nKwa bei za moja kwa moja au kuunganishwa na wasambazaji, wasiliana na timu yetu kupitia WhatsApp 💬",
   },
 };
 
@@ -590,159 +581,142 @@ const finderAgent: AgentDef = {
     en: "Hello! I'm Matgo AI Product Finder 🛒\n\nTell me what you're looking for:\n• Product name, e.g. \"safety gloves\", \"angle grinder\"\n• Your scenario, e.g. \"electrical materials for renovation\"\n• Project needs, e.g. \"what do I need for a school build\"\n\nNo browsing needed — just ask!",
     sw: "Habari! Mimi ni Mtafutaji wa Bidhaa wa AI wa Matgo 🛒\n\nNiambie unatafuta nini:\n• Jina la bidhaa, mfano \"glavu za usalama\", \"grinder\"\n• Hali yako, mfano \"vifaa vya umeme kwa ukarabati\"\n• Mahitaji ya mradi, mfano \"ninahitaji nini kwa shule\"\n\nHakuna haja ya kutafuta — uliza tu!",
   },
-  suggestions: ["我想找劳保安防手套", "有没有电动工具？", "装修要用的瓷砖和水泥"],
+  suggestions: ["我想找劳保安防手套", "有没有电动工具？", "装修要用的瓷砖和涂料"],
   suggestionsL10n: {
-    zh: ["我想找劳保安防手套", "有没有电动工具？", "装修要用的瓷砖和水泥"],
-    en: ["Looking for safety gloves", "Do you have power tools?", "Tiles and cement for renovation"],
+    zh: ["我想找劳保安防手套", "有没有电动工具？", "装修要用的瓷砖和涂料"],
+    en: ["Looking for safety gloves", "Do you have power tools?", "Tiles and paint for renovation"],
     sw: ["Natafuta glavu za usalama", "Mna zana za umeme?", "Vigae na saruji kwa ukarabati"],
   },
   qa: [
     {
-      keywords: ["劳保", "手套", "安防", "防护"],
+      keywords: ["劳保", "手套", "安防", "防护", "安全帽", "反光", "背心", "眼镜", "口罩", "工作服", "safety", "glove", "helmet"],
       answer: `找到了！为您定位 **劳保安防** 品类：
 
-🧤 **劳保安防手套**
-| 产品 | 规格 | 参考价（FOB） |
-|------|------|-------------|
-| 丁腈涂胶手套 | 13针涤纶，M/L/XL | $0.35-0.55/双 |
-| 乳胶皱纹手套 | 棉纱内衬，防滑 | $0.40-0.60/双 |
-| PVC 浸胶手套 | 全涂/半涂，防油 | $0.50-0.80/双 |
-| 牛皮焊接手套 | 加长袖口，耐高温 | $1.20-2.00/双 |
-| 一次性丁腈手套 | 无粉，蓝色/黑色 | $3.50-5.00/100只 |
+🧤 **劳保安防产品**
+| 产品 | 规格 |
+|------|------|
+| 丁腈涂胶手套 | 13针涤纶，M/L/XL |
+| 乳胶皱纹手套 | 棉纱内衬，防滑 |
+| PVC 浸胶手套 | 全涂/半涂，防油 |
+| 牛皮焊接手套 | 加长袖口，耐高温 |
+| 一次性丁腈手套 | 无粉，蓝色/黑色 |
 
-🏷️ 起订量一般 **1000 双起**，支持印 LOGO 定制。
+👉 [浏览劳保商品 →](/mall?cat=01)　|　[浏览安防商品 →](/mall?cat=02)
 
-👉 [点击查看劳保安防专区 →](/zh/mall?cat=safety-protection)
-
+如需了解价格，请将商品加入询价篮提交询价，我们会尽快为您报价！
 还需要其他防护用品吗？安全帽、反光背心、防护眼镜我都能帮你找！`,
     },
     {
-      keywords: ["电动工具", "角磨机", "电钻", "切割"],
+      keywords: ["电动工具", "角磨机", "电钻", "切割", "工具", "扳手", "电锤", "磨机", "tool", "grinder", "drill"],
       answer: `找到了！为您定位 **电动工具** 品类：
 
 🔧 **热门电动工具**
-| 产品 | 品牌参考 | 参考价（FOB） |
-|------|---------|-------------|
-| 角磨机 100mm | 东成/博世 | $8-25/台 |
-| 冲击钻 13mm | 东成/牧田 | $12-35/台 |
-| 电锤 26mm | 东成/博世 | $25-60/台 |
-| 手持切割机 355mm | 东成/DCA | $20-45/台 |
-| 电动扳手 | 大艺/南威 | $30-80/台 |
+| 产品 | 规格 | 品牌参考 |
+|------|------|---------|
+| 角磨机 | 100mm | 东成/博世 |
+| 冲击钻 | 13mm | 东成/牧田 |
+| 电锤 | 26mm | 东成/博世 |
+| 手持切割机 | 355mm | 东成/DCA |
+| 电动扳手 | — | 大艺/南威 |
 
 💡 **采购建议**：
 - 东非市场偏好 **东成、大艺** 等性价比品牌
 - 电压注意选 **220V/50Hz**（坦桑尼亚/肯尼亚通用）
 - 建议搭配 **配件包**（钻头、磨片、碳刷）
 
-👉 [点击查看电动工具专区 →](/zh/mall?cat=tools-consumables)
+👉 [浏览手动工具 →](/mall?cat=04)　|　[浏览磨具磨料 →](/mall?cat=06)
 
-需要我帮你挑选具体型号吗？`,
+如需了解价格，请将商品加入询价篮提交询价！`,
     },
     {
-      keywords: ["瓷砖", "水泥", "装修"],
+      keywords: ["瓷砖", "水泥", "装修", "地砖", "墙砖", "涂料", "防水", "tile", "cement", "decoration"],
       answer: `找到了！为您整理 **装修建材** 清单：
 
 🏠 **装修核心建材**
 
 📦 **地面/墙面**
-| 产品 | 规格 | 参考价（FOB） |
-|------|------|-------------|
-| 抛光砖 | 600×600mm | $3.80-5.50/㎡ |
-| 仿古砖 | 600×600mm | $4.50-6.50/㎡ |
-| 木纹砖 | 200×1000mm | $5.00-8.00/㎡ |
-| 外墙砖 | 60×240mm | $4.00-6.00/㎡ |
+| 产品 | 规格 |
+|------|------|
+| 抛光砖 | 600×600mm |
+| 仿古砖 | 600×600mm |
+| 木纹砖 | 200×1000mm |
+| 外墙砖 | 60×240mm |
 
-👉 [点击查看装饰建材专区 →](/zh/mall?cat=decoration-building)
+👉 [浏览装饰材料 →](/mall?cat=19)　|　[浏览涂料化工 →](/mall?cat=18)
 
 🔌 **水电材料**
-| 产品 | 规格 | 参考价（FOB） |
-|------|------|-------------|
-| PVC 线管 | DN16/20/25 | $0.30-0.80/m |
-| BV 电线 | 2.5mm²/4mm² | $0.15-0.30/m |
-| PPR 水管 | DN20/25/32 | $0.50-1.50/m |
-| 开关插座 | 86型 | $0.80-1.50/个 |
+| 产品 | 规格 |
+|------|------|
+| PVC 线管 | DN16/20/25 |
+| BV 电线 | 2.5mm²/4mm² |
+| PPR 水管 | DN20/25/32 |
+| 开关插座 | 86型 |
 
-👉 [点击查看工业电气专区 →](/zh/mall?cat=industrial-electrical)
+👉 [浏览电线电缆 →](/mall?cat=12)　|　[浏览电器 →](/mall?cat=10)
 
-💡 水泥建议在 **当地采购**，运费占比过高不划算。
-
-需要我帮你做一个完整的装修材料清单吗？`,
+看到感兴趣的商品可以直接加入询价篮，提交后我们会尽快为您报价！`,
     },
     {
-      keywords: ["门", "窗", "铝合金", "木门"],
+      keywords: ["门", "窗", "铝合金", "木门", "五金", "门锁", "合页", "door", "window", "hardware"],
       answer: `找到了！为您定位 **门窗五金** 品类：
 
 🚪 **门窗产品**
-| 产品 | 规格 | 参考价（FOB） |
-|------|------|-------------|
-| 实木复合门 | 标准门洞 | $45-85/樘 |
-| 钢质入户门 | 标准/非标 | $50-120/樘 |
-| 铝合金推拉窗 | 定制尺寸 | $35-55/㎡ |
-| 断桥铝窗 | 定制尺寸 | $55-90/㎡ |
-| 铝合金百叶窗 | 定制尺寸 | $25-45/㎡ |
+| 产品 | 规格 |
+|------|------|
+| 实木复合门 | 标准门洞 |
+| 钢质入户门 | 标准/非标 |
+| 铝合金推拉窗 | 定制尺寸 |
+| 断桥铝窗 | 定制尺寸 |
+| 铝合金百叶窗 | 定制尺寸 |
 
-🔩 **配套五金**
-| 产品 | 参考价（FOB） |
-|------|-------------|
-| 门锁 | $3-15/套 |
-| 合页 | $0.50-2.00/副 |
-| 门吸 | $1.00-3.00/个 |
-| 闭门器 | $5-15/个 |
+🔩 **配套五金**：门锁、合页、门吸、闭门器等
 
-👉 [点击查看门窗五金专区 →](/zh/mall?cat=doors-windows-hardware)
+👉 [浏览门窗 →](/mall?cat=20)　|　[浏览五金丝网 →](/mall?cat=09)
 
-需要我帮您按项目需求做门窗清单吗？`,
+如需了解价格，请将商品加入询价篮提交询价，我们会尽快为您报价！`,
     },
     {
-      keywords: ["螺丝", "螺栓", "紧固件", "膨胀"],
+      keywords: ["螺丝", "螺栓", "紧固件", "膨胀", "密封", "玻璃胶", "发泡", "防水", "screw", "bolt", "fastener", "seal"],
       answer: `找到了！为您定位 **紧固密封** 品类：
 
 🔩 **紧固件产品**
-| 产品 | 规格 | 参考价（FOB） |
-|------|------|-------------|
-| 外六角螺栓 | M8-M20 | $800-1200/吨 |
-| 膨胀螺栓 | M8-M16 | $0.10-0.50/个 |
-| 自攻螺钉 | 各规格 | $1.50-3.00/kg |
-| 钢结构螺栓 | 10.9级/8.8级 | $1000-1500/吨 |
+| 产品 | 规格 |
+|------|------|
+| 外六角螺栓 | M8-M20 |
+| 膨胀螺栓 | M8-M16 |
+| 自攻螺钉 | 各规格 |
+| 钢结构螺栓 | 10.9级/8.8级 |
 
-🔧 **密封材料**
-| 产品 | 参考价（FOB） |
-|------|-------------|
-| 玻璃胶 | $0.80-1.50/支 |
-| 发泡剂 | $1.50-2.50/罐 |
-| 防水卷材 | $1.50-3.00/㎡ |
-| 生料带 | $0.05-0.10/卷 |
+🔧 **密封材料**：玻璃胶、发泡剂、防水卷材、生料带等
 
-👉 [点击查看紧固密封专区 →](/zh/mall?cat=fasteners-sealing)
+👉 [浏览紧固件 →](/mall?cat=08)
 
 需要哪种规格？告诉我用途我来帮你选型！`,
     },
     {
-      keywords: ["学校", "建设", "项目"],
+      keywords: ["学校", "建设", "项目", "工地", "施工", "建筑", "project", "school", "construction"],
       answer: `好的！学校建设涉及多个品类，我帮你一站式定位：
 
 🏫 **学校项目所需建材一览**
 
-| 用途 | 推荐品类 | 快速跳转 |
+| 用途 | 推荐品类 | 浏览商品 |
 |------|---------|---------|
-| 主体结构 | 螺纹钢、钢管 | [紧固密封 →](/zh/mall?cat=fasteners-sealing) |
-| 屋面 | 彩钢瓦、防水卷材 | [装饰建材 →](/zh/mall?cat=decoration-building) |
-| 门窗 | 铝合金窗、钢质门 | [门窗五金 →](/zh/mall?cat=doors-windows-hardware) |
-| 地面 | 瓷砖 600×600 | [装饰建材 →](/zh/mall?cat=decoration-building) |
-| 水电 | PVC管、电线、开关 | [工业电气 →](/zh/mall?cat=industrial-electrical) |
-| 安全 | 安全帽、反光背心 | [劳保安防 →](/zh/mall?cat=safety-protection) |
-| 工具 | 角磨机、电锤 | [工具耗材 →](/zh/mall?cat=tools-consumables) |
+| 主体结构 | 螺纹钢、钢管 | [浏览 →](/mall?cat=08) |
+| 屋面 | 彩钢瓦、防水卷材 | [浏览 →](/mall?cat=17) |
+| 门窗 | 铝合金窗、钢质门 | [浏览 →](/mall?cat=20) |
+| 地面 | 瓷砖 600×600 | [浏览 →](/mall?cat=27) |
+| 水电 | PVC管、电线、开关 | [浏览 →](/mall?cat=12) |
+| 安全 | 安全帽、反光背心 | [浏览 →](/mall?cat=01) |
+| 工具 | 角磨机、电锤 | [浏览 →](/mall?cat=04) |
 
-💡 点击任意品类即可跳转到对应商品列表，一目了然！
-
-需要我帮你生成采购清单并估算总价吗？`,
+需要我帮你生成采购清单吗？提交询价后我们会尽快报价！`,
     },
   ],
-  fallback: "我目前覆盖 30+ 建材品类，你可以试着描述：\n• 品类名称（如「安全帽」「PVC管」）\n• 使用场景（如「道路施工需要什么」）\n\n如果没找到你要的，说明我们正在上新，可以通过 WhatsApp 联系采购顾问 📱",
+  fallback: "我目前覆盖 30+ 建材品类，你可以试着描述：\n• 品类名称（如「安全帽」「PVC管」）\n• 使用场景（如「道路施工需要什么」）\n\n如果没找到你要的，说明我们正在上新，可以通过 WhatsApp 联系采购顾问 💬",
   fallbackL10n: {
-    zh: "我目前覆盖 30+ 建材品类，你可以试着描述：\n• 品类名称（如「安全帽」「PVC管」）\n• 使用场景（如「道路施工需要什么」）\n\n如果没找到你要的，说明我们正在上新，可以通过 WhatsApp 联系采购顾问 📱",
-    en: "I currently cover 30+ building material categories. Try describing:\n• Product name (e.g. \"safety helmet\", \"PVC pipe\")\n• Use case (e.g. \"what do I need for road construction\")\n\nCan't find it? Contact our procurement team via WhatsApp 📱",
-    sw: "Kwa sasa ninashughulikia aina 30+ za vifaa vya ujenzi. Jaribu kueleza:\n• Jina la bidhaa (mfano \"kofia ya usalama\", \"bomba la PVC\")\n• Matumizi (mfano \"ninahitaji nini kwa ujenzi wa barabara\")\n\nHukupata? Wasiliana na timu yetu kupitia WhatsApp 📱",
+    zh: "我目前覆盖 30+ 建材品类，你可以试着描述：\n• 品类名称（如「安全帽」「PVC管」）\n• 使用场景（如「道路施工需要什么」）\n\n如果没找到你要的，说明我们正在上新，可以通过 WhatsApp 联系采购顾问 💬",
+    en: "I currently cover 30+ building material categories. Try describing:\n• Product name (e.g. \"safety helmet\", \"PVC pipe\")\n• Use case (e.g. \"what do I need for road construction\")\n\nCan't find it? Contact our procurement team via WhatsApp 💬",
+    sw: "Kwa sasa ninashughulikia aina 30+ za vifaa vya ujenzi. Jaribu kueleza:\n• Jina la bidhaa (mfano \"kofia ya usalama\", \"bomba la PVC\")\n• Matumizi (mfano \"ninahitaji nini kwa ujenzi wa barabara\")\n\nHukupata? Wasiliana na timu yetu kupitia WhatsApp 💬",
   },
 };
 

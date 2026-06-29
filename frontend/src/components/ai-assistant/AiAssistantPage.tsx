@@ -62,19 +62,19 @@ export function AiAssistantPage() {
   return (
     <div>
       {/* Hero */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-4 sm:px-6 mb-6 min-h-[160px] sm:min-h-[190px] flex items-center justify-center py-6">
+      <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-4 sm:px-8 mb-6 min-h-[200px] sm:min-h-[240px] flex items-center justify-center py-8 sm:py-10">
         <div className="flex flex-col items-center text-center">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-sm text-white/80">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white/80">
             <Sparkles className="h-4 w-4" />
             AI-Powered
           </div>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
             {t("heroTitle")}
           </h1>
-          <p className="text-[12px] sm:text-[13px] text-white/65 leading-snug sm:whitespace-nowrap">
+          <p className="text-[13px] sm:text-[14px] text-white/65 leading-relaxed sm:whitespace-nowrap">
             {t("heroDesc")}
           </p>
-          <p className="mt-0.5 text-[11px] sm:text-[12px] text-white/40 sm:whitespace-nowrap">
+          <p className="mt-1.5 text-[12px] sm:text-[13px] text-white/40 leading-relaxed sm:whitespace-nowrap">
             {t("heroSubDesc")}
           </p>
         </div>
@@ -405,6 +405,7 @@ function ChatInputBar({
 
 // ─── 简易 Markdown 渲染 ────────────────────────
 function MarkdownLite({ text }: { text: string }) {
+  const locale = useLocale();
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
   let i = 0;
@@ -437,13 +438,13 @@ function MarkdownLite({ text }: { text: string }) {
         tableLines.push(lines[i]);
         i++;
       }
-      elements.push(<MdTable key={`tbl-${i}`} rows={tableLines} />);
+      elements.push(<MdTable key={`tbl-${i}`} rows={tableLines} locale={locale} />);
       continue;
     }
 
     elements.push(
       <p key={`p-${i}`} className="min-h-[1.25em]">
-        <InlineFormat text={line} />
+        <InlineFormat text={line} locale={locale} />
       </p>,
     );
     i++;
@@ -452,24 +453,37 @@ function MarkdownLite({ text }: { text: string }) {
   return <div className="space-y-0.5">{elements}</div>;
 }
 
-function InlineFormat({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+function InlineFormat({ text, locale }: { text: string; locale: string }) {
+  // 先拆链接 [label](url)，再拆粗体 **text**
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g);
   return (
     <>
-      {parts.map((p, idx) =>
-        p.startsWith("**") && p.endsWith("**") ? (
-          <strong key={idx} className="font-semibold text-slate-900">
-            {p.slice(2, -2)}
-          </strong>
-        ) : (
-          <span key={idx}>{p}</span>
-        ),
-      )}
+      {parts.map((p, idx) => {
+        const linkMatch = p.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (linkMatch) {
+          const [, label, url] = linkMatch;
+          // 站内链接自动拼 locale 前缀
+          const href = url.startsWith("/") ? `/${locale}${url}` : url;
+          return (
+            <a key={idx} href={href} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline hover:text-teal-800">
+              {label}
+            </a>
+          );
+        }
+        if (p.startsWith("**") && p.endsWith("**")) {
+          return (
+            <strong key={idx} className="font-semibold text-slate-900">
+              {p.slice(2, -2)}
+            </strong>
+          );
+        }
+        return <span key={idx}>{p}</span>;
+      })}
     </>
   );
 }
 
-function MdTable({ rows }: { rows: string[] }) {
+function MdTable({ rows, locale }: { rows: string[]; locale: string }) {
   const parse = (row: string) =>
     row.split("|").map((c) => c.trim()).filter(Boolean);
 
@@ -487,7 +501,7 @@ function MdTable({ rows }: { rows: string[] }) {
             <tr className="bg-slate-100">
               {headerCells.map((c, i) => (
                 <th key={i} className="whitespace-nowrap px-3 py-1.5 text-left font-semibold text-slate-700">
-                  <InlineFormat text={c} />
+                  <InlineFormat text={c} locale={locale} />
                 </th>
               ))}
             </tr>
@@ -501,7 +515,7 @@ function MdTable({ rows }: { rows: string[] }) {
               <tr key={ri} className="border-t border-slate-100">
                 {cells.map((c, ci) => (
                   <td key={ci} className="whitespace-nowrap px-3 py-1.5 text-slate-600">
-                    <InlineFormat text={c} />
+                    <InlineFormat text={c} locale={locale} />
                   </td>
                 ))}
               </tr>
