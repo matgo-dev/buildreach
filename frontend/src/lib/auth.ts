@@ -202,6 +202,9 @@ export const authApi = {
 
   changePhone: (new_phone: string | null, current_password: string) =>
     api.post<MeBasic>("/api/v1/auth/me/phone", { new_phone, current_password }),
+
+  deactivateAccount: (password: string) =>
+    api.post<null>("/api/v1/auth/deactivate", { password }),
 };
 
 /** /me/* 接口返回的简版 user(不含 roles/permissions/organization) */
