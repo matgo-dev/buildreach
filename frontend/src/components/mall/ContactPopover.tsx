@@ -110,7 +110,7 @@ export function ContactPopover({
       {contact.wechatId && (
         <button
           onClick={() => { setShowQr(true); setOpen(false); }}
-          className="w-full flex items-center gap-2 rounded-lg bg-[#07c160]/8 border border-[#07c160]/15 p-2 hover:bg-[#07c160]/15 transition-colors text-left"
+          className="w-full flex items-center gap-2 rounded-lg bg-gray-50 p-2 hover:bg-gray-100 transition-colors text-left"
         >
           <span className="w-7 h-7 rounded-full bg-[#07c160]/15 grid place-items-center shrink-0">
             <WeChatIcon className="h-3.5 w-3.5 text-[#07c160]" />
@@ -118,7 +118,6 @@ export function ContactPopover({
           <span className="text-[12px] font-bold text-navy">WeChat</span>
         </button>
       )}
-      <p className="text-[10px] text-teal-800/60 text-center pt-0.5">{t("floatWaCtaHint")}</p>
     </div>
   );
 
@@ -149,7 +148,7 @@ export function ContactPopover({
               opacity: pos ? 1 : 0,
             }}
           >
-            <div className="w-[220px] rounded-xl bg-teal-50/80 shadow-lg border border-teal-200/50 p-1.5">
+            <div className="w-[220px] rounded-xl bg-white shadow-lg border border-gray-200 p-1.5">
               {channelList}
             </div>
           </div>
