@@ -9,6 +9,7 @@ from app.db.base import Base, TimestampUpdateMixin
 class UserStatus:
     ACTIVE = "ACTIVE"
     DISABLED = "DISABLED"
+    DEACTIVATED = "DEACTIVATED"
 
 
 class User(Base, TimestampUpdateMixin):
@@ -27,6 +28,8 @@ class User(Base, TimestampUpdateMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     # 手机号:买方主登录凭证(坦桑 +255 E.164),其他角色选填
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    # WhatsApp 号码:买方注册时填写,独立于手机号
+    whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=UserStatus.ACTIVE)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
