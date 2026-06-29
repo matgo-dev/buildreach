@@ -26,13 +26,6 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { MOCK_ORDERS, type MockOrder, type Shipment, type Milestone, MILESTONE_KEYS } from "./mockOrders";
 
-// demo 账号邮箱 — 地推演示用，通过 NEXT_PUBLIC_DEMO_EMAILS 环境变量配置，逗号分隔
-const DEMO_EMAILS = new Set(
-  (process.env.NEXT_PUBLIC_DEMO_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim())
-    .filter(Boolean),
-);
 
 // 节点图标映射
 const MILESTONE_ICONS: Record<string, React.ElementType> = {
@@ -55,7 +48,7 @@ export function OrderTrackingPage() {
   const user = useAuthStore((s) => s.user);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const isDemo = user?.email ? DEMO_EMAILS.has(user.email) : false;
+  const isDemo = user?.is_demo ?? false;
   // TODO: 后续接真实 API 后，真实用户从后端拉订单数据
   const orders = isDemo ? MOCK_ORDERS : [];
 

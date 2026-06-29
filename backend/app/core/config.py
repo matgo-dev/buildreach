@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     # 客服邮箱
     CONTACT_EMAIL: str = "info@buildreach.co.tz"
 
+    # 地推演示白名单(逗号分隔的 Buyer 邮箱，可看到 mock 订单追踪数据)
+    DEMO_EMAILS: str = ""
+
     # Refresh token cookie 配置(本机 http 开发用 SECURE=False;生产 https 必须 True)
     REFRESH_COOKIE_NAME: str = "refresh_token"
     REFRESH_COOKIE_PATH: str = "/api/v1/auth"
