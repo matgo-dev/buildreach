@@ -78,10 +78,10 @@ export function ContactPopover({
 
   const close = useCallback(() => setOpen(false), []);
 
-  // 渠道列表（复用）
+  // 渠道列表（和悬浮面板统一样式）
   const channelList = (
-    <div className="space-y-1">
-      {/* WhatsApp */}
+    <div className="space-y-1.5">
+      {/* WhatsApp — 推荐 */}
       {wa.configured && (
         <a
           href={wa.buildLink(context)!}
@@ -91,10 +91,19 @@ export function ContactPopover({
           className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
           style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
         >
-          <span className="w-7 h-7 rounded-full bg-white/20 grid place-items-center shrink-0">
-            <MessageCircle className="h-3.5 w-3.5 text-white" />
+          <span className="w-8 h-8 rounded-full bg-white/20 grid place-items-center shrink-0">
+            <MessageCircle className="h-4 w-4 text-white" />
           </span>
-          <span className="text-[12px] font-bold">WhatsApp</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <span className="text-[12px] font-bold">WhatsApp</span>
+              <span className="inline-flex items-center gap-0.5 text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
+                <Star className="h-2 w-2 fill-current" />
+                {t("recommended")}
+              </span>
+            </div>
+            <p className="text-[10px] text-white/80 leading-tight">{t("floatWaDesc")}</p>
+          </div>
         </a>
       )}
 
@@ -102,12 +111,15 @@ export function ContactPopover({
       {contact.wechatId && (
         <button
           onClick={() => { setShowQr(true); setOpen(false); }}
-          className="w-full flex items-center gap-2 rounded-lg bg-gray-50 p-2 hover:bg-gray-100 transition-colors text-left"
+          className="w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
         >
-          <span className="w-7 h-7 rounded-full bg-[#07c160]/15 grid place-items-center shrink-0">
-            <WeChatIcon className="h-3.5 w-3.5 text-[#07c160]" />
+          <span className="w-8 h-8 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
+            <WeChatIcon className="h-4 w-4 text-[#07c160]" />
           </span>
-          <span className="text-[12px] font-bold text-navy">WeChat</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-bold text-navy">WeChat</p>
+            <p className="text-[10px] text-muted leading-tight">{t("floatWeChatDesc")}</p>
+          </div>
         </button>
       )}
     </div>
@@ -140,11 +152,14 @@ export function ContactPopover({
               opacity: pos ? 1 : 0,
             }}
           >
-            <div className="w-[200px] rounded-xl bg-white shadow-lg border border-gray-200 overflow-hidden">
-              <div className="bg-teal-800 px-3 py-1.5">
-                <p className="text-white text-[12px] font-bold">{t("consultantTitle")}</p>
+            <div className="w-[260px] rounded-2xl bg-white shadow-lg border border-line overflow-hidden">
+              <div className="bg-teal-800 px-3 py-2 flex items-center justify-between">
+                <p className="text-white text-[13px] font-bold">{t("consultantTitle")}</p>
+                <button onClick={close} className="text-white/60 hover:text-white transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <div className="p-1.5">
+              <div className="p-2">
               {channelList}
               </div>
             </div>
