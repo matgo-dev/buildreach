@@ -885,8 +885,6 @@ async def create_sku(
         packing_quantity=data.packing_quantity,
         gross_weight_kg=data.gross_weight_kg,
         volume_cbm=data.volume_cbm,
-        can_consolidate=data.can_consolidate,
-        cargo_type=data.cargo_type,
         is_default=data.is_default,
         status=SkuStatus.ACTIVE,
     )
@@ -1702,8 +1700,6 @@ async def _create_sku_in_aggregate(
         packing_quantity=sku_data.packing_quantity,
         gross_weight_kg=sku_data.gross_weight_kg,
         volume_cbm=sku_data.volume_cbm,
-        can_consolidate=sku_data.can_consolidate,
-        cargo_type=sku_data.cargo_type,
         is_default=sku_data.is_default,
         status=SkuStatus.ACTIVE,
     )
@@ -1763,7 +1759,7 @@ async def _update_sku_in_aggregate(
     plain_fields = (
         "manufacturer_model", "price_min", "price_max",
         "moq", "lead_time_min", "lead_time_max", "packing_quantity",
-        "gross_weight_kg", "volume_cbm", "can_consolidate", "cargo_type",
+        "gross_weight_kg", "volume_cbm",
         "is_default",
     )
     for field in plain_fields:

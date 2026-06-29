@@ -22,8 +22,6 @@ export interface SkuFormData {
   packing_quantity?: number | null;
   gross_weight_kg?: number | null;
   volume_cbm?: number | null;
-  can_consolidate: boolean;
-  cargo_type?: string | null;
   is_default: boolean;
   status: string;
   price_tiers: PriceTierInput[];
@@ -45,7 +43,7 @@ interface SkuEditModalProps {
 
 
 function emptySkuForm(): SkuFormData {
-  return { sku_code: null, manufacturer_model: null, name: null, color: null, material: null, price_min: null, price_max: null, moq: 100, lead_time_min: null, lead_time_max: null, packing_quantity: null, gross_weight_kg: null, volume_cbm: null, can_consolidate: true, cargo_type: null, is_default: false, status: "ACTIVE", price_tiers: [], attributes: [], imageFiles: [], existingImages: [], removedImageIds: [] };
+  return { sku_code: null, manufacturer_model: null, name: null, color: null, material: null, price_min: null, price_max: null, moq: 100, lead_time_min: null, lead_time_max: null, packing_quantity: null, gross_weight_kg: null, volume_cbm: null, is_default: false, status: "ACTIVE", price_tiers: [], attributes: [], imageFiles: [], existingImages: [], removedImageIds: [] };
 }
 
 export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew, skuTemplates, currency }: SkuEditModalProps) {
@@ -214,14 +212,6 @@ export default function SkuEditModal({ open, onClose, onConfirm, initial, isNew,
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">{t("volume")} (cbm)</label>
                 <input type="number" value={form.volume_cbm ?? ""} onChange={(e) => set("volume_cbm", e.target.value ? Number(e.target.value) : null)} min={0} step={0.001} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
-              </div>
-              <div className="flex items-end gap-3 pb-1">
-                <label className="text-xs text-slate-500">{t("canConsolidate")}</label>
-                <Toggle checked={form.can_consolidate} onChange={() => set("can_consolidate", !form.can_consolidate)} size="md" />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">{t("cargoType")}</label>
-                <input type="text" value={form.cargo_type || ""} onChange={(e) => set("cargo_type", e.target.value || null)} className="w-full h-8 px-3 rounded-lg border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
               </div>
             </div>
           </div>

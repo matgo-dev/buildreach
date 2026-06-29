@@ -159,8 +159,6 @@ class SkuCreate(BaseModel):
     sku_code: str | None = Field(default=None, max_length=50)
     manufacturer_model: str | None = Field(default=None, max_length=100)
     name: str | None = Field(default=None, max_length=200)
-    color: str | None = Field(default=None, max_length=50)
-    material: str | None = Field(default=None, max_length=100)
     source_lang: str = "zh"
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
@@ -170,8 +168,6 @@ class SkuCreate(BaseModel):
     packing_quantity: int | None = Field(default=None, gt=0)
     gross_weight_kg: Decimal | None = Field(default=None, gt=0)
     volume_cbm: Decimal | None = Field(default=None, gt=0)
-    can_consolidate: bool = True
-    cargo_type: str | None = Field(default=None, max_length=20)
     is_default: bool = False
     price_tiers: List[PriceTierCreate] | None = None
     attributes: List[ProductAttrCreate] | None = None
@@ -180,8 +176,6 @@ class SkuCreate(BaseModel):
 class SkuUpdate(BaseModel):
     manufacturer_model: str | None = Field(default=None, max_length=100)
     name: str | None = Field(default=None, max_length=200)
-    color: str | None = Field(default=None, max_length=50)
-    material: str | None = Field(default=None, max_length=100)
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     moq: int | None = Field(default=None, gt=0)
@@ -190,8 +184,6 @@ class SkuUpdate(BaseModel):
     packing_quantity: int | None = Field(default=None, gt=0)
     gross_weight_kg: Decimal | None = Field(default=None, gt=0)
     volume_cbm: Decimal | None = Field(default=None, gt=0)
-    can_consolidate: bool | None = None
-    cargo_type: str | None = Field(default=None, max_length=20)
     is_default: bool | None = None
     price_tiers: List[PriceTierCreate] | None = None
     attributes: List[ProductAttrCreate] | None = None
@@ -203,8 +195,6 @@ class SkuPublic(BaseModel):
     id: int
     sku_code: str
     name: str | None = None
-    color: str | None = None
-    material: str | None = None
     manufacturer_model: str | None = None
     price_min: Decimal | None = None
     price_max: Decimal | None = None
@@ -222,16 +212,10 @@ class SkuPublic(BaseModel):
 class SkuOperator(SkuPublic):
     name_zh: str | None = None
     name_en: str | None = None
-    color_zh: str | None = None
-    color_en: str | None = None
-    material_zh: str | None = None
-    material_en: str | None = None
     source_lang: str = "zh"
     packing_quantity: int | None = None
     gross_weight_kg: Decimal | None = None
     volume_cbm: Decimal | None = None
-    can_consolidate: bool = True
-    cargo_type: str | None = None
     supplier_relations: List[SupplierRelationDetail] = []
     created_at: datetime
     updated_at: datetime
@@ -346,7 +330,6 @@ class ProductOperatorDetail(BaseModel):
     currency: str = "TZS"
     moq: int | None = None
     moq_unit: str | None = None
-    ref_price_tiers: list | None = None
     # 物流参数（SPU 级）
     lead_time_min: int | None = None
     lead_time_max: int | None = None
@@ -441,8 +424,6 @@ class AggregateSkuCreate(BaseModel):
     client_id: str | None = Field(default=None, max_length=64, description="前端临时 UUID，用于建壳后映射 SKU 图片上传")
     manufacturer_model: str | None = Field(default=None, max_length=100)
     name: str | None = Field(default=None, max_length=200)
-    color: str | None = Field(default=None, max_length=50)
-    material: str | None = Field(default=None, max_length=100)
     source_lang: str = "zh"
     price_min: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     price_max: Decimal | None = Field(default=None, gt=0, decimal_places=2)
@@ -452,8 +433,6 @@ class AggregateSkuCreate(BaseModel):
     packing_quantity: int | None = Field(default=None, gt=0)
     gross_weight_kg: Decimal | None = Field(default=None, gt=0)
     volume_cbm: Decimal | None = Field(default=None, gt=0)
-    can_consolidate: bool = True
-    cargo_type: str | None = Field(default=None, max_length=20)
     is_default: bool = False
     price_tiers: List[PriceTierCreate] | None = None
     attributes: List[ProductAttrCreate] | None = None

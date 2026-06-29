@@ -180,11 +180,7 @@ export interface SkuOperatorDetail {
   name_zh: string | null;
   name_en: string | null;
   color: string | null;
-  color_zh: string | null;
-  color_en: string | null;
   material: string | null;
-  material_zh: string | null;
-  material_en: string | null;
   manufacturer_model: string | null;
   source_lang: string;
   price_min: number | null;
@@ -195,8 +191,6 @@ export interface SkuOperatorDetail {
   packing_quantity: number | null;
   gross_weight_kg: number | null;
   volume_cbm: number | null;
-  can_consolidate: boolean;
-  cargo_type: string | null;
   is_default: boolean;
   status: string;
   price_tiers: PriceTierSchema[];
@@ -238,7 +232,6 @@ export interface ProductOperatorDetail {
   currency: string;
   moq: number | null;
   moq_unit: string | null;
-  ref_price_tiers: unknown[] | null;
   // 物流参数（SPU 级）
   lead_time_min: number | null;
   lead_time_max: number | null;
@@ -294,8 +287,6 @@ export interface SkuUpdateInput {
   packing_quantity?: number | null;
   gross_weight_kg?: number | null;
   volume_cbm?: number | null;
-  can_consolidate?: boolean | null;
-  cargo_type?: string | null;
   is_default?: boolean | null;
   price_tiers?: PriceTierInput[] | null;
   attributes?: ProductAttrInput[] | null;
@@ -367,8 +358,6 @@ export interface AggregateSkuInput {
   packing_quantity?: number | null;
   gross_weight_kg?: number | null;
   volume_cbm?: number | null;
-  can_consolidate?: boolean;
-  cargo_type?: string | null;
   is_default?: boolean;
   price_tiers?: PriceTierInput[] | null;
   attributes?: ProductAttrInput[] | null;

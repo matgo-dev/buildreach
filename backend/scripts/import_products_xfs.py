@@ -899,7 +899,6 @@ def import_offer(
             moq=moq_value,
             moq_unit=moq_unit,
             packing_quantity=packing_quantity,
-            ref_price_tiers=None,
             gross_weight_kg=gross_weight_kg,
             volume_cbm=volume_cbm,
             manufacturer_model=manufacturer_model,

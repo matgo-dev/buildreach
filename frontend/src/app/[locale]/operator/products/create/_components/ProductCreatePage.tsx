@@ -33,8 +33,6 @@ export interface SkuFormState {
   packing_quantity: string;
   gross_weight_kg: string;
   volume_cbm: string;
-  can_consolidate: boolean;
-  cargo_type: string;
   is_default: boolean;
   price_tiers: PriceTierInput[];
   attributes: Record<string, string>;   // attr_key → attr_value
@@ -57,8 +55,6 @@ function createEmptySku(isDefault: boolean): SkuFormState {
     packing_quantity: "",
     gross_weight_kg: "",
     volume_cbm: "",
-    can_consolidate: true,
-    cargo_type: "",
     is_default: isDefault,
     price_tiers: [],
     attributes: {},
@@ -392,8 +388,6 @@ export function ProductCreatePage() {
               packing_quantity: sku.packing_quantity ? Number(sku.packing_quantity) : undefined,
               gross_weight_kg: sku.gross_weight_kg ? Number(sku.gross_weight_kg) : undefined,
               volume_cbm: sku.volume_cbm ? Number(sku.volume_cbm) : undefined,
-              can_consolidate: sku.can_consolidate,
-              cargo_type: sku.cargo_type || undefined,
               is_default: sku.is_default,
               price_tiers: sku.price_tiers.length > 0 ? sku.price_tiers : undefined,
               attributes: skuAttrs.length > 0 ? skuAttrs : undefined,

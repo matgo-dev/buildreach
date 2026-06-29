@@ -375,8 +375,6 @@ export default function ProductDetailPage() {
           packing_quantity: data.packing_quantity,
           gross_weight_kg: data.gross_weight_kg,
           volume_cbm: data.volume_cbm,
-          can_consolidate: data.can_consolidate,
-          cargo_type: data.cargo_type,
           is_default: data.is_default,
           price_tiers: data.price_tiers.length > 0 ? data.price_tiers : undefined,
           attributes: data.attributes.length > 0 ? data.attributes : undefined,
@@ -400,8 +398,6 @@ export default function ProductDetailPage() {
           packing_quantity: data.packing_quantity,
           gross_weight_kg: data.gross_weight_kg,
           volume_cbm: data.volume_cbm,
-          can_consolidate: data.can_consolidate,
-          cargo_type: data.cargo_type,
           is_default: data.is_default,
           price_tiers: data.price_tiers.length > 0 ? data.price_tiers : undefined,
           attributes: data.attributes.length > 0 ? data.attributes : undefined,
@@ -782,7 +778,7 @@ export default function ProductDetailPage() {
       {/* SKU Modal */}
       <SkuEditModal
         open={skuModalOpen} onClose={() => setSkuModalOpen(false)} onConfirm={handleSkuModalConfirm} isNew={skuModalData.isNew} skuTemplates={skuTemplates} currency={product.currency}
-        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: localized(skuModalData.sku.name_zh, skuModalData.sku.name_en, skuModalData.sku.name), color: localized(skuModalData.sku.color_zh, skuModalData.sku.color_en, skuModalData.sku.color), material: localized(skuModalData.sku.material_zh, skuModalData.sku.material_en, skuModalData.sku.material), price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, can_consolidate: skuModalData.sku.can_consolidate, cargo_type: skuModalData.sku.cargo_type, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
+        initial={skuModalData.sku ? { sku_code: skuModalData.sku.sku_code, manufacturer_model: skuModalData.sku.manufacturer_model, name: localized(skuModalData.sku.name_zh, skuModalData.sku.name_en, skuModalData.sku.name), color: skuModalData.sku.color, material: skuModalData.sku.material, price_min: skuModalData.sku.price_min ? Number(skuModalData.sku.price_min) : null, price_max: skuModalData.sku.price_max ? Number(skuModalData.sku.price_max) : null, moq: skuModalData.sku.moq, lead_time_min: skuModalData.sku.lead_time_min, lead_time_max: skuModalData.sku.lead_time_max, packing_quantity: skuModalData.sku.packing_quantity, gross_weight_kg: skuModalData.sku.gross_weight_kg ? Number(skuModalData.sku.gross_weight_kg) : null, volume_cbm: skuModalData.sku.volume_cbm ? Number(skuModalData.sku.volume_cbm) : null, is_default: skuModalData.sku.is_default, status: skuModalData.sku.status, price_tiers: skuModalData.sku.price_tiers.map((pt) => ({ min_qty: pt.min_qty, max_qty: pt.max_qty, unit_price: Number(pt.unit_price), currency: pt.currency })), attributes: skuModalData.sku.attributes.map((a) => ({ attr_key: a.attr_key, attr_value: a.attr_value })), imageFiles: [], existingImages: skuModalData.sku.images.map((img) => ({ id: img.id, url: img.full_url })), removedImageIds: [] } : null}
       />
 
       {/* Lightbox 图片预览 */}
@@ -821,7 +817,7 @@ function SkuRow({ sku, locale, localized, expanded, onToggle, t, isEditing, onEd
   unit: string; currency: string;
 }) {
   const skuStatus = sku.status === "ACTIVE" ? { bg: "bg-emerald-50", text: "text-emerald-700", label: t("skuStatusActive") } : { bg: "bg-slate-100", text: "text-slate-600", label: t("skuStatusInactive") };
-  const specs = [localized(sku.color_zh, sku.color_en, sku.color), localized(sku.material_zh, sku.material_en, sku.material), unit].filter(Boolean).join(" / ");
+  const specs = [sku.color, sku.material, unit].filter(Boolean).join(" / ");
   return (
     <>
       <tr className={`border-b ${expanded ? "border-slate-100" : "border-slate-200"} hover:bg-slate-50/50 ${!isEditing ? "cursor-pointer" : ""}`} onClick={!isEditing ? onToggle : undefined}>
@@ -879,8 +875,8 @@ function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { 
         <div><span className="text-slate-400">SKU</span><div className="font-mono text-slate-800 mt-0.5">{sku.sku_code}</div></div>
         <div><span className="text-slate-400">{t("model")}</span><div className="mt-0.5"><Val v={sku.manufacturer_model} /></div></div>
         <div><span className="text-slate-400">{t("name")}</span><div className="mt-0.5"><Val v={loc(sku.name_zh, sku.name_en, sku.name)} /></div></div>
-        <div><span className="text-slate-400">{t("color")}</span><div className="mt-0.5"><Val v={loc(sku.color_zh, sku.color_en, sku.color)} /></div></div>
-        <div><span className="text-slate-400">{t("material")}</span><div className="mt-0.5"><Val v={loc(sku.material_zh, sku.material_en, sku.material)} /></div></div>
+        <div><span className="text-slate-400">{t("color")}</span><div className="mt-0.5"><Val v={sku.color} /></div></div>
+        <div><span className="text-slate-400">{t("material")}</span><div className="mt-0.5"><Val v={sku.material} /></div></div>
         <div><span className="text-slate-400">{t("currency")}</span><div className="mt-0.5"><Val v={currency} /></div></div>
       </div>
 
@@ -913,8 +909,6 @@ function SkuExpandedDetails({ sku, locale, t, onImageClick, unit, currency }: { 
             <div className="flex justify-between"><span className="text-slate-400">{t("packingQty")}</span><Val v={sku.packing_quantity} /></div>
             <div className="flex justify-between"><span className="text-slate-400">{t("grossWeight")}</span><Val v={sku.gross_weight_kg != null ? `${Number(sku.gross_weight_kg)} kg` : null} /></div>
             <div className="flex justify-between"><span className="text-slate-400">{t("volume")}</span><Val v={sku.volume_cbm != null ? `${Number(sku.volume_cbm)} cbm` : null} /></div>
-            <div className="flex justify-between"><span className="text-slate-400">{t("canConsolidate")}</span><span>{sku.can_consolidate ? "✅" : "❌"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">{t("cargoType")}</span><Val v={sku.cargo_type} /></div>
           </div>
         </div>
 

@@ -350,20 +350,6 @@ export function SkuCard({ sku, index, currency, templates, onUpdate, onRemove, o
                 onChange={(e) => set("volume_cbm", e.target.value)}
               />
             </div>
-            <div>
-              <label className={LABEL_CLS}>{t("field_can_consolidate")}</label>
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => set("can_consolidate", !sku.can_consolidate)}
-                  className={`relative h-[18px] w-9 rounded-full transition-colors ${sku.can_consolidate ? "bg-blue-500" : "bg-slate-300"}`}
-                >
-                  <div
-                    className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${sku.can_consolidate ? "translate-x-[18px]" : "translate-x-0.5"}`}
-                  />
-                </button>
-              </div>
-            </div>
           </div>
         </details>
       </div>

@@ -1,8 +1,10 @@
 """SKU 变体表。
 
-每个 SPU 下可有多个 SKU，以颜色/材质/型号区分。
+每个 SPU 下可有多个 SKU，以型号/规格区分。
 is_default=TRUE 的 SKU 用于列表页展示价格和主图。
 price_min/max 为 TZS 展示价，可空（运营后补录）。
+颜色/材质等变体属性走 ProductAttr(selectable=True)，不在此表硬编码。
+拼柜策略(can_consolidate/cargo_type) 在 SPU 级(products 表)，不随 SKU 变化。
 
 多语言:v2 分列模式(name_zh / name_en),继承 I18nMixin 获得 source_lang + trans_meta。
 """
@@ -56,13 +58,7 @@ class ProductSku(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     # 多语言分列
     name_zh: Mapped[str | None] = mapped_column(String(200), nullable=True)
     name_en: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    color_zh: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    color_en: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    material_zh: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    material_en: Mapped[str | None] = mapped_column(String(100), nullable=True)
     name_sw: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    color_sw: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    material_sw: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # 定价（展示价，可空——运营后补录；币种和单位在 SPU 级）
     price_min: Mapped[float | None] = mapped_column(DECIMAL(12, 2), nullable=True)
@@ -77,9 +73,6 @@ class ProductSku(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     packing_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     gross_weight_kg: Mapped[float | None] = mapped_column(DECIMAL(8, 2), nullable=True)
     volume_cbm: Mapped[float | None] = mapped_column(DECIMAL(8, 4), nullable=True)
-    can_consolidate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    cargo_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
-
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=SkuStatus.ACTIVE)
 

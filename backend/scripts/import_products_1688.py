@@ -611,20 +611,6 @@ def import_offer(
     if _dedup("origin", origin_en, origin_zh):
         origin_en = ""
 
-    # 阶梯参考价:offer.json 里的 price_tiers 数组
-    raw_price_tiers = data.get("price_tiers") or []
-    ref_price_tiers = []
-    for tier in raw_price_tiers:
-        if tier.get("min_qty") and tier.get("price"):
-            clean_unit = (tier.get("unit") or "").rstrip(":").strip() or None
-            ref_price_tiers.append({
-                "min_qty": tier["min_qty"],
-                "max_qty": tier.get("max_qty"),
-                "price": tier["price"],
-                "currency": tier.get("currency", "CNY"),
-                "unit": clean_unit,
-            })
-
     # MOQ:offer.json 里的 moq 对象
     moq_obj = data.get("moq") or {}
     moq_value = moq_obj.get("value")
@@ -670,8 +656,6 @@ def import_offer(
             product.moq = moq_value
         if moq_unit:
             product.moq_unit = moq_unit
-        if ref_price_tiers:
-            product.ref_price_tiers = ref_price_tiers
         if gross_weight_kg is not None:
             product.gross_weight_kg = gross_weight_kg
         if volume_cbm is not None:
@@ -724,7 +708,6 @@ def import_offer(
             detail_description_zh=detail_desc_zh,
             moq=moq_value,
             moq_unit=moq_unit,
-            ref_price_tiers=ref_price_tiers or None,
             gross_weight_kg=gross_weight_kg,
             volume_cbm=volume_cbm,
             video_url=video_url,

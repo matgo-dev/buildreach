@@ -713,10 +713,16 @@ def import_offer(
             sku_attr_sort += 1
 
         # ── 7.2 skuRawFields 全量存为 ProductAttr ──
-        # 已映射到模型固定列的字段不重复存属性表
-        _MAPPED_TO_COLUMN = {"weight", "volume", "arrivalCycle"}
+        # 已映射到模型固定列的字段 + 鑫方盛平台内部字段,不存入属性表
+        _SKIP_RAW_FIELDS = {
+            "weight", "volume", "arrivalCycle",       # 已映射到 SKU 模型列
+            "partsNumber",                            # 已映射到 packing_quantity
+            "specificationProperties",                # 已作为 manufacturer_model fallback
+            "orderLimitType",                         # 鑫方盛平台内部:订购限制类型
+            "categoryProductType",                    # 鑫方盛平台内部:品类商品类型
+        }
         for rf_key, rf_val in raw_fields.items():
-            if rf_key in _MAPPED_TO_COLUMN:
+            if rf_key in _SKIP_RAW_FIELDS:
                 continue
             val_str = str(rf_val).strip() if rf_val is not None else ""
             if not val_str:

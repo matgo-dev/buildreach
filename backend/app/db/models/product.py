@@ -142,9 +142,6 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         nullable=True,
     )
 
-    # 阿里阶梯参考价（SPU 级，运营参考用，不展示给买方）
-    ref_price_tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
-
     # 商品视频（抓数导入或运营手填）
     video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
