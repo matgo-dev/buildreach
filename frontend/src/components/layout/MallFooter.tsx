@@ -17,7 +17,7 @@ export function MallFooter() {
         <div className="md:col-span-1">
           <h3 className="text-white text-base font-black mb-2.5">{BRAND.name}</h3>
           <p className="text-[13px] leading-relaxed text-[#d6eded]">
-            {BRAND.description}
+            {t("footerDescription")}
           </p>
         </div>
 
