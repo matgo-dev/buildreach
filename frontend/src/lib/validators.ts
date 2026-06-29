@@ -80,6 +80,18 @@ export function validateRequired(v: string, label = "此项"): string | null {
   return null;
 }
 
+/**
+ * BUYER 注册手机号/WhatsApp:只校验非空,不限制格式。
+ * 东非用户号码格式多样,后端统一 E.164 归一化。
+ */
+export function validatePhone(v: string): boolean {
+  return v.trim().length > 0;
+}
+
+export function validateWhatsApp(v: string): boolean {
+  return v.trim().length > 0;
+}
+
 /** SUPPLIER 注册手机号:占位规则,TODO(I18N-PHONE)各国精确规则待补。 */
 export function validateSupplierPhone(v: string): string | null {
   if (!v) return "请填写联系电话";
