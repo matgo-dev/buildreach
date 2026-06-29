@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { MessageCircle, Star, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -9,9 +9,9 @@ import { WeChatIcon } from "@/components/icons/WeChatIcon";
 import type { WhatsAppContext } from "@/hooks/useWhatsApp";
 
 /**
- * 联系方式 Popover — 从触发按钮右侧弹出气泡。
+ * 联系方式 Popover — 桌面端从按钮右侧弹出气泡，移动端底部抽屉。
  *
- * 无表头，仅 WhatsApp + WeChat 两行，淡入淡出。
+ * 无表头，仅 WhatsApp + WeChat 两行。
  * 点击外部自动关闭。
  */
 export function ContactPopover({
@@ -29,20 +29,38 @@ export function ContactPopover({
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // 计算位置：按钮右侧、垂直居中，用 layoutEffect 避免闪烁
+  // 检测移动端
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // 桌面端：计算位置（按钮右侧、垂直居中）
   useLayoutEffect(() => {
-    if (!open || !triggerRef.current || !popoverRef.current) {
+    if (!open || isMobile || !triggerRef.current || !popoverRef.current) {
       setPos(null);
       return;
     }
     const rect = triggerRef.current.getBoundingClientRect();
     const popH = popoverRef.current.offsetHeight;
-    setPos({
-      top: rect.top + rect.height / 2 - popH / 2 + window.scrollY,
-      left: rect.right + 8 + window.scrollX,
-    });
-  }, [open]);
+    const popW = popoverRef.current.offsetWidth;
+
+    let top = rect.top + rect.height / 2 - popH / 2 + window.scrollY;
+    let left = rect.right + 8 + window.scrollX;
+
+    // 右侧溢出屏幕 → 改为左侧弹出
+    if (left + popW > window.innerWidth - 16) {
+      left = rect.left - popW - 8 + window.scrollX;
+    }
+    // 上下溢出 → 钳制
+    top = Math.max(8 + window.scrollY, Math.min(top, window.innerHeight - popH - 8 + window.scrollY));
+
+    setPos({ top, left });
+  }, [open, isMobile]);
 
   // 点击外部关闭
   useEffect(() => {
@@ -58,63 +76,83 @@ export function ContactPopover({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  const close = useCallback(() => setOpen(false), []);
+
+  // 渠道列表（复用）
+  const channelList = (
+    <div className="space-y-1">
+      {/* WhatsApp */}
+      {wa.configured && (
+        <a
+          href={wa.buildLink(context)!}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={close}
+          className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
+          style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
+        >
+          <span className="w-7 h-7 rounded-full bg-white/20 grid place-items-center shrink-0">
+            <MessageCircle className="h-3.5 w-3.5 text-white" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <span className="text-[12px] font-bold">WhatsApp</span>
+              <span className="inline-flex items-center gap-0.5 text-[8px] bg-white/25 rounded-full px-1 py-px font-medium">
+                <Star className="h-1.5 w-1.5 fill-current" />
+                {t("recommended")}
+              </span>
+            </div>
+          </div>
+        </a>
+      )}
+
+      {/* WeChat */}
+      {contact.wechatId && (
+        <button
+          onClick={() => { setShowQr(true); setOpen(false); }}
+          className="w-full flex items-center gap-2 rounded-lg border border-gray-100 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
+        >
+          <span className="w-7 h-7 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
+            <WeChatIcon className="h-3.5 w-3.5 text-[#07c160]" />
+          </span>
+          <span className="text-[12px] font-bold text-navy">WeChat</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
       <div ref={triggerRef} className="inline-flex" onClick={() => setOpen((v) => !v)}>
         {children}
       </div>
 
-      {/* Popover 气泡 */}
       {open && createPortal(
-        <div
-          ref={popoverRef}
-          className="fixed z-[250] transition-opacity duration-150"
-          style={{
-            top: pos?.top ?? -9999,
-            left: pos?.left ?? -9999,
-            opacity: pos ? 1 : 0,
-          }}
-        >
-          <div className="w-[220px] rounded-xl bg-white shadow-lg border border-gray-200 p-1.5 space-y-1">
-            {/* WhatsApp */}
-            {wa.configured && (
-              <a
-                href={wa.buildLink(context)!}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
-                style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
-              >
-                <span className="w-7 h-7 rounded-full bg-white/20 grid place-items-center shrink-0">
-                  <MessageCircle className="h-3.5 w-3.5 text-white" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[12px] font-bold">WhatsApp</span>
-                    <span className="inline-flex items-center gap-0.5 text-[8px] bg-white/25 rounded-full px-1 py-px font-medium">
-                      <Star className="h-1.5 w-1.5 fill-current" />
-                      {t("recommended")}
-                    </span>
-                  </div>
-                </div>
-              </a>
-            )}
-
-            {/* WeChat */}
-            {contact.wechatId && (
-              <button
-                onClick={() => { setShowQr(true); setOpen(false); }}
-                className="w-full flex items-center gap-2 rounded-lg border border-gray-100 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
-              >
-                <span className="w-7 h-7 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
-                  <WeChatIcon className="h-3.5 w-3.5 text-[#07c160]" />
-                </span>
-                <span className="text-[12px] font-bold text-navy">WeChat</span>
-              </button>
-            )}
+        isMobile ? (
+          /* 移动端：底部抽屉 */
+          <>
+            <div className="fixed inset-0 z-[250] bg-black/30" onClick={close} />
+            <div className="fixed bottom-0 left-0 right-0 z-[251] bg-white rounded-t-2xl shadow-2xl p-4 pb-6 animate-in slide-in-from-bottom duration-200">
+              <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3" />
+              {channelList}
+            </div>
+          </>
+        ) : (
+          /* 桌面端：右侧气泡 */
+          <div
+            ref={popoverRef}
+            className="fixed z-[250] transition-opacity duration-150"
+            style={{
+              top: pos?.top ?? -9999,
+              left: pos?.left ?? -9999,
+              opacity: pos ? 1 : 0,
+            }}
+          >
+            <div className="w-[220px] rounded-xl bg-white shadow-lg border border-gray-200 p-1.5">
+              {channelList}
+            </div>
           </div>
-        </div>,
+        ),
         document.body,
       )}
 
