@@ -43,7 +43,7 @@ async def send_code(
         ValueError: "COOLDOWN:{remaining_seconds}" — 冷却中
         ValueError: "IP_RATE_LIMIT" — IP 小时内超限
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     # 冷却检查：同邮箱+purpose N 秒内不能重发
     last = (await db.execute(
@@ -57,10 +57,8 @@ async def send_code(
     )).scalar_one_or_none()
 
     if last:
-        # created_at 可能无 tzinfo（DB 存 naive UTC），统一处理
-        last_created = last.created_at
-        if last_created.tzinfo is None:
-            last_created = last_created.replace(tzinfo=timezone.utc)
+        # created_at 统一为 naive UTC 比较
+        last_created = last.created_at.replace(tzinfo=None) if last.created_at.tzinfo else last.created_at
         elapsed = (now - last_created).total_seconds()
         if elapsed < settings.VERIFICATION_CODE_COOLDOWN_SECONDS:
             remaining = settings.VERIFICATION_CODE_COOLDOWN_SECONDS - int(elapsed)
@@ -122,7 +120,7 @@ async def verify_code(
     Raises:
         ValueError: CODE_NOT_FOUND / CODE_EXPIRED / MAX_ATTEMPTS / CODE_INVALID
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     vc = (await db.execute(
         select(VerificationCode).where(
@@ -135,11 +133,7 @@ async def verify_code(
     if not vc:
         raise ValueError("CODE_NOT_FOUND")
 
-    # expires_at 可能无 tzinfo（DB 存 naive UTC），统一处理
-    expires_at = vc.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
+    expires_at = vc.expires_at.replace(tzinfo=None) if vc.expires_at.tzinfo else vc.expires_at
     if now > expires_at:
         raise ValueError("CODE_EXPIRED")
 
