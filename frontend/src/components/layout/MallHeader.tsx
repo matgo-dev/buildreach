@@ -94,9 +94,9 @@ export function MallHeader() {
             alt={BRAND.name}
             className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 rounded-xl object-cover"
           />
-          <span className="min-w-0">
-            <strong className="block text-[15px] sm:text-[17px] leading-tight font-black text-white">
-              {BRAND.name} <span className="text-gold">{BRAND.nameZh}</span>
+          <span className="shrink-0">
+            <strong className="block text-[15px] sm:text-[17px] leading-tight font-black text-white whitespace-nowrap">
+              Material Go <span className="text-gold">{BRAND.nameZh}</span>
             </strong>
           </span>
         </Link>

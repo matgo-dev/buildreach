@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
-const AUTOPLAY_INTERVAL = 2000;
+const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
 
 /** 轮播图配置 — 静态资源，不依赖后端 API */
 const SLIDES: { src: string; alt: string; link: string | null }[] = [
@@ -26,6 +27,14 @@ const SLIDES: { src: string; alt: string; link: string | null }[] = [
   { src: "/banners/factory-steel-coils.jpg", alt: "Factory Steel Coils", link: null },
   { src: "/banners/factory-steel-products.jpg", alt: "Factory Steel Products", link: null },
 ];
+
+/** 判断 slide 是否在当前可见窗口内（当前 ± 1），用于按需挂载 DOM */
+function isNearby(index: number, current: number, total: number): boolean {
+  if (index === current) return true;
+  const prev = (current - 1 + total) % total;
+  const next = (current + 1) % total;
+  return index === prev || index === next;
+}
 
 export function HeroBannerCarousel() {
   const [current, setCurrent] = useState(0);
@@ -53,11 +62,19 @@ export function HeroBannerCarousel() {
       onMouseLeave={() => setIsPaused(false)}
     >
       {SLIDES.map((slide, i) => {
+        const nearby = isNearby(i, current, count);
+        // 只渲染当前 ± 1 张，其余不挂载 DOM
+        if (!nearby) return null;
+
         const img = (
-          <img
+          <Image
             src={slide.src}
             alt={slide.alt}
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 800px"
+            className="object-cover"
+            // 首张 priority 预加载，其余 lazy
+            priority={i === 0}
             draggable={false}
           />
         );
