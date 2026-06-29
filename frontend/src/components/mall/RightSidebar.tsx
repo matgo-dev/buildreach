@@ -1,63 +1,173 @@
 "use client";
 
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { MessageCircle, ShieldCheck, FileCheck, CreditCard, Truck } from "lucide-react";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
-import { MallButton } from "./MallButton";
+import { Headphones, ChevronRight, ShieldCheck, FileCheck, CreditCard, Truck, MessageCircle, Star, X } from "lucide-react";
+import { useWhatsApp, useContactInfo } from "@/hooks/useWhatsApp";
 import { MallCard } from "./MallCard";
+import { WeChatIcon } from "@/components/icons/WeChatIcon";
 
 /**
- * 商城右侧栏 — 注册引导 / 客服 / 信任标识。
+ * 商城右侧栏 — 采购顾问入口 + 信任标识。
  *
- * variant:
- * - "home": 首页模式，不 sticky，参与三栏等高
- * - "mall" (默认): 商城列表页，sticky 定位
+ * 采购顾问卡片内联展开 WhatsApp / WeChat 选项，不触发悬浮面板。
  */
 export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }) {
   const t = useTranslations("mall");
   const wa = useWhatsApp();
+  const contact = useContactInfo();
   const isSticky = variant === "mall";
+  const [expanded, setExpanded] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   return (
-    <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch"}`}>
-      <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-2 overflow-hidden"}>
+    <>
+      <aside className={`w-[220px] shrink-0 hidden xl:block ${isSticky ? "" : "self-stretch"}`}>
+        <div className={isSticky ? "sticky top-[148px] space-y-2" : "flex h-full flex-col gap-2 overflow-hidden"}>
 
-        {/* 专属客服 — 标题+说明+电话+绿色按钮 */}
-        <MallCard padding="p-2.5">
-          <h3 className="text-navy text-[15px] font-black mb-0.5">{t("customerSupport")}</h3>
-          <p className="text-muted text-[12px] mb-2">{t("customerSupportHint")}</p>
-          <p className="text-navy text-lg font-black mb-2">
-            {wa.number || <span className="inline-block w-32 h-5 bg-gray-100 rounded animate-pulse" />}
-          </p>
-          <MallButton variant="whatsapp" block href={wa.buildLink() ?? "#"}>
-            <MessageCircle className="h-4 w-4" />
-            {t("chatOnWhatsApp")}
-          </MallButton>
-        </MallCard>
+          {/* 采购顾问 */}
+          <MallCard padding="p-0" className="overflow-hidden">
+            {!expanded ? (
+              /* 收起态 — 轻量入口 */
+              <div className="p-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Headphones className="w-4 h-4 text-teal-700" />
+                  <h3 className="text-navy text-[15px] font-black">{t("customerSupport")}</h3>
+                </div>
+                <p className="text-muted text-[12px] mb-2.5">{t("consultantHint")}</p>
+                <button
+                  onClick={() => setExpanded(true)}
+                  className="w-full h-9 rounded-lg text-[13px] font-bold text-white transition-all hover:-translate-y-px inline-flex items-center justify-center gap-1.5"
+                  style={{
+                    background: "linear-gradient(135deg, #2bd86e, #1aa851)",
+                    boxShadow: "0 6px 16px rgba(37,211,102,.35)",
+                  }}
+                >
+                  {t("consultantCta")}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              /* 展开态 — 渠道选择 */
+              <div>
+                <div className="bg-teal-800 px-2.5 py-2 flex items-center justify-between">
+                  <p className="text-white text-[13px] font-bold">{t("consultantTitle")}</p>
+                  <button
+                    onClick={() => setExpanded(false)}
+                    className="text-white/60 hover:text-white transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="p-2 space-y-1.5">
+                  {/* WhatsApp — 推荐 */}
+                  {wa.configured && (
+                    <a
+                      href={wa.buildLink()!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
+                      style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
+                    >
+                      <span className="w-8 h-8 rounded-full bg-white/20 grid place-items-center shrink-0">
+                        <MessageCircle className="h-4 w-4 text-white" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[12px] font-bold">WhatsApp</span>
+                          <span className="inline-flex items-center gap-0.5 text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
+                            <Star className="h-2 w-2 fill-current" />
+                            {t("recommended")}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/80 leading-tight">{t("floatWaDesc")}</p>
+                      </div>
+                    </a>
+                  )}
 
-        {/* 平台保障 — home 模式下拉伸填满剩余空间 */}
-        <MallCard padding="p-2.5" className={isSticky ? "" : "flex min-h-0 flex-1 flex-col"}>
-          <p className="text-navy text-[13px] font-black mb-1.5">{t("trustMarks")}</p>
-          <ul className={isSticky ? "space-y-1.5" : "flex flex-1 flex-col justify-between"}>
-            {[
-              { icon: ShieldCheck, title: t("trustVerified"), desc: t("trustVerifiedDesc") },
-              { icon: FileCheck,   title: t("trustCertified"), desc: t("trustCertifiedDesc") },
-              { icon: CreditCard,  title: t("trustPrice"),    desc: t("trustPriceDesc") },
-              { icon: Truck,       title: t("trustDelivery"), desc: t("trustDeliveryDesc") },
-            ].map(({ icon: Icon, title, desc }) => (
-              <li key={title} className="grid grid-cols-[18px_1fr] gap-1.5 items-start">
-                <span className="w-[18px] h-[18px] rounded-full grid place-items-center text-whatsapp shrink-0" style={{ background: "#e5f7ee" }}>
-                  <Icon className="h-2.5 w-2.5" />
-                </span>
-                <span>
-                  <strong className="block text-[11px] text-navy leading-tight">{title}</strong>
-                  <span className="text-[10px] text-muted leading-tight">{desc}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </MallCard>
-      </div>
-    </aside>
+                  {/* WeChat — 白底描边 */}
+                  {contact.wechatId && (
+                    <button
+                      onClick={() => setShowQr(true)}
+                      className="w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
+                        <WeChatIcon className="h-4 w-4 text-[#07c160]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-bold text-navy">WeChat</p>
+                        <p className="text-[10px] text-muted leading-tight">{t("floatWeChatDesc")}</p>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </MallCard>
+
+          {/* 平台保障 */}
+          <MallCard padding="p-2.5" className={isSticky ? "" : "flex min-h-0 flex-1 flex-col"}>
+            <p className="text-navy text-[13px] font-black mb-1.5">{t("trustMarks")}</p>
+            <ul className={isSticky ? "space-y-1.5" : "flex flex-1 flex-col justify-between"}>
+              {[
+                { icon: ShieldCheck, title: t("trustVerified"), desc: t("trustVerifiedDesc") },
+                { icon: FileCheck,   title: t("trustCertified"), desc: t("trustCertifiedDesc") },
+                { icon: CreditCard,  title: t("trustPrice"),    desc: t("trustPriceDesc") },
+                { icon: Truck,       title: t("trustDelivery"), desc: t("trustDeliveryDesc") },
+              ].map(({ icon: Icon, title, desc }) => (
+                <li key={title} className="grid grid-cols-[18px_1fr] gap-1.5 items-start">
+                  <span className="w-[18px] h-[18px] rounded-full grid place-items-center text-whatsapp shrink-0" style={{ background: "#e5f7ee" }}>
+                    <Icon className="h-2.5 w-2.5" />
+                  </span>
+                  <span>
+                    <strong className="block text-[11px] text-navy leading-tight">{title}</strong>
+                    <span className="text-[10px] text-muted leading-tight">{desc}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </MallCard>
+        </div>
+      </aside>
+
+      {/* WeChat QR 码弹窗 — Portal 到 body，避免父级定位干扰 */}
+      {showQr && contact.wechatQrImage && createPortal(
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50"
+          onClick={() => setShowQr(false)}
+        >
+          <div
+            className="relative bg-white rounded-2xl p-6 shadow-2xl max-w-xs w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQr(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <WeChatIcon className="w-6 h-6 text-[#07c160]" />
+                <h3 className="text-lg font-bold text-gray-900">{t("wechatAddUs")}</h3>
+              </div>
+              <img
+                src={contact.wechatQrImage}
+                alt="WeChat QR Code"
+                className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
+              />
+              {contact.wechatId && (
+                <p className="mt-3 text-sm text-gray-500">
+                  {t("wechatIdLabel")}: <span className="font-mono text-gray-700">{contact.wechatId}</span>
+                </p>
+              )}
+              <p className="mt-2 text-xs text-gray-400">{t("wechatScanHint")}</p>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }

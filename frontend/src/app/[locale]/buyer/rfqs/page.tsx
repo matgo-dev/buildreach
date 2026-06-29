@@ -22,7 +22,7 @@ import { acceptRfq, rejectRfq } from "@/lib/api/quotes";
 import { exportQuotePdf } from "@/lib/api/quote-export";
 import { formatRelativeTime } from "@/lib/formatters";
 import { RfqTabNav } from "@/components/rfq/RfqTabNav";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useContactStore } from "@/stores/contactStore";
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS = [
@@ -49,7 +49,7 @@ function RfqListContent() {
   const tError = useTranslations("error");
   const toast = useToast();
   const { hasPermission } = usePermissions();
-  const wa = useWhatsApp();
+  const openContact = useContactStore((s) => s.open);
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
@@ -328,17 +328,13 @@ function RfqListContent() {
                 <ShoppingCart className="h-4 w-4" />
                 {t("goToCart")}
               </button>
-              {wa.configured && (
-                <a
-                  href={wa.buildLink()!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  {t("inquireNow")}
-                </a>
-              )}
+              <button
+                onClick={() => openContact()}
+                className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+              >
+                <MessageCircle className="h-4 w-4" />
+                {t("inquireNow")}
+              </button>
             </div>
           </div>
         ) : (

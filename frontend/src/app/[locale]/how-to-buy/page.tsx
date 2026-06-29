@@ -7,7 +7,7 @@ import { MessageCircle } from "lucide-react";
 import { Link, useRouter, usePathname } from "@/i18n/navigation";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useContactStore } from "@/stores/contactStore";
 import { FulfillmentShowcase } from "@/components/how-to-buy/FulfillmentShowcase";
 
 /* ---------- step 配色 ---------- */
@@ -80,7 +80,7 @@ function HowToBuyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const wa = useWhatsApp();
+  const openContact = useContactStore((s) => s.open);
 
   const tabParam = searchParams.get("tab");
   const activeTab: TabKey = tabParam === "fulfillment" ? "fulfillment" : "buy";
@@ -226,17 +226,13 @@ function HowToBuyContent() {
             >
               {t("ctaBrowse")}
             </Link>
-            {wa.configured && (
-            <a
-              href={wa.buildLink()!}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => openContact()}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-5 py-2 text-[13px] font-semibold text-white hover:bg-[#20bd5a] transition-colors"
             >
               <MessageCircle className="h-4 w-4" />
-              WhatsApp {t("ctaRfq")}
-            </a>
-            )}
+              {t("ctaRfq")}
+            </button>
           </div>
         </div>
       </div>

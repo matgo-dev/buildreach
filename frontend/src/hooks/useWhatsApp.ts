@@ -3,13 +3,13 @@
 import { useCallback } from "react";
 import useSWR from "swr";
 import { useAuthStore } from "@/stores/authStore";
-import { getApiBase } from "@/lib/env";
 
-/** 后端 /api/v1/contact/info 返回的完整联系方式 */
-interface ContactInfo {
-  whatsapp_link: string | null;
-  whatsapp_number: string | null;
-  email: string | null;
+/** public/contact/config.json 的结构 */
+interface ContactConfig {
+  whatsapp_number: string;
+  wechat_id: string;
+  wechat_qr_image: string;
+  email: string;
 }
 
 export interface WhatsAppContext {
@@ -19,30 +19,47 @@ export interface WhatsAppContext {
   productCode?: string;
 }
 
-const CONTACT_KEY = "/api/v1/contact/info";
+const CONTACT_CONFIG_PATH = "/contact/config.json";
 
-async function fetchContactInfo(): Promise<ContactInfo> {
-  const res = await fetch(`${getApiBase()}${CONTACT_KEY}`);
-  const json = await res.json();
-  return json.data;
+async function fetchContactConfig(): Promise<ContactConfig> {
+  const res = await fetch(CONTACT_CONFIG_PATH);
+  return res.json();
 }
 
 /**
- * 平台联系方式(WhatsApp + 邮箱)。
- * 公开端点,无需登录;SWR 同 key 去重,全站只请求一次。
+ * 将 WhatsApp 号码规范化为 wa.me 链接。
+ * 逻辑从后端 resolve_whatsapp_link() 迁移过来。
+ */
+function resolveWhatsAppLink(raw: string | undefined | null): string | null {
+  if (!raw?.trim()) return null;
+  // 去掉非数字字符
+  let digits = raw.replace(/\D/g, "");
+  // 去掉国际冠码 00
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  return digits ? `https://wa.me/${digits}` : null;
+}
+
+/**
+ * 平台联系方式（WhatsApp + WeChat + 邮箱）。
+ * 从 public/contact/config.json 静态文件读取，不依赖后端。
+ * SWR 同 key 去重，全站只请求一次。
  */
 export function useContactInfo() {
-  const { data } = useSWR<ContactInfo>(
-    CONTACT_KEY,
-    fetchContactInfo,
+  const { data } = useSWR<ContactConfig>(
+    CONTACT_CONFIG_PATH,
+    fetchContactConfig,
     { revalidateOnFocus: false, revalidateIfStale: false },
   );
 
+  const whatsappLink = resolveWhatsAppLink(data?.whatsapp_number);
+
   return {
-    whatsappLink: data?.whatsapp_link ?? null,
-    whatsappNumber: data?.whatsapp_number ?? null,
-    email: data?.email ?? null,
-    configured: !!data?.whatsapp_link || !!data?.email,
+    whatsappLink,
+    whatsappNumber: data?.whatsapp_number?.trim() || null,
+    wechatId: data?.wechat_id?.trim() || null,
+    wechatQrImage: data?.wechat_qr_image?.trim() || null,
+    email: data?.email?.trim() || null,
+    configured: !!whatsappLink || !!data?.email,
   };
 }
 

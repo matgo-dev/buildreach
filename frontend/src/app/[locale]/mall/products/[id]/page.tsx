@@ -23,7 +23,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useContactStore } from "@/stores/contactStore";
 import { getMockFloorProductDetail } from "@/components/mall/floorMockData";
 import { imageUrl } from "@/lib/env";
 
@@ -392,7 +392,7 @@ function ProductDetailContent() {
   const [addingToCart, setAddingToCart] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
-  const wa = useWhatsApp();
+  const openContact = useContactStore((s) => s.open);
   const addBtnRef = useRef<HTMLButtonElement>(null);
 
   const prevCountRef = useRef(0);
@@ -617,17 +617,13 @@ function ProductDetailContent() {
                 {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("detail.addToInquiry")}
               </button>
-              {wa.configured && (
-              <a
-                href={wa.buildLink({ productName: product.name, productCode: product.spu_code })!}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => openContact({ productName: product.name, productCode: product.spu_code })}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
-                WhatsApp {t("detail.contactPlatform")}
-              </a>
-              )}
+                {t("detail.contactPlatform")}
+              </button>
             </div>
           </div>
         </div>
