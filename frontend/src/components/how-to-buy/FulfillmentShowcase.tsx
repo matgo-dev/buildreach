@@ -32,7 +32,7 @@ const CONSOLIDATION_IMAGES = [
   { src: "warehouse.jpg", alt: "warehouse" },
 ];
 
-const CERT_BADGES = ["PVoC", "CoC", "ISO 9001", "SGS", "BBS", "KEBS"];
+const CERT_BADGES = ["PVoC", "CoC", "ISO 9001", "SGS", "TBS", "KEBS"];
 
 /* ---------- 子组件 ---------- */
 
