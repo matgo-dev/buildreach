@@ -344,56 +344,7 @@ function Inner() {
               />
             </SectionCard>
 
-            {/* 注销账户入口 */}
-            <div className="mt-4 pt-4 border-t border-red-100 px-1">
-              <button
-                onClick={() => setShowDeactivateModal(true)}
-                className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
-              >
-                {t("deactivate_button")}
-              </button>
-            </div>
           </section>
-
-          {/* 注销确认弹窗 */}
-          {showDeactivateModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-              <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl">
-                <h3 className="text-lg font-semibold text-gray-900">{t("deactivate_title")}</h3>
-                <p className="text-sm text-gray-500 mt-2">{t("deactivate_warning")}</p>
-                <div className="mt-4">
-                  <PasswordField
-                    value={deactivatePassword}
-                    onChange={(v) => { setDeactivatePassword(v); setDeactivateError(""); }}
-                    placeholder={t("deactivate_password_label")}
-                  />
-                </div>
-                {deactivateError && (
-                  <p className="text-xs text-red-500 mt-1">{deactivateError}</p>
-                )}
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      setShowDeactivateModal(false);
-                      setDeactivatePassword("");
-                      setDeactivateError("");
-                    }}
-                    className="flex-1 h-9 px-4 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    {t("deactivate_cancel")}
-                  </button>
-                  <button
-                    onClick={handleDeactivate}
-                    disabled={!deactivatePassword || deactivating}
-                    className="flex h-9 flex-1 items-center justify-center gap-1.5 px-4 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {deactivating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    {t("deactivate_confirm")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Section: Organization */}
           {hasOrg && (
@@ -433,6 +384,62 @@ function Inner() {
                 )}
               </SectionCard>
             </section>
+          )}
+
+          {/* 危险区域：注销账户 */}
+          <div className="mt-8 rounded-xl border border-red-200 bg-red-50/50 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-red-700">{t("deactivate_title")}</h3>
+                <p className="mt-1 text-xs text-red-500/80">{t("deactivate_warning")}</p>
+              </div>
+              <button
+                onClick={() => setShowDeactivateModal(true)}
+                className="shrink-0 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:border-red-400"
+              >
+                {t("deactivate_button")}
+              </button>
+            </div>
+          </div>
+
+          {/* 注销确认弹窗 */}
+          {showDeactivateModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl">
+                <h3 className="text-lg font-semibold text-gray-900">{t("deactivate_title")}</h3>
+                <p className="text-sm text-gray-500 mt-2">{t("deactivate_warning")}</p>
+                <div className="mt-4">
+                  <PasswordField
+                    value={deactivatePassword}
+                    onChange={(v) => { setDeactivatePassword(v); setDeactivateError(""); }}
+                    placeholder={t("deactivate_password_label")}
+                  />
+                </div>
+                {deactivateError && (
+                  <p className="text-xs text-red-500 mt-1">{deactivateError}</p>
+                )}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDeactivateModal(false);
+                      setDeactivatePassword("");
+                      setDeactivateError("");
+                    }}
+                    className="flex-1 h-9 px-4 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    {t("deactivate_cancel")}
+                  </button>
+                  <button
+                    onClick={handleDeactivate}
+                    disabled={!deactivatePassword || deactivating}
+                    className="flex h-9 flex-1 items-center justify-center gap-1.5 px-4 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {deactivating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {t("deactivate_confirm")}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>

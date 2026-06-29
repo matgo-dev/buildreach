@@ -401,6 +401,15 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     };
   }, []);
 
+  // 挂载时加载品类列表
+  useEffect(() => {
+    setCatLoading(true);
+    categoriesApi.list({ level: 1 }).then((data) => {
+      setCategories(data);
+      setCatLoading(false);
+    }).catch(() => setCatLoading(false));
+  }, []);
+
   // 发送验证码
   const handleSendCode = async () => {
     const emailErr = validateEmail(email, {
@@ -687,7 +696,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate autoComplete="off">
+      <form onSubmit={handleSubmit} className="space-y-3" noValidate autoComplete="off">
         {/* 隐藏陷阱：吸收浏览器 autofill */}
         <input type="text" name="hidden_username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
         <input type="password" name="hidden_password" autoComplete="new-password" className="hidden" tabIndex={-1} aria-hidden="true" />
@@ -812,7 +821,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             value={phone}
             onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors((err) => ({ ...err, phone: null })); }}
             onBlur={() => touch("phone")}
-            placeholder={t("phone_placeholder")}
+            placeholder=""
             autoComplete="tel"
             className={buyerInputCls(errOf("phone"))}
           />
@@ -829,105 +838,77 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             value={whatsapp}
             onChange={(e) => { setWhatsapp(e.target.value); if (errors.whatsapp) setErrors((err) => ({ ...err, whatsapp: null })); }}
             onBlur={() => touch("whatsapp")}
-            placeholder={t("whatsapp_placeholder")}
+            placeholder=""
             autoComplete="tel"
             className={buyerInputCls(errOf("whatsapp"))}
           />
           {errOf("whatsapp") && <p className="text-xs text-red-500">{errOf("whatsapp")}</p>}
         </div>
 
-        {/* ---- 企业信息（选填）分隔区 ---- */}
-        <div className="mt-6 border-t border-gray-200 pt-5">
-          <h3 className="text-sm font-medium text-gray-700">{t("company_section_title")}</h3>
-          <p className="mt-1 text-xs text-gray-400">{t("company_section_hint")}</p>
-        </div>
-
-        {/* 7. 公司名称（选填） */}
-        <div className="space-y-1.5" id="field-companyName">
-          <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
-            {t("label_company")}
-          </Label>
-          <input
-            id="companyName" name="companyName" type="text"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder={t("ph_company")}
-            className={buyerInputCls(null)}
-          />
-        </div>
-
-        {/* 8. 地址（选填） */}
-        <div className="space-y-1.5" id="field-address">
-          <Label htmlFor="address" className="text-sm font-semibold text-gray-700">
-            {t("label_address")}
-          </Label>
-          <input
-            id="address" name="address" type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder={t("ph_address")}
-            className={buyerInputCls(null)}
-          />
-        </div>
-
-        {/* 9. 店面照片（选填） */}
-        <div className="space-y-1.5" id="field-storefrontImages">
-          <Label className="text-sm font-semibold text-gray-700">
-            {t("label_storefront")}
-          </Label>
-          <p className="text-xs text-gray-400">{t("storefront_hint")}</p>
-          <div className="flex flex-wrap gap-2">
-            {sfPreviews.map((url, idx) => (
-              <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
-                <img
-                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
-                  onClick={() => setPreviewUrl(url)}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeStorefrontImage(idx)}
-                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+        {/* ---- 经营品类（选填，不折叠）---- */}
+        <div className="mt-2 border-t border-gray-200 pt-3">
+          <div className="space-y-1.5" id="field-categories">
+            <Label className="text-sm font-semibold text-gray-700">
+              {t("label_categories")}
+            </Label>
+            {catLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
               </div>
-            ))}
-            {storefrontImages.length < 10 && (
-              <button
-                type="button"
-                onClick={() => sfInputRef.current?.click()}
-                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
-              >
-                <ImagePlus className="h-5 w-5" />
-                <span className="text-[10px]">{t("upload")}</span>
-              </button>
-            )}
+            ) : categories.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
+                    const selected = selectedCategories.includes(cat.code);
+                    const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
+                    return (
+                      <button
+                        key={cat.code}
+                        type="button"
+                        onClick={() => setSelectedCategories((prev) =>
+                          prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
+                        )}
+                        className={
+                          "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
+                          (selected
+                            ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
+                            : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
+                        }
+                      >
+                        <div className={
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+                          (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
+                        }>
+                          {selected && <Check className="h-3 w-3" />}
+                        </div>
+                        <span className="truncate">{displayName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {categories.length > COLLAPSED_CAT_COUNT && (
+                  <button
+                    type="button"
+                    onClick={() => setCatExpanded((v) => !v)}
+                    className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                  >
+                    {catExpanded ? (
+                      <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
+                    ) : (
+                      <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
+                    )}
+                  </button>
+                )}
+              </>
+            ) : null}
           </div>
-          <input
-            ref={sfInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            className="hidden"
-            onChange={(e) => { handleStorefrontAdd(e.target.files); e.target.value = ""; }}
-          />
-          {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
         </div>
 
-        {/* 可折叠选填区域（品类 + 执照）*/}
+        {/* ---- 补充信息（选填，折叠）---- */}
         <div className="rounded-lg border border-gray-200">
           <button
             type="button"
-            onClick={() => {
-              setCompanySectionExpanded((v) => !v);
-              if (categories.length === 0 && !catLoading) {
-                setCatLoading(true);
-                categoriesApi.list({ level: 1 }).then((data) => {
-                  setCategories(data);
-                  setCatLoading(false);
-                }).catch(() => setCatLoading(false));
-              }
-            }}
+            onClick={() => setCompanySectionExpanded((v) => !v)}
             className="flex w-full items-center justify-between px-4 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50"
           >
             <span>{t("optional_section")}</span>
@@ -937,65 +918,80 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             }
           </button>
           {companySectionExpanded && (
-            <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">
-              {/* Business Categories (optional) */}
-              <div className="space-y-1.5" id="field-categories">
-                <Label className="text-sm font-semibold text-gray-700">
-                  {t("label_categories")}
+            <div className="space-y-3 border-t border-gray-100 px-4 pb-4 pt-3">
+              {/* 公司名称 */}
+              <div className="space-y-1.5" id="field-companyName">
+                <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+                  {t("label_company")}
                 </Label>
-                {catLoading ? (
-                  <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
-                    <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
-                  </div>
-                ) : categories.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
-                        const selected = selectedCategories.includes(cat.code);
-                        const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
-                        return (
-                          <button
-                            key={cat.code}
-                            type="button"
-                            onClick={() => setSelectedCategories((prev) =>
-                              prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
-                            )}
-                            className={
-                              "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
-                              (selected
-                                ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
-                                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
-                            }
-                          >
-                            <div className={
-                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                              (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
-                            }>
-                              {selected && <Check className="h-3 w-3" />}
-                            </div>
-                            <span className="truncate">{displayName}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {categories.length > COLLAPSED_CAT_COUNT && (
-                      <button
-                        type="button"
-                        onClick={() => setCatExpanded((v) => !v)}
-                        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-                      >
-                        {catExpanded ? (
-                          <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
-                        ) : (
-                          <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
-                        )}
-                      </button>
-                    )}
-                  </>
-                ) : null}
+                <input
+                  id="companyName" name="companyName" type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder={t("ph_company")}
+                  className={buyerInputCls(null)}
+                />
               </div>
 
-              {/* License Images */}
+              {/* 地址 */}
+              <div className="space-y-1.5" id="field-address">
+                <Label htmlFor="address" className="text-sm font-semibold text-gray-700">
+                  {t("label_address")}
+                </Label>
+                <input
+                  id="address" name="address" type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={t("ph_address")}
+                  className={buyerInputCls(null)}
+                />
+              </div>
+
+              {/* 店面照片 */}
+              <div className="space-y-1.5" id="field-storefrontImages">
+                <Label className="text-sm font-semibold text-gray-700">
+                  {t("label_storefront")}
+                </Label>
+                <p className="text-xs text-gray-400">{t("storefront_hint")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {sfPreviews.map((url, idx) => (
+                    <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                      <img
+                        src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                        onClick={() => setPreviewUrl(url)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeStorefrontImage(idx)}
+                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {storefrontImages.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => sfInputRef.current?.click()}
+                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+                    >
+                      <ImagePlus className="h-5 w-5" />
+                      <span className="text-[10px]">{t("upload")}</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={sfInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { handleStorefrontAdd(e.target.files); e.target.value = ""; }}
+                />
+                {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
+              </div>
+
+              {/* 营业执照 */}
               <div className="space-y-1.5" id="field-licenseImages">
                 <Label className="text-sm font-semibold text-gray-700">
                   {t("label_license")}
