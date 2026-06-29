@@ -140,8 +140,13 @@ export function ContactPopover({
               opacity: pos ? 1 : 0,
             }}
           >
-            <div className="w-[170px] rounded-xl bg-white shadow-lg border border-gray-200 p-1.5">
+            <div className="w-[200px] rounded-xl bg-white shadow-lg border border-gray-200 overflow-hidden">
+              <div className="bg-teal-800 px-3 py-1.5">
+                <p className="text-white text-[12px] font-bold">{t("consultantTitle")}</p>
+              </div>
+              <div className="p-1.5">
               {channelList}
+              </div>
             </div>
           </div>
         ),
