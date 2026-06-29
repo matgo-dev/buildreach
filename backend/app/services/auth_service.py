@@ -132,12 +132,13 @@ async def register_buyer(
     db: AsyncSession,
     *,
     phone: str,
+    whatsapp: str,
     password: str,
     name: str,
-    company_name: str,
-    address: str,
+    company_name: str = "",
+    address: str = "",
     business_category_codes: list[str],
-    storefront_images: list[tuple[str, int, int, int]],
+    storefront_images: list[tuple[str, int, int, int]] | None = None,
     email: str | None = None,
     tin: str | None = None,
     brela_no: str | None = None,
@@ -145,10 +146,10 @@ async def register_buyer(
     language_preference: str | None = None,
     request: Request | None = None,
 ) -> tuple[User, dict]:
-    """坦桑尼亚买方自助注册(单事务聚合写 + 自动登录)。
+    """买方自助注册(单事务聚合写 + 自动登录)。
 
     storefront_images / license_images 每个元素 = (image_key, w, h, file_size),
-    即已由调用方处理落盘后的结果。
+    即已由调用方处理落盘后的结果。storefront_images 为空/None 时跳过图片保存。
     返回 (user, token_dict)。
     """
     from app.db.models.buyer_org_image import BuyerOrgImage
@@ -158,7 +159,7 @@ async def register_buyer(
 
     # 唯一性一次性收集(不短路)
     errors: list[dict] = []
-    if await _phone_exists(db, phone):
+    if phone and await _phone_exists(db, phone):
         errors.append({
             "field": "phone",
             "code": 40921,
@@ -178,6 +179,7 @@ async def register_buyer(
         email=email,
         name=name,
         phone=phone,
+        whatsapp=whatsapp,
         password_hash=hash_password(password),
         language_preference=language_preference or None,
         status=UserStatus.ACTIVE,
@@ -202,8 +204,8 @@ async def register_buyer(
     role = await _get_role(db, RoleCode.BUYER)
     db.add(UserRole(user_id=user.id, role_id=role.id))
 
-    # 门店照片
-    for idx, (key, w, h, fsize) in enumerate(storefront_images):
+    # 门店照片（空列表/None 时跳过）
+    for idx, (key, w, h, fsize) in enumerate(storefront_images or []):
         db.add(BuyerOrgImage(
             buyer_org_id=org.id, image_key=key, image_type="STOREFRONT",
             sort_order=idx, width=w, height=h, file_size=fsize,
