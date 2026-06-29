@@ -18,6 +18,7 @@ from app.constants.country_registration import (
     PHONE_ALREADY_REGISTERED_MESSAGE,
 )
 from app.core.exceptions import (
+    AccountDeactivatedError,
     AccountDisabledError,
     ConflictError,
     InvalidCredentialsError,
@@ -110,11 +111,11 @@ async def _find_user_by_identifier(
     from app.core.phone import normalize_phone_to_e164
     from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
 
-    # 只查 ACTIVE 用户:DISABLED 账号不允许登录,
-    # 且同一邮箱/手机可能同时存在 ACTIVE + DISABLED 记录导致 MultipleResultsFound
+    # 只查 ACTIVE 用户:DISABLED/DEACTIVATED 账号不允许登录,
+    # 且同一邮箱/手机可能同时存在 ACTIVE + 非活跃记录导致 MultipleResultsFound
     ident = identifier.strip()
     kind = _classify_identifier(ident)
-    active_filter = User.status != UserStatus.DISABLED
+    active_filter = User.status == UserStatus.ACTIVE
     if kind == "email":
         row = await db.execute(select(User).where(User.email == ident, active_filter))
     elif kind == "phone":
@@ -128,16 +129,43 @@ async def _find_user_by_identifier(
     return row.scalar_one_or_none()
 
 
+async def _is_deactivated_by_identifier(
+    db: AsyncSession, identifier: str, phone_region: str | None = None,
+) -> bool:
+    """identifier 对应的账号是否已注销(DEACTIVATED)。
+
+    仅在 ACTIVE 查询无结果时调用,给登录失败路径提供更明确的错误原因。
+    """
+    from app.core.phone import normalize_phone_to_e164
+    from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
+
+    ident = identifier.strip()
+    kind = _classify_identifier(ident)
+    deactivated_filter = User.status == UserStatus.DEACTIVATED
+    if kind == "email":
+        row = await db.execute(select(User.id).where(User.email == ident, deactivated_filter))
+    elif kind == "phone":
+        try:
+            e164 = normalize_phone_to_e164(ident, phone_region)
+            row = await db.execute(select(User.id).where(User.phone == e164, deactivated_filter))
+        except (PhoneFormatError, PhoneUnsupportedRegionError):
+            row = await db.execute(select(User.id).where(User.username == ident, deactivated_filter))
+    else:
+        row = await db.execute(select(User.id).where(User.username == ident, deactivated_filter))
+    return row.scalar_one_or_none() is not None
+
+
 async def register_buyer(
     db: AsyncSession,
     *,
     phone: str,
+    whatsapp: str,
     password: str,
     name: str,
-    company_name: str,
-    address: str,
+    company_name: str = "",
+    address: str = "",
     business_category_codes: list[str],
-    storefront_images: list[tuple[str, int, int, int]],
+    storefront_images: list[tuple[str, int, int, int]] | None = None,
     email: str | None = None,
     tin: str | None = None,
     brela_no: str | None = None,
@@ -145,10 +173,10 @@ async def register_buyer(
     language_preference: str | None = None,
     request: Request | None = None,
 ) -> tuple[User, dict]:
-    """坦桑尼亚买方自助注册(单事务聚合写 + 自动登录)。
+    """买方自助注册(单事务聚合写 + 自动登录)。
 
     storefront_images / license_images 每个元素 = (image_key, w, h, file_size),
-    即已由调用方处理落盘后的结果。
+    即已由调用方处理落盘后的结果。storefront_images 为空/None 时跳过图片保存。
     返回 (user, token_dict)。
     """
     from app.db.models.buyer_org_image import BuyerOrgImage
@@ -158,7 +186,7 @@ async def register_buyer(
 
     # 唯一性一次性收集(不短路)
     errors: list[dict] = []
-    if await _phone_exists(db, phone):
+    if phone and await _phone_exists(db, phone):
         errors.append({
             "field": "phone",
             "code": 40921,
@@ -178,6 +206,7 @@ async def register_buyer(
         email=email,
         name=name,
         phone=phone,
+        whatsapp=whatsapp,
         password_hash=hash_password(password),
         language_preference=language_preference or None,
         status=UserStatus.ACTIVE,
@@ -202,8 +231,8 @@ async def register_buyer(
     role = await _get_role(db, RoleCode.BUYER)
     db.add(UserRole(user_id=user.id, role_id=role.id))
 
-    # 门店照片
-    for idx, (key, w, h, fsize) in enumerate(storefront_images):
+    # 门店照片（空列表/None 时跳过）
+    for idx, (key, w, h, fsize) in enumerate(storefront_images or []):
         db.add(BuyerOrgImage(
             buyer_org_id=org.id, image_key=key, image_type="STOREFRONT",
             sort_order=idx, width=w, height=h, file_size=fsize,
@@ -376,7 +405,22 @@ async def login(
     user = await _find_user_by_identifier(db, identifier, phone_region)
 
     # 用户不存在 / 密码错误 → 统一返回 401,防枚举
+    # 注意:_find_user_by_identifier 只返回 ACTIVE 用户,DISABLED/DEACTIVATED 会走此分支
     if user is None or not verify_password(password, user.password_hash):
+        # DEACTIVATED 账号给专属提示(不泄露密码对错,但业务上需要区分)
+        if user is None and await _is_deactivated_by_identifier(db, identifier, phone_region):
+            await write_audit(
+                db,
+                resource_type=AuditResourceType.AUTH,
+                action=AuditAction.LOGIN_FAILED,
+                status=AuditStatus.FAILED,
+                user_email=identifier,
+                request=request,
+                error_message="account deactivated",
+                extra={"identifier": identifier},
+            )
+            raise AccountDeactivatedError()
+
         locked_now = login_rate_limiter.record_failure(rate_key, ip)
         action = AuditAction.LOGIN_LOCKED if locked_now else AuditAction.LOGIN_FAILED
         await write_audit(
@@ -394,6 +438,8 @@ async def login(
             raise TooManyAttemptsError()
         raise InvalidCredentialsError()
 
+    # 此处 user 一定是 ACTIVE(_find_user_by_identifier 保证),
+    # 保留 DISABLED 检查作为防御性兜底(理论上不会触发)
     if user.status == UserStatus.DISABLED:
         await write_audit(
             db,

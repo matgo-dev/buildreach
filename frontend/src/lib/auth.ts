@@ -59,16 +59,17 @@ export const authApi = {
 
   registerBuyer: async (payload: {
     phone: string;
-    phone_region?: string;
     password: string;
     name: string;
-    company_name: string;
-    address: string;
-    business_category_codes?: string[];
     email: string;
+    verification_token: string;
+    whatsapp: string;
+    company_name?: string;
+    address?: string;
+    business_category_codes?: string[];
     tin?: string;
     brela_no?: string;
-    storefront_images: File[];
+    storefront_images?: File[];
     license_images?: File[];
     language_preference?: string;
   }): Promise<LoginResult> => {
@@ -76,22 +77,25 @@ export const authApi = {
     const BASE = getApiBase();
     const fd = new FormData();
     fd.append("phone", payload.phone);
-    fd.append("phone_region", payload.phone_region || "TZ");
     fd.append("password", payload.password);
     fd.append("name", payload.name);
-    fd.append("company_name", payload.company_name);
-    fd.append("address", payload.address);
+    fd.append("email", payload.email);
+    fd.append("verification_token", payload.verification_token);
+    fd.append("whatsapp", payload.whatsapp);
+    if (payload.company_name) fd.append("company_name", payload.company_name);
+    if (payload.address) fd.append("address", payload.address);
     if (payload.business_category_codes) {
       for (const code of payload.business_category_codes) {
         fd.append("business_category_codes", code);
       }
     }
-    fd.append("email", payload.email);
     if (payload.tin) fd.append("tin", payload.tin);
     if (payload.brela_no) fd.append("brela_no", payload.brela_no);
     if (payload.language_preference) fd.append("language_preference", payload.language_preference);
-    for (const file of payload.storefront_images) {
-      fd.append("storefront_images", file);
+    if (payload.storefront_images) {
+      for (const file of payload.storefront_images) {
+        fd.append("storefront_images", file);
+      }
     }
     if (payload.license_images) {
       for (const file of payload.license_images) {
@@ -119,6 +123,55 @@ export const authApi = {
       });
     }
     return json.data as LoginResult;
+  },
+
+  sendVerificationCode: async (email: string, purpose: string): Promise<void> => {
+    const { getApiBase } = await import("./env");
+    const BASE = getApiBase();
+    const res = await fetch(`${BASE}/api/v1/auth/verification-code/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, purpose }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.code !== 0) {
+      throw new ApiError({
+        code: json?.code ?? res.status * 100,
+        message: json?.message ?? res.statusText ?? "Failed to send verification code",
+        status: res.status,
+        traceId: json?.trace_id,
+        data: json?.data,
+        messageKey: json?.message_key,
+        messageParams: json?.message_params,
+      });
+    }
+  },
+
+  verifyVerificationCode: async (
+    email: string,
+    code: string,
+    purpose: string,
+  ): Promise<{ verification_token: string; expires_in: number }> => {
+    const { getApiBase } = await import("./env");
+    const BASE = getApiBase();
+    const res = await fetch(`${BASE}/api/v1/auth/verification-code/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, purpose }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.code !== 0) {
+      throw new ApiError({
+        code: json?.code ?? res.status * 100,
+        message: json?.message ?? res.statusText ?? "Verification failed",
+        status: res.status,
+        traceId: json?.trace_id,
+        data: json?.data,
+        messageKey: json?.message_key,
+        messageParams: json?.message_params,
+      });
+    }
+    return json.data as { verification_token: string; expires_in: number };
   },
 
   /** identifier 可为邮箱、手机号或用户名 */
@@ -149,6 +202,9 @@ export const authApi = {
 
   changePhone: (new_phone: string | null, current_password: string) =>
     api.post<MeBasic>("/api/v1/auth/me/phone", { new_phone, current_password }),
+
+  deactivateAccount: (password: string) =>
+    api.post<null>("/api/v1/auth/deactivate", { password }),
 };
 
 /** /me/* 接口返回的简版 user(不含 roles/permissions/organization) */

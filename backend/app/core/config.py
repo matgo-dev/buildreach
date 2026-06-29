@@ -126,6 +126,14 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@matgo.co.tz"
     SMTP_USE_TLS: bool = True
 
+    # 邮箱验证码
+    VERIFICATION_CODE_LENGTH: int = 6
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 15
+    VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 10
+    VERIFICATION_CODE_COOLDOWN_SECONDS: int = 60
+    VERIFICATION_CODE_MAX_ATTEMPTS: int = 5
+    VERIFICATION_CODE_IP_HOURLY_LIMIT: int = 20
+
     @computed_field  # type: ignore[misc]
     @property
     def CORS_ORIGINS(self) -> List[str]:

@@ -68,6 +68,35 @@ function Inner() {
   const [editing, setEditing] = useState<EditingField>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  // 注销账户弹窗状态
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState("");
+  const [deactivateError, setDeactivateError] = useState("");
+  const [deactivating, setDeactivating] = useState(false);
+
+  const handleDeactivate = async () => {
+    setDeactivating(true);
+    try {
+      await authApi.deactivateAccount(deactivatePassword);
+      toast.success(t("deactivate_success"));
+      // 清除本地 auth 状态，跳转登录页
+      setTimeout(() => {
+        useAuthStore.getState().clear();
+        window.location.href = "/login";
+      }, 1000);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 40301) {
+        setDeactivateError(t("deactivate_err_password"));
+      } else {
+        // 非密码错误（网络超时、服务器错误等）不应显示密码错误文案
+        const msg = e instanceof ApiError ? e.message : t("errors.saveFailed");
+        setDeactivateError(msg || t("errors.saveFailed"));
+      }
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
   // 滚动监听 scroll-spy
   useEffect(() => {
     const handleScroll = () => {
@@ -314,6 +343,7 @@ function Inner() {
                 }
               />
             </SectionCard>
+
           </section>
 
           {/* Section: Organization */}
@@ -354,6 +384,62 @@ function Inner() {
                 )}
               </SectionCard>
             </section>
+          )}
+
+          {/* 危险区域：注销账户 */}
+          <div className="mt-8 rounded-xl border border-red-200 bg-red-50/50 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-red-700">{t("deactivate_title")}</h3>
+                <p className="mt-1 text-xs text-red-500/80">{t("deactivate_warning")}</p>
+              </div>
+              <button
+                onClick={() => setShowDeactivateModal(true)}
+                className="shrink-0 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:border-red-400"
+              >
+                {t("deactivate_button")}
+              </button>
+            </div>
+          </div>
+
+          {/* 注销确认弹窗 */}
+          {showDeactivateModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl">
+                <h3 className="text-lg font-semibold text-gray-900">{t("deactivate_title")}</h3>
+                <p className="text-sm text-gray-500 mt-2">{t("deactivate_warning")}</p>
+                <div className="mt-4">
+                  <PasswordField
+                    value={deactivatePassword}
+                    onChange={(v) => { setDeactivatePassword(v); setDeactivateError(""); }}
+                    placeholder={t("deactivate_password_label")}
+                  />
+                </div>
+                {deactivateError && (
+                  <p className="text-xs text-red-500 mt-1">{deactivateError}</p>
+                )}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDeactivateModal(false);
+                      setDeactivatePassword("");
+                      setDeactivateError("");
+                    }}
+                    className="flex-1 h-9 px-4 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    {t("deactivate_cancel")}
+                  </button>
+                  <button
+                    onClick={handleDeactivate}
+                    disabled={!deactivatePassword || deactivating}
+                    className="flex h-9 flex-1 items-center justify-center gap-1.5 px-4 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {deactivating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {t("deactivate_confirm")}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>

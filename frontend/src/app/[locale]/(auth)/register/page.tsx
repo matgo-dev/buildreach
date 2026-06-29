@@ -60,15 +60,8 @@ function buyerInputCls(error: string | null, extra = ""): string {
   return `${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK_BUYER} ${extra}`;
 }
 
-// 手机号前端轻量校验(最终以后端 E.164 归一化为准)
-const PHONE_REGION_CONFIG = {
-  TZ: { dialCode: "+255", flag: "🇹🇿", label: "Tanzania", re: /^\d{9}$/, maxLen: 9, phKey: "ph_phone_tz", errKey: "err_phone_format_tz" },
-  CN: { dialCode: "+86", flag: "🇨🇳", label: "China", re: /^1[3-9]\d{9}$/, maxLen: 11, phKey: "ph_phone_cn", errKey: "err_phone_format_cn" },
-} as const;
-type PhoneRegion = keyof typeof PHONE_REGION_CONFIG;
 // 允许的上传格式
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -344,16 +337,24 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  // 表单字段 — 中文环境默认 CN，其他默认 TZ
-  const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>(locale === "zh" ? "CN" : "TZ");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+  // 必填字段
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationToken, setVerificationToken] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+
+  // 选填字段（企业信息区）
   const [companyName, setCompanyName] = useState("");
   const [address, setAddress] = useState("");
-  const [email, setEmail] = useState("");
   const [storefrontImages, setStorefrontImages] = useState<File[]>([]);
   const [licenseImages, setLicenseImages] = useState<File[]>([]);
+
+  // 验证码发送状态
+  const [codeSending, setCodeSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   // UI 状态
   const [showPassword, setShowPassword] = useState(false);
@@ -362,13 +363,12 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const [optionalExpanded, setOptionalExpanded] = useState(false);
-
-  // L1 品类数据（选填，放可折叠区）
+  // 可选品类区（折叠展开）
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catExpanded, setCatExpanded] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [companySectionExpanded, setCompanySectionExpanded] = useState(false);
   const COLLAPSED_CAT_COUNT = 6;
 
   // 缩略图预览 URL 管理
@@ -379,6 +379,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
   const sfInputRef = useRef<HTMLInputElement>(null);
   const licInputRef = useRef<HTMLInputElement>(null);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // storefrontImages 变化时更新预览
   useEffect(() => {
@@ -393,29 +394,131 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [licenseImages]);
 
+  // 组件卸载时清理冷却计时器，防止内存泄露
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  // 挂载时加载品类列表
+  useEffect(() => {
+    setCatLoading(true);
+    categoriesApi.list({ level: 1 }).then((data) => {
+      setCategories(data);
+      setCatLoading(false);
+    }).catch(() => setCatLoading(false));
+  }, []);
+
+  // 发送验证码
+  const handleSendCode = async () => {
+    const emailErr = validateEmail(email, {
+      required: tc("err_email_required"),
+      format: tc("err_email_format"),
+      domain: tc("err_email_domain"),
+    });
+    if (emailErr) {
+      setErrors((e) => ({ ...e, email: emailErr }));
+      setTouched((t) => ({ ...t, email: true }));
+      return;
+    }
+    setCodeSending(true);
+    try {
+      await authApi.sendVerificationCode(email, "REGISTER");
+      setCooldown(60);
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+      cooldownRef.current = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) { clearInterval(cooldownRef.current!); cooldownRef.current = null; return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // 40104: 冷却中(后端返回剩余秒数)
+        if (err.code === 40104) {
+          const seconds = (err.data as { remaining_seconds?: number })?.remaining_seconds ?? 60;
+          setErrors((e) => ({ ...e, verificationCode: t("err_cooldown", { seconds }) }));
+          setTouched((te) => ({ ...te, verificationCode: true }));
+          // 同步冷却倒计时
+          setCooldown(seconds);
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          cooldownRef.current = setInterval(() => {
+            setCooldown((prev) => {
+              if (prev <= 1) { clearInterval(cooldownRef.current!); cooldownRef.current = null; return 0; }
+              return prev - 1;
+            });
+          }, 1000);
+        } else if (err.code === 40105) {
+          setErrors((e) => ({ ...e, verificationCode: t("err_rate_limit") }));
+          setTouched((te) => ({ ...te, verificationCode: true }));
+        } else {
+          setErrors((e) => ({ ...e, verificationCode: t("code_send_failed") }));
+          setTouched((te) => ({ ...te, verificationCode: true }));
+        }
+      } else {
+        setErrors((e) => ({ ...e, verificationCode: t("code_send_failed") }));
+        setTouched((te) => ({ ...te, verificationCode: true }));
+      }
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
+  // 校验验证码并获取 verification_token；返回 token 字符串或 null（失败）
+  const handleVerifyCode = async (): Promise<string | null> => {
+    if (!verificationCode.trim()) {
+      setErrors((e) => ({ ...e, verificationCode: t("err_code_invalid") }));
+      setTouched((te) => ({ ...te, verificationCode: true }));
+      return null;
+    }
+    try {
+      const { verification_token } = await authApi.verifyVerificationCode(
+        email, verificationCode, "REGISTER",
+      );
+      setVerificationToken(verification_token);
+      setErrors((e) => ({ ...e, verificationCode: null }));
+      return verification_token;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.code === 40101) {
+          setErrors((e) => ({ ...e, verificationCode: t("err_code_invalid") }));
+        } else if (err.code === 40102) {
+          setErrors((e) => ({ ...e, verificationCode: t("err_code_expired") }));
+        } else if (err.code === 40103) {
+          setErrors((e) => ({ ...e, verificationCode: t("err_code_max_attempts") }));
+        } else {
+          setErrors((e) => ({ ...e, verificationCode: t("err_code_invalid") }));
+        }
+      } else {
+        setErrors((e) => ({ ...e, verificationCode: t("err_code_invalid") }));
+      }
+      setTouched((te) => ({ ...te, verificationCode: true }));
+      return null;
+    }
+  };
+
   // 校验单个字段
   const validateField = (field: string): string | null => {
     switch (field) {
-      case "phone":
-        if (!phone) return t("err_phone_required");
-        if (!PHONE_REGION_CONFIG[phoneRegion].re.test(phone)) return t(PHONE_REGION_CONFIG[phoneRegion].errKey);
-        return null;
-      case "password":
-        return validatePassword(password);
       case "name":
         return validateRequired(name, t("label_name"));
-      case "companyName":
-        return validateRequired(companyName, t("label_company"));
-      case "address":
-        return validateRequired(address, t("label_address"));
       case "email":
         return validateEmail(email, {
           required: tc("err_email_required"),
           format: tc("err_email_format"),
           domain: tc("err_email_domain"),
         });
-      case "storefrontImages":
-        if (storefrontImages.length === 0) return t("err_storefront_required");
+      case "verificationCode":
+        if (!verificationCode.trim()) return t("err_code_invalid");
+        return null;
+      case "password":
+        return validatePassword(password);
+      case "phone":
+        if (!phone.trim()) return t("err_phone_required");
+        return null;
+      case "whatsapp":
+        if (!whatsapp.trim()) return t("err_phone_required");
         return null;
       default:
         return null;
@@ -430,9 +533,9 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const errOf = (field: string): string | null =>
     touched[field] ? errors[field] ?? null : null;
 
-  // 全字段校验
+  // 全必填字段校验
   const validateAll = (): string | null => {
-    const fields = ["phone", "password", "name", "companyName", "address", "email", "storefrontImages"];
+    const fields = ["name", "email", "verificationCode", "password", "phone", "whatsapp"];
     const newErrors: Record<string, string | null> = {};
     const newTouched: Record<string, boolean> = {};
     let firstError: string | null = null;
@@ -448,7 +551,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     }
     setTouched((t) => ({ ...t, ...newTouched }));
     setErrors((e) => ({ ...e, ...newErrors }));
-    // 滚动到第一个错误字段
     if (firstErrorField) {
       const el = document.getElementById(`field-${firstErrorField}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -513,22 +615,37 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setSubmitError("");
     setLoading(true);
     try {
+      // 如果还没有 verification_token，先做验证（handleVerifyCode 直接返回 token 字符串）
+      let token = verificationToken;
+      if (!token) {
+        const result = await handleVerifyCode();
+        if (!result) { setLoading(false); return; }
+        token = result;
+      }
       const tokens = await authApi.registerBuyer({
-        phone,
-        phone_region: phoneRegion,
-        password,
         name,
-        company_name: companyName,
-        address,
         email,
+        verification_token: token,
+        password,
+        phone,
+        whatsapp,
+        company_name: companyName || undefined,
+        address: address || undefined,
         business_category_codes: selectedCategories.length > 0 ? selectedCategories : undefined,
-        storefront_images: storefrontImages,
+        storefront_images: storefrontImages.length > 0 ? storefrontImages : undefined,
         license_images: licenseImages.length > 0 ? licenseImages : undefined,
         language_preference: locale,
       });
       onSubmitted(tokens);
     } catch (err) {
       if (err instanceof ApiError) {
+        // 40106: verification_token 失效，需重新验证
+        if (err.code === 40106) {
+          setVerificationToken("");
+          setErrors((e) => ({ ...e, verificationCode: t("err_token_invalid") }));
+          setTouched((te) => ({ ...te, verificationCode: true }));
+          return;
+        }
         // 解析 data.errors 数组，将每个字段错误映射到表单
         const fieldErrors = (err.data as { errors?: { field: string; code: number; message: string }[] })?.errors;
         if (fieldErrors && fieldErrors.length > 0) {
@@ -552,7 +669,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           if (!hasFieldMatch) {
             setSubmitError(err.message);
           } else {
-            // 滚动到第一个出错字段
             const firstField = fieldErrors.find((fe) => fe.field === "phone" || fe.field === "email")?.field;
             if (firstField) {
               const el = document.getElementById(`field-${firstField}`);
@@ -580,11 +696,12 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate autoComplete="off">
-        {/* 隐藏陷阱：吸收浏览器 autofill，防止覆盖手机号 */}
+      <form onSubmit={handleSubmit} className="space-y-3" noValidate autoComplete="off">
+        {/* 隐藏陷阱：吸收浏览器 autofill */}
         <input type="text" name="hidden_username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
         <input type="password" name="hidden_password" autoComplete="new-password" className="hidden" tabIndex={-1} aria-hidden="true" />
-        {/* 1. Name */}
+
+        {/* 1. 姓名 */}
         <div className="space-y-1.5" id="field-name">
           <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
             {t("label_name")} <span className="text-red-500">*</span>
@@ -600,80 +717,69 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("name") && <p className="text-xs text-red-500">{errOf("name")}</p>}
         </div>
 
-        {/* 2. Shop / Company Name */}
-        <div className="space-y-1.5" id="field-companyName">
-          <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
-            {t("label_company")} <span className="text-red-500">*</span>
-          </Label>
-          <input
-            id="companyName" name="companyName" type="text"
-            value={companyName}
-            onChange={(e) => { setCompanyName(e.target.value); if (errors.companyName) setErrors((err) => ({ ...err, companyName: null })); }}
-            onBlur={() => touch("companyName")}
-            placeholder={t("ph_company")}
-            className={buyerInputCls(errOf("companyName"))}
-          />
-          {errOf("companyName") && <p className="text-xs text-red-500">{errOf("companyName")}</p>}
-        </div>
-
-        {/* 3. Phone / WhatsApp */}
-        <div className="space-y-1.5" id="field-phone">
-          <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
-            {t("label_phone")} <span className="text-red-500">*</span>
-          </Label>
-          <div className="flex">
-            <select
-              value={phoneRegion}
-              onChange={(e) => {
-                const newRegion = e.target.value as PhoneRegion;
-                setPhoneRegion(newRegion);
-                setPhone((prev) => prev.slice(0, PHONE_REGION_CONFIG[newRegion].maxLen));
-                if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
-              }}
-              className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
-            >
-              {(Object.keys(PHONE_REGION_CONFIG) as PhoneRegion[]).map((r) => (
-                <option key={r} value={r}>
-                  {PHONE_REGION_CONFIG[r].flag} {PHONE_REGION_CONFIG[r].dialCode}
-                </option>
-              ))}
-            </select>
-            <input
-              id="phone" name="phone" type="tel"
-              value={phone}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "").slice(0, PHONE_REGION_CONFIG[phoneRegion].maxLen);
-                setPhone(v);
-                if (errors.phone) setErrors((er) => ({ ...er, phone: null }));
-              }}
-              onBlur={() => touch("phone")}
-              placeholder={t(PHONE_REGION_CONFIG[phoneRegion].phKey)}
-              inputMode="numeric"
-              autoComplete="off"
-              className={buyerInputCls(errOf("phone"), "rounded-l-none")}
-            />
-          </div>
-          {errOf("phone") && <p className="text-xs text-red-500">{errOf("phone")}</p>}
-        </div>
-
-        {/* 4. Email */}
+        {/* 2. 邮箱 + 发送验证码按钮 */}
         <div className="space-y-1.5" id="field-email">
           <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-            {t("label_email")} <span className="text-red-500">*</span>
+            {t("email_label")} <span className="text-red-500">*</span>
           </Label>
-          <input
-            id="email" name="email" type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
-            onBlur={() => touch("email")}
-            placeholder={t("ph_email")}
-            autoComplete="email"
-            className={buyerInputCls(errOf("email"))}
-          />
+          <div className="flex gap-2">
+            <input
+              id="email" name="email" type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
+              onBlur={() => touch("email")}
+              placeholder={t("email_placeholder")}
+              autoComplete="email"
+              className={buyerInputCls(errOf("email"), "flex-1")}
+            />
+            <button
+              type="button"
+              onClick={handleSendCode}
+              disabled={cooldown > 0 || codeSending}
+              className="shrink-0 rounded-lg border border-[#0D4D4D] px-3 text-sm font-medium text-[#0D4D4D] transition-all hover:bg-[#0D4D4D]/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+            >
+              {codeSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : cooldown > 0 ? (
+                t("resend_code", { seconds: cooldown })
+              ) : (
+                t("send_code")
+              )}
+            </button>
+          </div>
           {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
         </div>
 
-        {/* 5. Password */}
+        {/* 3. 验证码 */}
+        <div className="space-y-1.5" id="field-verificationCode">
+          <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
+            {t("verification_code_label")} <span className="text-red-500">*</span>
+          </Label>
+          <input
+            id="verificationCode" name="verificationCode" type="text"
+            value={verificationCode}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+              setVerificationCode(v);
+              // 输入满 6 位时清除 token（需重新验证）
+              if (v !== verificationCode) setVerificationToken("");
+              if (errors.verificationCode) setErrors((err) => ({ ...err, verificationCode: null }));
+            }}
+            onBlur={() => touch("verificationCode")}
+            placeholder={t("verification_code_placeholder")}
+            inputMode="numeric"
+            maxLength={6}
+            autoComplete="one-time-code"
+            className={buyerInputCls(errOf("verificationCode"), "tracking-widest")}
+          />
+          {errOf("verificationCode") && <p className="text-xs text-red-500">{errOf("verificationCode")}</p>}
+          {/* 发送成功提示 */}
+          {cooldown > 0 && !errOf("verificationCode") && (
+            <p className="text-xs text-green-600">{t("code_sent")}</p>
+          )}
+        </div>
+
+        {/* 4. 密码 */}
         <div className="space-y-1.5" id="field-password">
           <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
             {t("label_password")} <span className="text-red-500">*</span>
@@ -705,149 +811,187 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint_simple")}</p>
         </div>
 
-        {/* 6. Address */}
-        <div className="space-y-1.5" id="field-address">
-          <Label htmlFor="address" className="text-sm font-semibold text-gray-700">
-            {t("label_address")} <span className="text-red-500">*</span>
+        {/* 5. 手机号（纯文本，无区号选择器） */}
+        <div className="space-y-1.5" id="field-phone">
+          <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
+            {t("phone_label")} <span className="text-red-500">*</span>
           </Label>
           <input
-            id="address" name="address" type="text"
-            value={address}
-            onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors((err) => ({ ...err, address: null })); }}
-            onBlur={() => touch("address")}
-            placeholder={t("ph_address")}
-            className={buyerInputCls(errOf("address"))}
+            id="phone" name="phone" type="tel"
+            value={phone}
+            onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors((err) => ({ ...err, phone: null })); }}
+            onBlur={() => touch("phone")}
+            placeholder=""
+            autoComplete="tel"
+            className={buyerInputCls(errOf("phone"))}
           />
-          {errOf("address") && <p className="text-xs text-red-500">{errOf("address")}</p>}
+          {errOf("phone") && <p className="text-xs text-red-500">{errOf("phone")}</p>}
         </div>
 
-        {/* 4. Storefront Photos (required) */}
-        <div className="space-y-1.5" id="field-storefrontImages">
-          <Label className="text-sm font-semibold text-gray-700">
-            {t("label_storefront")} <span className="text-red-500">*</span>
+        {/* 6. WhatsApp */}
+        <div className="space-y-1.5" id="field-whatsapp">
+          <Label htmlFor="whatsapp" className="text-sm font-semibold text-gray-700">
+            {t("whatsapp_label")} <span className="text-red-500">*</span>
           </Label>
-          <p className="text-xs text-gray-400">{t("storefront_hint")}</p>
-          <div className="flex flex-wrap gap-2">
-            {sfPreviews.map((url, idx) => (
-              <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
-                <img
-                  src={url} alt="" className="h-full w-full cursor-pointer object-cover"
-                  onClick={() => setPreviewUrl(url)}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeStorefrontImage(idx)}
-                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+          <input
+            id="whatsapp" name="whatsapp" type="tel"
+            value={whatsapp}
+            onChange={(e) => { setWhatsapp(e.target.value); if (errors.whatsapp) setErrors((err) => ({ ...err, whatsapp: null })); }}
+            onBlur={() => touch("whatsapp")}
+            placeholder=""
+            autoComplete="tel"
+            className={buyerInputCls(errOf("whatsapp"))}
+          />
+          {errOf("whatsapp") && <p className="text-xs text-red-500">{errOf("whatsapp")}</p>}
+        </div>
+
+        {/* ---- 经营品类（选填，不折叠）---- */}
+        <div className="mt-2 border-t border-gray-200 pt-3">
+          <div className="space-y-1.5" id="field-categories">
+            <Label className="text-sm font-semibold text-gray-700">
+              {t("label_categories")}
+            </Label>
+            {catLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
               </div>
-            ))}
-            {storefrontImages.length < 10 && (
-              <button
-                type="button"
-                onClick={() => sfInputRef.current?.click()}
-                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
-              >
-                <ImagePlus className="h-5 w-5" />
-                <span className="text-[10px]">{t("upload")}</span>
-              </button>
-            )}
+            ) : categories.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
+                    const selected = selectedCategories.includes(cat.code);
+                    const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
+                    return (
+                      <button
+                        key={cat.code}
+                        type="button"
+                        onClick={() => setSelectedCategories((prev) =>
+                          prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
+                        )}
+                        className={
+                          "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
+                          (selected
+                            ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
+                            : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
+                        }
+                      >
+                        <div className={
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+                          (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
+                        }>
+                          {selected && <Check className="h-3 w-3" />}
+                        </div>
+                        <span className="truncate">{displayName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {categories.length > COLLAPSED_CAT_COUNT && (
+                  <button
+                    type="button"
+                    onClick={() => setCatExpanded((v) => !v)}
+                    className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                  >
+                    {catExpanded ? (
+                      <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
+                    ) : (
+                      <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
+                    )}
+                  </button>
+                )}
+              </>
+            ) : null}
           </div>
-          <input
-            ref={sfInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            className="hidden"
-            onChange={(e) => { handleStorefrontAdd(e.target.files); e.target.value = ""; }}
-          />
-          {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
         </div>
 
-        {/* 可折叠选填区域 */}
+        {/* ---- 补充信息（选填，折叠）---- */}
         <div className="rounded-lg border border-gray-200">
           <button
             type="button"
-            onClick={() => {
-              setOptionalExpanded((v) => !v);
-              // 懒加载品类数据
-              if (categories.length === 0 && !catLoading) {
-                setCatLoading(true);
-                categoriesApi.list({ level: 1 }).then((data) => {
-                  setCategories(data);
-                  setCatLoading(false);
-                }).catch(() => setCatLoading(false));
-              }
-            }}
+            onClick={() => setCompanySectionExpanded((v) => !v)}
             className="flex w-full items-center justify-between px-4 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50"
           >
             <span>{t("optional_section")}</span>
-            {optionalExpanded
+            {companySectionExpanded
               ? <ChevronUp className="h-4 w-4" />
               : <ChevronDown className="h-4 w-4" />
             }
           </button>
-          {optionalExpanded && (
-            <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">
-              {/* Business Categories (optional) */}
-              <div className="space-y-1.5" id="field-categories">
-                <Label className="text-sm font-semibold text-gray-700">
-                  {t("label_categories")}
+          {companySectionExpanded && (
+            <div className="space-y-3 border-t border-gray-100 px-4 pb-4 pt-3">
+              {/* 公司名称 */}
+              <div className="space-y-1.5" id="field-companyName">
+                <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+                  {t("label_company")}
                 </Label>
-                {catLoading ? (
-                  <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
-                    <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
-                  </div>
-                ) : categories.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(catExpanded ? categories : categories.slice(0, COLLAPSED_CAT_COUNT)).map((cat) => {
-                        const selected = selectedCategories.includes(cat.code);
-                        const displayName = locale === "en" ? (cat.name_en || cat.name_zh) : locale === "sw" ? (cat.name_en || cat.name_zh) : cat.name_zh;
-                        return (
-                          <button
-                            key={cat.code}
-                            type="button"
-                            onClick={() => setSelectedCategories((prev) =>
-                              prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
-                            )}
-                            className={
-                              "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
-                              (selected
-                                ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
-                                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
-                            }
-                          >
-                            <div className={
-                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                              (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
-                            }>
-                              {selected && <Check className="h-3 w-3" />}
-                            </div>
-                            <span className="truncate">{displayName}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {categories.length > COLLAPSED_CAT_COUNT && (
-                      <button
-                        type="button"
-                        onClick={() => setCatExpanded((v) => !v)}
-                        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-                      >
-                        {catExpanded ? (
-                          <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
-                        ) : (
-                          <>{t("expand_categories", { count: categories.length - COLLAPSED_CAT_COUNT })} <ChevronDown className="h-3.5 w-3.5" /></>
-                        )}
-                      </button>
-                    )}
-                  </>
-                ) : null}
+                <input
+                  id="companyName" name="companyName" type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder={t("ph_company")}
+                  className={buyerInputCls(null)}
+                />
               </div>
 
-              {/* License Images */}
+              {/* 地址 */}
+              <div className="space-y-1.5" id="field-address">
+                <Label htmlFor="address" className="text-sm font-semibold text-gray-700">
+                  {t("label_address")}
+                </Label>
+                <input
+                  id="address" name="address" type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={t("ph_address")}
+                  className={buyerInputCls(null)}
+                />
+              </div>
+
+              {/* 店面照片 */}
+              <div className="space-y-1.5" id="field-storefrontImages">
+                <Label className="text-sm font-semibold text-gray-700">
+                  {t("label_storefront")}
+                </Label>
+                <p className="text-xs text-gray-400">{t("storefront_hint")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {sfPreviews.map((url, idx) => (
+                    <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                      <img
+                        src={url} alt="" className="h-full w-full cursor-pointer object-cover"
+                        onClick={() => setPreviewUrl(url)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeStorefrontImage(idx)}
+                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {storefrontImages.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => sfInputRef.current?.click()}
+                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+                    >
+                      <ImagePlus className="h-5 w-5" />
+                      <span className="text-[10px]">{t("upload")}</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={sfInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { handleStorefrontAdd(e.target.files); e.target.value = ""; }}
+                />
+                {errOf("storefrontImages") && <p className="text-xs text-red-500">{errOf("storefrontImages")}</p>}
+              </div>
+
+              {/* 营业执照 */}
               <div className="space-y-1.5" id="field-licenseImages">
                 <Label className="text-sm font-semibold text-gray-700">
                   {t("label_license")}
@@ -888,7 +1032,6 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                 />
                 {errOf("licenseImages") && <p className="text-xs text-red-500">{errOf("licenseImages")}</p>}
               </div>
-
             </div>
           )}
         </div>

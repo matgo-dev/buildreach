@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.exceptions import MultipleValidationError, NotAuthenticatedError, success
-from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.db.models.user import User, UserStatus
 from jose import JWTError
 from urllib.parse import urlparse
@@ -28,9 +28,11 @@ from app.schemas.auth import (
     TokenOut,
 )
 from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, ProfileUpdateIn
-from app.services import auth_service, me_service
+from app.services import auth_service, me_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
+
+from pydantic import BaseModel as _BaseModel
 
 from email_validator import validate_email as ev_validate, EmailNotValidError
 from sqlalchemy import and_, select
@@ -195,25 +197,100 @@ async def _check_supplier_duplicates(
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+# ---- 验证码 Schemas ----
+
+class SendCodeRequest(_BaseModel):
+    email: str
+    purpose: str  # REGISTER / RESET_PASSWORD
+
+
+class SendCodeResponse(_BaseModel):
+    message: str
+    expires_in: int
+
+
+class VerifyCodeRequest(_BaseModel):
+    email: str
+    code: str
+    purpose: str
+
+
+class VerifyCodeResponse(_BaseModel):
+    verification_token: str
+    expires_in: int
+
+
+# ---- 验证码端点 ----
+
+@router.post("/verification-code/send", summary="发送邮箱验证码")
+async def send_verification_code(
+    body: SendCodeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent", "")[:255]
+    try:
+        _code, expires_in = await verification_service.send_code(
+            db, body.email, body.purpose, ip, ua
+        )
+        await db.commit()
+        return success(SendCodeResponse(message="Verification code sent", expires_in=expires_in).model_dump())
+    except ValueError as e:
+        msg = str(e)
+        if msg.startswith("COOLDOWN:"):
+            remaining = int(msg.split(":")[1])
+            raise MultipleValidationError([{"field": "email", "code": 40104, "message": f"Please wait {remaining}s before resending"}])
+        if msg == "IP_RATE_LIMIT":
+            raise MultipleValidationError([{"field": "email", "code": 40105, "message": "Too many requests, please try again later"}])
+        raise
+
+
+@router.post("/verification-code/verify", summary="校验邮箱验证码")
+async def verify_verification_code(
+    body: VerifyCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        token = await verification_service.verify_code(
+            db, body.email, body.code, body.purpose
+        )
+        await db.commit()
+        return success(VerifyCodeResponse(
+            verification_token=token,
+            expires_in=settings.VERIFICATION_TOKEN_EXPIRE_MINUTES * 60,
+        ).model_dump())
+    except ValueError as e:
+        error_map = {
+            "CODE_NOT_FOUND": (40101, "Invalid verification code"),
+            "CODE_EXPIRED": (40102, "Verification code expired"),
+            "MAX_ATTEMPTS": (40103, "Too many failed attempts"),
+            "CODE_INVALID": (40101, "Invalid verification code"),
+        }
+        biz_code, biz_msg = error_map.get(str(e), (40100, "Verification failed"))
+        raise MultipleValidationError([{"field": "code", "code": biz_code, "message": biz_msg}])
+
+
 @router.post("/register/buyer", summary="BUYER 自助注册")
 async def register_buyer(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
     # 文本字段
+    verification_token: str = Form(...),           # 必填: 邮箱验证 token
+    email: str = Form(...),
+    whatsapp: str = Form(...),                     # 必填: WhatsApp 号码
     phone: str = Form(...),
-    phone_region: str = Form(default="TZ"),
     password: str = Form(...),
     name: str = Form(...),
-    company_name: str = Form(...),
-    address: str = Form(...),
+    company_name: str = Form(""),                  # 可选，默认空
+    address: str = Form(""),                       # 可选，默认空
     business_category_codes: list[str] = Form(default=[]),
-    email: str = Form(...),
     tin: str | None = Form(default=None),
     brela_no: str | None = Form(default=None),
     language_preference: str | None = Form(default=None),
     # 文件字段
-    storefront_images: list[UploadFile] = File(...),
+    storefront_images: list[UploadFile] = File(default=[]),   # 可选，默认空
     license_images: list[UploadFile] | None = File(default=None),
 ):
     from app.services._buyer_utils import (
@@ -223,33 +300,21 @@ async def register_buyer(
         ALLOWED_EXTENSIONS,
         MAX_IMAGE_SIZE,
     )
-    from app.core.phone import normalize_phone_to_e164
-    from app.core.exceptions import PhoneFormatError, PhoneUnsupportedRegionError
     from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
 
-    # ── 全量格式校验(一次性收集) ──
+    # ── 1. 先校验 verification_token（同时标记 verification_code 为已使用）──
+    try:
+        verified_email = await verification_service.consume_verification_token(db, verification_token)
+    except ValueError:
+        raise MultipleValidationError([{"field": "verification_token", "code": 40106, "message": "Email verification token invalid or expired"}])
+    email = email.strip()
+    if verified_email != email:
+        raise MultipleValidationError([{"field": "email", "code": 40107, "message": "Email does not match verification token"}])
+
+    # ── 2. 全量格式校验(一次性收集) ──
     errors: list[dict] = []
 
-    # 手机号归一化(E.164)
-    try:
-        phone = normalize_phone_to_e164(phone, phone_region.upper() if phone_region else None)
-    except PhoneUnsupportedRegionError:
-        errors.append({"field": "phone", "code": 42222, "message": "手机号所属国家暂不支持"})
-    except PhoneFormatError:
-        errors.append({"field": "phone", "code": 42221, "message": "手机号格式不正确"})
-
-    # 密码强度
-    if not validate_password_strength(password):
-        errors.append({"field": "password", "code": 42202, "message": PASSWORD_RULE_MESSAGE})
-
-    # 地址非空
-    if not address or not address.strip():
-        errors.append({"field": "address", "code": 42208, "message": "地址不能为空"})
-    else:
-        address = address.strip()
-
-    # 邮箱格式(必填，用于密码找回)
-    email = email.strip()
+    # 邮箱格式
     if not email:
         errors.append({"field": "email", "code": 42200, "message": "请填写邮箱"})
     else:
@@ -257,6 +322,13 @@ async def register_buyer(
             ev_validate_email(email)
         except EvNotValidError:
             errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
+
+    # 密码强度
+    if not validate_password_strength(password):
+        errors.append({"field": "password", "code": 42202, "message": PASSWORD_RULE_MESSAGE})
+
+    # 地址有值时 strip（允许空，不强制）
+    address = address.strip() if address else ""
 
     # 品类校验（选填，有值时才校验）
     if business_category_codes:
@@ -266,13 +338,11 @@ async def register_buyer(
             code = getattr(e, "biz_code", 42204)
             errors.append({"field": "business_category_codes", "code": code, "message": str(e.detail) if hasattr(e, "detail") else str(e)})
 
-    # 门店照片张数校验
-    if not storefront_images or len(storefront_images) < 1:
-        errors.append({"field": "storefront_images", "code": 42209, "message": "至少上传 1 张门店照片"})
-    elif len(storefront_images) > 10:
+    # 门店照片张数校验（0-10 张，不再强制至少 1 张）
+    if len(storefront_images) > 10:
         errors.append({"field": "storefront_images", "code": 42205, "message": "门店照片最多 10 张"})
 
-    # 图片格式/大小预校验(门店)
+    # 图片格式预校验(门店)
     if storefront_images:
         for i, f in enumerate(storefront_images):
             ext = os.path.splitext(f.filename or "")[1].lower()
@@ -282,7 +352,7 @@ async def register_buyer(
     if errors:
         raise MultipleValidationError(errors)
 
-    # ── 图片处理 + 落盘 ──
+    # ── 3. 图片处理 + 落盘 ──
     saved_storefront: list[tuple[str, int, int, int]] = []
     saved_files: list[str] = []  # 回滚清理用
 
@@ -317,10 +387,11 @@ async def register_buyer(
             saved_license.append(result)
             saved_files.append(result[0])
 
-        # ── 业务写入 ──
+        # ── 4. 业务写入 ──
         user, tokens = await auth_service.register_buyer(
             db,
             phone=phone,
+            whatsapp=whatsapp,
             password=password,
             name=name.strip(),
             company_name=company_name.strip(),
@@ -806,3 +877,31 @@ async def reset_password(
     await db.commit()
 
     return success(None, message="密码重置成功，请使用新密码登录")
+
+
+# ===== 账户注销 =====
+
+class DeactivateRequest(_BaseModel):
+    password: str
+
+
+@router.post("/deactivate", summary="注销账户(需当前密码确认)")
+async def deactivate_account(
+    body: DeactivateRequest,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """用户主动注销账户。注销后 token 立即失效,登录时给出专属提示。"""
+    # 从 DB 重新加载以获取 password_hash(CurrentUser dataclass 不含此字段)
+    user = await db.get(User, current.id)
+    if user is None:
+        raise MultipleValidationError([{"field": "password", "code": 40301, "message": "Incorrect password"}])
+
+    if not verify_password(body.password, user.password_hash):
+        raise MultipleValidationError([{"field": "password", "code": 40301, "message": "Incorrect password"}])
+
+    user.status = UserStatus.DEACTIVATED
+    user.token_version += 1
+    await db.commit()
+
+    return success({"message": "Account deactivated successfully"})

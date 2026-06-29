@@ -65,8 +65,9 @@ from app.db.models.rfq_quote import RfqQuote
 from app.db.models.rfq_quote_item import RfqQuoteItem
 from app.db.models.rfq_quote_item_tier import RfqQuoteItemTier
 from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
-from app.db.models.user import User
+from app.db.models.user import User, UserStatus
 from app.db.models.user_role import UserRole
+from app.db.models.verification_code import VerificationCode, VerificationPurpose
 __all__ = [
     # attachment
     "Attachment",
@@ -154,4 +155,8 @@ __all__ = [
     # ingest
     "IngestRun",
     "IngestRunStatus",
+    # verification
+    "VerificationCode",
+    "VerificationPurpose",
+    "UserStatus",
 ]

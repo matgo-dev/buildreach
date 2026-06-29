@@ -221,7 +221,27 @@
     "err_generic": "注册失败,请稍后重试",
     "err_phone_exists": "该手机号已注册",
     "err_email_exists": "该邮箱已注册",
-    "optional_section": "更多信息（选填）"
+    "optional_section": "更多信息（选填）",
+    "email_label": "邮箱",
+    "email_placeholder": "请输入邮箱",
+    "send_code": "发送验证码",
+    "resend_code": "重新发送 ({seconds}s)",
+    "verification_code_label": "验证码",
+    "verification_code_placeholder": "输入6位验证码",
+    "code_sent": "验证码已发送至您的邮箱",
+    "code_send_failed": "验证码发送失败，请重试",
+    "phone_label": "手机号",
+    "phone_placeholder": "+255 7XX XXX XXX",
+    "whatsapp_label": "WhatsApp 号码",
+    "whatsapp_placeholder": "+255 7XX XXX XXX",
+    "company_section_title": "企业信息（选填）",
+    "company_section_hint": "企业采购请补充以下信息",
+    "err_code_invalid": "验证码无效",
+    "err_code_expired": "验证码已过期，请重新发送",
+    "err_code_max_attempts": "失败次数过多，请重新发送",
+    "err_cooldown": "请等待 {seconds} 秒后再发送",
+    "err_rate_limit": "请求过于频繁，请稍后重试",
+    "err_token_invalid": "邮箱验证已过期，请重新验证"
   },
   "category": {
     "level1": "一级分类",
@@ -1300,7 +1320,15 @@
       "usernameCleared": "用户名已清除",
       "passwordSaved": "密码已更新",
       "passwordSavedRedirect": "密码已更新，即将跳转登录页…"
-    }
+    },
+    "deactivate_button": "注销账户",
+    "deactivate_title": "注销账户",
+    "deactivate_warning": "注销后将无法登录，如需恢复请联系客服",
+    "deactivate_password_label": "输入密码以确认",
+    "deactivate_confirm": "确认注销",
+    "deactivate_cancel": "取消",
+    "deactivate_success": "账户已成功注销",
+    "deactivate_err_password": "密码错误"
   },
   "howToBuy": {
     "heroTitle": "采购路径 — 从选品到收货的完整指南",

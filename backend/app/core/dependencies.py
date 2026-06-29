@@ -133,6 +133,11 @@ async def get_current_user(
         raise NotAuthenticatedError("User not found")
     if user.status == UserStatus.DISABLED:
         raise AccountDisabledError()
+    # DEACTIVATED:token_version +1 后旧 token 已失效,下面 tv 校验会拦截;
+    # 此处兜底确保新 token_version 签出前也无法访问
+    if user.status == UserStatus.DEACTIVATED:
+        from app.core.exceptions import AccountDeactivatedError
+        raise AccountDeactivatedError()
 
     # token_version 校验:tv 不匹配 → 旧 token 已被吊销(改密/强制下线)
     if int(payload.get("tv", -1)) != user.token_version:
