@@ -49,46 +49,68 @@ export function ContactModal() {
             </div>
 
             <div className="p-2 space-y-1.5">
-              {/* WhatsApp — 推荐 */}
-              {wa.configured && (
-                <a
-                  href={waLink!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={close}
-                  className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
-                  style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
-                >
-                  <span className="w-8 h-8 rounded-full bg-white/20 grid place-items-center shrink-0">
-                    <MessageCircle className="h-4 w-4 text-white" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[12px] font-bold">WhatsApp</span>
-                      <span className="inline-flex items-center gap-0.5 text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
-                        <Star className="h-2 w-2 fill-current" />
-                        {t("recommended")}
-                      </span>
+              {contact.isLoading ? (
+                /* 骨架屏 — 数据加载中 */
+                <>
+                  <div className="flex items-center gap-2 rounded-lg p-2 bg-gray-100 animate-pulse">
+                    <span className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-20 bg-gray-200 rounded" />
+                      <div className="h-2.5 w-32 bg-gray-200 rounded" />
                     </div>
-                    <p className="text-[10px] text-white/80 leading-tight">{t("floatWaDesc")}</p>
                   </div>
-                </a>
-              )}
+                  <div className="flex items-center gap-2 rounded-lg p-2 bg-gray-50 animate-pulse">
+                    <span className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-16 bg-gray-200 rounded" />
+                      <div className="h-2.5 w-28 bg-gray-200 rounded" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* WhatsApp — 推荐 */}
+                  {wa.configured && (
+                    <a
+                      href={waLink!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={close}
+                      className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
+                      style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
+                    >
+                      <span className="w-8 h-8 rounded-full bg-white/20 grid place-items-center shrink-0">
+                        <MessageCircle className="h-4 w-4 text-white" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[12px] font-bold">WhatsApp</span>
+                          <span className="inline-flex items-center gap-0.5 text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
+                            <Star className="h-2 w-2 fill-current" />
+                            {t("recommended")}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/80 leading-tight">{t("floatWaDesc")}</p>
+                      </div>
+                    </a>
+                  )}
 
-              {/* WeChat — 白底描边 */}
-              {contact.wechatId && (
-                <button
-                  onClick={() => { setShowQr(true); close(); }}
-                  className="w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <span className="w-8 h-8 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
-                    <WeChatIcon className="h-4 w-4 text-[#07c160]" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-bold text-navy">WeChat</p>
-                    <p className="text-[10px] text-muted leading-tight">{t("floatWeChatDesc")}</p>
-                  </div>
-                </button>
+                  {/* WeChat — 白底描边 */}
+                  {contact.wechatId && (
+                    <button
+                      onClick={() => { setShowQr(true); close(); }}
+                      className="w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
+                        <WeChatIcon className="h-4 w-4 text-[#07c160]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-bold text-navy">WeChat</p>
+                        <p className="text-[10px] text-muted leading-tight">{t("floatWeChatDesc")}</p>
+                      </div>
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

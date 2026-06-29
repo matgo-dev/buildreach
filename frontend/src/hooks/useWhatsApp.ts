@@ -45,7 +45,7 @@ function resolveWhatsAppLink(raw: string | undefined | null): string | null {
  * SWR 同 key 去重，全站只请求一次。
  */
 export function useContactInfo() {
-  const { data } = useSWR<ContactConfig>(
+  const { data, isLoading } = useSWR<ContactConfig>(
     CONTACT_CONFIG_PATH,
     fetchContactConfig,
     { revalidateOnFocus: false, revalidateIfStale: false },
@@ -54,6 +54,7 @@ export function useContactInfo() {
   const whatsappLink = resolveWhatsAppLink(data?.whatsapp_number);
 
   return {
+    isLoading,
     whatsappLink,
     whatsappNumber: data?.whatsapp_number?.trim() || null,
     wechatId: data?.wechat_id?.trim() || null,
