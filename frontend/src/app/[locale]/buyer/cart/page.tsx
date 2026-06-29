@@ -28,7 +28,7 @@ import {
   type CartPublic,
 } from "@/lib/api/cart";
 import { useCartStore } from "@/stores/cartStore";
-import { useContactStore } from "@/stores/contactStore";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 import { imageUrl } from "@/lib/env";
 
 // ---------- 主页面 ----------
@@ -43,7 +43,6 @@ function CartContent() {
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const refreshFlag = useCartStore((s) => s.refreshFlag);
   const triggerRefresh = useCartStore((s) => s.triggerRefresh);
-  const openContact = useContactStore((s) => s.open);
 
   // 询价篮数据
   const { data: cart, isLoading, mutate } = useSWR<CartPublic>(
@@ -191,13 +190,14 @@ function CartContent() {
                 {t("goToMall")}
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => openContact()}
-                className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
-              >
-                <MessageCircle className="h-4 w-4" />
-                {t("inquireNow")}
-              </button>
+              <ContactPopover>
+                <button
+                  className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {t("inquireNow")}
+                </button>
+              </ContactPopover>
             </div>
           </div>
         ) : (

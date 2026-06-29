@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { useContactStore } from "@/stores/contactStore";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 
 /* ---------- 品类分区配置 ---------- */
 
@@ -60,7 +60,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function HelpCenterPage() {
   const t = useTranslations("helpCenter");
-  const openContact = useContactStore((s) => s.open);
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
 
   const current = SECTIONS.find((s) => s.id === activeSection) ?? SECTIONS[0];
@@ -119,12 +118,13 @@ export default function HelpCenterPage() {
           {/* 联系客服 */}
           <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
             <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
-            <button
-              onClick={() => openContact()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
-            >
-              {t("contactUs")}
-            </button>
+            <ContactPopover>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
+              >
+                {t("contactUs")}
+              </button>
+            </ContactPopover>
           </div>
         </div>
 
@@ -152,12 +152,13 @@ export default function HelpCenterPage() {
             {/* 联系客服 */}
             <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
               <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
-              <button
-                onClick={() => openContact()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
-              >
-                {t("contactUs")}
-              </button>
+              <ContactPopover>
+                <button
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
+                >
+                  {t("contactUs")}
+                </button>
+              </ContactPopover>
             </div>
           </div>
 

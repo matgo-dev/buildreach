@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ChevronDown, MessageCircle } from "lucide-react";
 import type { CategoryTreeNode } from "@/lib/api/categories";
-import { useContactStore } from "@/stores/contactStore";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 
 /**
  * 从品类树中 DFS 查找目标 code 的完整路径。
@@ -144,7 +144,6 @@ export function CategoryBreadcrumb({
   const locale = useLocale();
   const router = useRouter();
   const t = useTranslations("mall");
-  const openContact = useContactStore((s) => s.open);
 
   const crumbs = categoryCode ? buildCategoryPath(categoryTree, categoryCode) : [];
 
@@ -187,13 +186,14 @@ export function CategoryBreadcrumb({
         {!tail && (
           <div className="ml-4 flex items-center gap-2 shrink-0">
             <span className="text-[12px] text-amber-500 hidden sm:inline">{t("cantFindHint")}</span>
-            <button
-              onClick={() => openContact()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-1 text-[12px] font-medium text-white hover:bg-[#20bd5a] transition-colors h-[28px]"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              {t("contactService")}
-            </button>
+            <ContactPopover>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-1 text-[12px] font-medium text-white hover:bg-[#20bd5a] transition-colors h-[28px]"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {t("contactService")}
+              </button>
+            </ContactPopover>
           </div>
         )}
       </div>
