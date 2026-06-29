@@ -5,9 +5,11 @@ import useSWR from "swr";
 import { useAuthStore } from "@/stores/authStore";
 import { getApiBase } from "@/lib/env";
 
-interface WhatsAppData {
+/** 后端 /api/v1/contact/info 返回的完整联系方式 */
+interface ContactInfo {
   whatsapp_link: string | null;
-  number: string | null;
+  whatsapp_number: string | null;
+  email: string | null;
 }
 
 export interface WhatsAppContext {
@@ -17,34 +19,49 @@ export interface WhatsAppContext {
   productCode?: string;
 }
 
-async function fetchWhatsApp(): Promise<WhatsAppData> {
-  const res = await fetch(`${getApiBase()}/api/v1/contact/whatsapp`);
+const CONTACT_KEY = "/api/v1/contact/info";
+
+async function fetchContactInfo(): Promise<ContactInfo> {
+  const res = await fetch(`${getApiBase()}${CONTACT_KEY}`);
   const json = await res.json();
   return json.data;
 }
 
 /**
- * 从后端拉取客服 WhatsApp 链接和号码。
- * 公开端点,无需登录;SWR 缓存,不重复请求。
+ * 平台联系方式(WhatsApp + 邮箱)。
+ * 公开端点,无需登录;SWR 同 key 去重,全站只请求一次。
+ */
+export function useContactInfo() {
+  const { data } = useSWR<ContactInfo>(
+    CONTACT_KEY,
+    fetchContactInfo,
+    { revalidateOnFocus: false, revalidateIfStale: false },
+  );
+
+  return {
+    whatsappLink: data?.whatsapp_link ?? null,
+    whatsappNumber: data?.whatsapp_number ?? null,
+    email: data?.email ?? null,
+    configured: !!data?.whatsapp_link || !!data?.email,
+  };
+}
+
+/**
+ * WhatsApp 专用 hook — 在 useContactInfo 基础上提供 buildLink 能力。
  *
- * buildLink(ctx?) — 根据当前登录态和传入的商品上下文拼带预填文案的链接:
+ * buildLink(ctx?) — 根据当前登录态和商品上下文拼带预填文案的链接:
  *   未登录 + 非商品页 → 纯链接
  *   未登录 + 商品页   → Hi, I'm interested in [商品名]
  *   已登录 + 非商品页 → Hi, I'm [用户名/公司名]
  *   已登录 + 商品页   → Hi, I'm [用户名/公司名], I'm interested in [商品名]
  */
 export function useWhatsApp() {
-  const { data } = useSWR<WhatsAppData>(
-    "/api/v1/contact/whatsapp",
-    fetchWhatsApp,
-    { revalidateOnFocus: false, revalidateIfStale: false },
-  );
-
+  const contact = useContactInfo();
   const user = useAuthStore((s) => s.user);
 
   const buildLink = useCallback(
     (ctx?: WhatsAppContext): string | null => {
-      const baseLink = data?.whatsapp_link;
+      const baseLink = contact.whatsappLink;
       if (!baseLink) return null;
 
       const parts: string[] = [];
@@ -71,17 +88,17 @@ export function useWhatsApp() {
       if (parts.length === 0) return baseLink;
 
       const text = `Hi, ${parts.join(", ")}`;
-      // whatsapp_link 格式: https://wa.me/xxx 或 https://api.whatsapp.com/send?phone=xxx
       const separator = baseLink.includes("?") ? "&" : "?";
       return `${baseLink}${separator}text=${encodeURIComponent(text)}`;
     },
-    [data?.whatsapp_link, user],
+    [contact.whatsappLink, user],
   );
 
   return {
-    link: data?.whatsapp_link ?? null,
-    number: data?.number ?? null,
-    configured: !!data?.whatsapp_link,
+    link: contact.whatsappLink,
+    number: contact.whatsappNumber,
+    email: contact.email,
+    configured: !!contact.whatsappLink,
     buildLink,
   };
 }

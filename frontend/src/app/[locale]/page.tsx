@@ -10,6 +10,7 @@ import { HeroBannerCarousel } from "@/components/mall/HeroBannerCarousel";
 import { MobileCategoryGrid } from "@/components/mall/MobileCategoryGrid";
 import { CategoryFloors } from "@/components/mall/CategoryFloors";
 import { useAuthStore } from "@/stores/authStore";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 
 export default function HomePage() {
   const t = useTranslations("mall");
@@ -49,6 +50,7 @@ export default function HomePage() {
 function BottomCta() {
   const t = useTranslations("mall");
   const user = useAuthStore((s) => s.user);
+  const wa = useWhatsApp();
 
   return (
     <div className="rounded-xl p-10 text-center text-white" style={{
@@ -61,15 +63,17 @@ function BottomCta() {
           <div className="flex justify-center gap-3 flex-wrap">
             <MallButton variant="gold" href="/mall">{t("ctaBrowseMall")}</MallButton>
             <MallButton variant="outline" href="/order-tracking">{t("ctaTrackOrder")}</MallButton>
-            <a
-              href="https://wa.me/255000000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
-            >
-              <MessageCircle className="h-4 w-4" />
-              {t("ctaWhatsApp")}
-            </a>
+            {wa.link && (
+              <a
+                href={wa.buildLink() ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
+              >
+                <MessageCircle className="h-4 w-4" />
+                {t("ctaWhatsApp")}
+              </a>
+            )}
           </div>
         </>
       ) : (

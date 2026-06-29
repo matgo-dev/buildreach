@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.exceptions import RfqNoQuoteToExportError, RfqNotFoundError
 from app.db.base import _utcnow
 from app.db.models.product_image import ImageType, ProductImage
@@ -48,7 +49,7 @@ _jinja_env = Environment(
 _PLATFORM_INFO = {
     "name": "BuildLink East Africa",
     "address": "",
-    "email": "info@buildlink.co",
+    "email": settings.CONTACT_EMAIL,
 }
 
 

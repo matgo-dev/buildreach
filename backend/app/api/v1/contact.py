@@ -21,3 +21,15 @@ async def get_whatsapp_link():
         "whatsapp_link": link,
         "number": raw if link else None,
     })
+
+
+@router.get("/info", summary="获取平台联系方式")
+async def get_contact_info():
+    link = resolve_whatsapp_link()
+    raw = settings.WHATSAPP_DEFAULT_NUMBER.strip() or None
+    email = settings.CONTACT_EMAIL.strip() or None
+    return success({
+        "whatsapp_link": link,
+        "whatsapp_number": raw if link else None,
+        "email": email,
+    })
