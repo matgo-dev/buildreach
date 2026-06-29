@@ -166,15 +166,25 @@ async def verify_code(
     return token
 
 
-def consume_verification_token(token: str) -> str:
-    """解码 verification_token，返回 email。token 无效/过期时抛 ValueError。
+async def consume_verification_token(db: AsyncSession, token: str) -> str:
+    """解码 verification_token，返回 email，并将对应 VerificationCode 标记为已使用。
 
-    调用方（注册/重置接口）在 token 验证通过后负责将对应 VerificationCode.used 置 True。
+    token 无效/过期时抛 ValueError。
     """
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != "verification":
             raise ValueError("INVALID_TOKEN_TYPE")
+
+        # 标记验证码为已使用，防止同一 code 被二次 verify
+        code_id = payload.get("jti")
+        if code_id:
+            vc = (await db.execute(
+                select(VerificationCode).where(VerificationCode.id == int(code_id))
+            )).scalar_one_or_none()
+            if vc:
+                vc.used = True
+
         return payload["sub"]
     except ExpiredSignatureError:
         raise ValueError("TOKEN_EXPIRED")

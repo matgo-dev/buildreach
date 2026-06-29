@@ -379,6 +379,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
   const sfInputRef = useRef<HTMLInputElement>(null);
   const licInputRef = useRef<HTMLInputElement>(null);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // storefrontImages 变化时更新预览
   useEffect(() => {
@@ -392,6 +393,13 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setLicPreviews(urls);
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [licenseImages]);
+
+  // 组件卸载时清理冷却计时器，防止内存泄露
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
 
   // 发送验证码
   const handleSendCode = async () => {
@@ -409,9 +417,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     try {
       await authApi.sendVerificationCode(email, "REGISTER");
       setCooldown(60);
-      const timer = setInterval(() => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+      cooldownRef.current = setInterval(() => {
         setCooldown((prev) => {
-          if (prev <= 1) { clearInterval(timer); return 0; }
+          if (prev <= 1) { clearInterval(cooldownRef.current!); cooldownRef.current = null; return 0; }
           return prev - 1;
         });
       }, 1000);
@@ -424,9 +433,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           setTouched((te) => ({ ...te, verificationCode: true }));
           // 同步冷却倒计时
           setCooldown(seconds);
-          const timer = setInterval(() => {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          cooldownRef.current = setInterval(() => {
             setCooldown((prev) => {
-              if (prev <= 1) { clearInterval(timer); return 0; }
+              if (prev <= 1) { clearInterval(cooldownRef.current!); cooldownRef.current = null; return 0; }
               return prev - 1;
             });
           }, 1000);

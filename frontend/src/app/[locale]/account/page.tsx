@@ -88,8 +88,9 @@ function Inner() {
       if (e instanceof ApiError && e.code === 40301) {
         setDeactivateError(t("deactivate_err_password"));
       } else {
-        const msg = e instanceof ApiError ? e.message : t("deactivate_err_password");
-        setDeactivateError(msg);
+        // 非密码错误（网络超时、服务器错误等）不应显示密码错误文案
+        const msg = e instanceof ApiError ? e.message : t("errors.saveFailed");
+        setDeactivateError(msg || t("errors.saveFailed"));
       }
     } finally {
       setDeactivating(false);

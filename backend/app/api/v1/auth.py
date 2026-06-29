@@ -302,9 +302,9 @@ async def register_buyer(
     )
     from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
 
-    # ── 1. 先校验 verification_token ──
+    # ── 1. 先校验 verification_token（同时标记 verification_code 为已使用）──
     try:
-        verified_email = verification_service.consume_verification_token(verification_token)
+        verified_email = await verification_service.consume_verification_token(db, verification_token)
     except ValueError:
         raise MultipleValidationError([{"field": "verification_token", "code": 40106, "message": "Email verification token invalid or expired"}])
     email = email.strip()
