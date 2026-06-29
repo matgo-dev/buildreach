@@ -221,7 +221,27 @@
     "err_generic": "Registration failed, please try again later",
     "err_phone_exists": "This phone number is already registered",
     "err_email_exists": "This email is already registered",
-    "optional_section": "More Info (Optional)"
+    "optional_section": "More Info (Optional)",
+    "email_label": "Email",
+    "email_placeholder": "Enter your email",
+    "send_code": "Send Code",
+    "resend_code": "Resend ({seconds}s)",
+    "verification_code_label": "Verification Code",
+    "verification_code_placeholder": "Enter 6-digit code",
+    "code_sent": "Verification code sent to your email",
+    "code_send_failed": "Failed to send code, please try again",
+    "phone_label": "Phone Number",
+    "phone_placeholder": "+255 7XX XXX XXX",
+    "whatsapp_label": "WhatsApp Number",
+    "whatsapp_placeholder": "+255 7XX XXX XXX",
+    "company_section_title": "Company Information (Optional)",
+    "company_section_hint": "For company purchases, please fill in below.",
+    "err_code_invalid": "Invalid verification code",
+    "err_code_expired": "Verification code expired, please resend",
+    "err_code_max_attempts": "Too many failed attempts, please resend",
+    "err_cooldown": "Please wait {seconds}s before resending",
+    "err_rate_limit": "Too many requests, please try again later",
+    "err_token_invalid": "Email verification expired, please verify again"
   },
   "category": {
     "level1": "Level 1",
@@ -1285,7 +1305,15 @@
       "usernameCleared": "Username removed",
       "passwordSaved": "Password updated",
       "passwordSavedRedirect": "Password updated. Redirecting to login…"
-    }
+    },
+    "deactivate_button": "Deactivate Account",
+    "deactivate_title": "Deactivate Account",
+    "deactivate_warning": "After deactivation, you will not be able to log in. Please contact support to recover.",
+    "deactivate_password_label": "Enter your password to confirm",
+    "deactivate_confirm": "Confirm Deactivation",
+    "deactivate_cancel": "Cancel",
+    "deactivate_success": "Account deactivated successfully",
+    "deactivate_err_password": "Incorrect password"
   },
   "howToBuy": {
     "heroTitle": "How to Buy — Your Complete Sourcing Guide",

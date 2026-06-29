@@ -221,7 +221,27 @@
     "err_generic": "Usajili umeshindwa, tafadhali jaribu tena baadaye",
     "err_phone_exists": "Nambari hii ya simu tayari imesajiliwa",
     "err_email_exists": "Barua pepe hii tayari imesajiliwa",
-    "optional_section": "Taarifa Zaidi (Hiari)"
+    "optional_section": "Taarifa Zaidi (Hiari)",
+    "email_label": "Barua pepe",
+    "email_placeholder": "Weka barua pepe yako",
+    "send_code": "Tuma Msimbo",
+    "resend_code": "Tuma Tena ({seconds}s)",
+    "verification_code_label": "Msimbo wa Uthibitisho",
+    "verification_code_placeholder": "Weka msimbo wa tarakimu 6",
+    "code_sent": "Msimbo wa uthibitisho umetumwa kwa barua pepe yako",
+    "code_send_failed": "Imeshindwa kutuma msimbo, tafadhali jaribu tena",
+    "phone_label": "Nambari ya Simu",
+    "phone_placeholder": "+255 7XX XXX XXX",
+    "whatsapp_label": "Nambari ya WhatsApp",
+    "whatsapp_placeholder": "+255 7XX XXX XXX",
+    "company_section_title": "Taarifa za Kampuni (Hiari)",
+    "company_section_hint": "Kwa manunuzi ya kampuni, tafadhali jaza taarifa hapa chini.",
+    "err_code_invalid": "Msimbo wa uthibitisho si sahihi",
+    "err_code_expired": "Msimbo wa uthibitisho umeisha muda, tafadhali tuma tena",
+    "err_code_max_attempts": "Majaribio mengi yameshindwa, tafadhali tuma msimbo tena",
+    "err_cooldown": "Tafadhali subiri sekunde {seconds} kabla ya kutuma tena",
+    "err_rate_limit": "Maombi mengi sana, tafadhali jaribu tena baadaye",
+    "err_token_invalid": "Uthibitisho wa barua pepe umeisha muda, tafadhali thibitisha tena"
   },
   "category": {
     "level1": "Kiwango cha 1",
@@ -1285,7 +1305,15 @@
       "usernameCleared": "Jina la mtumiaji limeondolewa",
       "passwordSaved": "Nenosiri limesasishwa",
       "passwordSavedRedirect": "Nenosiri limesasishwa. Inaelekeza kwenye kuingia…"
-    }
+    },
+    "deactivate_button": "Futa Akaunti",
+    "deactivate_title": "Futa Akaunti",
+    "deactivate_warning": "Baada ya kufuta, hutaweza kuingia. Wasiliana na msaada kurejesha akaunti.",
+    "deactivate_password_label": "Weka nenosiri lako kuthibitisha",
+    "deactivate_confirm": "Thibitisha Kufuta",
+    "deactivate_cancel": "Ghairi",
+    "deactivate_success": "Akaunti imefutwa kwa mafanikio",
+    "deactivate_err_password": "Nenosiri si sahihi"
   },
   "howToBuy": {
     "heroTitle": "Jinsi ya Kununua — Mwongozo Kamili wa Ununuzi",
