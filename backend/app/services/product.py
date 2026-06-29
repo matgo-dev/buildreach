@@ -72,6 +72,7 @@ from app.services._buyer_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE,
     save_uploaded_image,
+    thumb_url_from_image_key,
 )
 
 # i18n 字段声明:从注册表读取(单一来源)
@@ -472,8 +473,8 @@ async def get_product(db: AsyncSession, product_id: int) -> Product:
 
 async def _batch_main_images(
     db: AsyncSession, product_ids: list[int],
-) -> dict[int, str]:
-    """批量查每个商品的主图 URL — DISTINCT ON 每个 product_id 只取一行。"""
+) -> dict[int, tuple[str, str]]:
+    """批量查每个商品的主图，返回 {product_id: (main_image_url, thumbnail_url)}。"""
     if not product_ids:
         return {}
     q = (
@@ -491,7 +492,10 @@ async def _batch_main_images(
     )
     rows = (await db.execute(q)).all()
     base = settings.IMAGE_PATH_PREFIX
-    return {pid: f"{base}/{key}" for pid, key in rows}
+    return {
+        pid: (f"{base}/{key}", thumb_url_from_image_key(key))
+        for pid, key in rows
+    }
 
 
 def _build_keyword_filter(keyword: str):
@@ -517,7 +521,7 @@ async def list_products_operator(
     keyword: str | None = None,
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int, dict[int, str]]:
+) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
     # 列表只需 SKU（价格汇总+计数），不加载全部图片（批量查主图）
     q = select(Product).options(
         selectinload(Product.skus.and_(_not_deleted(ProductSku))),
@@ -560,7 +564,7 @@ async def list_products_public(
     sort: str = "newest",
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int, dict[int, str]]:
+) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
     # 列表不加载图片关系，主图由 _batch_main_images 批量查
     q = select(Product).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
     count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
@@ -641,7 +645,7 @@ async def sample_home_floor_products(
     category_paths: list[list[str]],
     exclude_category_paths: list[list[str]] | None = None,
     size: int = 8,
-) -> tuple[list[Product], dict[int, str], list[Category]]:
+) -> tuple[list[Product], dict[int, tuple[str, str]], list[Category]]:
     """首页楼层选品:按分类中文路径解析当前环境 code,每个展示类目最多 1 个 SPU。"""
     if not category_paths or size <= 0:
         return [], {}, []

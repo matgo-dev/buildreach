@@ -20,6 +20,7 @@ export interface ProductPublic {
   is_featured: boolean;
   supply_mode: string;
   main_image: string | null;
+  main_image_thumbnail: string | null;
   unit: string | null;
   moq: number | null;
   moq_unit: string | null;
@@ -77,6 +78,7 @@ export interface ProductImage {
   id: number;
   image_key: string;
   full_url: string;
+  thumbnail_url: string;
   image_type: string;
   sort_order: number;
   sku_id: number | null;

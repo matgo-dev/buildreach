@@ -96,6 +96,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
               src={imageUrl(activeImage.full_url)}
               alt=""
               className={`h-full w-full object-contain transition-opacity duration-150 ${zooming ? "opacity-0" : "opacity-100"}`}
+              decoding="async"
             />
             {/* 放大层：用 background-image 实现局部放大 */}
             {zooming && (
@@ -134,9 +135,19 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={imageUrl(img.full_url)}
+                src={imageUrl(img.thumbnail_url || img.full_url)}
+                onError={(e) => {
+                  const t = e.currentTarget;
+                  if (t.dataset.fallback) return;
+                  t.dataset.fallback = "1";
+                  t.src = imageUrl(img.full_url);
+                }}
                 alt=""
+                width={56}
+                height={56}
                 className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </button>
           ))}
@@ -204,7 +215,20 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl(img.full_url)} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={imageUrl(img.thumbnail_url || img.full_url)}
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      if (t.dataset.fallback) return;
+                      t.dataset.fallback = "1";
+                      t.src = imageUrl(img.full_url);
+                    }}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="h-full w-full object-cover"
+                    decoding="async"
+                  />
                 </button>
               ))}
             </div>
