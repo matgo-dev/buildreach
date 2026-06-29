@@ -94,15 +94,7 @@ export function ContactPopover({
           <span className="w-7 h-7 rounded-full bg-white/20 grid place-items-center shrink-0">
             <MessageCircle className="h-3.5 w-3.5 text-white" />
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1">
-              <span className="text-[12px] font-bold">WhatsApp</span>
-              <span className="inline-flex items-center gap-0.5 text-[8px] bg-white/25 rounded-full px-1 py-px font-medium">
-                <Star className="h-1.5 w-1.5 fill-current" />
-                {t("recommended")}
-              </span>
-            </div>
-          </div>
+          <span className="text-[12px] font-bold">WhatsApp</span>
         </a>
       )}
 
@@ -148,7 +140,7 @@ export function ContactPopover({
               opacity: pos ? 1 : 0,
             }}
           >
-            <div className="w-[220px] rounded-xl bg-white shadow-lg border border-gray-200 p-1.5">
+            <div className="w-[170px] rounded-xl bg-white shadow-lg border border-gray-200 p-1.5">
               {channelList}
             </div>
           </div>
