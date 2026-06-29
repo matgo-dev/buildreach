@@ -290,15 +290,25 @@ function RfqListContent() {
             ))}
           </select>
 
-          {/* 创建询价单 */}
-          <button
-            type="button"
-            onClick={() => router.push(`/${locale}/buyer/rfqs/create`)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[#00505a] bg-[#00505a] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d]"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("createRfq")}
-          </button>
+          {/* 立即咨询 + 创建询价单 */}
+          <div className="ml-auto flex items-center gap-2">
+            <ContactPopover>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {t("inquireNow")}
+              </button>
+            </ContactPopover>
+            <button
+              type="button"
+              onClick={() => router.push(`/${locale}/buyer/rfqs/create`)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#00505a] bg-[#00505a] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("createRfq")}
+            </button>
+          </div>
         </div>
 
         {/* 表头 */}
