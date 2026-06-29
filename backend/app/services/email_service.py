@@ -1,4 +1,8 @@
-"""轻量 SMTP 邮件发送（注册验证码 + 密码找回验证码）。未配置 SMTP_HOST 时 graceful degrade：log 验证码到 stdout。"""
+"""轻量 SMTP 邮件发送（注册验证码 + 密码找回验证码）。未配置 SMTP_HOST 时 graceful degrade：log 验证码到 stdout。
+
+TODO(T-EMAIL-API): 上线前将 SMTP 直连替换为第三方邮件 API 服务（Resend/SendGrid/AWS SES），
+避免邮件头暴露源站 IP。仅需改本文件，对外接口不变。
+"""
 from __future__ import annotations
 
 import logging
