@@ -71,9 +71,12 @@ This code expires in {expire_minutes} minutes. If you did not request this, plea
     msg.attach(MIMEText(html, "html"))
 
     try:
-        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
-        if settings.SMTP_USE_TLS:
-            server.starttls()
+        if settings.SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
+        else:
+            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
+            if settings.SMTP_USE_TLS:
+                server.starttls()
         server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
         server.sendmail(settings.SMTP_FROM_EMAIL, to_email, msg.as_string())
         server.quit()
