@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BuildLink EA 一键启动脚本
+# BuildReach 一键启动脚本
 # 支持 macOS / Ubuntu / Debian / CentOS
 # 用法: bash dev.sh
 set -e
@@ -18,7 +18,7 @@ cd "$PROJECT_DIR"
 
 echo ""
 echo "========================================="
-echo "  BuildLink EA · 一键启动"
+echo "  BuildReach · 一键启动"
 echo "========================================="
 echo ""
 
@@ -167,6 +167,13 @@ fi
 info "uv 就绪"
 
 # ---- 4. Node.js + pnpm ----
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  # 非交互 shell 不会自动加载 nvm;本地开发优先使用 Node 20+。
+  # shellcheck source=/dev/null
+  . "$HOME/.nvm/nvm.sh"
+  nvm use --silent 20 >/dev/null 2>&1 || nvm use --silent --lts >/dev/null 2>&1 || true
+fi
+
 if ! command -v node &>/dev/null; then
   warn "正在安装 Node.js..."
   if [ "$OS" = "mac" ]; then
@@ -215,18 +222,21 @@ echo "========================================="
 echo ""
 
 # 清理旧进程
+lsof -ti:17857 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti:7857 2>/dev/null | xargs kill -9 2>/dev/null || true
+# 兼容清理历史本地端口
 lsof -ti:8001 2>/dev/null | xargs kill -9 2>/dev/null || true
 lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
 
 # 启动后端
 cd "$PROJECT_DIR/backend"
 source .venv/bin/activate
-uvicorn app.main:app --reload --port 8001 &
+python -m uvicorn app.main:app --reload --port 17857 &
 BACKEND_PID=$!
 
 # 启动前端
 cd "$PROJECT_DIR/frontend"
-pnpm dev &
+./node_modules/.bin/next dev -p 7857 &
 FRONTEND_PID=$!
 
 sleep 3
@@ -235,9 +245,9 @@ echo ""
 echo "========================================="
 echo -e "  ${GREEN}启动成功！${NC}"
 echo ""
-echo "  前端: http://localhost:3000"
-echo "  后端: http://localhost:8001"
-echo "  API 文档: http://localhost:8001/docs"
+echo "  前端: http://localhost:7857"
+echo "  后端: http://localhost:17857"
+echo "  API 文档: http://localhost:17857/docs"
 echo ""
 echo "  按 Ctrl+C 停止所有服务"
 echo "========================================="
