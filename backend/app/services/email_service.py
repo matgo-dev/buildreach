@@ -25,13 +25,13 @@ def send_verification_code_email(to_email: str, code: str, purpose: str = "RESET
         return False
 
     if purpose == "REGISTER":
-        subject = "Registration Verification Code - BuildReach"
+        subject = "Registration Verification Code - Matgo"
         heading = "Registration Verification Code"
-        text_intro = "Your BuildReach registration verification code is:"
+        text_intro = "Your Matgo registration verification code is:"
     else:
-        subject = "Password Reset Code - BuildReach"
+        subject = "Password Reset Code - Matgo"
         heading = "Password Reset Code"
-        text_intro = "Your BuildReach password reset verification code is:"
+        text_intro = "Your Matgo password reset verification code is:"
 
     expire_minutes = settings.VERIFICATION_CODE_EXPIRE_MINUTES
 
@@ -63,7 +63,7 @@ This code expires in {expire_minutes} minutes. If you did not request this, plea
     If you did not request this, please ignore this email.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-  <p style="color: #aaa; font-size: 11px;">BuildReach — East Africa Construction Supply Chain</p>
+  <p style="color: #aaa; font-size: 11px;">Matgo — East Africa Building Materials Supply Chain</p>
 </div>
 """
 
