@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { X, MessageCircle, ChevronRight, Star } from "lucide-react";
+import { X, MessageCircle, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useContactStore } from "@/stores/contactStore";
 import { useWhatsApp, useContactInfo } from "@/hooks/useWhatsApp";
 import { WeChatIcon } from "@/components/icons/WeChatIcon";
 
 /**
- * 全局联系方式弹窗 — WhatsApp + WeChat 双渠道选择。
+ * 紧凑版联系弹窗 — 页面内"立即咨询"按钮触发。
  *
- * 通过 useContactStore().open() 从任意页面触发。
- * 挂载在 PublicLayout 中，Portal 到 body。
+ * 和右下角悬浮面板样式一致，但居中弹出、尺寸紧凑。
+ * 通过 useContactStore().open() 触发。
  */
 export function ContactModal() {
   const t = useTranslations("mall");
@@ -27,31 +27,28 @@ export function ContactModal() {
 
   return createPortal(
     <>
-      {/* 渠道选择弹窗 */}
+      {/* 渠道选择弹窗 — 紧凑居中 */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40"
           onClick={close}
         >
           <div
-            className="relative bg-white rounded-2xl shadow-2xl w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden"
+            className="relative bg-white rounded-2xl shadow-2xl w-[260px] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 头部 */}
-            <div className="bg-teal-800 px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-white text-[15px] font-bold">{t("consultantTitle")}</p>
-                <p className="text-white/70 text-xs mt-0.5">{t("floatContactHint")}</p>
-              </div>
+            <div className="bg-teal-800 px-3 py-2 flex items-center justify-between">
+              <p className="text-white text-[13px] font-bold">{t("consultantTitle")}</p>
               <button
                 onClick={close}
                 className="text-white/60 hover:text-white transition-colors"
               >
-                <X className="h-4.5 w-4.5" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="p-4 space-y-2.5">
+            <div className="p-2 space-y-1.5">
               {/* WhatsApp — 推荐 */}
               {wa.configured && (
                 <a
@@ -59,26 +56,22 @@ export function ContactModal() {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={close}
-                  className="flex items-center gap-3 rounded-xl p-3.5 text-white transition-all hover:-translate-y-px"
-                  style={{
-                    background: "linear-gradient(135deg, #2bd86e, #1aa851)",
-                    boxShadow: "0 4px 14px rgba(37,211,102,.3)",
-                  }}
+                  className="flex items-center gap-2 rounded-lg p-2 text-white transition-colors"
+                  style={{ background: "linear-gradient(135deg, #2bd86e, #1aa851)" }}
                 >
-                  <span className="w-11 h-11 rounded-full bg-white/20 grid place-items-center shrink-0">
-                    <MessageCircle className="h-5 w-5 text-white" />
+                  <span className="w-8 h-8 rounded-full bg-white/20 grid place-items-center shrink-0">
+                    <MessageCircle className="h-4 w-4 text-white" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[14px] font-bold">WhatsApp</p>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] bg-white/25 rounded-full px-1.5 py-0.5 font-medium">
-                        <Star className="h-2.5 w-2.5 fill-current" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-[12px] font-bold">WhatsApp</span>
+                      <span className="inline-flex items-center gap-0.5 text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
+                        <Star className="h-2 w-2 fill-current" />
                         {t("recommended")}
                       </span>
                     </div>
-                    <p className="text-xs text-white/80 mt-0.5">{t("floatWaDesc")}</p>
+                    <p className="text-[10px] text-white/80 leading-tight">{t("floatWaDesc")}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-white/60 shrink-0" />
                 </a>
               )}
 
@@ -86,24 +79,17 @@ export function ContactModal() {
               {contact.wechatId && (
                 <button
                   onClick={() => { setShowQr(true); close(); }}
-                  className="w-full flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3.5 hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 hover:bg-gray-50 transition-colors text-left"
                 >
-                  <span className="w-11 h-11 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
-                    <WeChatIcon className="h-5 w-5 text-[#07c160]" />
+                  <span className="w-8 h-8 rounded-full bg-[#07c160]/10 grid place-items-center shrink-0">
+                    <WeChatIcon className="h-4 w-4 text-[#07c160]" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-bold text-navy">WeChat</p>
-                    <p className="text-xs text-muted mt-0.5">{t("floatWeChatDesc")}</p>
+                    <p className="text-[12px] font-bold text-navy">WeChat</p>
+                    <p className="text-[10px] text-muted leading-tight">{t("floatWeChatDesc")}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted shrink-0" />
                 </button>
               )}
-
-              {/* 引导文案 */}
-              <div className="rounded-lg bg-teal-50 px-3.5 py-2.5">
-                <p className="text-[12px] font-semibold text-teal-900">{t("floatWaCta")}</p>
-                <p className="text-[11px] text-teal-800/70 mt-0.5">{t("floatWaCtaHint")}</p>
-              </div>
             </div>
           </div>
         </div>

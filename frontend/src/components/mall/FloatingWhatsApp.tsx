@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { MessageCircle, X, Headphones, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useWhatsApp, useContactInfo } from "@/hooks/useWhatsApp";
-import { useContactStore } from "@/stores/contactStore";
 import { WeChatIcon } from "@/components/icons/WeChatIcon";
 
 /**
@@ -21,15 +20,6 @@ export function FloatingWhatsApp() {
   const contact = useContactInfo();
   const [open, setOpen] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  const { isOpen: storeOpen, context, close: storeClose } = useContactStore();
-
-  // 其他页面通过 contactStore.open() 触发时，打开悬浮面板
-  useEffect(() => {
-    if (storeOpen) {
-      setOpen(true);
-      storeClose();
-    }
-  }, [storeOpen, storeClose]);
 
   if (!wa.configured && !contact.wechatId) return null;
 
@@ -62,7 +52,7 @@ export function FloatingWhatsApp() {
               {/* WhatsApp — 推荐 */}
               {wa.configured && (
                 <a
-                  href={wa.buildLink(context ?? undefined)!}
+                  href={wa.buildLink()!}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 rounded-lg p-2 transition-colors text-white"
