@@ -449,6 +449,11 @@ async def login(
 @router.get("/me", summary="当前用户:roles + permissions + organization")
 async def me(current: CurrentUser = Depends(get_current_user)):
     org = asdict(current.organization) if current.organization else None
+    demo_set = {
+        e.strip().lower()
+        for e in settings.DEMO_EMAILS.split(",")
+        if e.strip()
+    }
     data = MeOut(
         id=current.id,
         email=current.email,
@@ -461,6 +466,7 @@ async def me(current: CurrentUser = Depends(get_current_user)):
         roles=current.roles,
         permissions=current.permissions,
         organization=org,
+        is_demo=(current.email or "").lower() in demo_set,
     ).model_dump()
     return success(data)
 

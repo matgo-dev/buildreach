@@ -27,6 +27,8 @@ export interface MeData {
   organization: OrganizationInfo | null;
   /** 用户语言偏好(SUPPLIER 注册时写入,其他场景为 null;TODO(T-LANG-CHANGE) 自助切换入口) */
   language_preference?: string | null;
+  /** 是否为地推演示账号(后端根据 DEMO_EMAILS 白名单判断) */
+  is_demo?: boolean;
 }
 
 export interface LoginResult {

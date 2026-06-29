@@ -186,3 +186,4 @@ class MeOut(BaseModel):
     roles: list[str]
     permissions: list[str]
     organization: OrganizationOut | None = None
+    is_demo: bool = False

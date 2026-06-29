@@ -77,6 +77,7 @@ services:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       WHATSAPP_DEFAULT_NUMBER: ${WHATSAPP_DEFAULT_NUMBER:-+255 758 311 131}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-info@buildreach.co.tz}
+      DEMO_EMAILS: ${DEMO_EMAILS:-}
     volumes:
       - uploads:/app/uploads
       - private_uploads:/app/private_uploads
