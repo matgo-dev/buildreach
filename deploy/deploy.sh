@@ -74,8 +74,20 @@ if docker compose -f "$COMPOSE_FILE" ps db --status running 2>/dev/null | grep -
     BACKUP_FILE="$BACKUP_DIR/$(date +%Y%m%d-%H%M%S).sql.gz"
     echo "[deploy] [1/6] 备份数据库 → $BACKUP_FILE"
     docker compose -f "$COMPOSE_FILE" exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
-    # 清理旧备份
+    
+    if [ ! -f "$BACKUP_FILE" ]; then
+        echo "[deploy] ❌ 备份失败: 文件未生成"
+        exit 1
+    fi
+    BACKUP_SIZE=$(stat -c%s "$BACKUP_FILE" 2>/dev/null || echo "0")
+    if [ "$BACKUP_SIZE" -lt 1000 ]; then
+        echo "[deploy] ❌ 备份异常: 文件过小 (${BACKUP_SIZE} bytes)，可能为空"
+        rm -f "$BACKUP_FILE"
+        exit 1
+    fi
+    
     find "$BACKUP_DIR" -name "*.sql.gz" -mtime "+$RETENTION_DAYS" -delete 2>/dev/null || true
+    echo "[deploy]       ✅ 备份成功 ($(du -h "$BACKUP_FILE" | cut -f1))"
     echo "[deploy]       当前备份目录($(du -sh "$BACKUP_DIR" | cut -f1)):"
     ls -lh "$BACKUP_DIR"/*.sql.gz 2>/dev/null | tail -5 | sed 's/^/         /'
 else
