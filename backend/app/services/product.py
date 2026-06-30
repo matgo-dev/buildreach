@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 from fastapi import UploadFile
-from sqlalchemy import delete as sa_delete, func, or_, select, update
+from sqlalchemy import delete as sa_delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -659,65 +659,75 @@ async def sample_home_floor_products(
     if not display_categories:
         return [], {}, display_categories
 
-    # 批量获取所有展示品类的后代 code（1 次查询合并所有品类）
     all_parent_codes = [c.code for c in display_categories]
-    # 建立 L2 code → 后代 codes 的映射
-    cat_to_descendants: dict[str, list[str]] = {c: [c] for c in all_parent_codes}
-    current_layer = list(all_parent_codes)
-    while current_layer:
-        rows = (await db.execute(
-            select(Category.code, Category.parent_code).where(
-                Category.parent_code.in_(current_layer)
-            )
-        )).all()
-        if not rows:
-            break
-        next_layer = []
-        for child_code, parent_code in rows:
-            # 找到这个 child 归属哪个顶层展示品类
-            for top_code in all_parent_codes:
-                if parent_code in cat_to_descendants.get(top_code, []):
-                    cat_to_descendants[top_code].append(child_code)
-                    break
-            next_layer.append(child_code)
-        current_layer = next_layer
 
-    # 合并所有后代 code，一条 SQL 查出候选商品
-    all_codes = []
-    code_to_cat: dict[str, str] = {}  # product.category_code → 归属的展示品类 code
-    for cat_code, descendants in cat_to_descendants.items():
-        for d in descendants:
-            all_codes.append(d)
-            code_to_cat[d] = cat_code
+    values_sql = ", ".join(
+        f"(:root_code_{idx}, {idx})" for idx in range(len(all_parent_codes))
+    )
+    params: dict[str, object] = {
+        "active_status": ProductStatus.ACTIVE,
+        "limit": size,
+    }
+    params.update(
+        {f"root_code_{idx}": code for idx, code in enumerate(all_parent_codes)}
+    )
 
-    if not all_codes:
+    ranked_products_stmt = text(
+        f"""
+        WITH RECURSIVE roots(root_code, root_order) AS (
+            VALUES {values_sql}
+        ),
+        cat_tree(root_code, root_order, code) AS (
+            SELECT roots.root_code, roots.root_order, categories.code
+            FROM roots
+            JOIN categories ON categories.code = roots.root_code
+            WHERE categories.is_active IS TRUE
+
+            UNION ALL
+
+            SELECT cat_tree.root_code, cat_tree.root_order, child.code
+            FROM categories AS child
+            JOIN cat_tree ON child.parent_code = cat_tree.code
+            WHERE child.is_active IS TRUE
+        ),
+        ranked AS (
+            SELECT
+                products.id AS product_id,
+                cat_tree.root_code,
+                products.created_at,
+                row_number() OVER (
+                    PARTITION BY cat_tree.root_code
+                    ORDER BY products.created_at DESC NULLS LAST, products.id DESC
+                ) AS rn
+            FROM products
+            JOIN cat_tree ON products.category_code = cat_tree.code
+            WHERE products.status = :active_status
+              AND products.deleted_at IS NULL
+        )
+        SELECT product_id
+        FROM ranked
+        WHERE rn = 1
+        ORDER BY created_at DESC NULLS LAST, product_id DESC
+        LIMIT :limit
+        """
+    )
+    selected_ids = [
+        row.product_id
+        for row in (await db.execute(ranked_products_stmt, params)).all()
+    ]
+
+    if not selected_ids:
         return [], {}, display_categories
 
-    # 一条 SQL 查出所有候选商品，按展示品类分组取最新
-    all_candidates_stmt = (
-        select(Product)
-        .where(
-            Product.status == ProductStatus.ACTIVE,
-            _not_deleted(Product),
-            Product.category_code.in_(all_codes),
-        )
-        .order_by(Product.created_at.desc(), Product.id.desc())
-    )
-    all_candidates = (await db.execute(all_candidates_stmt)).scalars().all()
-
-    # 按展示品类分组，每个品类取第 1 个（最新的）
-    selected: list[Product] = []
-    seen_cats: set[str] = set()
-    seen_ids: set[int] = set()
-    for product in all_candidates:
-        top_cat = code_to_cat.get(product.category_code)
-        if not top_cat or top_cat in seen_cats or product.id in seen_ids:
-            continue
-        selected.append(product)
-        seen_cats.add(top_cat)
-        seen_ids.add(product.id)
-        if len(selected) >= size:
-            break
+    selected_rows = (
+        await db.execute(select(Product).where(Product.id.in_(selected_ids)))
+    ).scalars().all()
+    products_by_id = {product.id: product for product in selected_rows}
+    selected = [
+        products_by_id[product_id]
+        for product_id in selected_ids
+        if product_id in products_by_id
+    ]
 
     main_image_map = await _batch_main_images(db, [p.id for p in selected])
     return selected, main_image_map, display_categories
