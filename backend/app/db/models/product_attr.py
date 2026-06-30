@@ -26,14 +26,14 @@ class ProductAttr(Base, I18nMixin):
             "uq_product_attrs_product_key_val",
             "product_id", "attr_key_en", "attr_value_en",
             unique=True,
-            postgresql_where="sku_id IS NULL AND deleted_at IS NULL",
+            postgresql_where="sku_id IS NULL",
         ),
         # SKU 级:同理
         Index(
             "uq_product_attrs_sku_key_val",
             "sku_id", "attr_key_en", "attr_value_en",
             unique=True,
-            postgresql_where="sku_id IS NOT NULL AND deleted_at IS NULL",
+            postgresql_where="sku_id IS NOT NULL",
         ),
     )
 
