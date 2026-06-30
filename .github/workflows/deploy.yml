@@ -114,6 +114,23 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      - uses: actions/checkout@v4
+
+      - name: 同步部署文件到 ECS
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+          ECS_USER: ${{ secrets.ECS_USER }}
+          ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$ECS_SSH_KEY" > ~/.ssh/buildreach_ecs
+          chmod 600 ~/.ssh/buildreach_ecs
+          ssh-keyscan -p 22 -H "$ECS_HOST" >> ~/.ssh/known_hosts
+          tar -czf - deploy/deploy.sh docker-compose.production.yml | \
+            ssh -i ~/.ssh/buildreach_ecs -p 22 "$ECS_USER@$ECS_HOST" \
+              'cd /opt/buildreach && tar -xzf - && chmod +x deploy/deploy.sh'
+
       - name: SSH 部署
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -125,9 +142,8 @@ jobs:
           script_stop: true
           script: |
             cd /opt/buildreach
-            git fetch origin
-            git reset --hard origin/${{ github.ref_name }}
-            DEPLOY_REF=origin/${{ github.ref_name }} \
+            DEPLOY_SKIP_CODE_UPDATE=1 \
+            DEPLOY_REF=${{ github.sha }} \
             IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
             IMAGE_REGISTRY=${{ env.ACR_IMAGE_REGISTRY }} \
             DEPLOY_API_BASE_URL=http://${{ secrets.ECS_HOST }} \
