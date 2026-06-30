@@ -253,7 +253,21 @@ function CartContent() {
                 <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imageUrl(item.main_image)} alt="" className="h-full w-full object-contain" />
+                    <img
+                      src={imageUrl(item.main_image_thumbnail || item.main_image)}
+                      onError={(e) => {
+                        const t = e.currentTarget;
+                        if (t.dataset.fallback) return;
+                        t.dataset.fallback = "1";
+                        t.src = imageUrl(item.main_image!);
+                      }}
+                      alt=""
+                      width={88}
+                      height={88}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div className="flex h-full items-center justify-center text-gray-300">
                       <PackageOpen className="h-7 w-7" />

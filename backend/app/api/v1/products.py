@@ -29,6 +29,7 @@ from app.schemas.product import (
     ProductPublicDetail,
 )
 from app.services import product as product_svc
+from app.services._buyer_utils import thumb_url_from_image_key
 
 from app.services.buyer_event import EventType, record_event_background
 
@@ -168,6 +169,7 @@ def _localized_attr(attr, field: str, locale: str) -> str:
 def _img_to_dict(img) -> dict:
     d = ProductImageSchema.model_validate(img).model_dump()
     d["full_url"] = f"{settings.IMAGE_PATH_PREFIX}/{img.image_key}"
+    d["thumbnail_url"] = thumb_url_from_image_key(img.image_key)
     return d
 
 
@@ -186,7 +188,12 @@ def _get_main_image_url(p) -> str | None:
     return f"{settings.IMAGE_PATH_PREFIX}/{main.image_key}"
 
 
-def _to_public(p, *, main_image_url: str | None = None) -> dict:
+def _to_public(p, *, main_image_urls: tuple[str, str] | None = None) -> dict:
+    if main_image_urls is not None:
+        main_url, thumb_url = main_image_urls
+    else:
+        main_url = _get_main_image_url(p)
+        thumb_url = None
     return ProductPublic(
         id=p.id,
         spu_code=p.spu_code,
@@ -198,7 +205,8 @@ def _to_public(p, *, main_image_url: str | None = None) -> dict:
         certifications=p.certifications,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
-        main_image=main_image_url if main_image_url is not None else _get_main_image_url(p),
+        main_image=main_url,
+        main_image_thumbnail=thumb_url,
         unit=p.unit,
         moq=p.moq,
         moq_unit=p.moq_unit,
@@ -261,7 +269,7 @@ async def list_products(
             )
 
     return success({
-        "items": [_to_public(p, main_image_url=img_map.get(p.id)) for p in items],
+        "items": [_to_public(p, main_image_urls=img_map.get(p.id)) for p in items],
         "total": total,
         "page": page,
         "size": size,
@@ -308,7 +316,7 @@ async def home_floor_products(
         floors[config["id"]] = {
             "categories": [_floor_category_to_public(category) for category in categories[:10]],
             "products": [
-                _to_public(product, main_image_url=img_map.get(product.id))
+                _to_public(product, main_image_urls=img_map.get(product.id))
                 for product in products
             ],
         }

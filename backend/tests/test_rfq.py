@@ -7,6 +7,7 @@ rfq_no 生成、dup product+variant、scope 越权(404)、撤销守卫+幂等、
 from __future__ import annotations
 
 import asyncio
+import io
 from decimal import Decimal
 from uuid import uuid4
 
@@ -57,9 +58,9 @@ async def _create_active_product(
 ) -> tuple[int, int]:
     """创建一个 ACTIVE 商品(SPU + SKU),返回 (product_id, sku_id)。"""
     cat = (await db.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
-    assert cat is not None, "No level-3 category in seed data"
+    assert cat is not None, "No leaf category in seed data"
 
     r = await client.post("/api/v1/operator/products", headers=op, json={
         "name": "RFQ Test Product",
@@ -77,6 +78,17 @@ async def _create_active_product(
     )
     assert r.status_code == 200, r.text
     sku_id = r.json()["data"]["id"]
+
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=op,
+        files={"file": ("test.png", buf, "image/png")},
+    )
+    assert r.status_code == 200, r.text
 
     r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
@@ -103,9 +115,9 @@ async def _create_purchasable_product(db_session: AsyncSession) -> int:
     from datetime import datetime, timezone
 
     cat = (await db_session.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
-    assert cat is not None, "No level-3 category in seed data"
+    assert cat is not None, "No leaf category in seed data"
 
     product = Product(
         name_zh="Test Product",
@@ -833,7 +845,7 @@ async def _create_product_with_image(db_session: AsyncSession) -> tuple[int, str
     from datetime import datetime, timezone
 
     cat = (await db_session.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
     assert cat is not None
 

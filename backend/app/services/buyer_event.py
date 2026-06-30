@@ -16,6 +16,7 @@ from app.db.base import _utcnow
 from app.db.models.buyer_event import BuyerEvent
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_image import ImageType, ProductImage
+from app.services._buyer_utils import thumb_url_from_image_key
 
 
 # --------------- 事件类型常量 ---------------
@@ -188,11 +189,12 @@ async def get_recent_views(
 
     result = []
     for product, last_viewed in rows:
-        main_image = await _get_product_main_image(db, product.id)
+        main_url, thumb_url = await _get_product_main_image(db, product.id)
         result.append({
             "id": product.id,
             "name": get_localized(product, "name"),
-            "main_image": main_image,
+            "main_image": main_url,
+            "main_image_thumbnail": thumb_url,
             "category_code": product.category_code,
             "unit": product.unit,
             "moq": float(product.moq) if product.moq else None,
@@ -200,8 +202,8 @@ async def get_recent_views(
     return result
 
 
-async def _get_product_main_image(db: AsyncSession, product_id: int) -> str | None:
-    """获取商品主图 URL。"""
+async def _get_product_main_image(db: AsyncSession, product_id: int) -> tuple[str | None, str | None]:
+    """获取商品主图 URL 和缩略图 URL。"""
     q = (
         select(ProductImage.image_key)
         .where(
@@ -209,7 +211,6 @@ async def _get_product_main_image(db: AsyncSession, product_id: int) -> str | No
             ProductImage.deleted_at.is_(None),
         )
         .order_by(
-            # MAIN 类型优先
             (ProductImage.image_type != ImageType.MAIN).asc(),
             ProductImage.sort_order.asc(),
         )
@@ -217,8 +218,8 @@ async def _get_product_main_image(db: AsyncSession, product_id: int) -> str | No
     )
     key = (await db.execute(q)).scalar_one_or_none()
     if key:
-        return f"{settings.IMAGE_PATH_PREFIX}/{key}"
-    return None
+        return f"{settings.IMAGE_PATH_PREFIX}/{key}", thumb_url_from_image_key(key)
+    return None, None
 
 
 # --------------- 删除: 单条浏览记录 ---------------

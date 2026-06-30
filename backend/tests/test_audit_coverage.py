@@ -22,6 +22,12 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/auth/register/buyer"),
     ("POST", "/api/v1/auth/register/supplier"),
     ("POST", "/api/v1/auth/change-password"),
+    # auth — 邮箱验证(发送/校验) + 忘记密码/重置密码/注销
+    ("POST", "/api/v1/auth/verification-code/send"),
+    ("POST", "/api/v1/auth/verification-code/verify"),
+    ("POST", "/api/v1/auth/forgot-password"),
+    ("POST", "/api/v1/auth/reset-password"),
+    ("POST", "/api/v1/auth/deactivate"),
     # auth — 自助资料变更,均走 me_service 内的 write_audit
     ("PATCH", "/api/v1/auth/me/profile"),
     ("POST", "/api/v1/auth/me/email"),
@@ -80,6 +86,14 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("PATCH", "/api/v1/rfqs/{rfq_id}/reject"),
     # attachment — 上传写审计
     ("POST", "/api/v1/attachments"),
+    # admin — 用户信息更新
+    ("PUT", "/api/v1/admin/users/{user_id}"),
+    # operator — 运营 banner 管理
+    ("POST", "/api/v1/operator/banners"),
+    ("PUT", "/api/v1/operator/banners/{banner_id}"),
+    ("DELETE", "/api/v1/operator/banners/{banner_id}"),
+    # rfq — 报价文档重试
+    ("POST", "/api/v1/rfqs/{rfq_id}/quote-documents/retry"),
 }
 
 

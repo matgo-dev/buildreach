@@ -6,6 +6,7 @@ SPU 化改造：cart_items 以 product_id + selected_variants 为核心。
 """
 from __future__ import annotations
 
+import io
 from decimal import Decimal
 
 import pytest
@@ -55,9 +56,9 @@ async def _create_purchasable_product(
 ) -> int:
     """创建一个可购 Product(ACTIVE SPU),返回 product_id。"""
     cat = (await db.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
-    assert cat is not None, "No level-3 category in seed data"
+    assert cat is not None, "No leaf category in seed data"
 
     r = await client.post("/api/v1/operator/products", headers=op, json={
         "name": "Cart Test Product",
@@ -67,6 +68,17 @@ async def _create_purchasable_product(
     })
     assert r.status_code == 200, r.text
     product_id = r.json()["data"]["id"]
+
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=op,
+        files={"file": ("test.png", buf, "image/png")},
+    )
+    assert r.status_code == 200, r.text
 
     r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",

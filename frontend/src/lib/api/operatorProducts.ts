@@ -316,6 +316,7 @@ export interface ProductOperatorItem {
   is_featured: boolean;
   supply_mode: string;
   main_image: string | null;
+  main_image_thumbnail: string | null;
   status: string;
   created_by_name: string;
   price_min: number | null;

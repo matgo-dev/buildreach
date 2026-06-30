@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
@@ -12,7 +12,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models.verification_code import VerificationCode, VerificationPurpose
+from app.db.models.verification_code import VerificationCode
 from app.services.email_service import send_verification_code_email
 
 logger = logging.getLogger(__name__)
@@ -103,8 +103,9 @@ async def send_code(
     db.add(vc)
     await db.flush()
 
-    # 发送邮件（SMTP 未配置时 graceful degrade：验证码已 log 到 warning）
-    send_verification_code_email(to_email=email, code=code, purpose=purpose)
+    sent = send_verification_code_email(to_email=email, code=code, purpose=purpose)
+    if not sent:
+        raise ValueError("EMAIL_SEND_FAILED")
 
     return code, settings.VERIFICATION_CODE_EXPIRE_MINUTES * 60
 
@@ -140,7 +141,7 @@ async def verify_code(
     if vc.attempts >= settings.VERIFICATION_CODE_MAX_ATTEMPTS:
         raise ValueError("MAX_ATTEMPTS")
 
-    if _hash(code) != vc.code_hash:
+    if not secrets.compare_digest(_hash(code), vc.code_hash):
         vc.attempts += 1
         await db.flush()
         raise ValueError("CODE_INVALID")
@@ -160,7 +161,11 @@ async def verify_code(
     return token
 
 
-async def consume_verification_token(db: AsyncSession, token: str) -> str:
+async def consume_verification_token(
+    db: AsyncSession,
+    token: str,
+    expected_purpose: str | None = None,
+) -> str:
     """解码 verification_token，返回 email，并将对应 VerificationCode 标记为已使用。
 
     token 无效/过期时抛 ValueError。
@@ -169,6 +174,8 @@ async def consume_verification_token(db: AsyncSession, token: str) -> str:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != "verification":
             raise ValueError("INVALID_TOKEN_TYPE")
+        if expected_purpose is not None and payload.get("purpose") != expected_purpose:
+            raise ValueError("INVALID_TOKEN_PURPOSE")
 
         # 标记验证码为已使用，防止同一 code 被二次 verify
         code_id = payload.get("jti")
@@ -177,6 +184,8 @@ async def consume_verification_token(db: AsyncSession, token: str) -> str:
                 select(VerificationCode).where(VerificationCode.id == int(code_id))
             )).scalar_one_or_none()
             if vc:
+                if vc.used:
+                    raise ValueError("TOKEN_USED")
                 vc.used = True
 
         return payload["sub"]

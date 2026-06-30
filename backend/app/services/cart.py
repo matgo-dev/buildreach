@@ -37,6 +37,7 @@ from app.db.models.cart_item import CartItem
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.cart import CartItemPublic, CartPublic
+from app.services._buyer_utils import thumb_url_from_image_key
 from app.services._variant_utils import normalize_variants_to_en, variant_fingerprint
 
 
@@ -527,7 +528,7 @@ def _serialize_cart(cart: Cart) -> CartPublic:
                 is_purchasable = False
                 unavailable_reason = reason
 
-        main_image = _resolve_main_image_from_product(product)
+        main_image, main_thumb = _resolve_main_image_from_product(product)
 
         variant_display = _variants_to_display(ci.selected_variants or [])
 
@@ -552,21 +553,22 @@ def _serialize_cart(cart: Cart) -> CartPublic:
             is_purchasable=is_purchasable,
             unavailable_reason=unavailable_reason,
             main_image=main_image,
+            main_image_thumbnail=main_thumb,
         ))
 
     return CartPublic(id=cart.id, items=items)
 
 
-def _resolve_main_image_from_product(product) -> str | None:
-    """Product 主图 → None。"""
+def _resolve_main_image_from_product(product) -> tuple[str | None, str | None]:
+    """返回 (main_image_url, thumbnail_url)。"""
     if product is None or not product.images:
-        return None
+        return None, None
 
     base = settings.IMAGE_PATH_PREFIX
     prod_images = [i for i in product.images if not getattr(i, "deleted_at", None)]
     if not prod_images:
-        return None
+        return None, None
 
     main = next((i for i in prod_images if i.image_type == ImageType.MAIN), None)
     img = main or sorted(prod_images, key=lambda i: i.sort_order)[0]
-    return f"{base}/{img.image_key}"
+    return f"{base}/{img.image_key}", thumb_url_from_image_key(img.image_key)

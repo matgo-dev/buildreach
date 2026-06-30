@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import io
 from decimal import Decimal
 
 import pytest
@@ -43,9 +44,9 @@ async def _create_active_product(
 ) -> int:
     """创建一个 ACTIVE 商品（SPU + SKU），返回 product_id。"""
     cat = (await db.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
-    assert cat is not None, "No level-3 category in seed data"
+    assert cat is not None, "No leaf category in seed data"
 
     r = await client.post("/api/v1/operator/products", headers=op, json={
         "name": "Claim Test Product",
@@ -60,6 +61,17 @@ async def _create_active_product(
         f"/api/v1/operator/products/{product_id}/skus",
         headers=op,
         json={"name": "Claim Test SKU", "moq": 1, "price_min": 100, "price_max": 200},
+    )
+    assert r.status_code == 200, r.text
+
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=op,
+        files={"file": ("test.png", buf, "image/png")},
     )
     assert r.status_code == 200, r.text
 
@@ -526,5 +538,3 @@ async def test_update_qty_processing(client, db_session):
     items = r.json()["data"]["items"]
     edited = [i for i in items if i["id"] == item_id][0]
     assert float(edited["quantity"]) == 77.0
-
-

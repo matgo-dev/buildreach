@@ -546,13 +546,23 @@ function ProductListInner() {
                         {item.main_image ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
-                            src={imageUrl(item.main_image)}
+                            src={imageUrl(item.main_image_thumbnail || item.main_image)}
                             alt={item.name}
+                            width={44}
+                            height={44}
                             className="h-11 w-11 rounded-lg object-cover bg-slate-100"
+                            loading="lazy"
+                            decoding="async"
                             onError={(e) => {
-                              // 图片加载失败时隐藏 img，显示占位
-                              (e.target as HTMLImageElement).style.display = "none";
-                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                              const t = e.currentTarget;
+                              if (t.dataset.fallback) {
+                                // 原图也失败，隐藏显示占位
+                                t.style.display = "none";
+                                t.nextElementSibling?.classList.remove("hidden");
+                                return;
+                              }
+                              t.dataset.fallback = "1";
+                              t.src = imageUrl(item.main_image!);
                             }}
                           />
                         ) : null}

@@ -56,6 +56,7 @@ class CartItemPublic(BaseModel):
 
     # 主图
     main_image: str | None = None
+    main_image_thumbnail: str | None = None
 
 
 class CartPublic(BaseModel):

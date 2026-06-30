@@ -162,12 +162,13 @@ def _sku_to_operator(sku) -> dict:
     ).model_dump()
 
 
-def _to_operator(p, creator_name_map: dict | None = None, main_image_url: str | None = None) -> dict:
+def _to_operator(p, creator_name_map: dict | None = None, main_image_urls: tuple[str, str] | None = None) -> dict:
     prices = spu_price_range(p)
     active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE) if p.skus else 0
     created_by_name = ""
     if creator_name_map and p.created_by:
         created_by_name = creator_name_map.get(p.created_by, "")
+    main_url, thumb_url = main_image_urls if main_image_urls else (None, None)
     return ProductOperator(
         id=p.id,
         spu_code=p.spu_code,
@@ -179,7 +180,8 @@ def _to_operator(p, creator_name_map: dict | None = None, main_image_url: str | 
         brand=get_localized(p, "brand") or None,
         is_featured=p.is_featured,
         supply_mode=p.supply_mode,
-        main_image=main_image_url,
+        main_image=main_url,
+        main_image_thumbnail=thumb_url,
         status=p.status,
         created_by_name=created_by_name,
         price_min=prices["price_min"],
@@ -221,7 +223,7 @@ async def list_products(
         creator_name_map = {r.id: r.name for r in rows}
 
     return success({
-        "items": [_to_operator(p, creator_name_map, main_image_url=img_map.get(p.id)) for p in items],
+        "items": [_to_operator(p, creator_name_map, main_image_urls=img_map.get(p.id)) for p in items],
         "total": total,
         "page": page,
         "size": size,

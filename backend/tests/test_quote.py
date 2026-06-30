@@ -5,6 +5,7 @@ accept/reject/expire。
 """
 from __future__ import annotations
 
+import io
 from decimal import Decimal
 
 import pytest
@@ -33,7 +34,7 @@ async def _op_headers(client): return await _login(client, _OPERATOR_EMAIL, _OPE
 
 
 async def _create_active_product(client: AsyncClient, op: dict, db: AsyncSession) -> int:
-    cat = (await db.execute(select(Category).where(Category.level == 3).limit(1))).scalar_one_or_none()
+    cat = (await db.execute(select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1))).scalar_one_or_none()
     assert cat is not None
     r = await client.post("/api/v1/operator/products", headers=op, json={
         "name": "Quote Test Product", "category_code": cat.code, "unit": "PCS", "currency": "USD",
@@ -42,6 +43,13 @@ async def _create_active_product(client: AsyncClient, op: dict, db: AsyncSession
     pid = r.json()["data"]["id"]
     r = await client.post(f"/api/v1/operator/products/{pid}/skus", headers=op,
         json={"name": "Test SKU", "moq": 1, "price_min": 100, "price_max": 200})
+    assert r.status_code == 200, r.text
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(f"/api/v1/operator/products/{pid}/images", headers=op,
+        files={"file": ("test.png", buf, "image/png")})
     assert r.status_code == 200, r.text
     r = await client.patch(f"/api/v1/operator/products/{pid}/status?force=true", headers=op, json={"status": "ACTIVE"})
     assert r.status_code == 200, r.text

@@ -10,6 +10,7 @@ export interface RecentViewProduct {
   id: number;
   name: string;
   main_image: string | null;
+  main_image_thumbnail: string | null;
   category_code: string | null;
   unit: string | null;
   moq: number | null;

@@ -21,6 +21,7 @@ async def _seed(db_session, rows: list[tuple]):
     # seed_categories 全量覆盖可能已种入品类 + 属性模板,按 FK 依赖顺序清理
     await db_session.execute(text("DELETE FROM attr_templates"))
     await db_session.execute(text("DELETE FROM product_attrs"))
+    await db_session.execute(text("DELETE FROM categories WHERE level = 4"))
     await db_session.execute(text("DELETE FROM categories WHERE level = 3"))
     await db_session.execute(text("DELETE FROM categories WHERE level = 2"))
     await db_session.execute(text("DELETE FROM categories WHERE level = 1"))
@@ -159,8 +160,8 @@ async def test_api_list_categories_filter_parent(client, db_session):
 
 @pytest.mark.asyncio
 async def test_api_list_categories_level_validation(client):
-    """level 必须在 1..3 之间。"""
-    r = await client.get("/api/v1/categories?level=4")
+    """level 必须在 1..4 之间。"""
+    r = await client.get("/api/v1/categories?level=5")
     assert r.status_code == 422
 
 
