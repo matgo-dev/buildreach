@@ -66,28 +66,12 @@ def _make_test_image(w: int = 300, h: int = 300) -> bytes:
 
 @pytest.mark.asyncio
 async def test_register_audit(client, db_session):
-    # 需要先获取一个有效的 L1 品类 code
-    from sqlalchemy import text
-    row = await db_session.execute(text("SELECT code FROM categories WHERE level=1 AND is_active=true LIMIT 1"))
-    cat_code = row.scalar()
-    assert cat_code is not None, "需要至少一个 L1 品类"
-
-    img_bytes = _make_test_image()
-    resp = await client.post(
-        "/api/v1/auth/register/buyer",
-        data={
-            "phone": "+255712345678",
-            "password": "Aa123456789!",
-            "name": "Z",
-            "company_name": "Test Shop",
-            "address": "Dar es Salaam",
-            "business_category_codes": cat_code,
-        },
-        files=[("storefront_images", ("shop.jpg", img_bytes, "image/jpeg"))],
-    )
+    from tests.conftest import register_buyer_tz
+    result = await register_buyer_tz(client, phone="+255712345678")
+    assert result["response"].status_code == 200, result["response"].text
     n, rows = await _audit_count(db_session, action="REGISTER")
     assert n >= 1
-    assert any(row.user_email == "+255712345678" for row in rows)
+    assert any(row.user_email == result["email"] for row in rows)
 
 
 @pytest.mark.asyncio
@@ -115,7 +99,7 @@ async def test_password_change_audit(client, db_session):
     token = result["response"].json()["data"]["access_token"]
     await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": result["password"], "new_password": "NewPass1234!"},
+        json={"old_password": result["password"], "new_password": "NewPass1234Aa"},
         headers={"Authorization": f"Bearer {token}"},
     )
     n, _ = await _audit_count(db_session, action="PASSWORD_CHANGE")

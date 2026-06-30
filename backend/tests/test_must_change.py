@@ -51,7 +51,7 @@ async def test_must_change_cleared_after_password_change(client):
         headers=headers,
         json={
             "old_password": settings.SUPER_ADMIN_INITIAL_PASSWORD,
-            "new_password": "NewPass_999!",
+            "new_password": "NewPass999Aa",
         },
     )
     assert r.status_code == 200
@@ -59,7 +59,7 @@ async def test_must_change_cleared_after_password_change(client):
     # 用新密码重新登录
     r2 = await client.post(
         "/api/v1/auth/login",
-        json={"identifier": settings.SUPER_ADMIN_EMAIL, "password": "NewPass_999!"},
+        json={"identifier": settings.SUPER_ADMIN_EMAIL, "password": "NewPass999Aa"},
     )
     assert r2.status_code == 200
     new_token = r2.json()["data"]["access_token"]

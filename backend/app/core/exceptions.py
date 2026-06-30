@@ -83,7 +83,7 @@ class AccountDisabledError(BusinessError):
 
 class AccountDeactivatedError(BusinessError):
     def __init__(self, message: str = "Account has been deactivated"):
-        super().__init__(status.HTTP_403_FORBIDDEN, 40305, message)
+        super().__init__(status.HTTP_403_FORBIDDEN, 40305, message, message_key=MessageKey.ACCOUNT_DISABLED)
 
 
 class ValidationFailedError(BusinessError):
@@ -380,7 +380,7 @@ class CategoryNotLeafError(BusinessError):
     def __init__(self, category_code: str):
         super().__init__(
             status.HTTP_400_BAD_REQUEST, 40216,
-            f"Category '{category_code}' is not a leaf node; only level-3 categories are allowed",
+            f"Category '{category_code}' is not a leaf node; only leaf categories are allowed",
             message_key=MessageKey.PRODUCT_CATEGORY_NOT_LEAF,
             message_params={"category_code": category_code},
         )

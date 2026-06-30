@@ -29,6 +29,8 @@ os.environ.setdefault("SUPER_ADMIN_EMAIL", "superadmin@platform.local")
 os.environ.setdefault("SUPER_ADMIN_INITIAL_PASSWORD", "ChangeMe123")
 # 测试默认开启 demo seed：大量已有用例依赖中建三局组织和 demo 账号
 os.environ.setdefault("SEED_DEMO_ACCOUNTS", "true")
+os.environ.setdefault("ENABLE_DEBUG_API", "true")
+os.environ.setdefault("TRANSLATION_PROVIDER", "mock")
 
 from typing import AsyncGenerator  # noqa: E402
 
