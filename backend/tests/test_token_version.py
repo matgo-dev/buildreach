@@ -81,7 +81,7 @@ async def test_change_password_revokes_old_token(client):
     r = await client.post(
         "/api/v1/auth/change-password",
         headers=headers,
-        json={"old_password": "Aa123456789", "new_password": "NewOpPass_999!"},
+        json={"old_password": "Aa123456789", "new_password": "NewOpPass999"},
     )
     assert r.status_code == 200
 
@@ -90,7 +90,7 @@ async def test_change_password_revokes_old_token(client):
     assert r2.status_code == 401
 
     # 新密码登录正常
-    new_token = await _login(client, "operator@platform.local", "NewOpPass_999!")
+    new_token = await _login(client, "operator@platform.local", "NewOpPass999")
     r3 = await client.get(
         "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {new_token}"},
