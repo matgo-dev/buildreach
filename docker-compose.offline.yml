@@ -67,6 +67,7 @@ services:
       LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}
       LOGIN_RATE_LIMIT_MAX_FAILURES: ${LOGIN_RATE_LIMIT_MAX_FAILURES:-5}
       LOGIN_RATE_LIMIT_LOCK_SECONDS: ${LOGIN_RATE_LIMIT_LOCK_SECONDS:-300}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENABLE_DEBUG_API: ${ENABLE_DEBUG_API:-false}
       IMAGE_PATH_PREFIX: ${IMAGE_PATH_PREFIX:-/static}
@@ -78,6 +79,13 @@ services:
       WHATSAPP_DEFAULT_NUMBER: ${WHATSAPP_DEFAULT_NUMBER:-+255 758 311 131}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-info@buildreach.co.tz}
       DEMO_EMAILS: ${DEMO_EMAILS:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@matgo.co.tz}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      EMAIL_DEV_LOG_CODES: ${EMAIL_DEV_LOG_CODES:-false}
     volumes:
       - uploads:/app/uploads
       - private_uploads:/app/private_uploads

@@ -28,6 +28,7 @@ from app.core.exceptions import (
     TooManyAttemptsError,
     ValidationFailedError,
 )
+from app.core.request_ip import get_client_ip
 from app.core.security import (
     PASSWORD_RULE_MESSAGE,
     create_access_token,
@@ -51,9 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 def _client_ip(request: Request | None) -> str:
-    if request is None or request.client is None:
-        return "-"
-    return request.client.host or "-"
+    return get_client_ip(request)
 
 
 async def _get_role(db: AsyncSession, code: str) -> Role:

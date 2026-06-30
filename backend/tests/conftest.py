@@ -24,6 +24,7 @@ os.environ.setdefault(
 )
 # 测试环境禁用 i18n 调度扫描(避免 apscheduler 事件循环冲突)
 os.environ.setdefault("I18N_AUTO_TRANSLATE_ENABLED", "false")
+os.environ.setdefault("EMAIL_DEV_LOG_CODES", "true")
 os.environ.setdefault("SUPER_ADMIN_EMAIL", "superadmin@platform.local")
 os.environ.setdefault("SUPER_ADMIN_INITIAL_PASSWORD", "ChangeMe123")
 # 测试默认开启 demo seed：大量已有用例依赖中建三局组织和 demo 账号
@@ -56,7 +57,7 @@ _raw_dsn = os.environ["DATABASE_URL"]
 TEST_DSN = _raw_dsn.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
 
 # 引导管理员改密后的固定密码（测试用）
-_BOOTSTRAP_NEW_PASSWORD = "TestNewPass_999!"
+_BOOTSTRAP_NEW_PASSWORD = "TestNewPass999"
 
 
 # ─── session-scope: 引擎 + schema + seed（仅一次）───────────────
@@ -165,6 +166,25 @@ def _next_phone() -> str:
     return f"+255{_TEST_PHONE_COUNTER}"
 
 
+def _make_verification_token(email: str) -> str:
+    """为测试生成有效的 verification_token JWT，绕过邮箱验证码流程。"""
+    from datetime import datetime, timedelta, timezone as tz
+    from jose import jwt as _jwt
+    from app.core.config import settings
+
+    return _jwt.encode(
+        {
+            "sub": email,
+            "purpose": "REGISTER",
+            "jti": "0",
+            "type": "verification",
+            "exp": datetime.now(tz.utc) + timedelta(minutes=30),
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
 async def register_buyer_tz(
     client,
     *,
@@ -180,6 +200,7 @@ async def register_buyer_tz(
     """注册坦桑买方,返回 response JSON。
 
     默认使用 L1 品类 code "01",conftest 中 seed_categories 保证存在。
+    自动生成 verification_token 绕过邮箱验证码流程。
     """
     if phone is None:
         phone = _next_phone()
@@ -194,6 +215,8 @@ async def register_buyer_tz(
         "address": address,
         "business_category_codes": cat_code,
         "email": email,
+        "whatsapp": phone,
+        "verification_token": _make_verification_token(email),
     }
     files = [("storefront_images", ("shop.jpg", img, "image/jpeg"))]
     if with_license:

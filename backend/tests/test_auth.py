@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 
 from app.core.config import settings
+from app.db.models.verification_code import VerificationCode
 from tests.conftest import register_buyer_tz, _next_phone
 
 
@@ -21,6 +23,121 @@ SUPPLIER_PAYLOAD = {
 
 async def _login(client, identifier: str, password: str):
     return await client.post("/api/v1/auth/login", json={"identifier": identifier, "password": password})
+
+
+@pytest.mark.asyncio
+async def test_verification_send_failure_does_not_create_record(client, db_session, monkeypatch):
+    from app.services import verification_service
+
+    monkeypatch.setattr(
+        verification_service,
+        "send_verification_code_email",
+        lambda *args, **kwargs: False,
+    )
+
+    r = await client.post(
+        "/api/v1/auth/verification-code/send",
+        json={"email": "smtp-fail@example.com", "purpose": "REGISTER"},
+    )
+
+    assert r.status_code == 503
+    rows = (
+        await db_session.execute(
+            select(VerificationCode).where(
+                VerificationCode.email == "smtp-fail@example.com"
+            )
+        )
+    ).scalars().all()
+    assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_forgot_password_uses_verification_code_and_consumes(
+    client,
+    db_session,
+    monkeypatch,
+):
+    from app.services import verification_service
+
+    result = await register_buyer_tz(client, password="Aa123456789")
+    email = result["email"]
+
+    monkeypatch.setattr(verification_service, "_generate_code", lambda: "123456")
+    monkeypatch.setattr(
+        verification_service,
+        "send_verification_code_email",
+        lambda *args, **kwargs: True,
+    )
+
+    send_resp = await client.post("/api/v1/auth/forgot-password", data={"email": email})
+    assert send_resp.status_code == 200, send_resp.text
+
+    row = await db_session.execute(
+        select(VerificationCode).where(
+            VerificationCode.email == email,
+            VerificationCode.purpose == "RESET_PASSWORD",
+        )
+    )
+    vc = row.scalar_one()
+    assert vc.code_hash != "123456"
+    assert vc.used is False
+
+    reset_resp = await client.post(
+        "/api/v1/auth/reset-password",
+        data={"email": email, "code": "123456", "new_password": "Bb123456789"},
+    )
+    assert reset_resp.status_code == 200, reset_resp.text
+    await db_session.refresh(vc)
+    assert vc.used is True
+
+    old_login = await _login(client, email, "Aa123456789")
+    assert old_login.status_code == 401
+
+    new_login = await _login(client, email, "Bb123456789")
+    assert new_login.status_code == 200, new_login.text
+
+    repeat_resp = await client.post(
+        "/api/v1/auth/reset-password",
+        data={"email": email, "code": "123456", "new_password": "Cc123456789"},
+    )
+    assert repeat_resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_reset_password_invalid_code_persists_attempt(
+    client,
+    db_session,
+    monkeypatch,
+):
+    from app.services import verification_service
+
+    result = await register_buyer_tz(client, password="Aa123456789")
+    email = result["email"]
+
+    monkeypatch.setattr(verification_service, "_generate_code", lambda: "123456")
+    monkeypatch.setattr(
+        verification_service,
+        "send_verification_code_email",
+        lambda *args, **kwargs: True,
+    )
+
+    send_resp = await client.post("/api/v1/auth/forgot-password", data={"email": email})
+    assert send_resp.status_code == 200, send_resp.text
+
+    bad_resp = await client.post(
+        "/api/v1/auth/reset-password",
+        data={"email": email, "code": "000000", "new_password": "Bb123456789"},
+    )
+    assert bad_resp.status_code == 409
+
+    row = await db_session.execute(
+        select(VerificationCode).where(
+            VerificationCode.email == email,
+            VerificationCode.purpose == "RESET_PASSWORD",
+        )
+    )
+    vc = row.scalar_one()
+    assert vc.attempts == 1
 
 
 @pytest.mark.asyncio
@@ -403,7 +520,7 @@ async def test_change_password_flow(client):
     # 旧密码错
     r = await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": "WrongOld1!", "new_password": "NewPass1234!"},
+        json={"old_password": "WrongOld1x", "new_password": "NewPass1234x"},
         headers=headers,
     )
     assert r.status_code == 401
@@ -419,13 +536,13 @@ async def test_change_password_flow(client):
     # 成功
     r = await client.post(
         "/api/v1/auth/change-password",
-        json={"old_password": password, "new_password": "NewPass1234!"},
+        json={"old_password": password, "new_password": "NewPass1234x"},
         headers=headers,
     )
     assert r.status_code == 200
 
     # 新密码可登录
-    r = await _login(client, phone, "NewPass1234!")
+    r = await _login(client, phone, "NewPass1234x")
     assert r.status_code == 200
 
 
