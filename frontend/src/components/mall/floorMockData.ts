@@ -149,6 +149,7 @@ export function getMockFloorProductDetail(id: number): ProductPublicDetail | nul
             id: product.id * 10,
             image_key: image,
             full_url: image,
+            thumbnail_url: image,
             image_type: "MAIN",
             sort_order: 0,
             sku_id: null,

@@ -22,6 +22,7 @@ class ProductImageSchema(BaseModel):
     id: int
     image_key: str
     full_url: str = ""
+    thumbnail_url: str = ""
     image_type: str = "GALLERY"
     sort_order: int
     sku_id: int | None = None
@@ -255,6 +256,7 @@ class ProductPublic(BaseModel):
     is_featured: bool
     supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     main_image: str | None = None
+    main_image_thumbnail: str | None = None
     unit: str | None = None
     moq: int | None = None
     moq_unit: str | None = None
@@ -305,6 +307,7 @@ class ProductOperator(BaseModel):
     is_featured: bool
     supply_mode: str = SupplyMode.SUPPLIER_DIRECT
     main_image: str | None = None
+    main_image_thumbnail: str | None = None
     status: str
     created_by_name: str = ""
     price_min: Decimal | None = None

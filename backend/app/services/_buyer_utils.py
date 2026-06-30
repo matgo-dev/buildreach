@@ -1,6 +1,7 @@
 """买方注册工具函数 — 手机号归一化、品类校验、图片处理。"""
 from __future__ import annotations
 
+import logging
 import os
 import re
 import uuid
@@ -12,9 +13,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import status
 
+from app.core.config import settings
 from app.core.exceptions import BusinessError, ImageTooSmallError
 from app.core.message_keys import MessageKey
 from app.db.models.category import Category
+
+logger = logging.getLogger(__name__)
 
 # ── 图片处理常量 ─────────────────────────────────────────────
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -23,6 +27,40 @@ TARGET_SIZE = (800, 800)
 JPEG_QUALITY = 85
 UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
 PRIVATE_UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "private_uploads"
+
+# ── 缩略图常量 ───────────────────────────────────────────────
+THUMB_SIZE = (300, 300)
+THUMB_WEBP_QUALITY = 80
+
+
+# ── 缩略图工具函数 ───────────────────────────────────────────
+
+def thumb_key_from_image_key(image_key: str) -> str:
+    """image_key → 缩略图 key（约定推导，不查 DB）。"""
+    stem, _ = os.path.splitext(image_key)
+    return f"{stem}_thumb.webp"
+
+
+def thumb_url_from_image_key(image_key: str) -> str:
+    """image_key → 缩略图完整 URL。"""
+    return f"{settings.IMAGE_PATH_PREFIX}/{thumb_key_from_image_key(image_key)}"
+
+
+def generate_thumbnail(original_path: Path) -> Path | None:
+    """为原图生成 WebP 缩略图。幂等：已存在则跳过。"""
+    thumb_path = original_path.with_name(
+        original_path.stem + "_thumb.webp"
+    )
+    if thumb_path.exists():
+        return thumb_path
+    try:
+        img = Image.open(original_path).convert("RGB")
+        img.thumbnail(THUMB_SIZE, Image.LANCZOS)
+        img.save(thumb_path, format="WEBP", quality=THUMB_WEBP_QUALITY)
+        return thumb_path
+    except Exception:
+        logger.warning("缩略图生成失败: %s", original_path, exc_info=True)
+        return None
 
 # ── 手机号正则 ───────────────────────────────────────────────
 _TZ_E164_RE = re.compile(r"^\+255\d{9}$")
@@ -153,6 +191,7 @@ def _save_uploaded_image_to_base(
     dest_path = dest_dir / f"{file_id}.jpg"
 
     dest_path.write_bytes(file_bytes)
+    generate_thumbnail(dest_path)
 
     relative_key = f"{subdir}/{file_id}.jpg"
     return relative_key, width, height, len(file_bytes)
