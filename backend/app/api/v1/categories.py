@@ -14,15 +14,16 @@ from app.services import category as category_service
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 
-@router.get("", summary="商品分类扁平列表(可按 level / parent_code 过滤)")
+@router.get("", summary="商品分类扁平列表(可按 level / parent_code / is_leaf 过滤)")
 async def list_categories(
-    level: int | None = Query(None, ge=1, le=3, description="可选,只返回某一层(1-3)"),
+    level: int | None = Query(None, ge=1, le=4, description="可选,只返回某一层(1-4)"),
     parent_code: str | None = Query(None, description="可选,只返回某父节点(按 code)的子级"),
     is_active: bool = Query(True, description="默认只返回启用的"),
+    is_leaf: bool | None = Query(None, description="可选,只返回叶子/非叶子品类"),
     db: AsyncSession = Depends(get_db),
 ):
     rows = await category_service.list_flat(
-        db, level=level, parent_code=parent_code, is_active=is_active
+        db, level=level, parent_code=parent_code, is_active=is_active, is_leaf=is_leaf
     )
     return success([r.model_dump() for r in rows])
 

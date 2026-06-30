@@ -168,31 +168,25 @@ async def test_buyer_register_weak_password(client):
 
 
 @pytest.mark.asyncio
-async def test_password_length_below_11_rejected(client):
-    """密码 < 11 位被拒(PRD v1.4 Δ1:11-50 位)。"""
-    result = await register_buyer_tz(client, password="Aa12345")  # 7 位
+async def test_password_length_below_6_rejected(client):
+    """密码 < 6 位被拒(6-20 位仅字母和数字)。"""
+    result = await register_buyer_tz(client, password="Aa12")  # 4 位
     r = result["response"]
-    assert r.status_code == 409  # MultipleValidationError
+    assert r.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_password_3_categories_required(client):
-    """密码长度合规但只 1 类字符 → 拒绝(PRD v1.4 Δ1:11-50 + 3 类)。"""
-    # 11 位但只有小写一类
-    result1 = await register_buyer_tz(client, password="aaaaaaaaaaa")
-    assert result1["response"].status_code == 409, result1["response"].text
-
-    # 11 位但只有 2 类(小写 + 数字)
-    result2 = await register_buyer_tz(client, password="abcdefg1234")
-    assert result2["response"].status_code == 409, result2["response"].text
-
-
-@pytest.mark.asyncio
-async def test_password_3_categories_passes(client):
-    """密码 11 位 + 3 类(数字 + 大写 + 小写 + 特殊)→ 通过。"""
+async def test_password_special_char_rejected(client):
+    """密码含特殊字符被拒(仅限字母和数字)。"""
     result = await register_buyer_tz(client, password="Aa123456789!")
-    assert result["response"].status_code == 200, result["response"].text
+    assert result["response"].status_code == 409, result["response"].text
 
+
+@pytest.mark.asyncio
+async def test_password_alphanumeric_passes(client):
+    """6-20 位字母+数字组合 → 通过。"""
+    result = await register_buyer_tz(client, password="Aa123456789")
+    assert result["response"].status_code == 200, result["response"].text
 
 @pytest.mark.asyncio
 async def test_supplier_register_success(client, db_session):

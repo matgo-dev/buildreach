@@ -49,10 +49,11 @@ async def list_flat(
     level: int | None = None,
     parent_code: str | None = None,
     is_active: bool | None = True,
+    is_leaf: bool | None = None,
 ) -> list[CategoryNode]:
     """扁平列表,按 (level, sort_order, code) 稳定排序,带进程内 TTL 缓存。"""
     locale = get_current_locale()
-    cache_key = f"flat:{locale}:{level}:{parent_code}:{is_active}"
+    cache_key = f"flat:{locale}:{level}:{parent_code}:{is_active}:{is_leaf}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -64,6 +65,8 @@ async def list_flat(
         stmt = stmt.where(Category.level == level)
     if parent_code is not None:
         stmt = stmt.where(Category.parent_code == parent_code)
+    if is_leaf is not None:
+        stmt = stmt.where(Category.is_leaf == is_leaf)
     stmt = stmt.order_by(
         Category.level, Category.parent_code, Category.sort_order, Category.code
     )

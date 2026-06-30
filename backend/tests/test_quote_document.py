@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+import io
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -44,9 +46,9 @@ async def _op_headers(client: AsyncClient) -> dict[str, str]:
 
 async def _create_active_product(client: AsyncClient, op: dict, db: AsyncSession) -> int:
     cat = (await db.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
-    assert cat is not None, "No level-3 category in seed data"
+    assert cat is not None, "No leaf category in seed data"
 
     r = await client.post("/api/v1/operator/products", headers=op, json={
         "name": "DocTest Product",
@@ -61,6 +63,17 @@ async def _create_active_product(client: AsyncClient, op: dict, db: AsyncSession
         f"/api/v1/operator/products/{pid}/skus",
         headers=op,
         json={"name": "DocTest SKU", "moq": 1, "price_min": 100, "price_max": 200},
+    )
+    assert r.status_code == 200, r.text
+
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/images",
+        headers=op,
+        files={"file": ("test.png", buf, "image/png")},
     )
     assert r.status_code == 200, r.text
 

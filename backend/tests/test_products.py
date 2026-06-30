@@ -38,12 +38,17 @@ async def _login_buyer(client: AsyncClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _get_first_category_code(client: AsyncClient, level: int = 3) -> str:
-    """获取第一个有效品类 code。默认 L3(叶子),可按需指定层级。"""
-    r = await client.get(f"/api/v1/categories?level={level}&is_active=true")
+async def _get_first_category_code(client: AsyncClient, level: int | None = None, is_leaf: bool = True) -> str:
+    """获取品类 code。默认查 is_leaf=true,可按需指定层级和是否叶子。"""
+    params = "is_active=true"
+    if is_leaf:
+        params += "&is_leaf=true"
+    if level is not None:
+        params += f"&level={level}"
+    r = await client.get(f"/api/v1/categories?{params}")
     assert r.status_code == 200
     items = r.json()["data"]
-    assert len(items) > 0, f"No level-{level} categories found — seed may not have run"
+    assert len(items) > 0, "No categories found — seed may not have run"
     return items[0]["code"]
 
 
@@ -965,7 +970,7 @@ async def _get_audit_admin_headers(client: AsyncClient) -> dict[str, str]:
     token = r.json()["data"]["access_token"]
     h = {"Authorization": f"Bearer {token}"}
 
-    new_pw = "TestNewPass_999!"
+    new_pw = "TestNewPass999Aa"
     r2 = await client.post("/api/v1/auth/change-password", headers=h, json={
         "old_password": settings.SUPER_ADMIN_INITIAL_PASSWORD, "new_password": new_pw,
     })
@@ -1590,7 +1595,7 @@ async def test_public_list_subtree_filter(client: AsyncClient, db_session):
 async def test_create_product_with_l1_rejected(client: AsyncClient, db_session):
     """用 L1 品类建商品,被拒(40216)。"""
     headers = await _login_operator(client)
-    l1_code = await _get_first_category_code(client, level=1)
+    l1_code = await _get_first_category_code(client, level=1, is_leaf=False)
 
     r = await client.post(
         "/api/v1/operator/products",
