@@ -28,13 +28,12 @@ def upgrade() -> None:
         sa.Column('email', sa.String(length=255), nullable=False),
         sa.Column('code_hash', sa.String(length=64), nullable=False),
         sa.Column('purpose', sa.String(length=20), nullable=False),
-        sa.Column('attempts', sa.Integer(), nullable=False),
-        sa.Column('used', sa.Boolean(), nullable=False),
+        sa.Column('attempts', sa.Integer(), nullable=False, server_default='0'),
+        sa.Column('used', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('ip_address', sa.String(length=45), nullable=True),
         sa.Column('user_agent', sa.String(length=255), nullable=True),
         sa.Column('expires_at', sa.DateTime(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_vc_email_purpose', 'verification_codes', ['email', 'purpose'], unique=False)
