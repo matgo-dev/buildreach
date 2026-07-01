@@ -29,7 +29,11 @@ jobs:
       - name: 计算镜像 Tag
         id: tag
         run: |
-          BRANCH="${{ github.ref_name }}"
+          RAW_BRANCH="${{ github.ref_name }}"
+          BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
+          if [ -z "$BRANCH" ]; then
+            BRANCH=ref
+          fi
           IMAGE_TAG="${BRANCH}-latest"
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
           echo "使用镜像 Tag: $IMAGE_TAG"
