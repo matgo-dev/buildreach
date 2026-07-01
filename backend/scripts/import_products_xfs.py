@@ -10,7 +10,7 @@
 
 设计要点
 --------
-- 幂等:按平台 HMAC spu_code upsert,子行先清后插,重跑安全
+- 幂等:按平台稳定 hash spu_code upsert,子行先清后插,重跑安全
 - 事务边界 = 单个 offer:一个商品失败不连累其他
 - 归类靠 categories_raw.json 数据树,不靠目录路径
 - 与 import_products_1688.py(阿里版)同构,适配鑫方盛纯中文数据源
