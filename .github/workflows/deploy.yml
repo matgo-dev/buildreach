@@ -49,7 +49,11 @@ jobs:
       - name: 计算镜像 Tag
         id: meta
         run: |
-          BRANCH="${{ github.ref_name }}"
+          RAW_BRANCH="${{ github.ref_name }}"
+          BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
+          if [ -z "$BRANCH" ]; then
+            BRANCH=ref
+          fi
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
           LATEST_TAG="${BRANCH}-latest"

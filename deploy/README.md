@@ -40,7 +40,7 @@ GitHub Actions ─── Build ─── 推送镜像到 GHCR
 
 ```bash
 # 触发部署
-gh workflow run "Build & Deploy" --repo matgo-dev/buildreach --ref dev
+gh workflow run "Build & Deploy" --repo matgo-dev/buildreach --ref main
 
 # 查看进度
 gh run watch
