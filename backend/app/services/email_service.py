@@ -1,4 +1,4 @@
-"""轻量 SMTP 邮件发送（注册验证码 + 密码找回验证码）。未配置 SMTP_HOST 时 graceful degrade：log 验证码到 stdout。
+"""轻量 SMTP 邮件发送（注册验证码 + 密码找回验证码）。
 
 TODO(T-EMAIL-API): 上线前将 SMTP 直连替换为第三方邮件 API 服务（Resend/SendGrid/AWS SES），
 避免邮件头暴露源站 IP。仅需改本文件，对外接口不变。
@@ -20,12 +20,15 @@ def _smtp_configured() -> bool:
 
 
 def send_verification_code_email(to_email: str, code: str, purpose: str = "RESET_PASSWORD") -> bool:
-    """发送验证码邮件。purpose: REGISTER / RESET_PASSWORD。SMTP 未配置时打印验证码到日志并返回 False。"""
+    """发送验证码邮件。purpose: REGISTER / RESET_PASSWORD。"""
     if not _smtp_configured():
-        logger.warning(
-            "SMTP 未配置，跳过邮件发送 (to=%s, code=%s, purpose=%s)",
-            to_email, code, purpose,
-        )
+        if settings.EMAIL_DEV_LOG_CODES:
+            logger.warning(
+                "[DEV] SMTP 未配置，验证码邮件未发送 (to=%s, code=%s, purpose=%s)",
+                to_email, code, purpose,
+            )
+            return True
+        logger.error("SMTP 未配置，验证码邮件无法发送 (to=%s, purpose=%s)", to_email, purpose)
         return False
 
     if purpose == "REGISTER":

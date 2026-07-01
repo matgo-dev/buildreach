@@ -29,6 +29,7 @@ export interface CartItemPublic {
   unavailable_reason: string | null;
   // 可能的值: PRODUCT_DELETED | PRODUCT_INACTIVE | VARIANT_UNAVAILABLE
   main_image: string | null;
+  main_image_thumbnail: string | null;
 }
 
 export interface CartPublic {

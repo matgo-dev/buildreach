@@ -9,7 +9,7 @@ from tests.conftest import register_buyer_tz, _next_phone
 
 
 # 固定密码
-_PASSWORD = "Aa123456789!"
+_PASSWORD = "Aa123456789"
 
 
 async def _register_and_login(client) -> tuple[str, dict, str]:

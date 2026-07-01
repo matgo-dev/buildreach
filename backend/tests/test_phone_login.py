@@ -6,7 +6,7 @@ import pytest
 from tests.conftest import register_buyer_tz, _next_phone
 
 
-_PASSWORD = "Aa123456789!"
+_PASSWORD = "Aa123456789"
 
 
 async def _login(client, identifier, password=_PASSWORD):
@@ -20,10 +20,11 @@ async def _login(client, identifier, password=_PASSWORD):
 @pytest.mark.asyncio
 async def test_register_phone_invalid_format(client):
     """非 +255 格式手机号应被拒。"""
-    from tests.conftest import _make_test_image
+    from tests.conftest import _make_test_image, _make_verification_token
     img = _make_test_image()
     bad_phones = ["1234567890", "13800138000", "+86138001380", "+2551234"]
     for bad in bad_phones:
+        email = f"test{bad.replace('+', '')}@example.com"
         r = await client.post(
             "/api/v1/auth/register/buyer",
             data={
@@ -33,10 +34,13 @@ async def test_register_phone_invalid_format(client):
                 "company_name": "Shop",
                 "address": "Dar es Salaam",
                 "business_category_codes": "01",
+                "email": email,
+                "whatsapp": bad,
+                "verification_token": _make_verification_token(email),
             },
             files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
         )
-        assert r.status_code == 409, f"{bad!r} 应被拒,实际 {r.status_code}"
+        assert r.status_code == 409, f"{bad!r} 应被拒,实际 {r.status_code}: {r.text}"
 
 
 @pytest.mark.asyncio

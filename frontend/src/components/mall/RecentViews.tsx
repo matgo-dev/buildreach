@@ -69,9 +69,19 @@ export function RecentViews() {
               <div className="mb-1.5 aspect-square w-full overflow-hidden rounded bg-white">
                 {item.main_image ? (
                   <img
-                    src={imageUrl(item.main_image)}
+                    src={imageUrl(item.main_image_thumbnail || item.main_image)}
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      if (t.dataset.fallback) return;
+                      t.dataset.fallback = "1";
+                      t.src = imageUrl(item.main_image!);
+                    }}
                     alt={item.name}
+                    width={112}
+                    height={112}
                     className="h-full w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-gray-300">

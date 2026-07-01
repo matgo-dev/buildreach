@@ -119,17 +119,22 @@ async def test_upload_exe_rejected(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_upload_too_large(client: AsyncClient):
-    """上传超大图片 → 40524。"""
-    hdr = await _buyer_headers(client)
-    # 6MB JPEG(超过 5MB 限制)
-    big_data = _make_jpeg() + b"\x00" * (6 * 1024 * 1024)
-    r = await client.post(
-        "/api/v1/attachments",
-        headers=hdr,
-        files={"file": ("big.jpg", big_data, "image/jpeg")},
-    )
-    assert r.status_code == 413
-    assert r.json()["code"] == 40524
+    """上传超大附件 → 413/40524（monkeypatch 降低限制）。"""
+    import app.services.attachment as _att_mod
+    original_limit = _att_mod.MAX_FILE_SIZE
+    _att_mod.MAX_FILE_SIZE = 1 * 1024 * 1024
+    try:
+        hdr = await _buyer_headers(client)
+        big_data = _make_jpeg() + b"\x00" * (2 * 1024 * 1024)
+        r = await client.post(
+            "/api/v1/attachments",
+            headers=hdr,
+            files={"file": ("big.jpg", big_data, "image/jpeg")},
+        )
+        assert r.status_code == 413
+        assert r.json()["code"] == 40524
+    finally:
+        _att_mod.MAX_FILE_SIZE = original_limit
 
 
 # ── 下载 scope 测试 ──────────────────────────────────────
@@ -216,7 +221,7 @@ async def test_rfq_create_with_attachments(client: AsyncClient, db_session: Asyn
     # 创建可购商品
     op_hdr = await _op_headers(client)
     cat = (await db_session.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
     assert cat is not None
 
@@ -228,6 +233,17 @@ async def test_rfq_create_with_attachments(client: AsyncClient, db_session: Asyn
     })
     assert r.status_code == 200, r.text
     product_id = r.json()["data"]["id"]
+
+    from PIL import Image as PILImage
+    img_buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(img_buf, format="PNG")
+    img_buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=op_hdr,
+        files={"file": ("test.png", img_buf, "image/png")},
+    )
+    assert r.status_code == 200, r.text
 
     r = await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
@@ -280,7 +296,7 @@ async def test_rfq_update_keeps_attachments(client: AsyncClient, db_session: Asy
     # 创建可购商品
     op_hdr = await _op_headers(client)
     cat = (await db_session.execute(
-        select(Category).where(Category.level == 3).limit(1)
+        select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1)
     )).scalar_one_or_none()
 
     r = await client.post("/api/v1/operator/products", headers=op_hdr, json={
@@ -290,6 +306,15 @@ async def test_rfq_update_keeps_attachments(client: AsyncClient, db_session: Asy
         "currency": "TZS",
     })
     product_id = r.json()["data"]["id"]
+    from PIL import Image as PILImage
+    img_buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(200, 100, 50)).save(img_buf, format="PNG")
+    img_buf.seek(0)
+    await client.post(
+        f"/api/v1/operator/products/{product_id}/images",
+        headers=op_hdr,
+        files={"file": ("test.png", img_buf, "image/png")},
+    )
     await client.patch(
         f"/api/v1/operator/products/{product_id}/status?force=true",
         headers=op_hdr,

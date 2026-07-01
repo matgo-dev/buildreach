@@ -316,13 +316,17 @@ def _image_key(spu_code: str, rel_path: str) -> str:
 
 
 def _copy_image(src: Path, static_root: Path, spu_code: str) -> None:
-    """拷贝图片到 static 目录。路径按 spu_code 隔离,重跑覆盖同路径。"""
+    """拷贝图片到 static 目录并生成缩略图。路径按 spu_code 隔离,重跑覆盖同路径。"""
     if not src.exists():
         return
     dest_dir = static_root / "products" / spu_code
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / src.name
     shutil.copy2(src, dest)
+
+    # 同步生成缩略图
+    from app.services._buyer_utils import generate_thumbnail
+    generate_thumbnail(dest)
 
 
 # ────────────────────── 审计 ──────────────────────

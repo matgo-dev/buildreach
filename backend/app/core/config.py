@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     # 公网直连 / 无网关时保持 false,一律服务端生成。
     TRUST_INBOUND_TRACE_ID: bool = False
 
+    # 真实客户端 IP:仅当前置可信反向代理覆盖 X-Real-IP / X-Forwarded-For 时开启。
+    TRUST_PROXY: bool = False
+
     # WhatsApp 客服号码(允许带 +、空格、横线,解析时规范化)
     WHATSAPP_DEFAULT_NUMBER: str = "+255 758 311 131"
 
@@ -124,13 +127,14 @@ class Settings(BaseSettings):
     # CORS 允许携带凭证(refresh cookie 必需)
     CORS_ALLOW_CREDENTIALS: bool = True
 
-    # SMTP 邮件（密码找回）— 未配置时静默跳过发送
+    # SMTP 邮件（验证码）— 生产未配置时 fail-fast;本地可显式开启日志打印验证码。
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@matgo.co.tz"
     SMTP_USE_TLS: bool = True
+    EMAIL_DEV_LOG_CODES: bool = False
 
     # 邮箱验证码
     VERIFICATION_CODE_LENGTH: int = 6

@@ -5,13 +5,14 @@ from dataclasses import asdict
 
 import os
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, get_current_user
-from app.core.exceptions import MultipleValidationError, NotAuthenticatedError, success
-from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
+from app.core.exceptions import BusinessError, MultipleValidationError, NotAuthenticatedError, success
+from app.core.request_ip import get_client_ip
+from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.db.models.user import User, UserStatus
 from jose import JWTError
 from urllib.parse import urlparse
@@ -228,7 +229,7 @@ async def send_verification_code(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:255]
     try:
         _code, expires_in = await verification_service.send_code(
@@ -243,6 +244,12 @@ async def send_verification_code(
             raise MultipleValidationError([{"field": "email", "code": 40104, "message": f"Please wait {remaining}s before resending"}])
         if msg == "IP_RATE_LIMIT":
             raise MultipleValidationError([{"field": "email", "code": 40105, "message": "Too many requests, please try again later"}])
+        if msg == "EMAIL_SEND_FAILED":
+            raise BusinessError(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                50301,
+                "Email delivery failed, please try again later",
+            )
         raise
 
 
@@ -261,6 +268,8 @@ async def verify_verification_code(
             expires_in=settings.VERIFICATION_TOKEN_EXPIRE_MINUTES * 60,
         ).model_dump())
     except ValueError as e:
+        if str(e) == "CODE_INVALID":
+            await db.commit()
         error_map = {
             "CODE_NOT_FOUND": (40101, "Invalid verification code"),
             "CODE_EXPIRED": (40102, "Verification code expired"),
@@ -782,11 +791,6 @@ async def update_language_preference(
 
 # ===== 忘记密码（验证码模式，对齐阿里国际站） =====
 
-# 内存存储验证码（MVP 单机；生产可改 Redis）
-# key: email, value: {"code": "123456", "user_id": 1, "expires": timestamp}
-import time as _time
-_reset_codes: dict[str, dict] = {}
-
 
 @router.post("/forgot-password", summary="忘记密码-发送验证码")
 async def forgot_password(
@@ -794,31 +798,46 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     email: str = Form(...),
 ):
-    """接收邮箱，校验是否已注册，发送6位验证码。"""
-    import random
-    from app.services.email_service import send_verification_code_email
-
+    """发送重置密码验证码。响应不暴露邮箱是否存在。"""
     email = email.strip().lower()
+    ip = get_client_ip(request)
+    ua = request.headers.get("user-agent", "")[:255]
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    if not user:
-        raise MultipleValidationError([{
-            "field": "email",
-            "code": 40401,
-            "message": "该邮箱未注册，请检查后重试",
-        }])
+    # 防枚举:不存在 / 非 ACTIVE 账号都返回同样文案,且不发邮件。
+    if user is None or user.status != UserStatus.ACTIVE:
+        return success(None, message="如果该邮箱已注册，验证码已发送")
 
-    code = f"{random.randint(100000, 999999)}"
-    _reset_codes[email] = {
-        "code": code,
-        "user_id": user.id,
-        "expires": _time.time() + 600,  # 10 分钟有效
-    }
-    send_verification_code_email(email, code)
+    try:
+        await verification_service.send_code(
+            db,
+            email=email,
+            purpose="RESET_PASSWORD",
+            ip_address=ip,
+            user_agent=ua,
+        )
+        await db.commit()
+    except ValueError as exc:
+        msg = str(exc)
+        if msg.startswith("COOLDOWN:"):
+            return success(None, message="如果该邮箱已注册，验证码已发送")
+        if msg == "IP_RATE_LIMIT":
+            raise MultipleValidationError([{
+                "field": "email",
+                "code": 40105,
+                "message": "请求过于频繁，请稍后再试",
+            }])
+        if msg == "EMAIL_SEND_FAILED":
+            raise BusinessError(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                50301,
+                "邮件发送失败，请稍后重试",
+            )
+        raise
 
-    return success(None, message="验证码已发送")
+    return success(None, message="如果该邮箱已注册，验证码已发送")
 
 
 @router.post("/reset-password", summary="重置密码（验证码模式）")
@@ -830,8 +849,6 @@ async def reset_password(
     new_password: str = Form(...),
 ):
     """验证邮箱+验证码+设置新密码。"""
-    from app.core.security import hash_password
-
     email = email.strip().lower()
 
     # 校验密码强度
@@ -842,28 +859,49 @@ async def reset_password(
             "message": PASSWORD_RULE_MESSAGE,
         }])
 
-    # 校验验证码
-    entry = _reset_codes.get(email)
-    if not entry or entry["code"] != code.strip():
+    try:
+        verification_token = await verification_service.verify_code(
+            db,
+            email=email,
+            purpose="RESET_PASSWORD",
+            code=code.strip(),
+        )
+        verified_email = await verification_service.consume_verification_token(
+            db,
+            verification_token,
+            expected_purpose="RESET_PASSWORD",
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "CODE_INVALID":
+            await db.commit()
+        error_map = {
+            "CODE_NOT_FOUND": (40101, "验证码错误"),
+            "CODE_EXPIRED": (40102, "验证码已过期，请重新获取"),
+            "MAX_ATTEMPTS": (40103, "验证码尝试次数过多，请重新获取"),
+            "CODE_INVALID": (40101, "验证码错误"),
+            "TOKEN_USED": (40104, "验证码已使用，请重新获取"),
+            "TOKEN_EXPIRED": (40102, "验证码已过期，请重新获取"),
+            "TOKEN_INVALID": (40101, "验证码错误"),
+            "INVALID_TOKEN_PURPOSE": (40101, "验证码错误"),
+        }
+        code_num, message = error_map.get(msg, (40101, "验证码错误"))
+        raise MultipleValidationError([{
+            "field": "code",
+            "code": code_num,
+            "message": message,
+        }])
+
+    if verified_email != email:
         raise MultipleValidationError([{
             "field": "code",
             "code": 40101,
             "message": "验证码错误",
         }])
-    if _time.time() > entry["expires"]:
-        _reset_codes.pop(email, None)
-        raise MultipleValidationError([{
-            "field": "code",
-            "code": 40102,
-            "message": "验证码已过期，请重新获取",
-        }])
 
-    user_id = entry["user_id"]
-    _reset_codes.pop(email, None)  # 一次性消费
-
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    if not user:
+    if user is None or user.status != UserStatus.ACTIVE:
         raise MultipleValidationError([{
             "field": "email",
             "code": 40103,

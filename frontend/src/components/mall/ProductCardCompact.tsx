@@ -24,10 +24,19 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
       >
         {product.main_image ? (
           <img
-            src={imageUrl(product.main_image)}
+            src={imageUrl(product.main_image_thumbnail || product.main_image)}
+            onError={(e) => {
+              const t = e.currentTarget;
+              if (t.dataset.fallback) return;
+              t.dataset.fallback = "1";
+              t.src = imageUrl(product.main_image!);
+            }}
             alt={product.name}
+            width={300}
+            height={300}
             className="h-full w-full object-contain"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <Package className="h-10 w-10 text-gray-300" />

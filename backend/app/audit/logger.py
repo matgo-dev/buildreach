@@ -12,6 +12,7 @@ from starlette.requests import Request
 
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.context import get_trace_id
+from app.core.request_ip import get_client_ip
 from app.db.models.audit_log import AuditLog, AuditStatus
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,7 @@ async def write_audit(
     if request is not None:
         method = request.method
         path = str(request.url.path)
-        client = request.client
-        ip = client.host if client else None
+        ip = get_client_ip(request)
         ua = request.headers.get("user-agent")
 
     entry = AuditLog(

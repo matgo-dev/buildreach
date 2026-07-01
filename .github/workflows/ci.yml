@@ -60,3 +60,42 @@ jobs:
         run: |
           source .venv/bin/activate
           pytest -v --tb=short
+
+      - name: Test database migration (alembic upgrade head)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/overseas_supply_test
+          SQLALCHEMY_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/overseas_supply_test
+        run: |
+          source .venv/bin/activate
+          echo "🔄 Testing database migration with real PostgreSQL..."
+          sleep 2
+          alembic upgrade head
+          echo "✅ Migration test passed!"
+          alembic current
+
+      - name: Test database migration (alembic upgrade head)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/overseas_supply_test
+          SQLALCHEMY_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/overseas_supply_test
+        run: |
+          source .venv/bin/activate
+          echo "🔄 Testing database migration with real PostgreSQL..."
+          sleep 2
+          alembic upgrade head
+          echo "✅ Migration test passed!"
+          alembic current
+
+      - name: Test database migration (alembic upgrade head)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/overseas_supply_test
+          SQLALCHEMY_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/overseas_supply_test
+        run: |
+          source .venv/bin/activate
+          echo "🔄 Testing database migration with real PostgreSQL..."
+          sleep 2
+          alembic upgrade head
+          echo "✅ Migration test passed!"
+          alembic current

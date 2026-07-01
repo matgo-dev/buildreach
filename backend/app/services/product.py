@@ -18,6 +18,7 @@ from sqlalchemy import (
     func,
     or_,
     select,
+    text,
     text as sa_text,
     update,
 )
@@ -80,6 +81,7 @@ from app.services._buyer_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE,
     save_uploaded_image,
+    thumb_url_from_image_key,
 )
 
 # i18n 字段声明:从注册表读取(单一来源)
@@ -514,8 +516,8 @@ async def get_product(db: AsyncSession, product_id: int) -> Product:
 
 async def _batch_main_images(
     db: AsyncSession, product_ids: list[int],
-) -> dict[int, str]:
-    """批量查每个商品的主图 URL — DISTINCT ON 每个 product_id 只取一行。"""
+) -> dict[int, tuple[str, str]]:
+    """批量查每个商品的主图，返回 {product_id: (main_image_url, thumbnail_url)}。"""
     if not product_ids:
         return {}
     q = (
@@ -533,7 +535,10 @@ async def _batch_main_images(
     )
     rows = (await db.execute(q)).all()
     base = settings.IMAGE_PATH_PREFIX
-    return {pid: f"{base}/{key}" for pid, key in rows}
+    return {
+        pid: (f"{base}/{key}", thumb_url_from_image_key(key))
+        for pid, key in rows
+    }
 
 
 def _build_keyword_filter(keyword: str):
@@ -559,7 +564,7 @@ async def list_products_operator(
     keyword: str | None = None,
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int, dict[int, str]]:
+) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
     # 列表只需 SKU（价格汇总+计数），不加载全部图片（批量查主图）
     q = select(Product).options(
         selectinload(Product.skus.and_(_not_deleted(ProductSku))),
@@ -602,7 +607,7 @@ async def list_products_public(
     sort: str = "newest",
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int, dict[int, str]]:
+) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
     # 列表不加载图片关系，主图由 _batch_main_images 批量查
     q = select(Product).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
     count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
@@ -683,7 +688,7 @@ async def sample_home_floor_products(
     category_paths: list[list[str]],
     exclude_category_paths: list[list[str]] | None = None,
     size: int = 8,
-) -> tuple[list[Product], dict[int, str], list[Category]]:
+) -> tuple[list[Product], dict[int, tuple[str, str]], list[Category]]:
     """首页楼层选品:按分类中文路径解析当前环境 code,每个展示类目最多 1 个 SPU。"""
     if not category_paths or size <= 0:
         return [], {}, []
@@ -697,50 +702,75 @@ async def sample_home_floor_products(
     if not display_categories:
         return [], {}, display_categories
 
-    # 批量获取所有展示品类的后代 code（单次递归 CTE 查询）
     all_parent_codes = [c.code for c in display_categories]
-    descendant_map = await _descendant_category_code_map(db, all_parent_codes)
-    cat_to_descendants: dict[str, list[str]] = {
-        parent_code: descendant_map.get(parent_code) or [parent_code]
-        for parent_code in all_parent_codes
+
+    values_sql = ", ".join(
+        f"(:root_code_{idx}, {idx})" for idx in range(len(all_parent_codes))
+    )
+    params: dict[str, object] = {
+        "active_status": ProductStatus.ACTIVE,
+        "limit": size,
     }
+    params.update(
+        {f"root_code_{idx}": code for idx, code in enumerate(all_parent_codes)}
+    )
 
-    # 合并所有后代 code，一条 SQL 查出候选商品
-    all_codes = []
-    code_to_cat: dict[str, str] = {}  # product.category_code → 归属的展示品类 code
-    for cat_code, descendants in cat_to_descendants.items():
-        for d in descendants:
-            all_codes.append(d)
-            code_to_cat[d] = cat_code
+    ranked_products_stmt = text(
+        f"""
+        WITH RECURSIVE roots(root_code, root_order) AS (
+            VALUES {values_sql}
+        ),
+        cat_tree(root_code, root_order, code) AS (
+            SELECT roots.root_code, roots.root_order, categories.code
+            FROM roots
+            JOIN categories ON categories.code = roots.root_code
+            WHERE categories.is_active IS TRUE
 
-    if not all_codes:
+            UNION ALL
+
+            SELECT cat_tree.root_code, cat_tree.root_order, child.code
+            FROM categories AS child
+            JOIN cat_tree ON child.parent_code = cat_tree.code
+            WHERE child.is_active IS TRUE
+        ),
+        ranked AS (
+            SELECT
+                products.id AS product_id,
+                cat_tree.root_code,
+                products.created_at,
+                row_number() OVER (
+                    PARTITION BY cat_tree.root_code
+                    ORDER BY products.created_at DESC NULLS LAST, products.id DESC
+                ) AS rn
+            FROM products
+            JOIN cat_tree ON products.category_code = cat_tree.code
+            WHERE products.status = :active_status
+              AND products.deleted_at IS NULL
+        )
+        SELECT product_id
+        FROM ranked
+        WHERE rn = 1
+        ORDER BY created_at DESC NULLS LAST, product_id DESC
+        LIMIT :limit
+        """
+    )
+    selected_ids = [
+        row.product_id
+        for row in (await db.execute(ranked_products_stmt, params)).all()
+    ]
+
+    if not selected_ids:
         return [], {}, display_categories
 
-    # 一条 SQL 查出所有候选商品，按展示品类分组取最新
-    all_candidates_stmt = (
-        select(Product)
-        .where(
-            Product.status == ProductStatus.ACTIVE,
-            _not_deleted(Product),
-            Product.category_code.in_(all_codes),
-        )
-        .order_by(Product.created_at.desc(), Product.id.desc())
-    )
-    all_candidates = (await db.execute(all_candidates_stmt)).scalars().all()
-
-    # 按展示品类分组，每个品类取第 1 个（最新的）
-    selected: list[Product] = []
-    seen_cats: set[str] = set()
-    seen_ids: set[int] = set()
-    for product in all_candidates:
-        top_cat = code_to_cat.get(product.category_code)
-        if not top_cat or top_cat in seen_cats or product.id in seen_ids:
-            continue
-        selected.append(product)
-        seen_cats.add(top_cat)
-        seen_ids.add(product.id)
-        if len(selected) >= size:
-            break
+    selected_rows = (
+        await db.execute(select(Product).where(Product.id.in_(selected_ids)))
+    ).scalars().all()
+    products_by_id = {product.id: product for product in selected_rows}
+    selected = [
+        products_by_id[product_id]
+        for product_id in selected_ids
+        if product_id in products_by_id
+    ]
 
     main_image_map = await _batch_main_images(db, [p.id for p in selected])
     return selected, main_image_map, display_categories

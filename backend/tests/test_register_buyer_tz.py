@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from tests.conftest import register_buyer_tz, _make_test_image, _next_phone
+from tests.conftest import register_buyer_tz, _make_test_image, _next_phone, _make_verification_token
 from app.db.models.buyer_org_image import BuyerOrgImage, BuyerOrgImageType
 from app.db.models.buyer_organization import BuyerOrganization
 
@@ -38,7 +38,7 @@ async def test_register_buyer_missing_required_fields(client):
         "/api/v1/auth/register/buyer",
         data={
             "phone": _next_phone(),
-            "password": "Aa123456789!",
+            "password": "Aa123456789",
             "name": "Test",
             "company_name": "Shop",
             "business_category_codes": "01",
@@ -51,36 +51,43 @@ async def test_register_buyer_missing_required_fields(client):
 
 @pytest.mark.asyncio
 async def test_register_buyer_no_image(client):
-    """缺少店面图片 → 422(FastAPI File 必填字段缺失)。"""
+    """不传店面图片 → 可选字段,请求正常到达业务层(非 422)。"""
+    phone = _next_phone()
+    email = f"buyertz{phone.replace('+', '')}@example.com"
     r = await client.post(
         "/api/v1/auth/register/buyer",
         data={
-            "phone": _next_phone(),
-            "password": "Aa123456789!",
+            "phone": phone,
+            "password": "Aa123456789",
             "name": "Test",
             "company_name": "Shop",
             "address": "Dar es Salaam",
             "business_category_codes": "01",
-            "email": f"buyertz{_next_phone().replace('+', '')}@example.com",
+            "email": email,
+            "whatsapp": phone,
+            "verification_token": _make_verification_token(email),
         },
     )
-    assert r.status_code == 422
+    assert r.status_code != 422
 
 
 @pytest.mark.asyncio
 async def test_register_buyer_invalid_phone_format(client):
     """非 +255 格式手机号 → 409(MultipleValidationError)。"""
     img = _make_test_image()
+    email = f"badphone{_next_phone().replace('+', '')}@example.com"
     r = await client.post(
         "/api/v1/auth/register/buyer",
         data={
-            "phone": "13800138000",  # 中国号码格式
-            "password": "Aa123456789!",
+            "phone": "13800138000",
+            "password": "Aa123456789",
             "name": "Test",
             "company_name": "Shop",
             "address": "Dar es Salaam",
             "business_category_codes": "01",
-            "email": f"buyertz{_next_phone().replace('+', '')}@example.com",
+            "email": email,
+            "whatsapp": "13800138000",
+            "verification_token": _make_verification_token(email),
         },
         files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
     )

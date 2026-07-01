@@ -43,7 +43,7 @@ async def _oh(client: AsyncClient) -> dict[str, str]:
 
 async def _make_product(db: AsyncSession) -> int:
     """快速在 DB 中创建 ACTIVE 商品,返回 product_id。"""
-    cat = (await db.execute(select(Category).where(Category.level == 3).limit(1))).scalar_one()
+    cat = (await db.execute(select(Category).where(Category.is_leaf == True, Category.is_active == True).limit(1))).scalar_one()
     p = Product(
         name_zh="FreeRfqTest", name_en="FreeRfqTest",
         category_code=cat.code, spu_code=f"FRT-{int(datetime.now(timezone.utc).timestamp()*1000)}",

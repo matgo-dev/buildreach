@@ -6,7 +6,7 @@
 # 反向代理由宿主 1Panel OpenResty 管理，本脚本只负责容器编排。
 #
 # 流程:
-#   备份 DB → 拉代码 → 登录 GHCR → 拉镜像 → 记录旧镜像 → 启动容器 → 健康检查(失败自动回滚) → 清理
+#   备份 DB → 可选更新部署文件 → 登录镜像仓库 → 拉镜像 → 记录旧镜像 → 启动容器 → 健康检查(失败自动回滚) → 清理
 #
 # 严禁修改成包含以下操作:
 #   - docker compose down -v
@@ -25,6 +25,7 @@ DEPLOY_REF="${DEPLOY_REF:-origin/dev}"
 BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-17857}"
 FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-7857}"
 IMAGE_TAG="${IMAGE_TAG:-}"
+DEPLOY_SKIP_CODE_UPDATE="${DEPLOY_SKIP_CODE_UPDATE:-false}"
 COMPOSE_FILE="docker-compose.production.yml"
 
 cd "$APP_DIR"
@@ -74,25 +75,52 @@ if docker compose -f "$COMPOSE_FILE" ps db --status running 2>/dev/null | grep -
     BACKUP_FILE="$BACKUP_DIR/$(date +%Y%m%d-%H%M%S).sql.gz"
     echo "[deploy] [1/6] 备份数据库 → $BACKUP_FILE"
     docker compose -f "$COMPOSE_FILE" exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
-    # 清理旧备份
+    
+    if [ ! -f "$BACKUP_FILE" ]; then
+        echo "[deploy] ❌ 备份失败: 文件未生成"
+        exit 1
+    fi
+    BACKUP_SIZE=$(stat -c%s "$BACKUP_FILE" 2>/dev/null || echo "0")
+    if [ "$BACKUP_SIZE" -lt 1000 ]; then
+        echo "[deploy] ❌ 备份异常: 文件过小 (${BACKUP_SIZE} bytes)，可能为空"
+        rm -f "$BACKUP_FILE"
+        exit 1
+    fi
+    
     find "$BACKUP_DIR" -name "*.sql.gz" -mtime "+$RETENTION_DAYS" -delete 2>/dev/null || true
+    echo "[deploy]       ✅ 备份成功 ($(du -h "$BACKUP_FILE" | cut -f1))"
     echo "[deploy]       当前备份目录($(du -sh "$BACKUP_DIR" | cut -f1)):"
     ls -lh "$BACKUP_DIR"/*.sql.gz 2>/dev/null | tail -5 | sed 's/^/         /'
 else
     echo "[deploy] [1/6] DB 容器未运行,跳过备份(首次部署)"
 fi
 
-# ---- 2. 拉最新代码 ----
-echo "[deploy] [2/6] 拉取最新代码"
-git fetch origin
 PREV_SHA=$(git rev-parse HEAD)
-git reset --hard "$DEPLOY_REF"
-NEW_SHA=$(git rev-parse HEAD)
-if [ "$PREV_SHA" = "$NEW_SHA" ]; then
-    echo "[deploy]       无更新($NEW_SHA)"
+
+# ---- 2. 更新部署文件 ----
+case "$DEPLOY_SKIP_CODE_UPDATE" in
+    1|true|TRUE|yes|YES)
+        SKIP_CODE_UPDATE=1
+        ;;
+    *)
+        SKIP_CODE_UPDATE=0
+        ;;
+esac
+
+if [ "$SKIP_CODE_UPDATE" -eq 1 ]; then
+    echo "[deploy] [2/6] 跳过服务器 git 拉取(使用 CI 已同步的部署文件)"
+    NEW_SHA="$PREV_SHA"
 else
-    echo "[deploy]       $PREV_SHA → $NEW_SHA"
-    git log --oneline "$PREV_SHA..$NEW_SHA" | sed 's/^/         /'
+    echo "[deploy] [2/6] 拉取最新代码"
+    git fetch origin
+    git reset --hard "$DEPLOY_REF"
+    NEW_SHA=$(git rev-parse HEAD)
+    if [ "$PREV_SHA" = "$NEW_SHA" ]; then
+        echo "[deploy]       无更新($NEW_SHA)"
+    else
+        echo "[deploy]       $PREV_SHA → $NEW_SHA"
+        git log --oneline "$PREV_SHA..$NEW_SHA" | sed 's/^/         /'
+    fi
 fi
 
 # ---- 3. 拉取镜像 ----
@@ -160,7 +188,11 @@ if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ]; then
     # 回滚:如果有旧镜像记录,用旧镜像重启容器
     if [ -n "$OLD_BACKEND_IMAGE" ] && [ -n "$OLD_FRONTEND_IMAGE" ]; then
         echo "[deploy] 🔄 回滚到上一版本..."
-        git reset --hard "$PREV_SHA"
+        if [ "$SKIP_CODE_UPDATE" -eq 0 ]; then
+            git reset --hard "$PREV_SHA"
+        else
+            echo "[deploy]    已跳过服务器 git 拉取,不回滚工作区代码"
+        fi
         OLD_IMAGE_TAG="${OLD_BACKEND_IMAGE##*:}"
         export IMAGE_TAG="$OLD_IMAGE_TAG"
         echo "[deploy]    回滚 IMAGE_TAG → $IMAGE_TAG"
