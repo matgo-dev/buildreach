@@ -24,6 +24,7 @@ from fastapi import Request
 
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
+from app.core.config import settings
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import (
     BuyerOrgRequiredError,
@@ -375,12 +376,11 @@ async def list_rfqs(
 
     total = (await db.execute(count_q)).scalar() or 0
 
-    # 列表 eager-load:补 product+images 用于取首项缩略图
+    # 列表 eager-load:只加载 product(不含 images，性能优化)
     q = (
         q.options(
             selectinload(Rfq.items)
-            .selectinload(RfqItem.product)
-            .selectinload(Product.images),
+            .selectinload(RfqItem.product),
         )
         .order_by(Rfq.id.desc())
         .offset((page - 1) * page_size)
@@ -388,9 +388,55 @@ async def list_rfqs(
     )
     rows = (await db.execute(q)).scalars().all()
 
+    # 批量获取首项商品主图(避免 N+1 和全量 images 加载)
+    product_ids = list({
+        item.product_id
+        for r in rows
+        for item in (r.items or [])
+        if item.product_id
+    })
+    main_image_map = {}
+    if product_ids:
+        from app.db.models.product_image import ProductImage
+
+        image_rank = (
+            select(
+                ProductImage.product_id.label("product_id"),
+                ProductImage.image_key.label("image_key"),
+                func.row_number().over(
+                    partition_by=ProductImage.product_id,
+                    order_by=(
+                        (ProductImage.image_type != ImageType.MAIN).asc(),
+                        ProductImage.sort_order.asc(),
+                        ProductImage.id.asc(),
+                    ),
+                ).label("rn"),
+            )
+            .where(
+                ProductImage.product_id.in_(product_ids),
+                ProductImage.deleted_at.is_(None),
+            )
+            .subquery()
+        )
+        img_q = (
+            select(image_rank.c.product_id, image_rank.c.image_key)
+            .where(image_rank.c.rn == 1)
+        )
+        img_rows = (await db.execute(img_q)).all()
+        base = settings.IMAGE_PATH_PREFIX
+        main_image_map = {
+            pid: f"{base}/{key}"
+            for pid, key in img_rows
+        }
+
     # 列表页不加载附件(性能优先,详情页才显示附件)
     serialized = [
-        _serialize_rfq(r, is_operator=scope.is_operator, with_first_item_image=True)
+        _serialize_rfq(
+            r,
+            is_operator=scope.is_operator,
+            with_first_item_image=True,
+            main_image_map=main_image_map,
+        )
         for r in rows
     ]
     return {
@@ -629,6 +675,7 @@ def _serialize_rfq(
     rfq: Rfq, *, is_operator: bool, quote_data: object = None,
     with_product: bool = False, with_first_item_image: bool = False,
     attachments: list | None = None,
+    main_image_map: dict[int, str] | None = None,
 ) -> RfqBuyerPublic | RfqOperatorView:
     """按角色序列化询价单。quote_data 由详情接口传入(层叠报价)。"""
     active_items = [
@@ -637,12 +684,15 @@ def _serialize_rfq(
     ]
     items = [_serialize_item(it, with_product=with_product) for it in active_items]
 
-    # 列表级首项缩略图
+    # 列表级首项缩略图（优先从 main_image_map 获取）
     first_item_image = None
     if with_first_item_image and active_items:
         p = active_items[0].product
         if p is not None and getattr(p, "deleted_at", None) is None:
-            first_item_image = _resolve_main_image_from_product(p)
+            if main_image_map is not None:
+                first_item_image = main_image_map.get(p.id)
+            else:
+                first_item_image = _resolve_main_image_from_product(p)
 
     att_list = attachments or []
 

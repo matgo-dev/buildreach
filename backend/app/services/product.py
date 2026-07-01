@@ -12,7 +12,16 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 from fastapi import UploadFile
-from sqlalchemy import delete as sa_delete, func, or_, select, text, update
+from sqlalchemy import (
+    bindparam,
+    delete as sa_delete,
+    func,
+    or_,
+    select,
+    text,
+    text as sa_text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -112,18 +121,52 @@ _PREFIX_MAP = {
 async def _descendant_category_codes(
     db: AsyncSession, category_code: str,
 ) -> list[str]:
-    """返回以 category_code 为根的整棵子树 code 集(含自身),逐层展开直到叶子。"""
-    codes: list[str] = [category_code]
-    current_layer = [category_code]
-    while current_layer:
-        rows = (await db.execute(
-            select(Category.code).where(Category.parent_code.in_(current_layer))
-        )).scalars().all()
-        if not rows:
-            break
-        codes.extend(rows)
-        current_layer = list(rows)
-    return codes
+    """
+    递归 CTE 获取指定分类及其所有子孙分类 code。
+
+    Args:
+        db: 数据库会话
+        category_code: 品类业务编码(如 '01', '01.001')
+
+    Returns:
+        包含自身及所有后代的 code 列表；查询不到时返回空列表。
+    """
+    descendants = await _descendant_category_code_map(db, [category_code])
+    return descendants.get(category_code, [])
+
+
+async def _descendant_category_code_map(
+    db: AsyncSession,
+    category_codes: list[str],
+) -> dict[str, list[str]]:
+    """一次递归 CTE 获取多个根分类的后代 code 映射。"""
+    root_codes = tuple(dict.fromkeys(code for code in category_codes if code))
+    if not root_codes:
+        return {}
+
+    sql = sa_text("""
+        WITH RECURSIVE category_tree AS (
+          SELECT code AS root_code, code, parent_code
+          FROM categories
+          WHERE code IN :root_codes
+            AND is_active = true
+
+          UNION ALL
+
+          SELECT ct.root_code, c.code, c.parent_code
+          FROM categories c
+          JOIN category_tree ct ON c.parent_code = ct.code
+          WHERE c.is_active = true
+        )
+        SELECT root_code, code
+        FROM category_tree
+    """).bindparams(bindparam("root_codes", expanding=True))
+
+    result = await db.execute(sql, {"root_codes": root_codes})
+    descendants: dict[str, list[str]] = {code: [] for code in root_codes}
+    for root_code, child_code in result.all():
+        descendants.setdefault(root_code, []).append(child_code)
+    return descendants
 
 
 async def _generate_spu_code(db: AsyncSession, category_code: str) -> str:

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # 数据库 — PostgreSQL(本机 brew @16,端口 5433 以避开 EnterpriseDB pg13)
     DATABASE_URL: str = "postgresql+asyncpg://liujingjing@localhost:5433/overseas_supply_dev"
 
+    # 数据库连接池（生产环境调优）
+    DB_POOL_SIZE: int = 20              # 连接池大小
+    DB_MAX_OVERFLOW: int = 10           # 峰值额外连接数
+    DB_POOL_TIMEOUT: int = 30           # 获取连接超时(秒)
+    DB_POOL_RECYCLE: int = 3600         # 连接回收时间(秒)
+
     # JWT
     JWT_SECRET_KEY: str = Field(..., min_length=16)
     JWT_ALGORITHM: str = "HS256"
