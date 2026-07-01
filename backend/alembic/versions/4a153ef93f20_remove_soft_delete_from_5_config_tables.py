@@ -64,30 +64,29 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Restore product_attrs partial indexes with deleted_at
+    # Drop constraints/indexes created by upgrade before restoring soft delete columns.
     op.drop_index('uq_product_attrs_sku_key', table_name='product_attrs')
-    op.create_index('uq_product_attrs_sku_key', 'product_attrs', ['sku_id', 'attr_key'],
-                    unique=True, postgresql_where='sku_id IS NOT NULL AND deleted_at IS NULL')
     op.drop_index('uq_product_attrs_product_key', table_name='product_attrs')
-    op.create_index('uq_product_attrs_product_key', 'product_attrs', ['product_id', 'attr_key'],
-                    unique=True, postgresql_where='sku_id IS NULL AND deleted_at IS NULL')
-
-    # sku_price_tiers
     op.drop_constraint('uq_sku_price_tiers_sku_qty', 'sku_price_tiers', type_='unique')
-    op.create_index('uq_sku_price_tiers_sku_qty_active', 'sku_price_tiers', ['sku_id', 'min_qty'],
-                    unique=True, postgresql_where='deleted_at IS NULL')
-
-    # role_permissions
     op.drop_constraint('uq_role_permission', 'role_permissions', type_='unique')
-    op.create_index('uq_role_permission_active', 'role_permissions', ['role_id', 'permission_id'],
-                    unique=True, postgresql_where='deleted_at IS NULL')
-
-    # permissions
     op.drop_index('ix_permissions_code', table_name='permissions')
-    op.create_index('ix_permissions_code', 'permissions', ['code'], unique=False)
-    op.create_index('uq_permissions_code_active', 'permissions', ['code'],
-                    unique=True, postgresql_where='deleted_at IS NULL')
 
     # Restore soft delete columns
     for tbl in ['sku_price_tiers', 'role_permissions', 'product_attrs', 'permissions', 'credit_search_history']:
         _add_soft_delete_columns(tbl)
+
+    # Restore partial unique indexes that depend on deleted_at.
+    op.create_index('uq_product_attrs_sku_key', 'product_attrs', ['sku_id', 'attr_key'],
+                    unique=True, postgresql_where='sku_id IS NOT NULL AND deleted_at IS NULL')
+    op.create_index('uq_product_attrs_product_key', 'product_attrs', ['product_id', 'attr_key'],
+                    unique=True, postgresql_where='sku_id IS NULL AND deleted_at IS NULL')
+
+    op.create_index('uq_sku_price_tiers_sku_qty_active', 'sku_price_tiers', ['sku_id', 'min_qty'],
+                    unique=True, postgresql_where='deleted_at IS NULL')
+
+    op.create_index('uq_role_permission_active', 'role_permissions', ['role_id', 'permission_id'],
+                    unique=True, postgresql_where='deleted_at IS NULL')
+
+    op.create_index('ix_permissions_code', 'permissions', ['code'], unique=False)
+    op.create_index('uq_permissions_code_active', 'permissions', ['code'],
+                    unique=True, postgresql_where='deleted_at IS NULL')
