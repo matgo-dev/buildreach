@@ -113,7 +113,7 @@ images/main_01.jpg 的缩略图
 | `fileSize` | 否 | 图片文件大小，单位 byte |
 | `contentType` | 否 | 如 `image/jpeg`、`image/png`、`image/webp` |
 | `thumbSize` | 否 | 缩略图文件大小，单位 byte |
-| `status` | 是 | `uploaded` / `failed` / `skipped` / `exists` / `dry_run` |
+| `status` | 是 | 上传状态。正式导入只接受 `uploaded` / `skipped` / `exists`；`failed` 表示失败，平台会拒绝；`dry_run` 仅用于导入脚本 dry-run 演练 |
 | `error` | 否 | 上传失败时填写错误信息 |
 
 ## 平台导入时如何使用
@@ -124,7 +124,7 @@ images/main_01.jpg 的缩略图
 1. 读取 categories_raw.json，导入或补齐品类
 2. 扫描原批次结构中的所有 offer.json
 3. 读取 s3_manifest.jsonl
-4. 通过 spuCode + localPath 或 offerPath + localPath 匹配图片
+4. 通过 `spuCode + localPath` 匹配图片，并校验 `platformSpuCode` 是否符合平台编码规则
 5. 导入 products / product_skus / product_attrs
 6. 写入 product_images.image_key = objectKey
 ```

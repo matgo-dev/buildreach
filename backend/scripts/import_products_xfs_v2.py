@@ -121,6 +121,8 @@ class ValidationResult:
 
 
 ImageManifest = dict[tuple[str, str], dict[str, Any]]
+MANIFEST_IMPORT_STATUSES = {"uploaded", "skipped", "exists"}
+MANIFEST_DRY_RUN_STATUSES = MANIFEST_IMPORT_STATUSES | {"dry_run"}
 
 
 # ────────────────────── Reader ──────────────────────
@@ -358,11 +360,53 @@ def _manifest_entry(
     if row is None:
         raise ValueError(f"s3_manifest 缺少图片记录: spuCode={raw_spu}, localPath={local_path}")
     status = str(row.get("status") or "")
-    if status not in {"uploaded", "skipped", "exists", "dry_run"}:
+    if status not in MANIFEST_IMPORT_STATUSES:
         raise ValueError(f"s3_manifest 图片未成功上传: localPath={local_path}, status={status}")
     if not row.get("objectKey"):
         raise ValueError(f"s3_manifest 缺少 objectKey: localPath={local_path}")
     return row
+
+
+def validate_s3_manifest_links(
+    offers: list[OfferFile],
+    *,
+    batch_dir: Path,
+    image_manifest: ImageManifest,
+    allow_dry_run_status: bool = False,
+) -> dict[str, list[str]]:
+    """校验 offer.json 中的图片都能在 s3_manifest.jsonl 中找到可用 objectKey。"""
+    allowed_statuses = MANIFEST_DRY_RUN_STATUSES if allow_dry_run_status else MANIFEST_IMPORT_STATUSES
+    errors: dict[str, list[str]] = {}
+    for offer in offers:
+        if offer.data is None:
+            continue
+        raw_spu = str(offer.data.get("spuCode", offer.spu_code_raw))
+        expected_platform_spu = xfs_product_code(raw_spu)
+        offer_errors: list[str] = []
+        image_defs = list(offer.data.get("images", [])) + list(offer.data.get("detailImages", []))
+        for img_def in image_defs:
+            img_path = img_def.get("path", "") if isinstance(img_def, dict) else ""
+            if not img_path:
+                continue
+            local_path = str((offer.offer_dir / img_path).relative_to(batch_dir))
+            row = image_manifest.get((raw_spu, local_path))
+            if row is None:
+                offer_errors.append(f"s3_manifest 缺少图片记录: localPath={local_path}")
+                continue
+            status = str(row.get("status") or "")
+            if status not in allowed_statuses:
+                offer_errors.append(f"s3_manifest 图片未成功上传: localPath={local_path}, status={status}")
+            if not row.get("objectKey"):
+                offer_errors.append(f"s3_manifest 缺少 objectKey: localPath={local_path}")
+            platform_spu = str(row.get("platformSpuCode") or "").strip()
+            if platform_spu and platform_spu != expected_platform_spu:
+                offer_errors.append(
+                    f"s3_manifest platformSpuCode 不匹配: localPath={local_path}, "
+                    f"expected={expected_platform_spu}, actual={platform_spu}"
+                )
+        if offer_errors:
+            errors[offer.spu_code_raw] = offer_errors
+    return errors
 
 
 def _copy_image(src: Path, static_root: Path, spu_code: str) -> None:
@@ -960,6 +1004,15 @@ def main() -> None:
     # 3. 校验
     log.info("执行校验 ...")
     vr = validate_batch(offers, require_local_images=not using_manifest)
+    if image_manifest is not None:
+        manifest_errors = validate_s3_manifest_links(
+            offers,
+            batch_dir=batch_dir,
+            image_manifest=image_manifest,
+            allow_dry_run_status=args.dry_run,
+        )
+        for raw_spu, errs in manifest_errors.items():
+            vr.offer_errors.setdefault(raw_spu, []).extend(errs)
 
     if vr.warnings:
         log.warning("告警 (%d):", len(vr.warnings))
