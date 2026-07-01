@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import tempfile
 import uuid
 import warnings
 from io import BytesIO
@@ -50,17 +51,47 @@ def thumb_url_from_image_key(image_key: str) -> str:
     return f"{settings.IMAGE_PATH_PREFIX}/{thumb_key_from_image_key(image_key)}"
 
 
+def _thumb_is_fresh(original_path: Path, thumb_path: Path) -> bool:
+    try:
+        return (
+            thumb_path.exists()
+            and thumb_path.stat().st_size > 0
+            and thumb_path.stat().st_mtime >= original_path.stat().st_mtime
+        )
+    except OSError:
+        return False
+
+
+def _atomic_save_image(img: Image.Image, dest_path: Path, fmt: str, **save_kwargs) -> None:
+    tmp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=dest_path.parent,
+            prefix=f".{dest_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp:
+            tmp_name = tmp.name
+        tmp_path = Path(tmp_name)
+        img.save(tmp_path, format=fmt, **save_kwargs)
+        tmp_path.replace(dest_path)
+    except Exception:
+        if tmp_name:
+            Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
 def generate_thumbnail(original_path: Path) -> Path | None:
-    """为原图生成 WebP 缩略图。幂等：已存在则跳过。"""
+    """为原图生成 WebP 缩略图。已存在且不早于原图则跳过。"""
     thumb_path = original_path.with_name(
         original_path.stem + "_thumb.webp"
     )
-    if thumb_path.exists():
+    if _thumb_is_fresh(original_path, thumb_path):
         return thumb_path
     try:
         img = _open_verified_image(lambda: original_path)
         img.thumbnail(THUMB_SIZE, Image.LANCZOS)
-        img.save(thumb_path, format="WEBP", quality=THUMB_WEBP_QUALITY)
+        _atomic_save_image(img, thumb_path, "WEBP", quality=THUMB_WEBP_QUALITY)
         return thumb_path
     except Exception:
         logger.warning("缩略图生成失败: %s", original_path, exc_info=True)
