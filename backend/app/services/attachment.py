@@ -9,13 +9,15 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import uuid
+import warnings
 import zipfile
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 from urllib.parse import quote as url_quote
 
@@ -25,6 +27,7 @@ from PIL import Image
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import (
     AttachmentAlreadyLinkedError,
     AttachmentNotFoundError,
@@ -37,6 +40,7 @@ from app.db.base import _utcnow
 from app.db.models.attachment import Attachment, OwnerType
 from app.schemas.attachment import AttachmentPublic
 from app.services.storage import get_attachment_storage
+from app.services.upload_pipeline import run_image_processing, stream_binary_to_temp
 
 logger = logging.getLogger(__name__)
 
@@ -183,10 +187,49 @@ def validate_file_type(
     return family["canonical"], family["max_size"]
 
 
+def validate_file_type_from_path(
+    ext: str,
+    declared_mime: str,
+    path: Path,
+    head: bytes,
+) -> tuple[str, int]:
+    """校验文件类型:扩展名 + 声明 MIME + 文件内容嗅探允许族匹配。"""
+    ext_lower = ext.lower()
+    family = _EXT_TO_FAMILY.get(ext_lower)
+    if not family:
+        raise AttachmentTypeNotAllowedError()
+
+    if declared_mime not in family["mimes"]:
+        raise AttachmentTypeNotAllowedError()
+
+    sniffed = magic.from_file(str(path), mime=True)
+    if sniffed not in family["mimes"]:
+        # 某些 libmagic 版本对短文件 from_file 更保守,用 header 兜底一次。
+        sniffed = magic.from_buffer(head, mime=True)
+    if sniffed not in family["mimes"]:
+        raise AttachmentTypeNotAllowedError()
+
+    if ext_lower == ".xlsx" and sniffed in ("application/zip", "application/octet-stream"):
+        if not _verify_xlsx_structure_from_path(path):
+            raise AttachmentTypeNotAllowedError()
+
+    return family["canonical"], family["max_size"]
+
+
 def _verify_xlsx_structure(file_bytes: bytes) -> bool:
     """校验 ZIP 内部至少含 [Content_Types].xml 与 xl/workbook.xml。"""
     try:
         with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
+            names = zf.namelist()
+            return "[Content_Types].xml" in names and "xl/workbook.xml" in names
+    except (zipfile.BadZipFile, Exception):
+        return False
+
+
+def _verify_xlsx_structure_from_path(path: Path) -> bool:
+    """校验 ZIP 文件至少含 [Content_Types].xml 与 xl/workbook.xml。"""
+    try:
+        with zipfile.ZipFile(path) as zf:
             names = zf.namelist()
             return "[Content_Types].xml" in names and "xl/workbook.xml" in names
     except (zipfile.BadZipFile, Exception):
@@ -198,6 +241,8 @@ def _verify_xlsx_structure(file_bytes: bytes) -> bool:
 THUMBNAIL_MAX_EDGE = 300
 THUMBNAIL_QUALITY = 80
 _IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
+IMAGE_MAX_EDGE = 8000
+Image.MAX_IMAGE_PIXELS = settings.IMAGE_MAX_PIXELS
 
 
 def generate_thumbnail(file_bytes: bytes) -> tuple[bytes, str, int] | None:
@@ -215,6 +260,41 @@ def generate_thumbnail(file_bytes: bytes) -> tuple[bytes, str, int] | None:
     except Exception:
         logger.warning("缩略图生成失败", exc_info=True)
         return None
+
+
+def generate_thumbnail_from_path(path: Path) -> tuple[bytes, str, int] | None:
+    """为图片文件生成缩略图。返回 (thumb_bytes, content_type, size) 或 None。"""
+    try:
+        with Image.open(path) as img:
+            img.thumbnail((THUMBNAIL_MAX_EDGE, THUMBNAIL_MAX_EDGE), Image.LANCZOS)
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGB")
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=THUMBNAIL_QUALITY, optimize=True)
+        thumb_bytes = buf.getvalue()
+        return thumb_bytes, "image/jpeg", len(thumb_bytes)
+    except Exception:
+        logger.warning("缩略图生成失败", exc_info=True)
+        return None
+
+
+def validate_image_pixels(path: Path) -> None:
+    """Reject image files that would decode to excessive pixel counts."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(path) as img:
+                if (
+                    img.width * img.height > settings.IMAGE_MAX_PIXELS
+                    or max(img.width, img.height) > IMAGE_MAX_EDGE
+                ):
+                    raise AttachmentTooLargeError()
+    except AttachmentTooLargeError:
+        raise
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise AttachmentTooLargeError()
+    except Exception:
+        raise AttachmentTypeNotAllowedError()
 
 
 # ── 上传 ──────────────────────────────────────────────────
@@ -239,58 +319,63 @@ async def upload_attachment(
     if ext not in ALLOWED_EXTENSIONS:
         raise AttachmentTypeNotAllowedError()
 
-    # 流式读取(限制最大大小)
-    max_possible = MAX_FILE_SIZE  # 先按最大限制读
-    chunks: list[bytes] = []
-    total = 0
-    while True:
-        chunk = file_stream.read(65536)
-        if not chunk:
-            break
-        total += len(chunk)
-        if total > max_possible:
-            raise AttachmentTooLargeError()
-        chunks.append(chunk)
-
-    file_bytes = b"".join(chunks)
-
-    # 类型校验(扩展名 + 声明 MIME + 嗅探)
-    canonical_mime, max_size = validate_file_type(ext, declared_content_type, file_bytes)
-
-    # 按实际族的大小限制校验
-    if len(file_bytes) > max_size:
+    try:
+        temp_upload = await stream_binary_to_temp(
+            file_stream,
+            max_size=MAX_FILE_SIZE,
+            suffix=ext,
+        )
+    except ValueError:
         raise AttachmentTooLargeError()
 
-    # 孤儿配额校验
-    await _check_orphan_quota(db, user_id)
-
-    # 生成 file_key
-    file_key = f"{uuid.uuid4().hex}{ext}"
-
-    # 写文件(不在 DB 事务内)
     storage = get_attachment_storage()
-    storage.save(file_key, BytesIO(file_bytes))
-
-    # 图片类型:生成缩略图
+    file_key = f"{uuid.uuid4().hex}{ext}"
     thumbnail_key = None
     thumbnail_content_type = None
     thumbnail_size_bytes = None
-    if canonical_mime in _IMAGE_MIMES:
-        result = generate_thumbnail(file_bytes)
-        if result:
-            thumb_bytes, thumb_ct, thumb_size = result
-            thumbnail_key = f"thumbnail_{uuid.uuid4().hex}.jpg"
-            storage.save(thumbnail_key, BytesIO(thumb_bytes))
-            thumbnail_content_type = thumb_ct
-            thumbnail_size_bytes = thumb_size
 
-    # 落库
     try:
+        # 类型校验(扩展名 + 声明 MIME + 嗅探)
+        canonical_mime, max_size = await asyncio.to_thread(
+            validate_file_type_from_path,
+            ext,
+            declared_content_type,
+            temp_upload.path,
+            temp_upload.head,
+        )
+
+        # 按实际族的大小限制校验
+        if temp_upload.size > max_size:
+            raise AttachmentTooLargeError()
+        if canonical_mime in _IMAGE_MIMES:
+            await asyncio.to_thread(validate_image_pixels, temp_upload.path)
+
+        # 孤儿配额校验
+        await _check_orphan_quota(db, user_id)
+
+        # 写文件(不在 DB 事务内)
+        with open(temp_upload.path, "rb") as src:
+            await asyncio.to_thread(storage.save, file_key, src)
+
+        # 图片类型:生成缩略图
+        if canonical_mime in _IMAGE_MIMES:
+            result = await run_image_processing(
+                generate_thumbnail_from_path,
+                temp_upload.path,
+            )
+            if result:
+                thumb_bytes, thumb_ct, thumb_size = result
+                thumbnail_key = f"thumbnail_{uuid.uuid4().hex}.jpg"
+                await asyncio.to_thread(storage.save, thumbnail_key, BytesIO(thumb_bytes))
+                thumbnail_content_type = thumb_ct
+                thumbnail_size_bytes = thumb_size
+
+        # 落库
         att = Attachment(
             file_key=file_key,
             original_filename=original_filename,
             content_type=canonical_mime,
-            size_bytes=len(file_bytes),
+            size_bytes=temp_upload.size,
             uploaded_by_user_id=user_id,
             owner_type=None,
             owner_id=None,
@@ -308,7 +393,14 @@ async def upload_attachment(
             storage.delete(file_key)
         except Exception:
             logger.error("DB commit 失败后删除文件也失败: file_key=%s", file_key)
+        if thumbnail_key:
+            try:
+                storage.delete(thumbnail_key)
+            except Exception:
+                logger.error("DB commit 失败后删除缩略图也失败: file_key=%s", thumbnail_key)
         raise
+    finally:
+        temp_upload.cleanup()
 
 
 async def _check_orphan_quota(db: AsyncSession, user_id: int) -> None:

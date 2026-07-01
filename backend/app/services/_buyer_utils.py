@@ -5,10 +5,11 @@ import logging
 import os
 import re
 import uuid
+import warnings
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import status
@@ -27,6 +28,9 @@ TARGET_SIZE = (800, 800)
 JPEG_QUALITY = 85
 UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
 PRIVATE_UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "private_uploads"
+IMAGE_MAX_EDGE = 8000
+_IMAGE_FORMATS = ["JPEG", "PNG", "WEBP"]
+Image.MAX_IMAGE_PIXELS = settings.IMAGE_MAX_PIXELS
 
 # ── 缩略图常量 ───────────────────────────────────────────────
 THUMB_SIZE = (300, 300)
@@ -54,7 +58,7 @@ def generate_thumbnail(original_path: Path) -> Path | None:
     if thumb_path.exists():
         return thumb_path
     try:
-        img = Image.open(original_path).convert("RGB")
+        img = _open_verified_image(lambda: original_path)
         img.thumbnail(THUMB_SIZE, Image.LANCZOS)
         img.save(thumb_path, format="WEBP", quality=THUMB_WEBP_QUALITY)
         return thumb_path
@@ -127,6 +131,47 @@ def _safe_upload_dir(base_dir: Path, subdir: str) -> Path:
     return base_dir / subdir_path
 
 
+def _raise_image_format() -> None:
+    raise BusinessError(
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        42206,
+        f"Allowed formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        message_key=MessageKey.BUYER_IMAGE_FORMAT,
+    )
+
+
+def _raise_image_size() -> None:
+    raise BusinessError(
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        42207,
+        "Image size must be under 5MB and within pixel limits",
+        message_key=MessageKey.BUYER_IMAGE_SIZE,
+    )
+
+
+def _open_verified_image(source_factory) -> Image.Image:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(source_factory(), formats=_IMAGE_FORMATS) as probe:
+                probe.verify()
+            with Image.open(source_factory(), formats=_IMAGE_FORMATS) as img:
+                img = ImageOps.exif_transpose(img)
+                if (
+                    img.width * img.height > settings.IMAGE_MAX_PIXELS
+                    or max(img.width, img.height) > IMAGE_MAX_EDGE
+                ):
+                    _raise_image_size()
+                img.load()
+                return img.convert("RGB")
+    except BusinessError:
+        raise
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+        _raise_image_size()
+    except (UnidentifiedImageError, OSError, ValueError):
+        _raise_image_format()
+
+
 def _prepare_image(
     file_content: bytes,
     filename: str,
@@ -136,24 +181,14 @@ def _prepare_image(
     # a. 校验扩展名
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise BusinessError(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            42206,
-            f"Allowed formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
-            message_key=MessageKey.BUYER_IMAGE_FORMAT,
-        )
+        _raise_image_format()
 
     # b. 校验文件大小
     if len(file_content) > MAX_IMAGE_SIZE:
-        raise BusinessError(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            42207,
-            "Image size must be under 5MB",
-            message_key=MessageKey.BUYER_IMAGE_SIZE,
-        )
+        _raise_image_size()
 
     # c. 打开图片并转 RGB
-    img = Image.open(BytesIO(file_content)).convert("RGB")
+    img = _open_verified_image(lambda: BytesIO(file_content))
 
     # d. 最小尺寸校验
     if img.width < 200 or img.height < 200:
@@ -176,6 +211,34 @@ def _prepare_image(
     return buf.getvalue(), img.width, img.height
 
 
+def _prepare_image_from_path(
+    source_path: Path,
+    filename: str,
+    square: bool = False,
+) -> tuple[bytes, int, int]:
+    """校验并处理上传图片文件,返回 (jpeg_bytes, width, height)。"""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        _raise_image_format()
+    if source_path.stat().st_size > MAX_IMAGE_SIZE:
+        _raise_image_size()
+
+    img = _open_verified_image(lambda: source_path)
+    if img.width < 200 or img.height < 200:
+        raise ImageTooSmallError()
+    img.thumbnail(TARGET_SIZE, Image.LANCZOS)
+    if square:
+        max_side = max(img.width, img.height)
+        bg = Image.new("RGB", (max_side, max_side), (255, 255, 255))
+        offset = ((max_side - img.width) // 2, (max_side - img.height) // 2)
+        bg.paste(img, offset)
+        img = bg
+
+    buf = BytesIO()
+    img.save(buf, format="JPEG", quality=JPEG_QUALITY)
+    return buf.getvalue(), img.width, img.height
+
+
 def _save_uploaded_image_to_base(
     file_content: bytes,
     filename: str,
@@ -184,6 +247,27 @@ def _save_uploaded_image_to_base(
     square: bool = False,
 ) -> tuple[str, int, int, int]:
     file_bytes, width, height = _prepare_image(file_content, filename, square)
+
+    dest_dir = _safe_upload_dir(base_dir, subdir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    file_id = uuid.uuid4().hex
+    dest_path = dest_dir / f"{file_id}.jpg"
+
+    dest_path.write_bytes(file_bytes)
+    generate_thumbnail(dest_path)
+
+    relative_key = f"{subdir}/{file_id}.jpg"
+    return relative_key, width, height, len(file_bytes)
+
+
+def _save_uploaded_image_path_to_base(
+    source_path: Path,
+    filename: str,
+    base_dir: Path,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    file_bytes, width, height = _prepare_image_from_path(source_path, filename, square)
 
     dest_dir = _safe_upload_dir(base_dir, subdir)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -213,6 +297,22 @@ def save_uploaded_image(
     )
 
 
+def save_uploaded_image_from_path(
+    source_path: Path,
+    filename: str,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    """处理并保存公开上传图片文件,返回 (relative_key, width, height, file_size)。"""
+    return _save_uploaded_image_path_to_base(
+        source_path,
+        filename,
+        UPLOAD_BASE_DIR,
+        subdir,
+        square=square,
+    )
+
+
 def save_private_buyer_image(
     file_content: bytes,
     filename: str,
@@ -222,6 +322,22 @@ def save_private_buyer_image(
     """处理并保存买方注册私有图片,返回相对 private_uploads 的 key。"""
     return _save_uploaded_image_to_base(
         file_content,
+        filename,
+        PRIVATE_UPLOAD_BASE_DIR,
+        subdir,
+        square=square,
+    )
+
+
+def save_private_buyer_image_from_path(
+    source_path: Path,
+    filename: str,
+    subdir: str,
+    square: bool = False,
+) -> tuple[str, int, int, int]:
+    """处理并保存买方注册私有图片文件,返回相对 private_uploads 的 key。"""
+    return _save_uploaded_image_path_to_base(
+        source_path,
         filename,
         PRIVATE_UPLOAD_BASE_DIR,
         subdir,
