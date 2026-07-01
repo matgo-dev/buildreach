@@ -6,7 +6,7 @@ name: buildreach
 # 使用 GHCR 拉取预构建镜像,反向代理由宿主 1Panel OpenResty 管理。
 #
 # 用法：
-#   IMAGE_TAG=dev-a1b2c3d docker compose -f docker-compose.production.yml --env-file .env.production up -d
+#   IMAGE_TAG=main-a1b2c3d docker compose -f docker-compose.production.yml --env-file .env.production up -d
 # ============================================================
 
 # 共用日志驱动:每服务最多 30MB(10m x 3 文件滚动),防磁盘塞满

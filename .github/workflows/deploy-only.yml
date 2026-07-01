@@ -70,7 +70,7 @@ jobs:
           script: |
             cd /opt/buildreach
             DEPLOY_SKIP_CODE_UPDATE=1 \
-            DEPLOY_REF=${{ github.ref_name }}-latest \
+            DEPLOY_REF=origin/${{ github.ref_name }} \
             IMAGE_TAG=${{ needs.resolve-tag.outputs.image_tag }} \
             IMAGE_REGISTRY=${{ env.ACR_IMAGE_REGISTRY }} \
             DEPLOY_API_BASE_URL=http://${{ secrets.ECS_HOST }} \
