@@ -18,7 +18,6 @@ const SLIDES: { src: string; alt: string; link: string | null }[] = [
   { src: "/banners/factory-coating-workshop.jpg", alt: "Factory Coating Workshop", link: null },
   { src: "/banners/factory-crate-packing.jpg", alt: "Factory Crate Packing", link: null },
   { src: "/banners/factory-decorative-panels.jpg", alt: "Factory Decorative Panels", link: null },
-  { src: "/banners/factory-exterior.jpg", alt: "Factory Exterior", link: null },
   { src: "/banners/factory-industrial-furnace.jpg", alt: "Factory Industrial Furnace", link: null },
   { src: "/banners/factory-mesh-rolls.jpg", alt: "Factory Mesh Rolls", link: null },
   { src: "/banners/factory-packaging-robot.jpg", alt: "Factory Packaging Robot", link: null },
