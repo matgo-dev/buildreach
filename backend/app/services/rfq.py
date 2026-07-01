@@ -689,8 +689,8 @@ def _serialize_rfq(
     if with_first_item_image and active_items:
         p = active_items[0].product
         if p is not None and getattr(p, "deleted_at", None) is None:
-            if main_image_map and p.id in main_image_map:
-                first_item_image = main_image_map[p.id]
+            if main_image_map is not None:
+                first_item_image = main_image_map.get(p.id)
             else:
                 first_item_image = _resolve_main_image_from_product(p)
 
