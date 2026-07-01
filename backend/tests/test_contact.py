@@ -84,3 +84,46 @@ async def test_whatsapp_endpoint_no_auth_required(client: AsyncClient):
         mock_s2.WHATSAPP_DEFAULT_NUMBER = "+255123456789"
         resp = await client.get("/api/v1/contact/whatsapp")
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_contact_info_includes_wechat_runtime_config(client: AsyncClient):
+    """联系方式统一从后端运行时配置返回,供前端客服入口使用。"""
+    with patch("app.services.contact.settings") as mock_s, \
+         patch("app.api.v1.contact.settings") as mock_s2:
+        mock_s.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+        mock_s2.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+        mock_s2.CONTACT_EMAIL = "support@example.com"
+        mock_s2.WECHAT_ID = "Matgo_Service"
+        mock_s2.WECHAT_QR_IMAGE = "/contact/wechat-qr.png"
+        resp = await client.get("/api/v1/contact/info")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["code"] == 0
+    assert body["data"] == {
+        "whatsapp_link": "https://wa.me/255697123456",
+        "whatsapp_number": "+255 697 123 456",
+        "wechat_id": "Matgo_Service",
+        "wechat_qr_image": "/contact/wechat-qr.png",
+        "email": "support@example.com",
+    }
+
+
+@pytest.mark.asyncio
+async def test_contact_info_blank_wechat_config_returns_null(client: AsyncClient):
+    """微信未配置时前端拿到 null,从而隐藏 WeChat 入口。"""
+    with patch("app.services.contact.settings") as mock_s, \
+         patch("app.api.v1.contact.settings") as mock_s2:
+        mock_s.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+        mock_s2.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+        mock_s2.CONTACT_EMAIL = "support@example.com"
+        mock_s2.WECHAT_ID = "  "
+        mock_s2.WECHAT_QR_IMAGE = ""
+        resp = await client.get("/api/v1/contact/info")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["code"] == 0
+    assert body["data"]["wechat_id"] is None
+    assert body["data"]["wechat_qr_image"] is None

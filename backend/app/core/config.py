@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     # 客服邮箱
     CONTACT_EMAIL: str = "info@buildreach.co.tz"
 
+    # 微信客服配置。未配置时前端隐藏 WeChat 入口。
+    WECHAT_ID: str = ""
+    WECHAT_QR_IMAGE: str = ""
+
     # 地推演示白名单(逗号分隔的 Buyer 邮箱，可看到 mock 订单追踪数据)
     DEMO_EMAILS: str = ""
 

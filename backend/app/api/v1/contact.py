@@ -28,8 +28,12 @@ async def get_contact_info():
     link = resolve_whatsapp_link()
     raw = settings.WHATSAPP_DEFAULT_NUMBER.strip() or None
     email = settings.CONTACT_EMAIL.strip() or None
+    wechat_id = settings.WECHAT_ID.strip() or None
+    wechat_qr_image = settings.WECHAT_QR_IMAGE.strip() or None
     return success({
         "whatsapp_link": link,
         "whatsapp_number": raw if link else None,
+        "wechat_id": wechat_id,
+        "wechat_qr_image": wechat_qr_image,
         "email": email,
     })
