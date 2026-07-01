@@ -57,5 +57,10 @@ data/banners/
 
 # ---- 内部设计文档(本地保留,不入库) ----
 docs/
+AGENTS.md
+DESIGN.md
 CLAUDE.md
 frontend/pnpm-workspace.yaml
+
+# ---- 本机代码索引 ----
+.codegraph/
