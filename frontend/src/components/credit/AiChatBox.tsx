@@ -157,7 +157,7 @@ export function AiChatBox({
         )}
       </div>
 
-      {/* 输入区 — Claude Code 风格:多行 textarea 自动撑高 + 圆角线框 + 右下 send */}
+      {/* 输入区:多行 textarea 自动撑高 + 圆角线框 + 右下 send */}
       <ChatInput
         disabled={!conversationId}
         streaming={streaming}
@@ -170,7 +170,7 @@ export function AiChatBox({
 }
 
 
-/** Claude Code 风格输入框:多行 textarea 自动撑高(2-8 行)+ 右下角 send。 */
+/** 对话输入框:多行 textarea 自动撑高(2-8 行)+ 右下角 send。 */
 function ChatInput({
   disabled,
   streaming,
