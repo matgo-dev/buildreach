@@ -92,9 +92,6 @@ class Settings(BaseSettings):
     # 图片静态文件前缀（相对路径，前端用 API_BASE_URL 拼完整地址）
     IMAGE_PATH_PREFIX: str = "/static"
 
-    # 平台商品/SKU 编码 HMAC 密钥；为空时回退 JWT_SECRET_KEY，生产建议单独配置。
-    CODE_HASH_SECRET: str = ""
-
     # 调试/测试 API(/api/v1/_debug/*, /api/v1/test/*)是否开启;默认关闭,需要时显式打开
     ENABLE_DEBUG_API: bool = False
 
