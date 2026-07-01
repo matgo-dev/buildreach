@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import logging
 import re
@@ -59,6 +58,7 @@ from app.db.models.audit_log import AuditLog, AuditStatus  # noqa: E402
 from app.db.models.product_image import ImageType  # noqa: E402
 from app.db.models.product_sku import SkuStatus  # noqa: E402
 from app.db.url import prepare_sync_url  # noqa: E402
+from app.services.product_code import xfs_product_code, xfs_sku_code  # noqa: E402
 from scripts.normalize_moq_unit import normalize_unit  # noqa: E402
 
 from scripts._log_setup import setup_logging  # noqa: E402
@@ -120,6 +120,11 @@ class ValidationResult:
     offer_errors: dict[str, list[str]] = field(default_factory=dict)
 
 
+ImageManifest = dict[tuple[str, str], dict[str, Any]]
+MANIFEST_IMPORT_STATUSES = {"uploaded", "skipped", "exists"}
+MANIFEST_DRY_RUN_STATUSES = MANIFEST_IMPORT_STATUSES | {"dry_run"}
+
+
 # ────────────────────── Reader ──────────────────────
 
 
@@ -161,7 +166,11 @@ def scan_offers(batch_dir: Path) -> list[OfferFile]:
 # ────────────────────── 校验 ──────────────────────
 
 
-def validate_batch(offers: list[OfferFile]) -> ValidationResult:
+def validate_batch(
+    offers: list[OfferFile],
+    *,
+    require_local_images: bool = True,
+) -> ValidationResult:
     """校验所有 offer.json 的基本结构完整性。"""
     result = ValidationResult(offers=offers)
 
@@ -204,16 +213,17 @@ def validate_batch(offers: list[OfferFile]) -> ValidationResult:
                 if not sku.get("skuCode"):
                     offer_errs.append(f"skus[{i}] 缺少 skuCode")
 
-        # 图片文件存在性
-        for img in data.get("images", []):
-            img_path = img.get("path", "")
-            if img_path and not (offer.offer_dir / img_path).exists():
-                offer_errs.append(f"images 图片不存在: {img_path}")
+        if require_local_images:
+            # S3 manifest 模式下图片本体不交付到平台,跳过本地文件检查。
+            for img in data.get("images", []):
+                img_path = img.get("path", "")
+                if img_path and not (offer.offer_dir / img_path).exists():
+                    offer_errs.append(f"images 图片不存在: {img_path}")
 
-        for img in data.get("detailImages", []):
-            img_path = img.get("path", "")
-            if img_path and not (offer.offer_dir / img_path).exists():
-                offer_errs.append(f"detailImages 图片不存在: {img_path}")
+            for img in data.get("detailImages", []):
+                img_path = img.get("path", "")
+                if img_path and not (offer.offer_dir / img_path).exists():
+                    offer_errs.append(f"detailImages 图片不存在: {img_path}")
 
         if offer_errs:
             result.offer_errors[offer.spu_code_raw] = offer_errs
@@ -315,6 +325,90 @@ def _image_key(spu_code: str, rel_path: str) -> str:
     return f"products/{spu_code}/{filename}"
 
 
+def read_s3_manifest(path: Path) -> ImageManifest:
+    """读取 s3_manifest.jsonl,按 (spuCode, localPath) 建索引。"""
+    manifest: ImageManifest = {}
+    with path.open("r", encoding="utf-8") as f:
+        for line_no, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"s3_manifest.jsonl 第 {line_no} 行不是合法 JSON: {exc}") from exc
+            spu_code = str(row.get("spuCode") or "").strip()
+            local_path = str(row.get("localPath") or "").strip()
+            if not spu_code or not local_path:
+                raise ValueError(f"s3_manifest.jsonl 第 {line_no} 行缺少 spuCode/localPath")
+            manifest[(spu_code, local_path)] = row
+    return manifest
+
+
+def _manifest_entry(
+    image_manifest: ImageManifest | None,
+    *,
+    batch_dir: Path,
+    offer: OfferFile,
+    raw_spu: str,
+    img_path: str,
+) -> dict[str, Any] | None:
+    if image_manifest is None:
+        return None
+    local_path = str((offer.offer_dir / img_path).relative_to(batch_dir))
+    row = image_manifest.get((raw_spu, local_path))
+    if row is None:
+        raise ValueError(f"s3_manifest 缺少图片记录: spuCode={raw_spu}, localPath={local_path}")
+    status = str(row.get("status") or "")
+    if status not in MANIFEST_IMPORT_STATUSES:
+        raise ValueError(f"s3_manifest 图片未成功上传: localPath={local_path}, status={status}")
+    if not row.get("objectKey"):
+        raise ValueError(f"s3_manifest 缺少 objectKey: localPath={local_path}")
+    return row
+
+
+def validate_s3_manifest_links(
+    offers: list[OfferFile],
+    *,
+    batch_dir: Path,
+    image_manifest: ImageManifest,
+    allow_dry_run_status: bool = False,
+) -> dict[str, list[str]]:
+    """校验 offer.json 中的图片都能在 s3_manifest.jsonl 中找到可用 objectKey。"""
+    allowed_statuses = MANIFEST_DRY_RUN_STATUSES if allow_dry_run_status else MANIFEST_IMPORT_STATUSES
+    errors: dict[str, list[str]] = {}
+    for offer in offers:
+        if offer.data is None:
+            continue
+        raw_spu = str(offer.data.get("spuCode", offer.spu_code_raw))
+        expected_platform_spu = xfs_product_code(raw_spu)
+        offer_errors: list[str] = []
+        image_defs = list(offer.data.get("images", [])) + list(offer.data.get("detailImages", []))
+        for img_def in image_defs:
+            img_path = img_def.get("path", "") if isinstance(img_def, dict) else ""
+            if not img_path:
+                continue
+            local_path = str((offer.offer_dir / img_path).relative_to(batch_dir))
+            row = image_manifest.get((raw_spu, local_path))
+            if row is None:
+                offer_errors.append(f"s3_manifest 缺少图片记录: localPath={local_path}")
+                continue
+            status = str(row.get("status") or "")
+            if status not in allowed_statuses:
+                offer_errors.append(f"s3_manifest 图片未成功上传: localPath={local_path}, status={status}")
+            if not row.get("objectKey"):
+                offer_errors.append(f"s3_manifest 缺少 objectKey: localPath={local_path}")
+            platform_spu = str(row.get("platformSpuCode") or "").strip()
+            if platform_spu and platform_spu != expected_platform_spu:
+                offer_errors.append(
+                    f"s3_manifest platformSpuCode 不匹配: localPath={local_path}, "
+                    f"expected={expected_platform_spu}, actual={platform_spu}"
+                )
+        if offer_errors:
+            errors[offer.spu_code_raw] = offer_errors
+    return errors
+
+
 def _copy_image(src: Path, static_root: Path, spu_code: str) -> None:
     """拷贝图片到 static 目录并生成缩略图。路径按 spu_code 隔离,重跑覆盖同路径。"""
     if not src.exists():
@@ -372,8 +466,10 @@ def import_offer(
     *,
     run: IngestRun,
     run_meta: RunMeta,
+    batch_dir: Path,
     static_root: Path,
     cat_index: dict[tuple[str, str | None], Category],
+    image_manifest: ImageManifest | None = None,
 ) -> None:
     """导入单个 SPU+SKU offer:幂等 upsert + 子行先清后插 + 图片拷贝 + 审计。
 
@@ -383,7 +479,7 @@ def import_offer(
     assert data is not None
 
     raw_spu = str(data.get("spuCode", offer.spu_code_raw))
-    spu_code = "BR-" + hashlib.md5(f"P-XFS-{raw_spu}".encode()).hexdigest()[:8].upper()
+    spu_code = xfs_product_code(raw_spu)
 
     # ── 1. 品类匹配:categoryPath 逐层走 DB 已有品类 ──
     category_path: list[str] = data.get("categoryPath", [])
@@ -616,8 +712,7 @@ def import_offer(
             log.warning("  [%s] skus[%d] 缺少 skuCode,跳过", raw_spu, sku_idx)
             continue
 
-        # SKU code:BR-{hash8}-{seq}
-        sku_code = f"{spu_code}-{sku_idx + 1:02d}"
+        sku_code = xfs_sku_code(sku_code_raw)
 
         sku_name_zh = (sku_raw.get("skuName") or "").strip() or None
         sku_moq = sku_raw.get("moq")
@@ -751,7 +846,15 @@ def import_offer(
         img_path = img_def.get("path", "")
         if not img_path:
             continue
-        _copy_image(offer.offer_dir / img_path, static_root, spu_code)
+        manifest_row = _manifest_entry(
+            image_manifest,
+            batch_dir=batch_dir,
+            offer=offer,
+            raw_spu=raw_spu,
+            img_path=img_path,
+        )
+        if manifest_row is None:
+            _copy_image(offer.offer_dir / img_path, static_root, spu_code)
         # 图片类型:尊重抓取数据的 imgType;没有则按排序推断(第一张 MAIN,其余 GALLERY)
         raw_type = (img_def.get("type") or "").upper()
         if raw_type == "MAIN":
@@ -765,10 +868,19 @@ def import_offer(
         db.add(ProductImage(
             product_id=product.id,
             sku_id=None,
-            image_key=_image_key(spu_code, img_path),
+            image_key=(
+                manifest_row["objectKey"] if manifest_row else _image_key(spu_code, img_path)
+            ),
             image_type=img_type,
             sort_order=img_sort,
-            source_url=img_def.get("sourceUrl") or None,
+            width=manifest_row.get("width") if manifest_row else None,
+            height=manifest_row.get("height") if manifest_row else None,
+            file_size=manifest_row.get("fileSize") if manifest_row else None,
+            source_url=(
+                (manifest_row.get("sourceUrl") if manifest_row else None)
+                or img_def.get("sourceUrl")
+                or None
+            ),
         ))
         img_sort += 1
 
@@ -776,14 +888,31 @@ def import_offer(
         img_path = img_def.get("path", "")
         if not img_path:
             continue
-        _copy_image(offer.offer_dir / img_path, static_root, spu_code)
+        manifest_row = _manifest_entry(
+            image_manifest,
+            batch_dir=batch_dir,
+            offer=offer,
+            raw_spu=raw_spu,
+            img_path=img_path,
+        )
+        if manifest_row is None:
+            _copy_image(offer.offer_dir / img_path, static_root, spu_code)
         db.add(ProductImage(
             product_id=product.id,
             sku_id=None,
-            image_key=_image_key(spu_code, img_path),
+            image_key=(
+                manifest_row["objectKey"] if manifest_row else _image_key(spu_code, img_path)
+            ),
             image_type=ImageType.DETAIL,
             sort_order=img_sort,
-            source_url=img_def.get("sourceUrl") or None,
+            width=manifest_row.get("width") if manifest_row else None,
+            height=manifest_row.get("height") if manifest_row else None,
+            file_size=manifest_row.get("fileSize") if manifest_row else None,
+            source_url=(
+                (manifest_row.get("sourceUrl") if manifest_row else None)
+                or img_def.get("sourceUrl")
+                or None
+            ),
         ))
         img_sort += 1
 
@@ -840,6 +969,10 @@ def main() -> None:
         help="raw 批次目录路径",
     )
     parser.add_argument(
+        "--manifest", type=Path, default=None,
+        help="S3 图片上传清单路径;默认自动读取 <batch>/s3_manifest.jsonl(如存在)",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true",
         help="只跑校验 + 打印差异,不写库",
     )
@@ -860,9 +993,30 @@ def main() -> None:
     offers = scan_offers(batch_dir)
     log.info("  找到 %d 个 offer(SPU)", len(offers))
 
+    manifest_path = args.manifest.resolve() if args.manifest else batch_dir / "s3_manifest.jsonl"
+    using_manifest = manifest_path.exists()
+    if args.manifest and not using_manifest:
+        log.error("指定的 manifest 不存在: %s", manifest_path)
+        sys.exit(1)
+    if using_manifest:
+        log.info("读取 S3 manifest: %s", manifest_path)
+        image_manifest = read_s3_manifest(manifest_path)
+        log.info("  manifest 图片记录: %d", len(image_manifest))
+    else:
+        image_manifest = None
+
     # 3. 校验
     log.info("执行校验 ...")
-    vr = validate_batch(offers)
+    vr = validate_batch(offers, require_local_images=not using_manifest)
+    if image_manifest is not None:
+        manifest_errors = validate_s3_manifest_links(
+            offers,
+            batch_dir=batch_dir,
+            image_manifest=image_manifest,
+            allow_dry_run_status=args.dry_run,
+        )
+        for raw_spu, errs in manifest_errors.items():
+            vr.offer_errors.setdefault(raw_spu, []).extend(errs)
 
     if vr.warnings:
         log.warning("告警 (%d):", len(vr.warnings))
@@ -889,9 +1043,7 @@ def main() -> None:
     if args.dry_run:
         log.info("[DRY RUN] 将导入 %d 个 SPU(来源: %s),不写库。", len(valid_offers), run_meta.source)
         for o in valid_offers:
-            spu_code = "BR-" + hashlib.md5(
-                f"P-XFS-{o.spu_code_raw}".encode()
-            ).hexdigest()[:8].upper()
+            spu_code = xfs_product_code(o.spu_code_raw)
             cat_path = o.data.get("categoryPath", []) if o.data else []
             sku_count = len(o.data.get("skus", [])) if o.data else 0
             name_zh = (o.data.get("spuName") or "") if o.data else ""
@@ -937,8 +1089,10 @@ def main() -> None:
                         db, offer,
                         run=run,
                         run_meta=run_meta,
+                        batch_dir=batch_dir,
                         static_root=static_root,
                         cat_index=cat_index,
+                        image_manifest=image_manifest,
                     )
                     db.commit()
                     success_count += 1
