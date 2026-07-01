@@ -8,11 +8,14 @@
     # 预览（不执行）
     python scripts/generate_product_thumbnails.py --dry-run
 
-    # 执行（默认 CPU 核数并发）
+    # 执行（默认最多 4 进程并发）
     python scripts/generate_product_thumbnails.py
 
     # 指定并发数
     python scripts/generate_product_thumbnails.py --workers 4
+
+    # 指定最多排队任务数
+    python scripts/generate_product_thumbnails.py --workers 4 --queue-size 32
 
     # 只处理某个目录
     python scripts/generate_product_thumbnails.py --product-dir products/P-XFS-20740095
@@ -25,7 +28,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -37,9 +42,43 @@ TARGET_SIZE = (800, 800)
 JPEG_QUALITY = 85
 THUMB_SIZE = (300, 300)
 THUMB_WEBP_QUALITY = 80
+DEFAULT_MAX_WORKERS = 4
+QUEUE_MULTIPLIER = 8
 
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def _thumb_is_fresh(img_path: Path, thumb_path: Path) -> bool:
+    """缩略图存在且不早于原图时视为有效。"""
+    try:
+        return (
+            thumb_path.exists()
+            and thumb_path.stat().st_size > 0
+            and thumb_path.stat().st_mtime >= img_path.stat().st_mtime
+        )
+    except OSError:
+        return False
+
+
+def _atomic_save(img: Image.Image, dest_path: Path, fmt: str, **save_kwargs) -> None:
+    """先写临时文件，成功后原子替换目标文件。"""
+    tmp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=dest_path.parent,
+            prefix=f".{dest_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp:
+            tmp_name = tmp.name
+        tmp_path = Path(tmp_name)
+        img.save(tmp_path, format=fmt, **save_kwargs)
+        tmp_path.replace(dest_path)
+    except Exception:
+        if tmp_name:
+            Path(tmp_name).unlink(missing_ok=True)
+        raise
 
 
 def _process_one(img_path: Path, dry_run: bool) -> dict:
@@ -56,31 +95,45 @@ def _process_one(img_path: Path, dry_run: bool) -> dict:
     try:
         ext = img_path.suffix.lower()
         thumb_path = img_path.with_name(img_path.stem + "_thumb.webp")
+        thumb_fresh = _thumb_is_fresh(img_path, thumb_path)
 
-        # 跳过已有缩略图
-        if thumb_path.exists():
+        if thumb_fresh and ext not in {".jpg", ".jpeg"}:
             result["thumb_skipped"] = True
-        elif not dry_run:
-            # 生成缩略图
-            img = Image.open(img_path).convert("RGB")
-            img.thumbnail(THUMB_SIZE, Image.LANCZOS)
-            img.save(thumb_path, format="WEBP", quality=THUMB_WEBP_QUALITY)
-            result["thumb_generated"] = True
-        else:
-            result["thumb_generated"] = True  # dry-run 标记为"会生成"
+            return result
 
-        # 压缩超尺寸 JPG/JPEG 原图
-        if ext in {".jpg", ".jpeg"}:
-            img = Image.open(img_path)
-            if img.width > TARGET_SIZE[0] or img.height > TARGET_SIZE[1]:
-                if not dry_run:
-                    original_size = img_path.stat().st_size
-                    img = img.convert("RGB")
-                    img.thumbnail(TARGET_SIZE, Image.LANCZOS)
-                    img.save(img_path, format="JPEG", quality=JPEG_QUALITY)
-                    new_size = img_path.stat().st_size
-                    result["saved_bytes"] = original_size - new_size
-                result["compressed"] = True
+        with Image.open(img_path) as opened:
+            needs_compress = (
+                ext in {".jpg", ".jpeg"}
+                and (opened.width > TARGET_SIZE[0] or opened.height > TARGET_SIZE[1])
+            )
+            needs_thumb = not thumb_fresh or needs_compress
+
+            if not needs_compress and not needs_thumb:
+                if thumb_fresh:
+                    result["thumb_skipped"] = True
+                return result
+
+            if dry_run:
+                result["compressed"] = needs_compress
+                result["thumb_generated"] = needs_thumb
+                return result
+
+            working = opened.convert("RGB")
+
+        # 压缩原图会改变源文件内容，因此先压缩，再基于压缩后的图生成缩略图。
+        if needs_compress:
+            original_size = img_path.stat().st_size
+            working.thumbnail(TARGET_SIZE, Image.LANCZOS)
+            _atomic_save(working, img_path, "JPEG", quality=JPEG_QUALITY)
+            new_size = img_path.stat().st_size
+            result["saved_bytes"] = original_size - new_size
+            result["compressed"] = True
+
+        if needs_thumb:
+            thumb = working.copy()
+            thumb.thumbnail(THUMB_SIZE, Image.LANCZOS)
+            _atomic_save(thumb, thumb_path, "WEBP", quality=THUMB_WEBP_QUALITY)
+            result["thumb_generated"] = True
 
     except Exception as e:
         result["error"] = str(e)
@@ -109,7 +162,8 @@ def _collect_images(base_dir: Path, product_dir: str | None) -> list[Path]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="商品图片缩略图补生脚本")
     parser.add_argument("--dry-run", action="store_true", help="只统计不执行")
-    parser.add_argument("--workers", type=int, default=None, help="并发进程数（默认 CPU 核数）")
+    parser.add_argument("--workers", type=int, default=None, help=f"并发进程数（默认最多 {DEFAULT_MAX_WORKERS}）")
+    parser.add_argument("--queue-size", type=int, default=None, help="最多排队任务数（默认 workers * 8）")
     parser.add_argument("--product-dir", type=str, default=None, help="只处理指定目录，如 products/P-XFS-123")
     args = parser.parse_args()
 
@@ -126,7 +180,11 @@ def main() -> None:
     start = time.monotonic()
     stats = {"compressed": 0, "thumb_generated": 0, "thumb_skipped": 0, "errors": 0, "saved_bytes": 0}
 
-    workers = args.workers
+    workers = args.workers or min(os.cpu_count() or 1, DEFAULT_MAX_WORKERS)
+    workers = max(1, workers)
+    queue_size = args.queue_size or workers * QUEUE_MULTIPLIER
+    queue_size = max(workers, queue_size)
+
     # 单进程模式（图片少或调试时）
     if total <= 50 or workers == 1:
         for i, img_path in enumerate(images, 1):
@@ -145,25 +203,40 @@ def main() -> None:
             if i % 100 == 0 or i == total:
                 print(f"[{i}/{total}] 进度 {i*100//total}%")
     else:
+        pending = set()
+        image_iter = iter(images)
+        done_count = 0
+
         with ProcessPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(_process_one, p, args.dry_run): p for p in images}
-            done_count = 0
-            for future in as_completed(futures):
-                done_count += 1
-                r = future.result()
-                if r["error"]:
-                    stats["errors"] += 1
-                    print(f"[{done_count}/{total}] ERROR {r['path']}: {r['error']}", file=sys.stderr)
-                else:
-                    if r["compressed"]:
-                        stats["compressed"] += 1
-                    if r["thumb_generated"]:
-                        stats["thumb_generated"] += 1
-                    if r["thumb_skipped"]:
-                        stats["thumb_skipped"] += 1
-                    stats["saved_bytes"] += r["saved_bytes"]
-                if done_count % 100 == 0 or done_count == total:
-                    print(f"[{done_count}/{total}] 进度 {done_count*100//total}%")
+            def submit_until_full() -> None:
+                while len(pending) < queue_size:
+                    try:
+                        p = next(image_iter)
+                    except StopIteration:
+                        return
+                    pending.add(pool.submit(_process_one, p, args.dry_run))
+
+            submit_until_full()
+            while pending:
+                for future in as_completed(pending):
+                    pending.remove(future)
+                    done_count += 1
+                    r = future.result()
+                    if r["error"]:
+                        stats["errors"] += 1
+                        print(f"[{done_count}/{total}] ERROR {r['path']}: {r['error']}", file=sys.stderr)
+                    else:
+                        if r["compressed"]:
+                            stats["compressed"] += 1
+                        if r["thumb_generated"]:
+                            stats["thumb_generated"] += 1
+                        if r["thumb_skipped"]:
+                            stats["thumb_skipped"] += 1
+                        stats["saved_bytes"] += r["saved_bytes"]
+                    if done_count % 100 == 0 or done_count == total:
+                        print(f"[{done_count}/{total}] 进度 {done_count*100//total}%")
+                    submit_until_full()
+                    break
 
     elapsed = time.monotonic() - start
 
