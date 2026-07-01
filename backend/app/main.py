@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.audit.context import get_trace_id
 from app.audit.middleware import RequestIDMiddleware
-from app.core.config import settings
+from app.core.config import email_verification_misconfigured, settings
 from app.core.exceptions import BusinessError, success
 from app.core.message_keys import MessageKey
 from app.core.logging_config import setup_logging
@@ -33,6 +33,15 @@ async def lifespan(app: FastAPI):
     global _i18n_scheduler
     setup_logging()
     logger.info("App starting up...")
+
+    # 配置一致性校验:要求邮箱验证却无法发信 → fail-fast,避免注册在生产静默不可用。
+    if email_verification_misconfigured(settings):
+        raise RuntimeError(
+            "REQUIRE_EMAIL_VERIFICATION=true 但 SMTP 未配置(SMTP_HOST/USER/PASSWORD 缺失)。"
+            "请配置 SMTP,或在邮件中继就绪前将 REQUIRE_EMAIL_VERIFICATION 设为 false,"
+            "或本地开发设 EMAIL_DEV_LOG_CODES=true。"
+        )
+
     async with AsyncSessionLocal() as db:
         await sync_rbac(db)
         await run_all_seeds(db)
