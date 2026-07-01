@@ -29,10 +29,10 @@ def _hmac_prefix(identity: str, *, length: int = CODE_HASH_LENGTH) -> str:
 def xfs_product_code(xfs_spu_code: str | int) -> str:
     """XFS SPU 原始编号 → 平台 SPU code。"""
     raw = str(xfs_spu_code).strip()
-    return f"BR-P{_hmac_prefix(f'P:XFS:{raw}')}"
+    return f"MG-P{_hmac_prefix(f'P:XFS:{raw}')}"
 
 
 def xfs_sku_code(xfs_sku_code: str | int) -> str:
     """XFS SKU 原始编号 → 平台 SKU code。"""
     raw = str(xfs_sku_code).strip()
-    return f"BR-S{_hmac_prefix(f'S:XFS:{raw}')}"
+    return f"MG-S{_hmac_prefix(f'S:XFS:{raw}')}"
