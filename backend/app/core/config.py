@@ -97,6 +97,8 @@ class Settings(BaseSettings):
 
     # 图片静态文件前缀（相对路径，前端用 API_BASE_URL 拼完整地址）
     IMAGE_PATH_PREFIX: str = "/static"
+    IMAGE_MAX_PIXELS: int = 25_000_000
+    IMAGE_PROCESSING_CONCURRENCY: int = 2
 
     # 调试/测试 API(/api/v1/_debug/*, /api/v1/test/*)是否开启;默认关闭,需要时显式打开
     ENABLE_DEBUG_API: bool = False

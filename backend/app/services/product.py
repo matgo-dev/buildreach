@@ -27,6 +27,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.exceptions import (
+    BusinessError,
     NotFoundError,
     ImageFormatInvalidError,
     ImageNotOwnedError,
@@ -80,9 +81,10 @@ MAX_IMAGES_PER_PRODUCT = 8
 from app.services._buyer_utils import (
     ALLOWED_EXTENSIONS,
     MAX_IMAGE_SIZE,
-    save_uploaded_image,
+    save_uploaded_image_from_path,
     thumb_url_from_image_key,
 )
+from app.services.upload_pipeline import run_image_processing, stream_upload_file_to_temp
 
 # i18n 字段声明:从注册表读取(单一来源)
 from app.db.models.product import Product as _Product
@@ -1345,14 +1347,32 @@ async def add_product_image(
     if ext not in ALLOWED_EXTENSIONS:
         raise ImageFormatInvalidError(", ".join(ALLOWED_EXTENSIONS))
 
-    content = await file.read()
-    if len(content) > MAX_IMAGE_SIZE:
+    try:
+        temp_upload = await stream_upload_file_to_temp(
+            file,
+            max_size=MAX_IMAGE_SIZE,
+            suffix=ext,
+        )
+    except ValueError:
         raise ImageTooLargeError()
 
-    # 使用公共图片处理函数,square=True 保持商品图正方形裁剪行为
-    image_key, img_w, img_h, file_size = save_uploaded_image(
-        content, file.filename or "image.jpg", f"products/{product_id}", square=True,
-    )
+    try:
+        # 使用公共图片处理函数,square=True 保持商品图正方形裁剪行为
+        image_key, img_w, img_h, file_size = await run_image_processing(
+            save_uploaded_image_from_path,
+            temp_upload.path,
+            file.filename or "image.jpg",
+            f"products/{product_id}",
+            square=True,
+        )
+    except BusinessError as exc:
+        if getattr(exc, "biz_code", None) == 42206:
+            raise ImageFormatInvalidError(", ".join(ALLOWED_EXTENSIONS)) from exc
+        if getattr(exc, "biz_code", None) == 42207:
+            raise ImageTooLargeError() from exc
+        raise
+    finally:
+        temp_upload.cleanup()
 
     actual_type = image_type if image_type in ImageType.ALL else ImageType.GALLERY
     if not product.images:

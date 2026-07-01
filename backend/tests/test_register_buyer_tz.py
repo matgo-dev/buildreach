@@ -95,6 +95,33 @@ async def test_register_buyer_invalid_phone_format(client):
 
 
 @pytest.mark.asyncio
+async def test_register_buyer_invalid_image_content_returns_field_error(client):
+    """图片扩展名合法但内容非法 → 返回字段级聚合错误。"""
+    phone = _next_phone()
+    email = f"badimage{phone.replace('+', '')}@gmail.com"
+    r = await client.post(
+        "/api/v1/auth/register/buyer",
+        data={
+            "phone": phone,
+            "password": "Aa123456789",
+            "name": "Bad Image User",
+            "company_name": "Bad Image Shop",
+            "address": "Dar es Salaam",
+            "business_category_codes": "01",
+            "email": email,
+            "whatsapp": phone,
+            "verification_token": _make_verification_token(email),
+        },
+        files=[("storefront_images", ("shop.jpg", b"not an image", "image/jpeg"))],
+    )
+
+    assert r.status_code == 409
+    error = r.json()["data"]["errors"][0]
+    assert error["field"] == "storefront_images[0]"
+    assert error["code"] == 42206
+
+
+@pytest.mark.asyncio
 async def test_register_buyer_weak_password(client):
     """弱密码 → 409(MultipleValidationError)。"""
     result = await register_buyer_tz(client, password="abc")

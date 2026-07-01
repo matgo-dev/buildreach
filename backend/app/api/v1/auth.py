@@ -304,11 +304,12 @@ async def register_buyer(
 ):
     from app.services._buyer_utils import (
         validate_active_level1_categories,
-        save_private_buyer_image,
+        save_private_buyer_image_from_path,
         delete_private_buyer_image,
         ALLOWED_EXTENSIONS,
         MAX_IMAGE_SIZE,
     )
+    from app.services.upload_pipeline import run_image_processing, stream_upload_file_to_temp
     from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
 
     # ── 1. 先校验 verification_token（同时标记 verification_code 为已使用）──
@@ -365,34 +366,64 @@ async def register_buyer(
     saved_storefront: list[tuple[str, int, int, int]] = []
     saved_files: list[str] = []  # 回滚清理用
 
+    def _raise_image_field_error(field: str, exc: BusinessError) -> None:
+        message = getattr(exc, "biz_message", None) or str(exc.detail)
+        raise MultipleValidationError([{
+            "field": field,
+            "code": getattr(exc, "biz_code", 42206),
+            "message": message,
+        }]) from exc
+
     try:
-        for f in storefront_images:
-            content = await f.read()
-            if len(content) > MAX_IMAGE_SIZE:
-                raise MultipleValidationError([{"field": "storefront_images", "code": 42207, "message": "图片超过 5MB"}])
-            result = save_private_buyer_image(
-                content,
-                f.filename or "img.jpg",
-                "buyer_orgs/storefront",
-                square=False,
-            )
+        for i, f in enumerate(storefront_images):
+            try:
+                temp_upload = await stream_upload_file_to_temp(
+                    f,
+                    max_size=MAX_IMAGE_SIZE,
+                    suffix=os.path.splitext(f.filename or "")[1].lower(),
+                )
+            except ValueError:
+                raise MultipleValidationError([{"field": f"storefront_images[{i}]", "code": 42207, "message": "图片超过 5MB"}])
+            try:
+                result = await run_image_processing(
+                    save_private_buyer_image_from_path,
+                    temp_upload.path,
+                    f.filename or "img.jpg",
+                    "buyer_orgs/storefront",
+                    square=False,
+                )
+            except BusinessError as exc:
+                _raise_image_field_error(f"storefront_images[{i}]", exc)
+            finally:
+                temp_upload.cleanup()
             saved_storefront.append(result)
             saved_files.append(result[0])
 
         saved_license: list[tuple[str, int, int, int]] = []
-        for f in (license_images or []):
-            content = await f.read()
-            if len(content) > MAX_IMAGE_SIZE:
-                raise MultipleValidationError([{"field": "license_images", "code": 42207, "message": "图片超过 5MB"}])
+        for i, f in enumerate(license_images or []):
             ext = os.path.splitext(f.filename or "")[1].lower()
             if ext not in ALLOWED_EXTENSIONS:
-                raise MultipleValidationError([{"field": "license_images", "code": 42210, "message": f"证照图片格式不支持: {ext}"}])
-            result = save_private_buyer_image(
-                content,
-                f.filename or "img.jpg",
-                "buyer_orgs/licenses",
-                square=False,
-            )
+                raise MultipleValidationError([{"field": f"license_images[{i}]", "code": 42210, "message": f"证照图片格式不支持: {ext}"}])
+            try:
+                temp_upload = await stream_upload_file_to_temp(
+                    f,
+                    max_size=MAX_IMAGE_SIZE,
+                    suffix=ext,
+                )
+            except ValueError:
+                raise MultipleValidationError([{"field": f"license_images[{i}]", "code": 42207, "message": "图片超过 5MB"}])
+            try:
+                result = await run_image_processing(
+                    save_private_buyer_image_from_path,
+                    temp_upload.path,
+                    f.filename or "img.jpg",
+                    "buyer_orgs/licenses",
+                    square=False,
+                )
+            except BusinessError as exc:
+                _raise_image_field_error(f"license_images[{i}]", exc)
+            finally:
+                temp_upload.cleanup()
             saved_license.append(result)
             saved_files.append(result[0])
 
