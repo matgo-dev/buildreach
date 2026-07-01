@@ -12,7 +12,7 @@ bash dev.sh
 
 **Windows 用户**：先在 PowerShell（管理员）执行 `wsl --install`，重启后在 Ubuntu 终端运行。
 
-脚本自动完成：安装 PostgreSQL / Python(uv) / Node.js(pnpm) → 建库 → 迁移 → 启动前后端。
+脚本自动完成：安装 PostgreSQL / Python(uv) / Node.js(pnpm) → **生成 `.env` / `.env.local`（含随机 JWT 密钥）** → 建库 → 迁移 → 启动前后端。本地开发**无需手动配置环境变量**即可跑通；AI、机器翻译、SMTP 邮件等外部能力默认留空，需要时再填对应 key（见 `backend/.env.example`）。
 
 | 服务 | 地址 |
 |------|------|
