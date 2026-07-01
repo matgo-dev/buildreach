@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import logging
 import re
@@ -59,6 +58,7 @@ from app.db.models.audit_log import AuditLog, AuditStatus  # noqa: E402
 from app.db.models.product_image import ImageType  # noqa: E402
 from app.db.models.product_sku import SkuStatus  # noqa: E402
 from app.db.url import prepare_sync_url  # noqa: E402
+from app.services.product_code import xfs_product_code, xfs_sku_code  # noqa: E402
 from scripts.normalize_moq_unit import normalize_unit  # noqa: E402
 
 from scripts._log_setup import setup_logging  # noqa: E402
@@ -379,7 +379,7 @@ def import_offer(
     assert data is not None
 
     raw_spu = str(data.get("spuCode", offer.spu_code_raw))
-    spu_code = "BR-" + hashlib.md5(f"P-XFS-{raw_spu}".encode()).hexdigest()[:8].upper()
+    spu_code = xfs_product_code(raw_spu)
 
     # ── 1. 品类匹配:categoryPath 逐层走 DB 已有品类 ──
     category_path: list[str] = data.get("categoryPath", [])
@@ -612,8 +612,7 @@ def import_offer(
             log.warning("  [%s] skus[%d] 缺少 skuCode,跳过", raw_spu, sku_idx)
             continue
 
-        # SKU code:BR-{hash8}-{seq}
-        sku_code = f"{spu_code}-{sku_idx + 1:02d}"
+        sku_code = xfs_sku_code(sku_code_raw)
 
         sku_name_zh = (sku_raw.get("skuName") or "").strip() or None
         sku_moq = sku_raw.get("moq")
@@ -885,9 +884,7 @@ def main() -> None:
     if args.dry_run:
         log.info("[DRY RUN] 将导入 %d 个 SPU(来源: %s),不写库。", len(valid_offers), run_meta.source)
         for o in valid_offers:
-            spu_code = "BR-" + hashlib.md5(
-                f"P-XFS-{o.spu_code_raw}".encode()
-            ).hexdigest()[:8].upper()
+            spu_code = xfs_product_code(o.spu_code_raw)
             cat_path = o.data.get("categoryPath", []) if o.data else []
             sku_count = len(o.data.get("skus", [])) if o.data else 0
             name_zh = (o.data.get("spuName") or "") if o.data else ""
