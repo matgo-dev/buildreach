@@ -168,11 +168,26 @@ gh pr create --base release-v0.x.x
 
 ### 回滚
 
-```bash
-# 方式一:GitHub Actions 重跑历史记录
-# Actions → 找到上次成功的部署 → Re-run all jobs
+**方式一(推荐,可视化选版本):Deploy Only 指定历史镜像 tag**
 
-# 方式二:SSH 手动回滚
+镜像每次构建都按 commit 打了不可变 tag(`<branch>-<sha>`,如 `release-v0.2.0-abc1234`),
+历史版本镜像都留在 GHCR + ACR,可直接回滚、不重新构建:
+
+1. GitHub → Actions → **Deploy Only (Re-deploy)** → Run workflow
+2. Branch 选目标 ref(回滚生产选 `release-v*`,OVH 门槛才放行)
+3. `image_tag` 填要回滚到的历史 tag(如 `release-v0.2.0-abc1234`);留空则部署该分支最新镜像
+4. `target` 选 `ovh`(或 `ecs`)→ Run,production 需 Approve
+
+> 历史 tag 可在对应的 Build & Deploy 运行日志、或镜像仓库(GHCR/ACR)里查到。
+> 注意:此方式回滚的是**运行的应用镜像**;服务器上的 compose/nginx 会同步到所选分支的当前 HEAD。
+> 若两版本间 compose/nginx 有不兼容改动,改用「方式二」把 release 分支重置到旧 commit 再部署。
+
+**方式二:重跑历史运行 / SSH 手动**
+
+```bash
+# a) GitHub Actions 重跑:Actions → 找到上次成功的部署 → Re-run all jobs(会重新构建)
+
+# b) SSH 手动回滚(代码 + 镜像都回到旧版)
 ssh root@<IP>
 cd /opt/buildreach
 git log --oneline -10
