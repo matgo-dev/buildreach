@@ -1928,3 +1928,71 @@ async def test_deactivate_last_sku_does_not_auto_delist_product(client: AsyncCli
     # SPU 应仍为 ACTIVE
     detail = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
     assert detail.json()["data"]["status"] == "ACTIVE"
+
+
+@pytest.mark.asyncio
+async def test_home_floor_safety_products_all_from_fire(client, db_session):
+    """劳保安防层:8 个商品全部来自消防器材子树;导航含消防器材,劳保商品不入商品位。"""
+    from sqlalchemy import select
+    from app.db.models.category import Category
+    from app.services.product import _resolve_category_path
+    from app.api.v1.products import _HOME_FLOOR_CACHE
+
+    # 消防器材下的一个叶子类目
+    fire = await _resolve_category_path(db_session, ["消防", "消防器材"])
+    assert fire is not None, "seed 缺少 消防/消防器材"
+    fire_leaf = (await db_session.execute(
+        select(Category).where(
+            Category.code.like(f"{fire.code}.%"),
+            Category.is_leaf.is_(True),
+            Category.is_active.is_(True),
+        ).limit(1)
+    )).scalar_one_or_none()
+    assert fire_leaf is not None, "消防器材下无叶子类目"
+
+    # 劳保下的一个叶子类目(对照:不应出现在商品位)
+    labor = await _resolve_category_path(db_session, ["劳保"])
+    assert labor is not None, "seed 缺少 劳保"
+    labor_leaf = (await db_session.execute(
+        select(Category).where(
+            Category.code.like(f"{labor.code}.%"),
+            Category.is_leaf.is_(True),
+            Category.is_active.is_(True),
+        ).limit(1)
+    )).scalar_one_or_none()
+    assert labor_leaf is not None, "劳保下无叶子类目"
+
+    headers = await _login_operator(client)
+
+    async def _publish(cat_code: str, spu: str) -> int:
+        pid = await _create_test_product(client, headers, cat_code, spu)
+        await _create_test_sku(client, headers, pid, f"{spu}-SKU")
+        await _upload_test_image(client, headers, pid)
+        r = await client.patch(
+            f"/api/v1/operator/products/{pid}/status",
+            headers=headers, json={"status": "ACTIVE"},
+        )
+        assert r.status_code == 200, r.text
+        return pid
+
+    fire_pid = await _publish(fire_leaf.code, "FIRE-SPU-001")
+    labor_pid = await _publish(labor_leaf.code, "LABOR-SPU-001")
+
+    _HOME_FLOOR_CACHE.clear()  # 端点有 300s 内存缓存,清掉保证读到新数据
+    r = await client.get("/api/v1/products/home-floors")
+    assert r.status_code == 200, r.text
+    safety = r.json()["data"]["floors"]["floor-safety"]
+
+    product_ids = {p["id"] for p in safety["products"]}
+    assert fire_pid in product_ids, "消防器材商品应出现在劳保安防层商品位"
+    assert labor_pid not in product_ids, "劳保商品不应出现在劳保安防层商品位(已解耦)"
+    for p in safety["products"]:
+        assert p["category_code"].startswith(fire.code), (
+            f"商品位应全部落在消防器材子树,越界: {p['category_code']}"
+        )
+
+    nav_names = {c["name_zh"] for c in safety["categories"]}
+    assert "消防器材" in nav_names, "左侧导航应含消防器材入口"
+    assert any(c["name_zh"] != "消防器材" for c in safety["categories"]), (
+        "左侧导航应仍含劳保安防原品类"
+    )

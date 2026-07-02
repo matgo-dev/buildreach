@@ -689,22 +689,32 @@ async def sample_home_floor_products(
     *,
     category_paths: list[list[str]],
     exclude_category_paths: list[list[str]] | None = None,
+    product_category_paths: list[list[str]] | None = None,
     size: int = 8,
 ) -> tuple[list[Product], dict[int, tuple[str, str]], list[Category]]:
-    """首页楼层选品:按分类中文路径解析当前环境 code,每个展示类目最多 1 个 SPU。"""
+    """首页楼层选品:按分类中文路径解析当前环境 code,每个采样桶最多 1 个 SPU。
+
+    第三个返回值是"左侧导航类目"。默认导航与采样桶同源;若传 product_category_paths,
+    则商品采样桶改用这些节点的直接子类(与导航解耦),用于劳保安防层"全查消防器材"。
+    """
     if not category_paths or size <= 0:
         return [], {}, []
 
-    display_categories = await _resolve_home_floor_display_categories(
+    nav_categories = await _resolve_home_floor_display_categories(
         db,
         category_paths=category_paths,
         exclude_category_paths=exclude_category_paths or [],
     )
 
-    if not display_categories:
-        return [], {}, display_categories
+    if product_category_paths:
+        product_buckets = await _resolve_child_buckets(db, product_category_paths)
+    else:
+        product_buckets = nav_categories
 
-    all_parent_codes = [c.code for c in display_categories]
+    if not product_buckets:
+        return [], {}, nav_categories
+
+    all_parent_codes = [c.code for c in product_buckets]
 
     values_sql = ", ".join(
         f"(:root_code_{idx}, {idx})" for idx in range(len(all_parent_codes))
@@ -762,7 +772,7 @@ async def sample_home_floor_products(
     ]
 
     if not selected_ids:
-        return [], {}, display_categories
+        return [], {}, nav_categories
 
     selected_rows = (
         await db.execute(select(Product).where(Product.id.in_(selected_ids)))
@@ -775,7 +785,7 @@ async def sample_home_floor_products(
     ]
 
     main_image_map = await _batch_main_images(db, [p.id for p in selected])
-    return selected, main_image_map, display_categories
+    return selected, main_image_map, nav_categories
 
 
 async def _resolve_category_path(
@@ -851,6 +861,36 @@ async def _resolve_home_floor_display_categories(
             seen_codes.add(category.code)
 
     return display_categories
+
+
+async def _resolve_child_buckets(
+    db: AsyncSession,
+    paths: list[list[str]],
+) -> list[Category]:
+    """把给定节点路径展开为其"直接子类",作为商品采样桶(与左侧导航解耦)。
+
+    用于劳保安防层等"导航一个入口、商品铺满其子类"的特殊楼层:
+    消防器材(L2)→ 其 L3 子类,每桶取 1 SPU。
+    """
+    buckets: list[Category] = []
+    seen: set[str] = set()
+    for path in paths:
+        parent = await _resolve_category_path(db, path)
+        if parent is None:
+            continue
+        children = (await db.execute(
+            select(Category)
+            .where(
+                Category.parent_code == parent.code,
+                Category.is_active.is_(True),
+            )
+            .order_by(Category.sort_order.asc(), Category.code.asc())
+        )).scalars().all()
+        for child in children:
+            if child.code not in seen:
+                buckets.append(child)
+                seen.add(child.code)
+    return buckets
 
 
 async def list_certification_options(db: AsyncSession) -> list[str]:
