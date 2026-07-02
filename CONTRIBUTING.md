@@ -1,28 +1,41 @@
 # 开发协作规范
 
-## 分支策略（单主干）
+## 分支策略
+
+`main` 是唯一主干(真相源),所有 feature 从它切、也从它部署到 ECS 预发;
+生产走从 main 切出的**不可变发布分支** `release-v*`,只有它能部署到 OVH。
 
 ```
-main          ← 主干分支，ECS/OVH 都从这里选择版本部署
+main               ← 主干 / 真相源。feature 从此切;ECS(预发)从此部署
   │
-feat/xxx      ← 新功能分支，从 main 切出
-fix/xxx       ← Bug 修复分支，从 main 切出
-hotfix/xxx    ← 生产紧急修复，从 main 切出
+  ├─ feat/xxx      ← 新功能,从 main 切,PR 回 main
+  ├─ fix/xxx       ← 非紧急 Bug 修复,从 main 切,PR 回 main
+  │
+  └─(验证 OK 后从 main 切出)
+        │
+   release-v0.x.x  ← 发布分支,切出后不可变。OVH(生产)从此部署
+        │
+        └─ hotfix/xxx  ← 生产紧急修复,从 release-v* 切;
+                          合回 release-v*(重部署 OVH)+ 回流 main
 ```
+
+> 已废弃 `dev` / `pre-release` 长期分支:预发是「环境」不是「分支」,由 main → ECS 承担,
+> 避免两条长期分支漂移。
 
 ### 分支命名规范
 
 | 前缀 | 用途 | 示例 |
 |------|------|------|
 | `feat/` | 新功能 | `feat/sms-verification` |
-| `fix/` | Bug 修复 | `fix/image-loading` |
-| `hotfix/` | 生产紧急修复 | `hotfix/login-crash` |
+| `fix/` | 非紧急 Bug 修复 | `fix/image-loading` |
+| `hotfix/` | 生产紧急修复(从 `release-v*` 切) | `hotfix/login-crash` |
+| `release-v` | 发布分支(从 `main` 切) | `release-v0.3.0` |
 | `refactor/` | 重构 | `refactor/unify-cicd` |
-| `chore/` | 杂项（配置、依赖等） | `chore/upgrade-deps` |
+| `chore/` | 杂项(配置、依赖等) | `chore/upgrade-deps` |
 
 ---
 
-## 日常开发流程（新功能 / 非紧急 Bug）
+## 日常开发流程(新功能 / 非紧急 Bug)
 
 ```bash
 # 1. 从 main 切分支
@@ -37,72 +50,98 @@ git commit -m "feat(scope): 简要描述"
 git push -u origin feat/xxx
 gh pr create --base main
 
-# 4. 合并到 main（GitHub 网页或命令行）
+# 4. CI 绿灯后合并到 main
 gh pr merge --squash
 
-# 5. 部署 ECS/OVH
-#    GitHub Actions → Build & Deploy → 选 main 分支
-#    ECS 自动部署，OVH 等待审批
-#    approve OVH 部署
+# 5. 部署到 ECS 预发做验证(手动)
+#    GitHub → Actions → Build & Deploy → Run workflow → 选 main
+#    ref 是 main(非 release-v*),这一次只会部署 ECS
 ```
 
 ---
 
-## 生产紧急修复（Hotfix）
+## 发布到生产(Release)
+
+main 在 ECS 上验证通过、可以发版时:
 
 ```bash
-# 1. 从 main 切分支
+# 1. 从 main 切出发布分支(切出后不可变,只接受 hotfix)
 git checkout main && git pull origin main
+git checkout -b release-v0.x.x
+git push -u origin release-v0.x.x
+
+# 2. 部署到 OVH 生产(手动)
+#    GitHub → Actions → Build & Deploy → Run workflow → 选 release-v0.x.x
+#    ref 命中 release-v*,这一次只会部署 OVH
+#    production 环境已配审批,需点 Review pending deployments → Approve
+```
+
+> 尽量在 ECS 验证通过后**尽快**切 release,减少切出前 main 又攒进未充分验证的改动。
+
+---
+
+## 生产紧急修复(Hotfix)
+
+生产跑的是 `release-v*`,所以 hotfix 必须**从 release-v* 切**,基于「生产真正在跑的代码」修。
+
+```bash
+# 1. 从当前生产的发布分支切 hotfix
+git checkout release-v0.x.x && git pull origin release-v0.x.x
 git checkout -b hotfix/xxx
 
 # 2. 修复 + 提交
 git add <files>
 git commit -m "fix(scope): 紧急修复描述"
 
-# 3. 创建 PR → main
+# 3. PR → release-v0.x.x,验证后合并
 git push -u origin hotfix/xxx
-gh pr create --base main
+gh pr create --base release-v0.x.x
 
-# 4. 合并到 main，部署 OVH
-#    Build & Deploy → 选 main → approve OVH
+# 4. 重新部署 OVH
+#    Build & Deploy → Run workflow → 选 release-v0.x.x → Approve
+
+# 5. 回流 main(否则修复会在下次发版丢失)
+#    从 main 切分支 cherry-pick / 合并该 hotfix,PR → main
 ```
+
+**关键**:hotfix 要落到**两处** —— `release-v0.x.x`(修生产)+ `main`(不然下个版本又坏)。
 
 ---
 
 ## Commit 规范
 
-格式：`<type>(<scope>): <简要描述>`
+格式:`<type>(<scope>): <简要描述>`
 
 | type | 含义 |
 |------|------|
 | `feat` | 新功能 |
 | `fix` | Bug 修复 |
-| `refactor` | 重构（不改功能） |
-| `chore` | 杂项（配置、依赖、CI） |
+| `refactor` | 重构(不改功能) |
+| `chore` | 杂项(配置、依赖、CI) |
 | `docs` | 文档 |
-| `style` | 格式调整（不改逻辑） |
+| `style` | 格式调整(不改逻辑) |
 | `perf` | 性能优化 |
 
-示例：
+示例:
 - `feat(product): 商品列表按上架时间排序`
 - `fix(deploy): ECS从ACR拉取镜像避免GHCR跨境慢`
 - `chore: 仓库路径更新为matgo-dev/buildreach`
 
 ---
 
-## 测试策略：单元 vs 集成
+## 测试策略:单元 vs 集成
 
-按"**bug 藏在哪**"决定测法，不按"方便与否"。
+按"**bug 藏在哪**"决定测法,不按"方便与否"。
 
 | 代码性质 | 测法 | 说明 |
 |---------|------|------|
-| 纯逻辑：解析 / 计算 / 分支 / 校验 / 状态判定（不涉及 I/O） | **单元测试** | mock 掉 DB/HTTP，毫秒级，失败能精确定位。文件放 `backend/tests/*_unit.py`，不使用 `client`/`db` fixture |
-| 跨边界接线：路由 / 权限门 / 请求解析（FastAPI `Form`）/ DB 事务落库 / 响应信封 / 迁移 | **集成测试** | bug 藏在"缝隙"里，mock 掉就失去意义。只覆盖**关键路径**（权限、状态流转、落库），不追求 endpoint 全覆盖 |
-| 混合型 endpoint | 抽纯逻辑单测 + 一条关键路径集成 | 把 handler 里的纯逻辑**抽成纯函数**单测，但**不为了单测而把 endpoint 硬拆碎** |
+| 纯逻辑:解析 / 计算 / 分支 / 校验 / 状态判定(不涉及 I/O) | **单元测试** | mock 掉 DB/HTTP,毫秒级,失败能精确定位。文件放 `backend/tests/*_unit.py`,不使用 `client`/`db` fixture |
+| 跨边界接线:路由 / 权限门 / 请求解析(FastAPI `Form`)/ DB 事务落库 / 响应信封 / 迁移 | **集成测试** | bug 藏在"缝隙"里,mock 掉就失去意义。只覆盖**关键路径**(权限、状态流转、落库),不追求 endpoint 全覆盖 |
+| 混合型 endpoint | 抽纯逻辑单测 + 一条关键路径集成 | 把 handler 里的纯逻辑**抽成纯函数**单测,但**不为了单测而把 endpoint 硬拆碎** |
 
-**要求**：新增纯函数 / 纯属性必须带配套**单元测试**；endpoint 级接线用集成测试兜底关键路径。
+**要求**:新增纯函数 / 纯属性必须带配套**单元测试**;endpoint 级接线用集成测试兜底关键路径。
 
-**反模式**：① 用集成测试覆盖纯逻辑（慢、依赖 DB）；② 把接线全 mock 到"只在断言 mock"，测试全绿但生产是坏的。
+**反模式**:① 用集成测试覆盖纯逻辑(慢、依赖 DB);② 把接线全 mock 到"只在断言 mock",测试全绿但生产是坏的。
 
 ---
 
@@ -110,25 +149,30 @@ gh pr create --base main
 
 ### 环境对应关系
 
-| 环境 | 分支 | 机器 | 触发方式 |
-|------|------|------|---------|
-| 测试/预发 | main | 阿里云 ECS | Build & Deploy → main → 自动 |
-| 生产 | main | OVHcloud | Build & Deploy → main → 手动审批 |
+| 环境 | 部署来源 ref | 机器 | 触发方式 |
+|------|-------------|------|---------|
+| 预发 (staging) | `main`(任意非 `release-v*` 分支) | 阿里云 ECS | Build & Deploy → 选该分支 → **手动** |
+| 生产 (production) | `release-v0.x.x` | OVHcloud | Build & Deploy → 选该发布分支 → **手动** + 环境审批 |
+
+> 触发全为手动(`workflow_dispatch`),**点在哪个 ref 上就只部署对应环境**:
+> 非 release-v* → 只打 ECS;release-v* → 只打 OVH。一次点击不会同时打两个环境。
+> (测试是自动的:push 到 main/feat/fix/hotfix/release-v 会自动跑 CI。)
 
 ### 部署操作
 
-1. GitHub → Actions → **Build & Deploy** → Run workflow → 选分支
-2. 等构建完成（约5分钟）
-3. ECS 自动部署（staging 环境）
-4. OVH 需要点 **Review pending deployments → Approve and deploy**
+1. GitHub → Actions → **Build & Deploy** → Run workflow → 选 ref
+   - 预发选 `main`;生产选 `release-v0.x.x`
+2. 等构建完成(约 5 分钟)
+3. 目标环境部署:ECS 直接部署;OVH 需点 **Review pending deployments → Approve and deploy**
+4. 部署失败但镜像已构建成功:用 **Deploy Only (Re-deploy)** 补救(OVH 同样只允许 release-v*)
 
 ### 回滚
 
 ```bash
-# 方式一：GitHub Actions 重跑历史记录
+# 方式一:GitHub Actions 重跑历史记录
 # Actions → 找到上次成功的部署 → Re-run all jobs
 
-# 方式二：SSH 手动回滚
+# 方式二:SSH 手动回滚
 ssh root@<IP>
 cd /opt/buildreach
 git log --oneline -10
@@ -138,12 +182,13 @@ bash deploy/deploy.sh
 
 ---
 
-## 红线（必须遵守）
+## 红线(必须遵守)
 
-- **不直接在 main 上 commit**，走分支 + PR
-- **新增代码带配套测试**：纯逻辑单测、接线关键路径集成（见「测试策略」）
-- **PR 合并后分支自动删除**（仓库已开启 delete-branch-on-merge，无需手动保留)
+- **不直接在 main 上 commit**,走分支 + PR
+- **OVH 生产只从 `release-v*` 部署**,hotfix 从 `release-v*` 切并回流 main
+- **新增代码带配套测试**:纯逻辑单测、接线关键路径集成(见「测试策略」)
+- **PR 合并后分支自动删除**(仓库已开启 delete-branch-on-merge,无需手动保留)
 - **新依赖/新目录/新环境变量**必须同步检查 Dockerfile / compose / 部署脚本
-- **破坏性数据库操作**（drop column/table）commit message 加 `[allow-destructive-migration]`
+- **破坏性数据库操作**(drop column/table)commit message 加 `[allow-destructive-migration]`
 - **严禁** `docker compose down -v` / `docker volume rm` / `docker system prune --volumes`
 - `.env.production` 严禁入 Git
