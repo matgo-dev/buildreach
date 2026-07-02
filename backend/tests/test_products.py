@@ -1987,7 +1987,7 @@ async def test_home_floor_safety_products_all_from_fire(client, db_session):
     assert fire_pid in product_ids, "消防器材商品应出现在劳保安防层商品位"
     assert labor_pid not in product_ids, "劳保商品不应出现在劳保安防层商品位(已解耦)"
     for p in safety["products"]:
-        assert p["category_code"].startswith(fire.code), (
+        assert p["category_code"] == fire.code or p["category_code"].startswith(fire.code + "."), (
             f"商品位应全部落在消防器材子树,越界: {p['category_code']}"
         )
 
