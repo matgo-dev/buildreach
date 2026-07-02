@@ -157,8 +157,8 @@ async def _is_deactivated_by_identifier(
 async def register_buyer(
     db: AsyncSession,
     *,
-    phone: str,
-    whatsapp: str,
+    phone: str | None,
+    whatsapp: str | None,
     password: str,
     name: str,
     company_name: str = "",
@@ -182,6 +182,10 @@ async def register_buyer(
 
     if not validate_password_strength(password):
         raise ValidationFailedError(PASSWORD_RULE_MESSAGE)
+
+    # 手机号与 WhatsApp 二选一:空值统一存 NULL,避免空串撞 uq_users_phone 唯一索引
+    phone = (phone or "").strip() or None
+    whatsapp = (whatsapp or "").strip() or None
 
     # 唯一性一次性收集(不短路)
     errors: list[dict] = []

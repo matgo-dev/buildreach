@@ -35,7 +35,8 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                   <Headphones className="w-4 h-4 text-teal-700" />
                   <h3 className="text-navy text-[15px] font-black">{t("customerSupport")}</h3>
                 </div>
-                <p className="text-muted text-[12px] mb-2.5">{t("consultantHint")}</p>
+                <p className="text-muted text-[12px] font-bold">{t("consultantHint")}</p>
+                <p className="text-muted text-[12px] font-bold mb-2.5">{t("consultantResponseHint")}</p>
                 <button
                   onClick={() => setExpanded(true)}
                   className="w-full h-9 rounded-lg text-[13px] font-bold text-white transition-all hover:-translate-y-px inline-flex items-center justify-center gap-1.5"

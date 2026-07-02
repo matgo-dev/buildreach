@@ -7,6 +7,32 @@ from sqlalchemy import select
 from tests.conftest import register_buyer_tz, _make_test_image, _next_phone, _make_verification_token
 from app.db.models.buyer_org_image import BuyerOrgImage, BuyerOrgImageType
 from app.db.models.buyer_organization import BuyerOrganization
+from app.db.models.user import User
+
+
+async def _post_buyer(client, *, phone=None, whatsapp=None, email=None):
+    """直发买方注册请求;phone/whatsapp 为 None 时不放入表单(模拟前端不填)。"""
+    if email is None:
+        email = f"contact{_next_phone().replace('+', '')}@gmail.com"
+    data = {
+        "password": "Aa123456789",
+        "name": "Test",
+        "company_name": "Shop",
+        "address": "Dar es Salaam",
+        "business_category_codes": "01",
+        "email": email,
+        "verification_token": _make_verification_token(email),
+    }
+    if phone is not None:
+        data["phone"] = phone
+    if whatsapp is not None:
+        data["whatsapp"] = whatsapp
+    r = await client.post(
+        "/api/v1/auth/register/buyer",
+        data=data,
+        files=[("storefront_images", ("shop.jpg", _make_test_image(), "image/jpeg"))],
+    )
+    return r, email
 
 
 @pytest.mark.asyncio
@@ -31,14 +57,13 @@ async def test_register_buyer_duplicate_phone(client):
 
 @pytest.mark.asyncio
 async def test_register_buyer_missing_required_fields(client):
-    """缺少必填字段 → 422(FastAPI Form 必填字段缺失)。"""
+    """缺少 FastAPI 必填 Form 字段(password)→ 422(Form 解析层拦截)。"""
     img = _make_test_image()
-    # 缺 address → FastAPI 自身校验
+    # 缺 password(Form(...) 必填)→ FastAPI 自身校验,先于 handler 报 422
     r = await client.post(
         "/api/v1/auth/register/buyer",
         data={
             "phone": _next_phone(),
-            "password": "Aa123456789",
             "name": "Test",
             "company_name": "Shop",
             "business_category_codes": "01",
@@ -47,6 +72,52 @@ async def test_register_buyer_missing_required_fields(client):
         files=[("storefront_images", ("shop.jpg", img, "image/jpeg"))],
     )
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_register_buyer_phone_only_succeeds(client):
+    """只填手机号、不填 WhatsApp → 二选一通过,注册成功。"""
+    r, _ = await _post_buyer(client, phone=_next_phone(), whatsapp=None)
+    assert r.status_code == 200, r.text
+
+
+@pytest.mark.asyncio
+async def test_register_buyer_whatsapp_only_stores_null_phone(client, db_session):
+    """只填 WhatsApp、不填手机号 → 注册成功,且 phone 落库为 NULL(非空串)。"""
+    r, email = await _post_buyer(client, phone=None, whatsapp=_next_phone())
+    assert r.status_code == 200, r.text
+    user = (
+        await db_session.execute(select(User).where(User.email == email))
+    ).scalar_one()
+    assert user.phone is None
+    assert user.whatsapp
+
+
+@pytest.mark.asyncio
+async def test_register_buyer_missing_both_contacts_rejected(client):
+    """手机号与 WhatsApp 都不填 → 409,字段级错误 code 42211。"""
+    r, _ = await _post_buyer(client, phone=None, whatsapp=None)
+    assert r.status_code == 409, r.text
+    errors = r.json()["data"]["errors"]
+    assert any(e["code"] == 42211 and e["field"] == "phone" for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_register_buyer_empty_string_contacts_rejected(client):
+    """手机号与 WhatsApp 传空串 → 与不填等价,409 code 42211。"""
+    r, _ = await _post_buyer(client, phone="  ", whatsapp="")
+    assert r.status_code == 409, r.text
+    errors = r.json()["data"]["errors"]
+    assert any(e["code"] == 42211 for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_register_buyer_two_whatsapp_only_no_phone_collision(client):
+    """两个仅填 WhatsApp 的买方(phone 均为 NULL)→ 不撞 uq_users_phone 唯一索引。"""
+    r1, _ = await _post_buyer(client, phone=None, whatsapp=_next_phone())
+    assert r1.status_code == 200, r1.text
+    r2, _ = await _post_buyer(client, phone=None, whatsapp=_next_phone())
+    assert r2.status_code == 200, r2.text
 
 
 @pytest.mark.asyncio
