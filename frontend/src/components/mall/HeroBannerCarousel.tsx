@@ -7,7 +7,13 @@ import Link from "next/link";
 
 const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
 
-/** 轮播图配置 — 静态资源，不依赖后端 API */
+/**
+ * 轮播图配置 — 静态资源，不依赖后端 API。
+ * 播放顺序 = 数组顺序（要调整位置就直接移动条目）。
+ * 后续可升级为 DB 配置：后端已有带 sort_order 的横幅接口
+ * (frontend/src/lib/api/banners.ts，position="home_carousel")，
+ * 届时改成拉取 API 并按 sort_order 排序即可替换这里的静态数组。
+ */
 const SLIDES: { src: string; alt: string; link: string | null }[] = [
   {
     src: "/banners/hero-main.jpg",
@@ -15,6 +21,7 @@ const SLIDES: { src: string; alt: string; link: string | null }[] = [
     link: "/mall",
   },
   { src: "/banners/factory-aerial-view.jpg", alt: "Factory Aerial View", link: null },
+  { src: "/banners/factory-workshop-collage.jpg", alt: "Factory Workshop Collage", link: null },
   { src: "/banners/factory-coating-workshop.jpg", alt: "Factory Coating Workshop", link: null },
   { src: "/banners/factory-crate-packing.jpg", alt: "Factory Crate Packing", link: null },
   { src: "/banners/factory-decorative-panels.jpg", alt: "Factory Decorative Panels", link: null },
