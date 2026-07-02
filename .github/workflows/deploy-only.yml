@@ -14,6 +14,11 @@ on:
           - ovh
           - both
         default: both
+      image_tag:
+        description: '镜像 tag(留空=部署所选分支的最新 <branch>-latest;回滚填历史 tag,如 release-v0.2.0-abc1234)'
+        required: false
+        type: string
+        default: ''
 
 env:
   IMAGE_REGISTRY: ghcr.io/matgo-dev/buildreach
@@ -30,14 +35,21 @@ jobs:
         id: tag
         env:
           RAW_BRANCH: ${{ github.ref_name }}
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
-          if [ -z "$BRANCH" ]; then
-            BRANCH=ref
+          if [ -n "$INPUT_IMAGE_TAG" ]; then
+            # 手动指定(用于回滚到历史版本),直接用该 tag,不重新构建
+            IMAGE_TAG="$INPUT_IMAGE_TAG"
+            echo "使用手动指定镜像 Tag(回滚): $IMAGE_TAG"
+          else
+            BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
+            if [ -z "$BRANCH" ]; then
+              BRANCH=ref
+            fi
+            IMAGE_TAG="${BRANCH}-latest"
+            echo "使用分支最新镜像 Tag: $IMAGE_TAG"
           fi
-          IMAGE_TAG="${BRANCH}-latest"
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
-          echo "使用镜像 Tag: $IMAGE_TAG"
 
   deploy-ecs:
     name: 部署到 ECS (Staging)
