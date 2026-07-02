@@ -519,11 +519,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         return null;
       case "password":
         return validatePassword(password);
+      // 手机号与 WhatsApp 二选一:至少填一个即可,错误统一提示在手机号字段下
       case "phone":
-        if (!phone.trim()) return t("err_phone_required");
-        return null;
       case "whatsapp":
-        if (!whatsapp.trim()) return t("err_phone_required");
+        if (!phone.trim() && !whatsapp.trim()) return t("err_contact_required");
         return null;
       default:
         return null;
@@ -823,38 +822,39 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint_simple")}</p>
         </div>
 
-        {/* 5. 手机号（纯文本，无区号选择器） */}
+        {/* 5. 手机号（纯文本，无区号选择器）—— 与 WhatsApp 二选一 */}
         <div className="space-y-1.5" id="field-phone">
           <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
-            {t("phone_label")} <span className="text-red-500">*</span>
+            {t("phone_label")}
           </Label>
           <input
             id="phone" name="phone" type="tel"
             value={phone}
-            onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors((err) => ({ ...err, phone: null })); }}
+            onChange={(e) => { setPhone(e.target.value); setErrors((err) => ({ ...err, phone: null, whatsapp: null })); }}
             onBlur={() => touch("phone")}
             placeholder=""
             autoComplete="tel"
             className={buyerInputCls(errOf("phone"))}
           />
-          {errOf("phone") && <p className="text-xs text-red-500">{errOf("phone")}</p>}
         </div>
 
-        {/* 6. WhatsApp */}
+        {/* 6. WhatsApp —— 与手机号二选一;红框由校验驱动,二选一提示统一显示一次(校验失败转红) */}
         <div className="space-y-1.5" id="field-whatsapp">
           <Label htmlFor="whatsapp" className="text-sm font-semibold text-gray-700">
-            {t("whatsapp_label")} <span className="text-red-500">*</span>
+            {t("whatsapp_label")}
           </Label>
           <input
             id="whatsapp" name="whatsapp" type="tel"
             value={whatsapp}
-            onChange={(e) => { setWhatsapp(e.target.value); if (errors.whatsapp) setErrors((err) => ({ ...err, whatsapp: null })); }}
+            onChange={(e) => { setWhatsapp(e.target.value); setErrors((err) => ({ ...err, phone: null, whatsapp: null })); }}
             onBlur={() => touch("whatsapp")}
             placeholder=""
             autoComplete="tel"
             className={buyerInputCls(errOf("whatsapp"))}
           />
-          {errOf("whatsapp") && <p className="text-xs text-red-500">{errOf("whatsapp")}</p>}
+          <p className={(errOf("phone") || errOf("whatsapp")) ? "text-xs text-red-500" : "mt-1 text-[11px] text-gray-400"}>
+            {t("err_contact_required")}
+          </p>
         </div>
 
         {/* ---- 经营品类（选填，不折叠）---- */}

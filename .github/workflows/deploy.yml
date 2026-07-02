@@ -48,8 +48,9 @@ jobs:
 
       - name: 计算镜像 Tag
         id: meta
+        env:
+          RAW_BRANCH: ${{ github.ref_name }}
         run: |
-          RAW_BRANCH="${{ github.ref_name }}"
           BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
           if [ -z "$BRANCH" ]; then
             BRANCH=ref
@@ -115,6 +116,8 @@ jobs:
   deploy-ecs:
     name: 部署到 ECS (Staging)
     needs: build
+    # 只在非 release 分支/tag 上部署到 staging（main / feature 等）
+    if: ${{ !startsWith(github.ref_name, 'release-v') }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -169,11 +172,15 @@ jobs:
   deploy-ovh:
     name: 部署到 OVH (Production)
     needs: build
+    # 生产只允许从 release-v* 分支/tag 部署，从机制上堵死 staging 误触生产
+    if: ${{ startsWith(github.ref_name, 'release-v') }}
     runs-on: ubuntu-latest
     environment: production
     steps:
       - name: SSH 部署
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          REF: ${{ github.ref_name }}
         with:
           host: ${{ secrets.OVH_HOST }}
           username: ${{ secrets.OVH_USER }}
@@ -181,11 +188,12 @@ jobs:
           port: 22
           command_timeout: 15m
           script_stop: true
+          envs: REF
           script: |
             cd /opt/buildreach
             git fetch origin
-            git reset --hard origin/${{ github.ref_name }}
-            DEPLOY_REF=origin/${{ github.ref_name }} \
+            git reset --hard "origin/$REF"
+            DEPLOY_REF="origin/$REF" \
             IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
             GHCR_TOKEN=${{ secrets.GHCR_TOKEN }} \
             DEPLOY_API_BASE_URL=${{ secrets.OVH_PUBLIC_ORIGIN }} \

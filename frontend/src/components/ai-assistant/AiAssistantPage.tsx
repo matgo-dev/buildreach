@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, ChevronLeft, Sparkles, X } from "lucide-react";
+import { ArrowUp, Bot, ChevronLeft, Calculator, Scale, Sparkles, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { AGENTS, matchAnswer, getGreeting, getSuggestions, type AgentDef } from "./mockAgentData";
+import { MarkdownLite } from "./Markdown";
+import { CopyButton } from "./CopyButton";
+import { CostCalculatorDialog } from "./CostCalculatorDialog";
 
 // ─── 类型 ────────────────────────────────────────
 interface ChatMessage {
@@ -58,26 +61,18 @@ const AGENT_META: Record<string, AgentMeta> = {
 export function AiAssistantPage() {
   const t = useTranslations("aiAssistant");
   const [activeAgent, setActiveAgent] = useState<AgentDef | null>(null);
+  const [calcMode, setCalcMode] = useState<"cost" | "compare" | null>(null);
 
   return (
     <div>
-      {/* Hero */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-4 sm:px-8 mb-6 min-h-[200px] sm:min-h-[240px] flex items-center justify-center py-8 sm:py-10">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white/80">
-            <Sparkles className="h-4 w-4" />
-            AI-Powered
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
-            {t("heroTitle")}
-          </h1>
-          <p className="text-[13px] sm:text-[14px] text-white/65 leading-relaxed sm:whitespace-nowrap">
-            {t("heroDesc")}
-          </p>
-          <p className="mt-1.5 text-[12px] sm:text-[13px] text-white/40 leading-relaxed sm:whitespace-nowrap">
-            {t("heroSubDesc")}
-          </p>
-        </div>
+      {/* Hero — 一行大字 + 一行小字 */}
+      <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-4 sm:px-8 mb-6 py-5 sm:py-6 text-center">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">
+          {t("heroTitle")}
+        </h1>
+        <p className="mt-1.5 text-[13px] sm:text-[14px] text-white/65 leading-relaxed">
+          {t("heroDesc")}
+        </p>
       </div>
 
       {/* Agent 卡片 */}
@@ -91,8 +86,28 @@ export function AiAssistantPage() {
         ))}
       </div>
 
+      {/* 重点卡片:成本测算助手 + 本地采购比价助手 */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <FeatureCard
+          icon={<Calculator className="h-7 w-7" />}
+          titleKey="costCalcTitle"
+          subtitleKey="costCalcSubtitle"
+          tagKeys={["costCalcTag1", "costCalcTag2", "costCalcTag4"]}
+          startKey="costCalcStart"
+          onStart={() => setCalcMode("cost")}
+        />
+        <FeatureCard
+          icon={<Scale className="h-7 w-7" />}
+          titleKey="localTitle"
+          subtitleKey="localSubtitle"
+          tagKeys={["localTag1", "localTag2", "localTag3"]}
+          startKey="localStart"
+          onStart={() => setCalcMode("compare")}
+        />
+      </div>
+
       {/* 底部说明 */}
-      <div className="text-center pb-4">
+      <div className="text-center pb-4 pt-8">
         <p className="text-sm text-gray-400">{t("moreComingSoon")}</p>
       </div>
 
@@ -103,6 +118,71 @@ export function AiAssistantPage() {
           onClose={() => setActiveAgent(null)}
         />
       )}
+
+      {/* 成本测算 / 本地比价弹窗(共用引擎,mode 区分) */}
+      {calcMode && (
+        <CostCalculatorDialog mode={calcMode} onClose={() => setCalcMode(null)} />
+      )}
+    </div>
+  );
+}
+
+// ─── 重点卡片:成本测算 / 本地比价 ────────────────
+function FeatureCard({
+  icon,
+  titleKey,
+  subtitleKey,
+  tagKeys,
+  startKey,
+  onStart,
+}: {
+  icon: React.ReactNode;
+  titleKey: string;
+  subtitleKey: string;
+  tagKeys: string[];
+  startKey: string;
+  onStart: () => void;
+}) {
+  const t = useTranslations("aiAssistant");
+
+  return (
+    <div
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 p-5 sm:p-6 transition-all hover:shadow-lg"
+      style={{ background: "linear-gradient(120deg, #f0fbfb, #ecfdf5)" }}
+    >
+      <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-teal-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+        <Sparkles className="h-3 w-3" />
+        {t("costCalcBadge")}
+      </span>
+
+      <div className="flex items-start gap-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-md">
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0 pr-16">
+          <h3 className="text-lg font-black text-ink">{t(titleKey)}</h3>
+          <p className="mt-1 text-sm text-ink-2 leading-relaxed">{t(subtitleKey)}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 mb-4 flex flex-wrap gap-1.5">
+        {tagKeys.map((k) => (
+          <span
+            key={k}
+            className="rounded-full border border-teal-200 bg-white/70 px-2.5 py-1 text-xs text-teal-800"
+          >
+            {t(k)}
+          </span>
+        ))}
+      </div>
+
+      <button
+        onClick={onStart}
+        className="mt-auto w-full rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
+        style={{ background: "linear-gradient(120deg, #003f46, #006773)" }}
+      >
+        {t(startKey)}
+      </button>
     </div>
   );
 }
@@ -323,8 +403,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm text-sm">
         <Bot className="h-4 w-4 text-teal-700" />
       </div>
-      <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
-        <MarkdownLite text={message.content} />
+      <div className="flex max-w-[85%] flex-col items-start gap-1">
+        <div className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+          <MarkdownLite text={message.content} />
+        </div>
+        <CopyButton text={message.content} variant="ghost" />
       </div>
     </div>
   );
@@ -399,130 +482,6 @@ function ChatInputBar({
         <span className="text-[10px] text-slate-400">{t("inputHintSend")}</span>
         <span className="text-[10px] text-slate-400">{t("poweredBy")}</span>
       </div>
-    </div>
-  );
-}
-
-// ─── 简易 Markdown 渲染 ────────────────────────
-function MarkdownLite({ text }: { text: string }) {
-  const locale = useLocale();
-  const lines = text.split("\n");
-  const elements: React.ReactNode[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.startsWith("```")) {
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith("```")) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      i++;
-      elements.push(
-        <pre
-          key={`code-${i}`}
-          className="my-2 overflow-x-auto rounded-lg bg-slate-800 px-3 py-2 text-xs leading-5 text-slate-200"
-        >
-          <code>{codeLines.join("\n")}</code>
-        </pre>,
-      );
-      continue;
-    }
-
-    if (line.trimStart().startsWith("|")) {
-      const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trimStart().startsWith("|")) {
-        tableLines.push(lines[i]);
-        i++;
-      }
-      elements.push(<MdTable key={`tbl-${i}`} rows={tableLines} locale={locale} />);
-      continue;
-    }
-
-    elements.push(
-      <p key={`p-${i}`} className="min-h-[1.25em]">
-        <InlineFormat text={line} locale={locale} />
-      </p>,
-    );
-    i++;
-  }
-
-  return <div className="space-y-0.5">{elements}</div>;
-}
-
-function InlineFormat({ text, locale }: { text: string; locale: string }) {
-  // 先拆链接 [label](url)，再拆粗体 **text**
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g);
-  return (
-    <>
-      {parts.map((p, idx) => {
-        const linkMatch = p.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-        if (linkMatch) {
-          const [, label, url] = linkMatch;
-          // 站内链接自动拼 locale 前缀
-          const href = url.startsWith("/") ? `/${locale}${url}` : url;
-          return (
-            <a key={idx} href={href} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline hover:text-teal-800">
-              {label}
-            </a>
-          );
-        }
-        if (p.startsWith("**") && p.endsWith("**")) {
-          return (
-            <strong key={idx} className="font-semibold text-slate-900">
-              {p.slice(2, -2)}
-            </strong>
-          );
-        }
-        return <span key={idx}>{p}</span>;
-      })}
-    </>
-  );
-}
-
-function MdTable({ rows, locale }: { rows: string[]; locale: string }) {
-  const parse = (row: string) =>
-    row.split("|").map((c) => c.trim()).filter(Boolean);
-
-  const hasHeader =
-    rows.length >= 2 && parse(rows[1]).every((c) => /^[-:]+$/.test(c));
-
-  const headerCells = hasHeader ? parse(rows[0]) : null;
-  const bodyRows = hasHeader ? rows.slice(2) : rows;
-
-  return (
-    <div className="my-2 overflow-x-auto rounded-xl border border-line">
-      <table className="w-full text-xs">
-        {headerCells && (
-          <thead>
-            <tr className="bg-slate-100">
-              {headerCells.map((c, i) => (
-                <th key={i} className="whitespace-nowrap px-3 py-1.5 text-left font-semibold text-slate-700">
-                  <InlineFormat text={c} locale={locale} />
-                </th>
-              ))}
-            </tr>
-          </thead>
-        )}
-        <tbody>
-          {bodyRows.map((row, ri) => {
-            const cells = parse(row);
-            if (cells.length === 0) return null;
-            return (
-              <tr key={ri} className="border-t border-slate-100">
-                {cells.map((c, ci) => (
-                  <td key={ci} className="whitespace-nowrap px-3 py-1.5 text-slate-600">
-                    <InlineFormat text={c} locale={locale} />
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }

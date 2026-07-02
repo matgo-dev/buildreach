@@ -71,7 +71,7 @@ if [[ "$BANNER_COUNT" == "0" ]]; then
   echo "错误: 未找到首页轮播图: ${BANNER_PUBLIC_DIR}"
   exit 1
 fi
-for f in tools.png safety.png fasteners.png electrical.png doors.png decoration.png; do
+for f in tools.webp safety.webp fasteners.webp electrical.webp doors.webp decoration.webp; do
   if [[ ! -f "${FLOOR_PUBLIC_DIR}/${f}" ]]; then
     echo "错误: 缺少首页楼层背景图: ${FLOOR_PUBLIC_DIR}/${f}"
     exit 1

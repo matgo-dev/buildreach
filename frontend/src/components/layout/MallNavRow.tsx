@@ -1,6 +1,7 @@
 "use client";
 
 import { Link, usePathname } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 /** Mall 导航行 — 白底,底线暖金色。参考 HTML .nav-row */
@@ -15,7 +16,10 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: "/",            labelKey: "navHome" },
   { href: "/how-to-buy",  labelKey: "navHowToBuy" },
-  { href: "/mall",        labelKey: "navMall" },
+  // 本地采购 / 进口采购 — 初期均复用商品分类页(/mall),内容一致;
+  // 本地/进口的区分后续通过 procurement 参数落地筛选。
+  { href: "/mall?procurement=local",  labelKey: "navLocalProcurement" },
+  { href: "/mall?procurement=import", labelKey: "navImportProcurement" },
   { href: "/buyer/cart",  labelKey: "navQuoteRequest" },
   { href: "/order-tracking", labelKey: "navMyOrders" },
   { href: "/ai-assistant",   labelKey: "navAiAssistant" },
@@ -23,6 +27,7 @@ const NAV_LINKS: NavLink[] = [
 
 export function MallNavRow() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations("mall");
 
   return (
@@ -32,10 +37,19 @@ export function MallNavRow() {
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center min-h-[44px] sm:min-h-[50px] gap-0 overflow-x-auto scrollbar-hide">
         {NAV_LINKS.map((link) => {
-          const active =
-            link.href === "/"
+          // href 可能带 query(如 /mall?procurement=local),按路径 + query 双匹配高亮,
+          // 保证本地/进口两个入口在同一 /mall 页面上仍能各自精确高亮。
+          const [linkPath, linkQuery] = link.href.split("?");
+          const pathActive =
+            linkPath === "/"
               ? pathname === "/"
-              : pathname === link.href || pathname.startsWith(link.href + "/");
+              : pathname === linkPath || pathname.startsWith(linkPath + "/");
+          const active = linkQuery
+            ? pathActive &&
+              [...new URLSearchParams(linkQuery).entries()].every(
+                ([k, v]) => searchParams.get(k) === v
+              )
+            : pathActive;
 
           if (link.disabled) {
             return (

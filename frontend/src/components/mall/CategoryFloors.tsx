@@ -13,34 +13,34 @@ import { FloorElevator, type FloorItem } from "./FloorElevator";
  */
 const FLOOR_CONFIGS: FloorConfig[] = [
   {
-    id: "floor-tools",
-    nameKey: "floorToolsConsumables",
-    bgImage: "/images/floors/tools.png",
-  },
-  {
     id: "floor-safety",
     nameKey: "floorSafetyProtection",
-    bgImage: "/images/floors/safety.png",
-  },
-  {
-    id: "floor-fasteners",
-    nameKey: "floorFastenersSealing",
-    bgImage: "/images/floors/fasteners.png",
-  },
-  {
-    id: "floor-electrical",
-    nameKey: "floorIndustrialElectrical",
-    bgImage: "/images/floors/electrical.png",
-  },
-  {
-    id: "floor-doors",
-    nameKey: "floorDoorsWindowsHardware",
-    bgImage: "/images/floors/doors.png",
+    bgImage: "/images/floors/safety.webp",
   },
   {
     id: "floor-decoration",
     nameKey: "floorDecorationBuilding",
-    bgImage: "/images/floors/decoration.png",
+    bgImage: "/images/floors/decoration.webp",
+  },
+  {
+    id: "floor-doors",
+    nameKey: "floorDoorsWindowsHardware",
+    bgImage: "/images/floors/doors.webp",
+  },
+  {
+    id: "floor-electrical",
+    nameKey: "floorIndustrialElectrical",
+    bgImage: "/images/floors/electrical.webp",
+  },
+  {
+    id: "floor-tools",
+    nameKey: "floorToolsConsumables",
+    bgImage: "/images/floors/tools.webp",
+  },
+  {
+    id: "floor-fasteners",
+    nameKey: "floorFastenersSealing",
+    bgImage: "/images/floors/fasteners.webp",
   },
 ];
 
