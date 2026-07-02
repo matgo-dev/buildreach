@@ -14,7 +14,7 @@
 |------|------|------|------|
 | **商品批次数据** | 独立资产包,服务器解压到 `data/xfs/output_xfs_YYYYMMDD_HHMMSS/` | 鑫方盛抓取脚本产出 | 含 offer.json + 商品图片,体积可能十几 G,不进入应用离线包 |
 | **轮播图图片** | `frontend/public/banners/*.png/jpg` | 设计师/运营提供 | 打包时复制到离线包 `data/banners/`,用于首页轮播与 OpenResty 静态访问 |
-| **楼层背景图** | `frontend/public/images/floors/*.png` | 设计师/运营提供 | 首页六个楼层背景图,随前端镜像发布 |
+| **楼层背景图** | `frontend/public/images/floors/*.webp` | 设计师/运营提供 | 首页六个楼层背景图,随前端镜像发布 |
 
 > 当前首页轮播不读 `banner_slides` 表,不需要执行 `seed_banners.py`。后续改成运营后台动态 Banner 时再启用 DB 初始化。
 
@@ -42,12 +42,12 @@ frontend/public/
 │   ├── hero-main.jpg
 │   └── ...
 └── images/floors/                         ← ✅ 随前端镜像发布
-    ├── tools.png
-    ├── safety.png
-    ├── fasteners.png
-    ├── electrical.png
-    ├── doors.png
-    └── decoration.png
+    ├── tools.webp
+    ├── safety.webp
+    ├── fasteners.webp
+    ├── electrical.webp
+    ├── doors.webp
+    └── decoration.webp
 ```
 
 ---
