@@ -142,7 +142,7 @@ bash deploy/deploy.sh
 
 - **不直接在 main 上 commit**，走分支 + PR
 - **新增代码带配套测试**：纯逻辑单测、接线关键路径集成（见「测试策略」）
-- **PR 合并后不删分支**
+- **PR 合并后分支自动删除**（仓库已开启 delete-branch-on-merge，无需手动保留)
 - **新依赖/新目录/新环境变量**必须同步检查 Dockerfile / compose / 部署脚本
 - **破坏性数据库操作**（drop column/table）commit message 加 `[allow-destructive-migration]`
 - **严禁** `docker compose down -v` / `docker volume rm` / `docker system prune --volumes`
