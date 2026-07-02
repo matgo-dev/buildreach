@@ -296,8 +296,8 @@ async def register_buyer(
     # 文本字段
     verification_token: str | None = Form(default=None),   # 邮箱验证 token(REQUIRE_EMAIL_VERIFICATION=false 时可空)
     email: str = Form(...),
-    whatsapp: str = Form(...),                     # 必填: WhatsApp 号码
-    phone: str = Form(...),
+    whatsapp: str = Form(""),                      # 与手机号二选一,至少填一个
+    phone: str = Form(""),                         # 与 WhatsApp 二选一,至少填一个
     password: str = Form(...),
     name: str = Form(...),
     company_name: str = Form(""),                  # 可选，默认空
@@ -345,6 +345,12 @@ async def register_buyer(
             ev_validate_email(email)
         except EvNotValidError:
             errors.append({"field": "email", "code": 42200, "message": "邮箱格式不正确"})
+
+    # 联系方式:手机号与 WhatsApp 二选一,至少填一个
+    phone = phone.strip()
+    whatsapp = whatsapp.strip()
+    if not phone and not whatsapp:
+        errors.append({"field": "phone", "code": 42211, "message": "手机号与 WhatsApp 至少填写一个"})
 
     # 密码强度
     if not validate_password_strength(password):
