@@ -616,6 +616,8 @@
     "navHome": "首页 Home",
     "navMall": "商品分类 Categories",
     "navHowToBuy": "采购路径 How to Buy",
+    "navLocalProcurement": "本地采购 Local",
+    "navImportProcurement": "进口采购 Import",
     "navQuoteRequest": "询价申请 Quote Request",
     "navCompliance": "进口资料 Compliance",
     "navContainer": "拼柜集运 Shared Container",
