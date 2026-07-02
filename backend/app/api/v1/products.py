@@ -42,27 +42,29 @@ _BRAND_CACHE: dict[str, tuple[float, list[str]]] = {}
 
 HOME_FLOOR_CONFIGS = [
     {
-        "id": "floor-tools",
-        "category_paths": [["工具耗材"], ["手动工具"]],
-        "exclude_category_paths": [["手动工具", "园林工具"], ["手动工具", "土杂工具"]],
-    },
-    {
         "id": "floor-safety",
-        "category_paths": [["安全防护"], ["劳保"], ["安防"], ["临建设施"]],
-        "exclude_category_paths": [],
-    },
-    {
-        "id": "floor-fasteners",
-        "category_paths": [["五金紧固"], ["紧固件"]],
-        "exclude_category_paths": [],
-    },
-    {
-        "id": "floor-electrical",
+        # 导航:劳保安防原品类 + 消防器材(单条 L2)
+        # 消防器材必须放在 category_paths 的第一位(而非仅"提前"):导航展示端点固定按
+        # categories[:10] 截断,该楼层所有根路径展开后共约 23 个 L2 类目,远超上限,
+        # 排在后面的路径大概率被截断挤出导航。将消防器材置于字面第一位,使其导航可见性
+        # 不依赖其他路径能否解析或排在其后(例如"安全防护"当前解析为 None 纯属巧合,
+        # 不可依赖)。其余安全类路径保持原有相对顺序跟随其后。
         "category_paths": [
-            ["电工电气"], ["卫浴照明"], ["电器"], ["灯具照明"],
-            ["工控自动化"], ["电工辅料"], ["中低压配电"],
+            ["消防", "消防器材"], ["安全防护"], ["劳保"], ["安防"], ["临建设施"],
         ],
         "exclude_category_paths": [],
+        # 特殊:8 个商品全部取自"消防器材"的 L3 子类(每子类取 1 SPU)
+        "product_category_paths": [["消防", "消防器材"]],
+    },
+    {
+        "id": "floor-decoration",
+        "category_paths": [
+            ["防水保温"], ["装饰材料"], ["保温"], ["防水"],
+            ["涂料化工"], ["土建材料"], ["临建设施"], ["装配式材料"],
+        ],
+        "exclude_category_paths": [
+            ["装饰材料", "门窗幕墙"], ["装饰材料", "门窗型材"],
+        ],
     },
     {
         "id": "floor-doors",
@@ -74,14 +76,22 @@ HOME_FLOOR_CONFIGS = [
         "exclude_category_paths": [],
     },
     {
-        "id": "floor-decoration",
+        "id": "floor-electrical",
         "category_paths": [
-            ["防水保温"], ["装饰材料"], ["保温"], ["防水"],
-            ["涂料化工"], ["土建材料"], ["临建设施"], ["装配式材料"],
+            ["电工电气"], ["卫浴照明"], ["电器"], ["灯具照明"],
+            ["工控自动化"], ["电工辅料"], ["中低压配电"],
         ],
-        "exclude_category_paths": [
-            ["装饰材料", "门窗幕墙"], ["装饰材料", "门窗型材"],
-        ],
+        "exclude_category_paths": [],
+    },
+    {
+        "id": "floor-tools",
+        "category_paths": [["工具耗材"], ["手动工具"]],
+        "exclude_category_paths": [["手动工具", "园林工具"], ["手动工具", "土杂工具"]],
+    },
+    {
+        "id": "floor-fasteners",
+        "category_paths": [["五金紧固"], ["紧固件"]],
+        "exclude_category_paths": [],
     },
 ]
 
@@ -311,6 +321,7 @@ async def home_floor_products(
             db,
             category_paths=config["category_paths"],
             exclude_category_paths=config["exclude_category_paths"],
+            product_category_paths=config.get("product_category_paths"),
             size=HOME_FLOOR_PRODUCT_SIZE,
         )
         floors[config["id"]] = {
