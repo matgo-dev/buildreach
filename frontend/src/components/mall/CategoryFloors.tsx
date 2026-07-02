@@ -15,32 +15,32 @@ const FLOOR_CONFIGS: FloorConfig[] = [
   {
     id: "floor-tools",
     nameKey: "floorToolsConsumables",
-    bgImage: "/images/floors/tools.png",
+    bgImage: "/images/floors/tools.webp",
   },
   {
     id: "floor-safety",
     nameKey: "floorSafetyProtection",
-    bgImage: "/images/floors/safety.png",
+    bgImage: "/images/floors/safety.webp",
   },
   {
     id: "floor-fasteners",
     nameKey: "floorFastenersSealing",
-    bgImage: "/images/floors/fasteners.png",
+    bgImage: "/images/floors/fasteners.webp",
   },
   {
     id: "floor-electrical",
     nameKey: "floorIndustrialElectrical",
-    bgImage: "/images/floors/electrical.png",
+    bgImage: "/images/floors/electrical.webp",
   },
   {
     id: "floor-doors",
     nameKey: "floorDoorsWindowsHardware",
-    bgImage: "/images/floors/doors.png",
+    bgImage: "/images/floors/doors.webp",
   },
   {
     id: "floor-decoration",
     nameKey: "floorDecorationBuilding",
-    bgImage: "/images/floors/decoration.png",
+    bgImage: "/images/floors/decoration.webp",
   },
 ];
 
