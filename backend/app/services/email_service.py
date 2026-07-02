@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _smtp_configured() -> bool:
-    return bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD)
+    return settings.smtp_configured
 
 
 def send_verification_code_email(to_email: str, code: str, purpose: str = "RESET_PASSWORD") -> bool:

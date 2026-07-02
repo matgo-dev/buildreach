@@ -229,6 +229,14 @@ async def send_verification_code(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    # 买方注册邮箱验证关闭时,拒绝 REGISTER 发码(防御性:前端已隐藏该步骤)。
+    # RESET_PASSWORD 不受影响 —— 密码找回本质上必须发邮件。
+    if body.purpose == "REGISTER" and not settings.REQUIRE_EMAIL_VERIFICATION:
+        raise BusinessError(
+            status.HTTP_400_BAD_REQUEST,
+            40008,
+            "Email verification is disabled",
+        )
     ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:255]
     try:
@@ -286,7 +294,7 @@ async def register_buyer(
     response: Response,
     db: AsyncSession = Depends(get_db),
     # 文本字段
-    verification_token: str = Form(...),           # 必填: 邮箱验证 token
+    verification_token: str | None = Form(default=None),   # 邮箱验证 token(REQUIRE_EMAIL_VERIFICATION=false 时可空)
     email: str = Form(...),
     whatsapp: str = Form(...),                     # 必填: WhatsApp 号码
     phone: str = Form(...),
@@ -312,14 +320,19 @@ async def register_buyer(
     from app.services.upload_pipeline import run_image_processing, stream_upload_file_to_temp
     from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
 
-    # ── 1. 先校验 verification_token（同时标记 verification_code 为已使用）──
-    try:
-        verified_email = await verification_service.consume_verification_token(db, verification_token)
-    except ValueError:
-        raise MultipleValidationError([{"field": "verification_token", "code": 40106, "message": "Email verification token invalid or expired"}])
+    # ── 1. 邮箱验证(受 REQUIRE_EMAIL_VERIFICATION 门控）──
     email = email.strip()
-    if verified_email != email:
-        raise MultipleValidationError([{"field": "email", "code": 40107, "message": "Email does not match verification token"}])
+    if settings.REQUIRE_EMAIL_VERIFICATION:
+        # 校验 verification_token（同时标记 verification_code 为已使用）
+        if not verification_token:
+            raise MultipleValidationError([{"field": "verification_token", "code": 40106, "message": "Email verification token invalid or expired"}])
+        try:
+            verified_email = await verification_service.consume_verification_token(db, verification_token)
+        except ValueError:
+            raise MultipleValidationError([{"field": "verification_token", "code": 40106, "message": "Email verification token invalid or expired"}])
+        if verified_email != email:
+            raise MultipleValidationError([{"field": "email", "code": 40107, "message": "Email does not match verification token"}])
+    # flag=false: 跳过邮箱验证(即使前端误传 token 也忽略)
 
     # ── 2. 全量格式校验(一次性收集) ──
     errors: list[dict] = []

@@ -62,7 +62,7 @@ export const authApi = {
     password: string;
     name: string;
     email: string;
-    verification_token: string;
+    verification_token?: string;   // 邮箱验证关闭时可省略
     whatsapp: string;
     company_name?: string;
     address?: string;
@@ -80,7 +80,7 @@ export const authApi = {
     fd.append("password", payload.password);
     fd.append("name", payload.name);
     fd.append("email", payload.email);
-    fd.append("verification_token", payload.verification_token);
+    if (payload.verification_token) fd.append("verification_token", payload.verification_token);
     fd.append("whatsapp", payload.whatsapp);
     if (payload.company_name) fd.append("company_name", payload.company_name);
     if (payload.address) fd.append("address", payload.address);

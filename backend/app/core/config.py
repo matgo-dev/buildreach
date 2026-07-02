@@ -150,10 +150,33 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_MAX_ATTEMPTS: int = 5
     VERIFICATION_CODE_IP_HOURLY_LIMIT: int = 20
 
+    # 买方注册是否强制邮箱验证码。默认开启(安全默认);
+    # 邮件中继(SMTP)未就绪时,可在生产 .env 显式设为 false 让注册先上线,
+    # 待配好 SMTP 后删除该行即可恢复。仅作用于 REGISTER,不影响密码找回。
+    REQUIRE_EMAIL_VERIFICATION: bool = True
+
     @computed_field  # type: ignore[misc]
     @property
     def CORS_ORIGINS(self) -> List[str]:
         return [s.strip() for s in self.CORS_ORIGINS_RAW.split(",") if s.strip()]
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def smtp_configured(self) -> bool:
+        """SMTP 三要素(host/user/password)是否齐备。"""
+        return bool(self.SMTP_HOST and self.SMTP_USER and self.SMTP_PASSWORD)
+
+
+def email_verification_misconfigured(s: "Settings") -> bool:
+    """要求买方注册邮箱验证,却无法真正发信(SMTP 未配置且未开启 DEV 日志)。
+
+    纯判定函数 —— 启动时据此 fail-fast,避免"开着验证却发不出邮件"的坏配置上线。
+    """
+    return bool(
+        s.REQUIRE_EMAIL_VERIFICATION
+        and not s.smtp_configured
+        and not s.EMAIL_DEV_LOG_CODES
+    )
 
 
 @lru_cache

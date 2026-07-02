@@ -26,3 +26,16 @@ def resolve_whatsapp_link(context: dict | None = None) -> str | None:
         return None
 
     return f"https://wa.me/{digits}"
+
+
+def build_contact_payload() -> dict:
+    """平台联系方式 payload — 供 /contact/info 与统一 /config 端点共用。"""
+    link = resolve_whatsapp_link()
+    raw = settings.WHATSAPP_DEFAULT_NUMBER.strip() or None
+    return {
+        "whatsapp_link": link,
+        "whatsapp_number": raw if link else None,
+        "wechat_id": settings.WECHAT_ID.strip() or None,
+        "wechat_qr_image": settings.WECHAT_QR_IMAGE.strip() or None,
+        "email": settings.CONTACT_EMAIL.strip() or None,
+    }

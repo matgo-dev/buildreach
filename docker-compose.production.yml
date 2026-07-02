@@ -83,6 +83,8 @@ services:
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@matgo.co.tz}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
       EMAIL_DEV_LOG_CODES: ${EMAIL_DEV_LOG_CODES:-false}
+      # 邮件中继(SMTP)未就绪前默认关闭;配好 SMTP 后设 true 恢复验证
+      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
     volumes:
       - uploads:/app/uploads
       - private_uploads:/app/private_uploads

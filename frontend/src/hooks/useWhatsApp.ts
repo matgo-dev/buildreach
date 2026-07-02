@@ -1,30 +1,14 @@
 "use client";
 
 import { useCallback } from "react";
-import useSWR from "swr";
 import { useAuthStore } from "@/stores/authStore";
-import { api } from "@/lib/api";
-
-/** 后端 /api/v1/contact/info 的结构 */
-interface ContactConfig {
-  whatsapp_link: string | null;
-  whatsapp_number: string | null;
-  wechat_id: string | null;
-  wechat_qr_image: string | null;
-  email: string | null;
-}
+import { usePublicConfig } from "@/hooks/usePublicConfig";
 
 export interface WhatsAppContext {
   /** 商品名称 */
   productName?: string;
   /** 商品 SKU / SPU 编号 */
   productCode?: string;
-}
-
-const CONTACT_CONFIG_PATH = "/api/v1/contact/info";
-
-async function fetchContactConfig(): Promise<ContactConfig> {
-  return api.get<ContactConfig>(CONTACT_CONFIG_PATH, { noAuth: true });
 }
 
 /**
@@ -42,26 +26,23 @@ function resolveWhatsAppLink(raw: string | undefined | null): string | null {
 
 /**
  * 平台联系方式（WhatsApp + WeChat + 邮箱）。
- * 从后端公开接口读取，配置由服务端运行时环境变量注入。
- * SWR 同 key 去重，全站只请求一次。
+ * 派生自统一公开配置 usePublicConfig —— 配置由服务端运行时环境变量注入，
+ * 与其它派生 hook 共享同一次网络请求。
  */
 export function useContactInfo() {
-  const { data, isLoading } = useSWR<ContactConfig>(
-    CONTACT_CONFIG_PATH,
-    fetchContactConfig,
-    { revalidateOnFocus: false, revalidateIfStale: false },
-  );
+  const { data, isLoading } = usePublicConfig();
+  const contact = data?.contact;
 
-  const whatsappLink = data?.whatsapp_link || resolveWhatsAppLink(data?.whatsapp_number);
+  const whatsappLink = contact?.whatsapp_link || resolveWhatsAppLink(contact?.whatsapp_number);
 
   return {
     isLoading,
     whatsappLink,
-    whatsappNumber: data?.whatsapp_number?.trim() || null,
-    wechatId: data?.wechat_id?.trim() || null,
-    wechatQrImage: data?.wechat_qr_image?.trim() || null,
-    email: data?.email?.trim() || null,
-    configured: !!whatsappLink || !!data?.email,
+    whatsappNumber: contact?.whatsapp_number?.trim() || null,
+    wechatId: contact?.wechat_id?.trim() || null,
+    wechatQrImage: contact?.wechat_qr_image?.trim() || null,
+    email: contact?.email?.trim() || null,
+    configured: !!whatsappLink || !!contact?.email,
   };
 }
 

@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from app.core.config import settings
 from app.core.exceptions import success
-from app.services.contact import resolve_whatsapp_link
+from app.services.contact import build_contact_payload, resolve_whatsapp_link
 
 router = APIRouter(prefix="/contact", tags=["contact"])
 
@@ -23,17 +23,11 @@ async def get_whatsapp_link():
     })
 
 
-@router.get("/info", summary="获取平台联系方式")
+@router.get(
+    "/info",
+    summary="获取平台联系方式",
+    deprecated=True,
+    description="已被统一端点 /api/v1/config 的 contact 字段取代,保留作向后兼容,下个版本移除。",
+)
 async def get_contact_info():
-    link = resolve_whatsapp_link()
-    raw = settings.WHATSAPP_DEFAULT_NUMBER.strip() or None
-    email = settings.CONTACT_EMAIL.strip() or None
-    wechat_id = settings.WECHAT_ID.strip() or None
-    wechat_qr_image = settings.WECHAT_QR_IMAGE.strip() or None
-    return success({
-        "whatsapp_link": link,
-        "whatsapp_number": raw if link else None,
-        "wechat_id": wechat_id,
-        "wechat_qr_image": wechat_qr_image,
-        "email": email,
-    })
+    return success(build_contact_payload())

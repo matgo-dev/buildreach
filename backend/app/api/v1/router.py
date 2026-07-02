@@ -21,6 +21,7 @@ from app.api.v1 import (
     operator_buyers,
     operator_products,
     products,
+    public_config,
     quotes,
     rfqs,
     suppliers,
@@ -37,6 +38,7 @@ api_router.include_router(admin_audit.router)
 api_router.include_router(banners.router)
 api_router.include_router(categories.router)
 api_router.include_router(contact.router)
+api_router.include_router(public_config.router)
 api_router.include_router(credit.router)
 api_router.include_router(products.router)
 api_router.include_router(operator_banners.router)

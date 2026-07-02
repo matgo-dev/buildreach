@@ -43,6 +43,7 @@ import { StepForm } from "./_components/StepForm";
 import { useRegisterDraft } from "./_components/useRegisterDraft";
 import { useBeforeUnload } from "./_components/useBeforeUnload";
 import { useAuthStore } from "@/stores/authStore";
+import { useAuthConfig } from "@/hooks/usePublicConfig";
 import { defaultDashboardOf } from "@/config/navigation";
 import { preferenceToLocale } from "@/i18n/locale-utils";
 import { routing } from "@/i18n/routing";
@@ -337,6 +338,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   const tc = useTranslations("common");
   const locale = useLocale();
 
+  // 邮箱验证开关(后端 REQUIRE_EMAIL_VERIFICATION)。加载中(undefined)按安全默认视为开启。
+  const { requireEmailVerification, isLoading: authCfgLoading } = useAuthConfig();
+  const emailVerificationOn = requireEmailVerification !== false;
+
   // 必填字段
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -535,7 +540,9 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
   // 全必填字段校验
   const validateAll = (): string | null => {
-    const fields = ["name", "email", "verificationCode", "password", "phone", "whatsapp"];
+    const fields = emailVerificationOn
+      ? ["name", "email", "verificationCode", "password", "phone", "whatsapp"]
+      : ["name", "email", "password", "phone", "whatsapp"];
     const newErrors: Record<string, string | null> = {};
     const newTouched: Record<string, boolean> = {};
     let firstError: string | null = null;
@@ -615,9 +622,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
     setSubmitError("");
     setLoading(true);
     try {
-      // 如果还没有 verification_token，先做验证（handleVerifyCode 直接返回 token 字符串）
+      // 邮箱验证开启时:确保有 verification_token（handleVerifyCode 直接返回 token 字符串）。
+      // 关闭时:跳过验证码流程,注册不带 token。
       let token = verificationToken;
-      if (!token) {
+      if (emailVerificationOn && !token) {
         const result = await handleVerifyCode();
         if (!result) { setLoading(false); return; }
         token = result;
@@ -625,7 +633,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       const tokens = await authApi.registerBuyer({
         name,
         email,
-        verification_token: token,
+        verification_token: emailVerificationOn ? token : undefined,
         password,
         phone,
         whatsapp,
@@ -732,52 +740,56 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               autoComplete="email"
               className={buyerInputCls(errOf("email"), "flex-1")}
             />
-            <button
-              type="button"
-              onClick={handleSendCode}
-              disabled={cooldown > 0 || codeSending}
-              className="shrink-0 rounded-lg border border-[#0D4D4D] px-3 text-sm font-medium text-[#0D4D4D] transition-all hover:bg-[#0D4D4D]/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
-            >
-              {codeSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : cooldown > 0 ? (
-                t("resend_code", { seconds: cooldown })
-              ) : (
-                t("send_code")
-              )}
-            </button>
+            {emailVerificationOn && (
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={cooldown > 0 || codeSending}
+                className="shrink-0 rounded-lg border border-[#0D4D4D] px-3 text-sm font-medium text-[#0D4D4D] transition-all hover:bg-[#0D4D4D]/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+              >
+                {codeSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : cooldown > 0 ? (
+                  t("resend_code", { seconds: cooldown })
+                ) : (
+                  t("send_code")
+                )}
+              </button>
+            )}
           </div>
           {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
         </div>
 
-        {/* 3. 验证码 */}
-        <div className="space-y-1.5" id="field-verificationCode">
-          <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
-            {t("verification_code_label")} <span className="text-red-500">*</span>
-          </Label>
-          <input
-            id="verificationCode" name="verificationCode" type="text"
-            value={verificationCode}
-            onChange={(e) => {
-              const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-              setVerificationCode(v);
-              // 输入满 6 位时清除 token（需重新验证）
-              if (v !== verificationCode) setVerificationToken("");
-              if (errors.verificationCode) setErrors((err) => ({ ...err, verificationCode: null }));
-            }}
-            onBlur={() => touch("verificationCode")}
-            placeholder={t("verification_code_placeholder")}
-            inputMode="numeric"
-            maxLength={6}
-            autoComplete="one-time-code"
-            className={buyerInputCls(errOf("verificationCode"), "tracking-widest")}
-          />
-          {errOf("verificationCode") && <p className="text-xs text-red-500">{errOf("verificationCode")}</p>}
-          {/* 发送成功提示 */}
-          {cooldown > 0 && !errOf("verificationCode") && (
-            <p className="text-xs text-green-600">{t("code_sent")}</p>
-          )}
-        </div>
+        {/* 3. 验证码(仅在邮箱验证开启时显示) */}
+        {emailVerificationOn && (
+          <div className="space-y-1.5" id="field-verificationCode">
+            <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
+              {t("verification_code_label")} <span className="text-red-500">*</span>
+            </Label>
+            <input
+              id="verificationCode" name="verificationCode" type="text"
+              value={verificationCode}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setVerificationCode(v);
+                // 输入满 6 位时清除 token（需重新验证）
+                if (v !== verificationCode) setVerificationToken("");
+                if (errors.verificationCode) setErrors((err) => ({ ...err, verificationCode: null }));
+              }}
+              onBlur={() => touch("verificationCode")}
+              placeholder={t("verification_code_placeholder")}
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              className={buyerInputCls(errOf("verificationCode"), "tracking-widest")}
+            />
+            {errOf("verificationCode") && <p className="text-xs text-red-500">{errOf("verificationCode")}</p>}
+            {/* 发送成功提示 */}
+            {cooldown > 0 && !errOf("verificationCode") && (
+              <p className="text-xs text-green-600">{t("code_sent")}</p>
+            )}
+          </div>
+        )}
 
         {/* 4. 密码 */}
         <div className="space-y-1.5" id="field-password">
@@ -1039,7 +1051,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || authCfgLoading}
           className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
