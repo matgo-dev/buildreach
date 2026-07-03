@@ -54,7 +54,7 @@ from app.core.i18n_registry import get_i18n_fields
 from app.core.locale import SUPPORTED_LOCALES, get_current_locale
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
-from app.db.models.product import Product, ProductStatus, SupplyMode
+from app.db.models.product import Product, ProductStatus, ProductVisibility, SupplyMode
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_image import ProductImage, ImageType
 from app.db.models.product_sku import ProductSku, SkuStatus
@@ -85,6 +85,7 @@ from app.services._buyer_utils import (
     thumb_url_from_image_key,
 )
 from app.services.upload_pipeline import run_image_processing, stream_upload_file_to_temp
+from app.services.product_visibility import PUBLIC_VISIBLE_SQL, public_visible
 
 # i18n 字段声明:从注册表读取(单一来源)
 from app.db.models.product import Product as _Product
@@ -625,8 +626,8 @@ async def list_products_public(
     size: int = 20,
 ) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
     # 列表不加载图片关系，主图由 _batch_main_images 批量查
-    q = select(Product).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
-    count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+    q = select(Product).where(public_visible())
+    count_q = select(func.count(Product.id)).where(public_visible())
 
     if category_code:
         codes = await _descendant_category_codes(db, category_code)
@@ -772,6 +773,7 @@ async def sample_home_floor_products(
             JOIN cat_tree ON products.category_code = cat_tree.code
             WHERE products.status = :active_status
               AND products.deleted_at IS NULL
+              AND products.visibility = 'PUBLIC'
         )
         SELECT product_id
         FROM ranked
@@ -913,7 +915,7 @@ async def list_certification_options(db: AsyncSession) -> list[str]:
     result = await db.execute(text(
         "SELECT DISTINCT cert "
         "FROM products, jsonb_array_elements_text(certifications::jsonb) AS cert "
-        "WHERE status = 'ACTIVE' AND deleted_at IS NULL "
+        "WHERE " + PUBLIC_VISIBLE_SQL + " "
         "AND certifications IS NOT NULL "
         "ORDER BY cert"
     ))
@@ -943,7 +945,7 @@ async def list_brand_options(
     cnt = func.count().label("cnt")
     q = (
         select(brand_col, cnt)
-        .where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+        .where(public_visible())
         .where(brand_col.isnot(None), brand_col != "")
         .group_by(brand_col)
         .order_by(cnt.desc())

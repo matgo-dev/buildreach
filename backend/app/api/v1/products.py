@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.core.exceptions import NotFoundError, success
 from app.core.i18n import get_localized
 from app.core.locale import get_current_locale
-from app.db.models.product import ProductStatus
+from app.db.models.product import ProductStatus, ProductVisibility
 from app.db.models.product_image import ImageType
 from app.db.session import get_db
 from app.schemas.product import (
@@ -350,7 +350,7 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ):
     p = await product_svc.get_product(db, product_id)
-    if p.status != ProductStatus.ACTIVE:
+    if p.status != ProductStatus.ACTIVE or p.visibility != ProductVisibility.PUBLIC:
         raise NotFoundError("Product not found")
 
     # SPU 级属性(sku_id IS NULL),按 attr_group → attr_key 聚合

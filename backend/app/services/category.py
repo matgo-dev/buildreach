@@ -14,9 +14,10 @@ from app.core.config import settings
 from app.core.i18n import get_localized
 from app.core.locale import get_current_locale
 from app.db.models import Category
-from app.db.models.product import Product, ProductStatus
+from app.db.models.product import Product
 from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.category import CategoryNode, CategoryTreeNode
+from app.services.product_visibility import public_visible
 
 # ── 进程内 TTL 缓存 ──
 _CACHE_TTL = 300  # 5 分钟
@@ -232,8 +233,7 @@ async def get_l1_thumbnails(db: AsyncSession) -> list[dict]:
         )
         .join(img_sub, (img_sub.c.product_id == Product.id) & (img_sub.c.rn == 1))
         .where(
-            Product.status == ProductStatus.ACTIVE,
-            Product.deleted_at.is_(None),
+            public_visible(),
             Product.category_code.in_(all_descendant_codes),
         )
         .order_by(Product.id.desc())
