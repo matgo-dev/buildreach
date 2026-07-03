@@ -62,6 +62,54 @@ def test_multi_sku_requires_variants_else_reject():
         _decide_target(prod, active_skus=skus, selected_variants=[], sku_id=None)
 
 
+def test_multi_sku_no_selection_allowed_when_spu_level_flag_set():
+    """allow_spu_level=True + 空 selected_variants → 整 SPU 交易，放行为 (None, [])。
+
+    这是购物车/询价单既有"整 SPU 加购/询价"流程的兼容口子(Task 7 §A)：
+    只放宽"完全未选择"这一种情况，不改变其它任何拒绝分支。
+    """
+    prod = _P()
+    skus = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "B"})]
+    sku_id, snap = _decide_target(
+        prod, active_skus=skus, selected_variants=[], sku_id=None, allow_spu_level=True,
+    )
+    assert sku_id is None
+    assert snap == []
+
+
+def test_multi_sku_no_selection_still_rejects_when_flag_not_set():
+    """同上场景，allow_spu_level=False(默认)时仍必须拒绝 —— 确认 flag 是显式开关。"""
+    prod = _P()
+    skus = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "B"})]
+    with pytest.raises(VariantUnresolvableError):
+        _decide_target(
+            prod, active_skus=skus, selected_variants=[], sku_id=None, allow_spu_level=False,
+        )
+
+
+def test_multi_sku_ambiguous_selection_still_rejects_even_with_spu_level_flag():
+    """allow_spu_level=True 只放宽"未提供选择"，不放宽"提供了但解析不到唯一 SKU"
+    (0 或 >1 匹配)——那是真实错误，不是整 SPU 语义，必须继续拒绝。
+    """
+    prod = _P()
+    skus = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "B"})]
+    # 0 匹配
+    with pytest.raises(VariantUnresolvableError):
+        _decide_target(
+            prod, active_skus=skus,
+            selected_variants=[{"attr_name": "spec", "value": "C"}],
+            sku_id=None, allow_spu_level=True,
+        )
+    # >1 匹配（数据异常：两个 SKU 规格相同）
+    skus_dup = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "A"})]
+    with pytest.raises(VariantUnresolvableError):
+        _decide_target(
+            prod, active_skus=skus_dup,
+            selected_variants=[{"attr_name": "spec", "value": "A"}],
+            sku_id=None, allow_spu_level=True,
+        )
+
+
 def test_multi_sku_resolves_unique():
     prod = _P()
     skus = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "B"})]

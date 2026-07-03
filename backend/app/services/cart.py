@@ -28,6 +28,7 @@ from app.core.exceptions import (
     CartItemNotFoundError,
     CartProductNotAvailableError,
     CartQuantityInvalidError,
+    CartSkuNotPurchasableError,
 )
 from app.core.i18n import get_localized
 from app.db.models.buyer_member import BuyerMember
@@ -39,6 +40,12 @@ from app.db.models.product_image import ImageType, ProductImage
 from app.schemas.cart import CartItemPublic, CartPublic
 from app.services._buyer_utils import thumb_url_from_image_key
 from app.services._variant_utils import normalize_variants_to_en, variant_fingerprint
+from app.services.purchase_target import (
+    SkuMismatchError,
+    VariantUnresolvableError,
+    ZoneAccessDeniedError,
+    resolve_purchase_target,
+)
 
 
 # ── SPU 可用性校验 ─────────────────────────────────────────
@@ -158,20 +165,33 @@ async def add_item(
     product_id: int,
     selected_variants: list[dict],
     quantity: Decimal,
-    *, request: Request | None = None,
+    *, sku_id: int | None = None, request: Request | None = None,
 ) -> CartPublic:
-    """加购。行身份 = (cart_id, product_id, variant_fingerprint)。"""
-    org = await resolve_active_buyer_org(db, user)
+    """加购。行身份 = (cart_id, product_id, variant_fingerprint)。
 
-    product = await _get_viewable_product(db, product_id)
-    if not product:
-        raise CartProductNotAvailableError()
+    授权 + SKU 解析统一走 resolve_purchase_target(v2 §6.3)：
+    ZONE_ONLY 商品须持有目标专区有效 grant；多 SKU 商品须靠 selected_variants
+    或 sku_id 唯一定位；allow_spu_level=True 保留既有"整 SPU 加购"语义
+    (selected_variants 为空 = 对 SPU 整体加购，不代表某个具体 SKU)。
+    """
+    org = await resolve_active_buyer_org(db, user)
 
     if quantity <= 0:
         raise CartQuantityInvalidError()
 
-    # 归一化为英文 + 指纹（后端唯一来源，跨语言稳定）
-    normalized_variants = await normalize_variants_to_en(db, product_id, selected_variants)
+    try:
+        target = await resolve_purchase_target(
+            db, product_id=product_id, buyer_org_id=org.id,
+            selected_variants=selected_variants, sku_id=sku_id,
+            allow_spu_level=True,
+        )
+    except ZoneAccessDeniedError:
+        raise CartProductNotAvailableError()
+    except (VariantUnresolvableError, SkuMismatchError):
+        raise CartSkuNotPurchasableError()
+
+    product = target.product
+    normalized_variants = target.variant_snapshot
     fingerprint = variant_fingerprint(normalized_variants)
 
     # ① get_or_create_cart (SAVEPOINT)
@@ -201,6 +221,7 @@ async def add_item(
     else:
         await _insert_or_merge_item(
             db, cart.id, product_id, normalized_variants, fingerprint, quantity,
+            sku_id=target.sku_id,
         )
 
     await write_audit(
@@ -241,15 +262,31 @@ async def update_item(
     db: AsyncSession, user: CurrentUser, item_id: int,
     *, quantity: Decimal | None = None,
     selected_variants: list[dict[str, str]] | None = None,
+    sku_id: int | None = None,
     request: Request | None = None,
 ) -> CartPublic:
-    """改量和/或改变体。"""
+    """改量和/或改变体。product_id 不可变(行已存在),重选变体/sku 仍需重新过
+    resolve_purchase_target:一是防止专区 grant 在加购后被撤销仍可改单绕过授权，
+    二是重选变体后 sku_id 需要跟着重新绑定，不能停留在旧值。
+    """
     item = await _get_own_item_or_404(db, user, item_id)
     extra: dict[str, object] = {"item_id": item_id}
 
-    # ── 变体更新 ──
-    if selected_variants is not None:
-        normalized = await normalize_variants_to_en(db, item.product_id, selected_variants)
+    # ── 变体/SKU 更新 ──
+    if selected_variants is not None or sku_id is not None:
+        org = await resolve_active_buyer_org(db, user)
+        try:
+            target = await resolve_purchase_target(
+                db, product_id=item.product_id, buyer_org_id=org.id,
+                selected_variants=selected_variants, sku_id=sku_id,
+                allow_spu_level=True,
+            )
+        except ZoneAccessDeniedError:
+            raise CartProductNotAvailableError()
+        except (VariantUnresolvableError, SkuMismatchError):
+            raise CartSkuNotPurchasableError()
+
+        normalized = target.variant_snapshot
         new_fp = variant_fingerprint(normalized)
 
         # 预查同 cart 内其他行是否已存在相同指纹（并发兜底前置拦截）
@@ -270,7 +307,10 @@ async def update_item(
             await db.execute(
                 update(CartItem)
                 .where(CartItem.id == item.id)
-                .values(selected_variants=normalized, variant_fingerprint=new_fp)
+                .values(
+                    selected_variants=normalized, variant_fingerprint=new_fp,
+                    sku_id=target.sku_id,
+                )
             )
         except IntegrityError:
             await nested.rollback()
@@ -421,6 +461,7 @@ async def _insert_or_merge_item(
     db: AsyncSession, cart_id: int,
     product_id: int, selected_variants: list[dict],
     fingerprint: str, quantity: Decimal,
+    *, sku_id: int | None = None,
 ) -> None:
     """SAVEPOINT 保护：并发同三元组加购，冲突时按三元组精确回查累加。"""
     nested = await db.begin_nested()
@@ -428,6 +469,7 @@ async def _insert_or_merge_item(
         item = CartItem(
             cart_id=cart_id,
             product_id=product_id,
+            sku_id=sku_id,
             selected_variants=selected_variants,
             variant_fingerprint=fingerprint,
             quantity=quantity,

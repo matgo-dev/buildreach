@@ -66,6 +66,12 @@ from app.services._variant_utils import (
     variant_snapshot_to_display,
     get_viewable_product,
 )
+from app.services.purchase_target import (
+    SkuMismatchError,
+    VariantUnresolvableError,
+    ZoneAccessDeniedError,
+    resolve_purchase_target,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -193,19 +199,24 @@ async def create_rfq(
         _check_duplicate_items(payload.items)
         item_rows = _resolve_direct_items(payload.items)
 
-        # ── 2. SPU 可用性校验 + 快照数据 ──
+        # ── 2. 授权 + SKU 解析 + 快照数据（统一走 resolve_purchase_target，见 v2 §6.3）──
         offending: list[int] = []
         for row in item_rows:
-            product = await _get_viewable_product(db, row["product_id"])
-            if not product:
-                offending.append(row["product_id"])
-            else:
-                row["product_name_snapshot_zh"] = product.name_zh
-                row["product_name_snapshot_en"] = product.name_en
-                row["uom_snapshot"] = product.unit
-                row["variant_snapshot"] = await normalize_variants_to_en(
-                    db, product.id, row["selected_variants"],
+            try:
+                target = await resolve_purchase_target(
+                    db, product_id=row["product_id"], buyer_org_id=buyer_org_id,
+                    selected_variants=row["selected_variants"], sku_id=row.get("sku_id"),
+                    allow_spu_level=True,
                 )
+            except (ZoneAccessDeniedError, VariantUnresolvableError, SkuMismatchError):
+                offending.append(row["product_id"])
+                continue
+            product = target.product
+            row["product_name_snapshot_zh"] = product.name_zh
+            row["product_name_snapshot_en"] = product.name_en
+            row["uom_snapshot"] = product.unit
+            row["variant_snapshot"] = target.variant_snapshot
+            row["sku_id"] = target.sku_id
         if offending:
             raise RfqProductNotAvailableError(offending)
 
@@ -274,6 +285,7 @@ async def create_rfq(
         db.add(RfqItem(
             rfq_id=rfq.id,
             product_id=row["product_id"],
+            sku_id=row.get("sku_id"),
             variant_snapshot=row["variant_snapshot"],
             product_name_snapshot_zh=row.get("product_name_snapshot_zh"),
             product_name_snapshot_en=row.get("product_name_snapshot_en"),
@@ -537,6 +549,8 @@ def _resolve_direct_items(items: list) -> list[dict]:
         {
             "product_id": it.product_id,
             "selected_variants": it.selected_variants,
+            # TODO(Plan 3): 前端 SKU-flat UI 落地后才会真正传入此字段，当前 client 未接线。
+            "sku_id": getattr(it, "sku_id", None),
             "quantity": it.quantity,
             "target_unit_price": it.target_unit_price,
             "remark": it.remark,
@@ -923,18 +937,25 @@ async def update_rfq(
     if payload.items:
         _check_duplicate_items(payload.items)
         item_rows = _resolve_direct_items(payload.items)
+        # 与 create_rfq 同口径：统一走 resolve_purchase_target，
+        # 防止买方借草稿改单绕过 ZONE_ONLY 授权换入未授权商品。
         offending: list[int] = []
         for row in item_rows:
-            product = await _get_viewable_product(db, row["product_id"])
-            if not product:
-                offending.append(row["product_id"])
-            else:
-                row["product_name_snapshot_zh"] = product.name_zh
-                row["product_name_snapshot_en"] = product.name_en
-                row["uom_snapshot"] = product.unit
-                row["variant_snapshot"] = await normalize_variants_to_en(
-                    db, product.id, row["selected_variants"],
+            try:
+                target = await resolve_purchase_target(
+                    db, product_id=row["product_id"], buyer_org_id=rfq.buyer_org_id,
+                    selected_variants=row["selected_variants"], sku_id=row.get("sku_id"),
+                    allow_spu_level=True,
                 )
+            except (ZoneAccessDeniedError, VariantUnresolvableError, SkuMismatchError):
+                offending.append(row["product_id"])
+                continue
+            product = target.product
+            row["product_name_snapshot_zh"] = product.name_zh
+            row["product_name_snapshot_en"] = product.name_en
+            row["uom_snapshot"] = product.unit
+            row["variant_snapshot"] = target.variant_snapshot
+            row["sku_id"] = target.sku_id
         if offending:
             raise RfqProductNotAvailableError(offending)
 
@@ -945,6 +966,7 @@ async def update_rfq(
         db.add(RfqItem(
             rfq_id=rfq.id,
             product_id=row["product_id"],
+            sku_id=row.get("sku_id"),
             variant_snapshot=row["variant_snapshot"],
             product_name_snapshot_zh=row.get("product_name_snapshot_zh"),
             product_name_snapshot_en=row.get("product_name_snapshot_en"),

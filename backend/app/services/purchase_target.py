@@ -24,6 +24,7 @@ from app.db.models.product import Product, ProductStatus, ProductVisibility
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.zone import Zone, ZoneGrant, ZoneProduct
+from app.services._variant_utils import normalize_variants_to_en
 
 
 class ZoneAccessDeniedError(Exception):
@@ -77,14 +78,21 @@ def _snapshot_of(tuple_map: dict) -> list[dict]:
 
 def _decide_target(
     product, active_skus: list, selected_variants: list[dict] | None, sku_id: int | None,
+    allow_spu_level: bool = False,
 ) -> tuple[int | None, list[dict]]:
     """纯逻辑：返回 (sku_id | None, variant_snapshot)。见 v2 §6.3。
 
     - 显式传 sku_id：必须命中 active_skus 中的一个；若同时传了 selected_variants，
       两者描述的规格必须一致，否则拒绝（防止前端传的展示信息与真实绑定的 SKU 对不上）。
     - 未传 sku_id 且 active SKU 数 <= 1：直接绑定该 SKU（或商品级 None，无 SKU 概念）。
-    - 未传 sku_id 且多个 active SKU：必须靠 selected_variants 唯一定位到一个 SKU，
+    - 未传 sku_id 且多个 active SKU 且提供了 selected_variants：必须唯一定位到一个 SKU，
       零匹配 / 多匹配一律拒绝 —— 绝不默认挑一个（防 orphan）。
+    - 未传 sku_id 且多个 active SKU 且未提供 selected_variants(空)：
+      默认拒绝（同上，避免静默挑一个）；但 allow_spu_level=True 时视为"整 SPU 交易"
+      （购物车/询价单的既有整 SPU 加购/询价流程），放行为 (None, [])。
+      注意：这只放宽"完全未选择"的场景 —— 提供了 selected_variants 但解析不到
+      唯一 SKU（0 或 >1 匹配）仍然一律拒绝，因为那是一次"提供了但无法兑现"的
+      真实错误，不是整 SPU 语义。
     """
     sel = _variants_to_map(selected_variants)
 
@@ -102,6 +110,8 @@ def _decide_target(
         return (chosen.id if chosen else None), (selected_variants or [])
 
     if not sel:
+        if allow_spu_level:
+            return None, []
         raise VariantUnresolvableError("multiple active skus require selected_variants")
     matches = [s for s in active_skus if _tuple_of(s.attrs) == sel]
     if len(matches) != 1:
@@ -117,6 +127,7 @@ async def resolve_purchase_target(
     buyer_org_id: int | None,
     selected_variants: list[dict] | None = None,
     sku_id: int | None = None,
+    allow_spu_level: bool = False,
 ) -> PurchaseTarget:
     """单一交易解析入口：授权 + SKU 解析。购物车/RFQ/结算都应调用此函数而非自行拼查询。"""
     product = (
@@ -172,5 +183,18 @@ async def resolve_purchase_target(
     for s in active_skus:
         s.attrs = by_sku.get(s.id, [])
 
-    resolved_sku_id, snapshot = _decide_target(product, active_skus, selected_variants, sku_id)
+    resolved_sku_id, snapshot = _decide_target(
+        product, active_skus, selected_variants, sku_id, allow_spu_level=allow_spu_level,
+    )
+
+    if sku_id is None and len(active_skus) <= 1:
+        # 仅"未显式传 sku_id 且 <=1 active SKU"这条 _decide_target 分支未走
+        # _tuple_of/_snapshot_of 归一化（原样透传 selected_variants），复用既有
+        # normalize_variants_to_en 保持与历史行为一致：跨语言(zh/sw→en)匹配
+        # product_attrs + 排序，使 fingerprint 与旧调用方一致。
+        # 注意：显式传 sku_id 的分支（无论 active_skus 有几个）已在 _decide_target
+        # 内用 _snapshot_of(_tuple_of(...)) 算出正确快照，这里不能覆盖，否则会把
+        # "按 sku_id 加购但未传 selected_variants"的快照错误地清空为 []。
+        snapshot = await normalize_variants_to_en(db, product_id, selected_variants)
+
     return PurchaseTarget(product=product, sku_id=resolved_sku_id, variant_snapshot=snapshot)

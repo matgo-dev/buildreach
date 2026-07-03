@@ -521,3 +521,208 @@ async def test_resolve_purchase_target_resolves_multi_sku_via_db(db_session):
         await resolve_purchase_target(
             db_session, product_id=product.id, buyer_org_id=None, selected_variants=[],
         )
+
+
+# ── Task 7: cart / rfq 交易入口统一走 resolve_purchase_target ──────────
+# 授权路径本身已在上面(Task 6)覆盖；这里只测跨边界接线：
+# ZONE_ONLY 越权在 cart/rfq 入口被真实拒绝、sku_id 落库绑定、
+# 两条入参路径(variants / sku_id)经解析器回填后指纹一致从而合并成一行。
+
+_DEFAULT_BUYER_EMAIL = "buyer@cscec3b.local"
+_DEFAULT_BUYER_PASSWORD = "Aa123456789"
+
+
+async def _login_default_buyer(client: AsyncClient) -> dict[str, str]:
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": _DEFAULT_BUYER_EMAIL, "password": _DEFAULT_BUYER_PASSWORD},
+    )
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['data']['access_token']}"}
+
+
+async def _default_buyer_org_id(client: AsyncClient, headers: dict) -> int:
+    r = await client.get("/api/v1/auth/me", headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()["data"]["organization"]["id"]
+
+
+async def _make_zone_with_category(db_session, *, zone_code: str) -> tuple[Zone, ZoneCategory]:
+    zone = Zone(code=zone_code, name_zh="T7测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.flush()
+    zc = ZoneCategory(zone_id=zone.id, code="01", name_zh="T7测试类目")
+    db_session.add(zc)
+    await db_session.flush()
+    return zone, zc
+
+
+async def _make_variant_product_in_zone(
+    db_session, zone: Zone, zone_category: ZoneCategory, *, spu_code: str,
+):
+    """ZONE_ONLY + ACTIVE 商品，1 个 selectable 属性(spec)对应 1 个 active SKU。
+
+    只造 1 个 SKU(而非多 SKU)是有意为之：这正是 brief §6.3 收口②要验证的
+    "单 SKU 商品，按 variants 加 vs 按 sku_id 加应合并成一行"场景。
+    """
+    from app.db.models.product_attr import ProductAttr
+    from app.db.models.product_sku import ProductSku, SkuStatus
+
+    product = Product(
+        spu_code=spu_code, name_zh="专区变体测试商品", category_code="04.001",
+        status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
+        moq=1, unit="PCS",
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    sku = ProductSku(product_id=product.id, sku_code=f"{spu_code}-A", moq=1, status=SkuStatus.ACTIVE)
+    db_session.add(sku)
+    await db_session.flush()
+
+    db_session.add(ProductAttr(
+        product_id=product.id, sku_id=sku.id,
+        attr_key_en="spec", attr_value_en="A", selectable=True,
+    ))
+    db_session.add(ZoneProduct(zone_id=zone.id, spu_id=product.id, zone_category_id=zone_category.id))
+    await db_session.flush()
+    return product, sku
+
+
+async def _grant_zone_to_default_buyer(client: AsyncClient, db_session, zone: Zone) -> dict:
+    """给默认买方(cscec3b)组织授予目标专区 grant，返回其登录头。"""
+    headers = await _login_default_buyer(client)
+    org_id = await _default_buyer_org_id(client, headers)
+    db_session.add(ZoneGrant(zone_id=zone.id, buyer_org_id=org_id))
+    await db_session.commit()
+    return headers
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_org_cannot_transact_zone_only(client: AsyncClient, db_session):
+    """ZONE_ONLY 商品：无 grant 的买方组织加购/询价均被拒绝(不落库)。"""
+    product = await _make_zone_only_product_row(db_session, spu_code="T7-DENY-CART-RFQ")
+    zone = await _make_zone_with_product(
+        db_session, zone_code="ZONE-T7-DENY", zone_status="ACTIVE", product_id=product.id,
+    )
+    headers = await _login_default_buyer(client)  # 默认买方对该新建专区无 grant
+
+    # 加购拒 — CartProductNotAvailableError(40501, 422)
+    r = await client.post(
+        "/api/v1/cart/items", headers=headers,
+        json={"product_id": product.id, "selected_variants": [], "quantity": 1},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["code"] == 40501
+
+    # 询价拒 — RfqProductNotAvailableError(40506, 422)，商品 id 出现在 offending 列表
+    r2 = await client.post(
+        "/api/v1/rfqs", headers=headers,
+        json={"items": [{"product_id": product.id, "selected_variants": [], "quantity": 1}]},
+    )
+    assert r2.status_code == 422, r2.text
+    assert r2.json()["code"] == 40506
+    assert product.id in r2.json()["data"]["offending_product_ids"]
+
+    # 确认真的没有落库
+    from app.db.models.cart_item import CartItem
+    from app.db.models.rfq_item import RfqItem
+    assert (await db_session.execute(
+        select(CartItem).where(CartItem.product_id == product.id)
+    )).scalar_one_or_none() is None
+    assert (await db_session.execute(
+        select(RfqItem).where(RfqItem.product_id == product.id)
+    )).scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_granted_org_can_transact_and_binds_sku(client: AsyncClient, db_session):
+    """ZONE_ONLY + 授权买方：加购成功，且落库的 CartItem.sku_id 被正确绑定。"""
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T7-GRANT-CART")
+    product, sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T7-GRANT-CART",
+    )
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    r = await client.post(
+        "/api/v1/cart/items", headers=headers,
+        json={
+            "product_id": product.id,
+            "selected_variants": [{"attr_name": "spec", "value": "A"}],
+            "quantity": 1,
+        },
+    )
+    assert r.status_code == 200, r.text
+
+    from app.db.models.cart_item import CartItem
+    item = (await db_session.execute(
+        select(CartItem).where(CartItem.product_id == product.id)
+    )).scalar_one()
+    assert item.sku_id == sku.id
+
+
+@pytest.mark.asyncio
+async def test_granted_org_rfq_binds_sku(client: AsyncClient, db_session):
+    """ZONE_ONLY + 授权买方：询价成功，且落库的 RfqItem.sku_id 被正确绑定。"""
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T7-GRANT-RFQ")
+    product, sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T7-GRANT-RFQ",
+    )
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    r = await client.post(
+        "/api/v1/rfqs", headers=headers,
+        json={"items": [{
+            "product_id": product.id,
+            "selected_variants": [{"attr_name": "spec", "value": "A"}],
+            "quantity": 1,
+        }]},
+    )
+    assert r.status_code == 200, r.text
+
+    from app.db.models.rfq_item import RfqItem
+    item = (await db_session.execute(
+        select(RfqItem).where(RfqItem.product_id == product.id)
+    )).scalar_one()
+    assert item.sku_id == sku.id
+
+
+@pytest.mark.asyncio
+async def test_add_by_sku_id_and_by_variants_merge_to_one_line(client: AsyncClient, db_session):
+    """§6.3 收口②：同一目标两条入参路径(按 variants / 按 sku_id) → 合并成一行,不重复。
+
+    解析器对两条路径回填的 variant_snapshot 均已排序/归一化，
+    variant_fingerprint 因此一致 → 既有基于指纹的去重天然生效，无需额外把
+    sku_id 加进去重键。
+    """
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T7-MERGE")
+    product, sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T7-MERGE",
+    )
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    # 路径①：按 variants 加
+    r1 = await client.post(
+        "/api/v1/cart/items", headers=headers,
+        json={
+            "product_id": product.id,
+            "selected_variants": [{"attr_name": "spec", "value": "A"}],
+            "quantity": 1,
+        },
+    )
+    assert r1.status_code == 200, r1.text
+
+    # 路径②：按 sku_id 加(同一目标，不传 selected_variants)
+    r2 = await client.post(
+        "/api/v1/cart/items", headers=headers,
+        json={"product_id": product.id, "sku_id": sku.id, "quantity": 2},
+    )
+    assert r2.status_code == 200, r2.text
+
+    from app.db.models.cart_item import CartItem
+    rows = (await db_session.execute(
+        select(CartItem).where(CartItem.product_id == product.id)
+    )).scalars().all()
+    assert len(rows) == 1, "两条入参路径应合并为一行"
+    assert rows[0].quantity == 3
+    assert rows[0].sku_id == sku.id
