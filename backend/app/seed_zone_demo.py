@@ -48,7 +48,9 @@ from app.db.models.category import Category
 from app.db.models.product import Product, ProductStatus, ProductVisibility
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_sku import ProductSku, SkuStatus
+from app.db.models.role import Role, RoleCode
 from app.db.models.user import User
+from app.db.models.user_role import UserRole
 from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 
 ZONE_CODE = "CENTRAL_SOE"
@@ -260,6 +262,23 @@ async def _get_or_create_demo_buyer(db: AsyncSession) -> tuple[BuyerOrganization
         )
         db.add(user)
         await db.flush()
+
+    # 赋 BUYER 角色:种子直插 User 不走注册流程,否则 me.roles 为空、买家功能(询价篮/RFQ)gating 失效。
+    # 幂等——对已存在的账号也会补上缺失的角色。
+    buyer_role = (
+        await db.execute(select(Role).where(Role.code == RoleCode.BUYER))
+    ).scalar_one_or_none()
+    if buyer_role is not None:
+        has_role = (
+            await db.execute(
+                select(UserRole).where(
+                    UserRole.user_id == user.id, UserRole.role_id == buyer_role.id
+                )
+            )
+        ).scalar_one_or_none()
+        if has_role is None:
+            db.add(UserRole(user_id=user.id, role_id=buyer_role.id))
+            await db.flush()
 
     row = await db.execute(
         select(BuyerMember).where(BuyerMember.user_id == user.id, BuyerMember.buyer_org_id == org.id)
