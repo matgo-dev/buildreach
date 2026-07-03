@@ -793,3 +793,123 @@ async def test_me_returns_empty_zones_without_grant(client: AsyncClient, db_sess
     r = await client.get("/api/v1/auth/me", headers=headers)
     assert r.status_code == 200, r.text
     assert r.json()["data"]["zones"] == []
+
+
+# ── Task 11: 买方侧专区只读 API(类目导航 + 商品列表 + 商品详情) ────────────────────
+
+@pytest.mark.asyncio
+async def test_zone_categories_granted_buyer_sees_categories(client: AsyncClient, db_session):
+    """已授权买方:GET /zones/{code}/categories 返回该 zone 的客户视角大类。"""
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T11-CATS")
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    r = await client.get(f"/api/v1/zones/{zone.code}/categories", headers=headers)
+    assert r.status_code == 200, r.text
+    items = r.json()["data"]
+    assert any(c["id"] == zcat.id and c["code"] == zcat.code for c in items)
+    assert items[0]["name_zh"] == zcat.name_zh
+
+
+@pytest.mark.asyncio
+async def test_zone_products_list_and_category_filter(client: AsyncClient, db_session):
+    """已授权买方:商品列表返回白名单商品(公开卡片字段),且按 zone_category_code 筛选生效。"""
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T11-LIST")
+    product, _sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T11-LIST-PROD",
+    )
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    r = await client.get(f"/api/v1/zones/{zone.code}/products", headers=headers)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["total"] == 1
+    item = data["items"][0]
+    assert item["id"] == product.id
+    assert item["spu_code"] == "T11-LIST-PROD"
+    # 公开卡片字段(与 GET /products 一致,前端 mall 组件复用)
+    assert "main_image" in item and "moq" in item and "unit" in item
+
+    # 按正确的 zone_category_code 筛选:命中
+    r2 = await client.get(
+        f"/api/v1/zones/{zone.code}/products",
+        headers=headers, params={"zone_category_code": zcat.code},
+    )
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["data"]["total"] == 1
+
+    # 按不存在的 zone_category_code 筛选:空结果,不报错
+    r3 = await client.get(
+        f"/api/v1/zones/{zone.code}/products",
+        headers=headers, params={"zone_category_code": "NOPE"},
+    )
+    assert r3.status_code == 200, r3.text
+    assert r3.json()["data"]["total"] == 0
+    assert r3.json()["data"]["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_zone_product_detail_includes_variant_skus(client: AsyncClient, db_session):
+    """已授权买方:商品详情包含 SKU 变体属性,供前端换购。"""
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T11-DETAIL")
+    product, sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T11-DETAIL-PROD",
+    )
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    # 显式 Accept-Language: en —— fixture 只灌了 attr_value_en(source_lang 仍是
+    # 默认的 zh),zh locale 下 get_localized 会回退失败拿到空字符串,en 才能直接命中。
+    r = await client.get(
+        f"/api/v1/zones/{zone.code}/products/{product.id}",
+        headers={**headers, "Accept-Language": "en"},
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["id"] == product.id
+    assert data["spu_code"] == "T11-DETAIL-PROD"
+    assert len(data["skus"]) == 1
+    sku_data = data["skus"][0]
+    assert sku_data["id"] == sku.id
+    assert any(a["attr_value"] == "A" for a in sku_data["attributes"])
+
+
+@pytest.mark.asyncio
+async def test_zone_access_denied_returns_403_without_grant(client: AsyncClient, db_session):
+    """未授权买方:categories/products/detail 三个端点均 403。"""
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T11-DENY")
+    product, _sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T11-DENY-PROD",
+    )
+    headers = await _login_default_buyer(client)  # 无 grant
+
+    r1 = await client.get(f"/api/v1/zones/{zone.code}/categories", headers=headers)
+    assert r1.status_code == 403, r1.text
+
+    r2 = await client.get(f"/api/v1/zones/{zone.code}/products", headers=headers)
+    assert r2.status_code == 403, r2.text
+
+    r3 = await client.get(
+        f"/api/v1/zones/{zone.code}/products/{product.id}", headers=headers,
+    )
+    assert r3.status_code == 403, r3.text
+
+
+@pytest.mark.asyncio
+async def test_zone_access_denied_for_unknown_zone_code(client: AsyncClient, db_session):
+    """未知 zone_code:同样 403(不泄露 zone 是否存在)。"""
+    headers = await _login_default_buyer(client)
+    r = await client.get("/api/v1/zones/NOPE-ZONE/categories", headers=headers)
+    assert r.status_code == 403, r.text
+
+
+@pytest.mark.asyncio
+async def test_zone_product_detail_404_for_product_outside_whitelist(client: AsyncClient, db_session):
+    """已授权买方:商品不在该 zone 白名单内(如 PUBLIC 商品)→ 详情 404,不泄露存在性。"""
+    zone, _zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T11-404")
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    other_product = await _make_public_product(db_session, spu_code="T11-NOT-IN-ZONE")
+
+    r = await client.get(
+        f"/api/v1/zones/{zone.code}/products/{other_product.id}", headers=headers,
+    )
+    assert r.status_code == 404, r.text

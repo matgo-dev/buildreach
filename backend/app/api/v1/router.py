@@ -27,6 +27,7 @@ from app.api.v1 import (
     suppliers,
     test_rbac,
     version,
+    zones,
 )
 from app.core.config import settings
 
@@ -52,6 +53,7 @@ api_router.include_router(cart.router)
 api_router.include_router(rfqs.router)
 api_router.include_router(quotes.router)
 api_router.include_router(version.router)
+api_router.include_router(zones.router)
 
 # 调试/测试路由仅当 ENABLE_DEBUG_API=true 时挂载(生产默认关闭)
 if settings.ENABLE_DEBUG_API:
