@@ -51,6 +51,8 @@ from app.constants.country_registration import (
 )
 from app.core.security import PASSWORD_RULE_MESSAGE, validate_password_strength
 from app.db.models.supplier_organization import SupplierOrganization
+from app.db.models.buyer_member import BuyerMember
+from app.db.models.zone import Zone, ZoneGrant
 
 
 # ---- 供应商注册:全量校验(格式 + 业务一次性返回) ----
@@ -576,14 +578,31 @@ async def login(
     ).model_dump())
 
 
-@router.get("/me", summary="当前用户:roles + permissions + organization")
-async def me(current: CurrentUser = Depends(get_current_user)):
+@router.get("/me", summary="当前用户:roles + permissions + organization + zones")
+async def me(
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     org = asdict(current.organization) if current.organization else None
     demo_set = {
         e.strip().lower()
         for e in settings.DEMO_EMAILS.split(",")
         if e.strip()
     }
+
+    # 当前用户可见的专区(经 buyer_members → zone_grants → zones,仅 ACTIVE 专区)。
+    # 单条 JOIN 查询,避免 N+1。
+    zone_rows = await db.execute(
+        select(Zone.code, Zone.name_zh, Zone.name_en)
+        .join(ZoneGrant, ZoneGrant.zone_id == Zone.id)
+        .join(BuyerMember, BuyerMember.buyer_org_id == ZoneGrant.buyer_org_id)
+        .where(BuyerMember.user_id == current.id, Zone.status == "ACTIVE")
+    )
+    zones = [
+        {"code": row.code, "name_zh": row.name_zh, "name_en": row.name_en}
+        for row in zone_rows
+    ]
+
     data = MeOut(
         id=current.id,
         email=current.email,
@@ -597,6 +616,7 @@ async def me(current: CurrentUser = Depends(get_current_user)):
         permissions=current.permissions,
         organization=org,
         is_demo=(current.email or "").lower() in demo_set,
+        zones=zones,
     ).model_dump()
     return success(data)
 

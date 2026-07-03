@@ -118,7 +118,11 @@ def _variants_to_display(variants: list[dict]) -> str | None:
 async def resolve_active_buyer_org(
     db: AsyncSession, user: CurrentUser,
 ) -> BuyerOrganization:
-    """经 buyer_members 解析当前用户买方组织;不存在或非 ACTIVE → 40504。"""
+    """经 buyer_members 解析当前用户买方组织;不存在或非 ACTIVE → 40504。
+
+    # TODO(P1): multi-org active selection —— 当前假设用户只属于一个买方组织,
+    # 取 .limit(1) 的第一条;多组织时需要显式"当前激活组织"选择机制。
+    """
     row = await db.execute(
         select(BuyerOrganization)
         .join(BuyerMember, BuyerMember.buyer_org_id == BuyerOrganization.id)

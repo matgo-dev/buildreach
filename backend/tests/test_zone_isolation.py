@@ -769,3 +769,27 @@ async def test_unauthorized_org_cannot_update_rfq_with_zone_only(client: AsyncCl
     assert len(rfq_items) == 1, "RFQ 应保持 1 个行项"
     assert rfq_items[0].product_id == public_product.id, "RFQ 应保留原 PUBLIC 商品，未被替换"
     assert not any(item.product_id == zone_only_product.id for item in rfq_items), "ZONE_ONLY 商品不得入库"
+
+
+# ── Task 8: GET /me 暴露当前买方可见专区列表 ────────────────────
+
+@pytest.mark.asyncio
+async def test_me_returns_granted_zone_code(client: AsyncClient, db_session):
+    """买方组织持有某专区 grant 时,/me 的 zones 中应含该专区 code。"""
+    zone, _zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T8-ME")
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+
+    r = await client.get("/api/v1/auth/me", headers=headers)
+    assert r.status_code == 200, r.text
+    zones = r.json()["data"]["zones"]
+    assert any(z["code"] == "ZONE-T8-ME" for z in zones)
+
+
+@pytest.mark.asyncio
+async def test_me_returns_empty_zones_without_grant(client: AsyncClient, db_session):
+    """买方组织没有任何专区 grant 时,/me 的 zones 应为空列表。"""
+    headers = await _login_default_buyer(client)
+
+    r = await client.get("/api/v1/auth/me", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["zones"] == []
