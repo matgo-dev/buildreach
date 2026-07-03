@@ -1468,6 +1468,7 @@
     "description": "Tafadhali wasiliana na msimamizi wako kupata ufikiaji, au nenda kwenye ukurasa ulio na ruhusa ya kutazama.",
     "reasonRole": "Jukumu la akaunti yako halina ufikiaji wa eneo hili",
     "reasonPermission": "Unakosa ruhusa inayohitajika kwa ukurasa huu",
+    "reasonZone": "Kampuni yako haijapewa ufikiaji wa eneo hili",
     "goBack": "Rudi Nyuma",
     "goDashboard": "Nenda Dashibodi",
     "goLogin": "Ingia",
@@ -1860,5 +1861,11 @@
     "ccDelta": "Tofauti ya gharama",
     "ccCopy": "Nakili",
     "ccCopied": "Imenakiliwa"
+  },
+  "zone": {
+    "landingSubtitle": "Bidhaa zilizoteuliwa kwa kampuni yako — bei maalum, utekelezaji wa pekee",
+    "allCategories": "Aina Zote",
+    "backToZone": "Rudi kwenye Eneo",
+    "price": "Bei"
   }
 }

@@ -1468,6 +1468,7 @@
     "description": "Please contact your administrator for access, or navigate to a page you have permission to view.",
     "reasonRole": "Your account role does not have access to this area",
     "reasonPermission": "You are missing the required permission for this page",
+    "reasonZone": "Your company has not been granted access to this zone",
     "goBack": "Go Back",
     "goDashboard": "Go to Dashboard",
     "goLogin": "Sign In",
@@ -1860,5 +1861,11 @@
     "ccDelta": "Cost gap",
     "ccCopy": "Copy",
     "ccCopied": "Copied"
+  },
+  "zone": {
+    "landingSubtitle": "Whitelisted products for your company — negotiated pricing, dedicated fulfillment",
+    "allCategories": "All Categories",
+    "backToZone": "Back to Zone",
+    "price": "Price"
   }
 }

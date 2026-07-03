@@ -15,6 +15,8 @@ interface Props {
   error: Error | undefined;
   onRetry: () => void;
   onClearFilters: () => void;
+  /** 每张卡片的详情页链接;不传则用 ProductCard 默认的 `/mall/products/{id}` */
+  productHref?: (productId: number) => string;
 }
 
 function SkeletonCard() {
@@ -38,6 +40,7 @@ export function ProductGrid({
   error,
   onRetry,
   onClearFilters,
+  productHref,
 }: Props) {
   const t = useTranslations("mall");
 
@@ -80,7 +83,12 @@ export function ProductGrid({
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
       {products.map((p) => (
-        <ProductCard key={p.id} product={p} categoryTree={categoryTree} />
+        <ProductCard
+          key={p.id}
+          product={p}
+          categoryTree={categoryTree}
+          href={productHref ? productHref(p.id) : undefined}
+        />
       ))}
     </div>
   );

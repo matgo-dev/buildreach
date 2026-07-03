@@ -1468,6 +1468,7 @@
     "description": "请联系管理员获取访问权限，或返回您有权访问的页面。",
     "reasonRole": "您的账户角色无法访问此区域",
     "reasonPermission": "您缺少访问此页面所需的权限",
+    "reasonZone": "您的企业尚未开通此专区的访问权限",
     "goBack": "返回上一页",
     "goDashboard": "回到工作台",
     "goLogin": "去登录",
@@ -1861,5 +1862,11 @@
     "ccCopy": "复制",
     "ccCopied": "已复制"
   },
-  "navAiAssistant": "AI 智能助手 AI Assistant"
+  "navAiAssistant": "AI 智能助手 AI Assistant",
+  "zone": {
+    "landingSubtitle": "专属白名单商品 — 协议价格，专属履约保障",
+    "allCategories": "全部分类",
+    "backToZone": "返回专区",
+    "price": "价格"
+  }
 }

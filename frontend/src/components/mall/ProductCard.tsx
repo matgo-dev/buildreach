@@ -88,9 +88,12 @@ function findCategoryLabel(tree: CategoryTreeNode[], code: string): string {
 export function ProductCard({
   product,
   categoryTree,
+  href,
 }: {
   product: ProductPublic;
   categoryTree: CategoryTreeNode[];
+  /** 详情页链接,默认 `/mall/products/{id}`;专区等场景需覆盖为各自的详情路由 */
+  href?: string;
 }) {
   const t = useTranslations("mall");
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
@@ -132,7 +135,7 @@ export function ProductCard({
 
   return (
     <Link
-      href={`/mall/products/${product.id}`}
+      href={href ?? `/mall/products/${product.id}`}
       className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
     >
       {/* 图片区 — 撑满，窄边距 */}
