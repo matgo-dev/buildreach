@@ -13,6 +13,7 @@ from __future__ import annotations
 from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     JSON,
     String,
@@ -65,6 +66,9 @@ class ZoneProduct(Base, TimestampUpdateMixin):
             ["zone_categories.zone_id", "zone_categories.id"],
             name="fk_zone_products_category_same_zone",
         ),
+        # v2 查询索引
+        Index("ix_zone_product_zone_category_sort", "zone_id", "zone_category_id", "sort_order", "id"),
+        Index("ix_zone_product_zone_spu", "zone_id", "spu_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -72,6 +76,9 @@ class ZoneProduct(Base, TimestampUpdateMixin):
     spu_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
     zone_category_id: Mapped[int] = mapped_column(Integer, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="MANUAL")  # IMPORT | MANUAL
+    source_batch_id: Mapped[str | None] = mapped_column(String(64))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
 class ZoneGrant(Base, TimestampUpdateMixin):
