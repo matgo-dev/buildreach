@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Label } from "@/components/ui/label";
 import { useLogin } from "@/hooks/useAuth";
+import { useAuthConfig } from "@/hooks/usePublicConfig";
 import { ApiError } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
@@ -45,6 +46,11 @@ function LoginContent() {
   const [idErr, setIdErr] = useState<string | null>(null);
   const [pwdErr, setPwdErr] = useState<string | null>(null);
   const login = useLogin();
+
+  // 邮箱验证开关(后端 REQUIRE_EMAIL_VERIFICATION)。关闭时基于邮箱的找回流程无意义,
+  // 直接隐藏"忘记密码"入口。加载中(undefined)按安全默认仍显示。
+  const { requireEmailVerification } = useAuthConfig();
+  const forgotPasswordOn = requireEmailVerification !== false;
 
   const isPhone = looksLikePhone(identifier);
 
@@ -166,12 +172,14 @@ function LoginContent() {
             <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
               {t("password_label")}
             </Label>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-gray-400 transition-colors hover:text-[#FF6B35]"
-            >
-              {t("forgot_password")}
-            </Link>
+            {forgotPasswordOn && (
+              <Link
+                href="/forgot-password"
+                className="text-xs text-gray-400 transition-colors hover:text-[#FF6B35]"
+              >
+                {t("forgot_password")}
+              </Link>
+            )}
           </div>
           <div className="relative">
             <input

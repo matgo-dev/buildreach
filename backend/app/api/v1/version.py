@@ -10,5 +10,8 @@ router = APIRouter(tags=["version"])
 async def get_version():
     return {
         "commit": os.getenv("BUILD_COMMIT", "dev"),
+        "branch": os.getenv("BUILD_BRANCH", "-"),
+        "author": os.getenv("BUILD_COMMIT_AUTHOR", "-"),
+        "commit_time": os.getenv("BUILD_COMMIT_TIME", "-"),
         "build_time": os.getenv("BUILD_TIME", "-"),
     }

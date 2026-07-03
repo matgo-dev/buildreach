@@ -1,22 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, MessageCircle } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { validateEmail, validatePassword } from "@/lib/validators";
-import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useAuthConfig } from "@/hooks/usePublicConfig";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 import { getApiBase } from "@/lib/env";
 
 type Step = "email" | "code" | "done";
 
 export default function ForgotPasswordPage() {
   const t = useTranslations("auth.forgotPassword");
+  const tm = useTranslations("mall");
   const tc = useTranslations("common");
-  const wa = useWhatsApp();
+  const router = useRouter();
+
+  // 邮箱验证开关(后端 REQUIRE_EMAIL_VERIFICATION)。关闭时基于邮箱的找回流程无意义 → 跳回登录。
+  // 登录页已隐藏入口,此处兜住直接访问 /forgot-password URL 的情况。
+  const { requireEmailVerification } = useAuthConfig();
+  useEffect(() => {
+    if (requireEmailVerification === false) router.replace("/login");
+  }, [requireEmailVerification, router]);
 
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -108,17 +117,6 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // WhatsApp 预填文案
-  const waLink = (() => {
-    const base = wa.link;
-    if (!base) return null;
-    const text = email
-      ? `Hi, I need help resetting my password. My registered email is: ${email}`
-      : "Hi, I need help resetting my password.";
-    const sep = base.includes("?") ? "&" : "?";
-    return `${base}${sep}text=${encodeURIComponent(text)}`;
-  })();
-
   // Step 3: 完成
   if (step === "done") {
     return (
@@ -134,6 +132,15 @@ export default function ForgotPasswordPage() {
         >
           {t("go_login")}
         </Link>
+      </div>
+    );
+  }
+
+  // 开关关闭 → 重定向进行中,渲染 loader 避免闪现表单
+  if (requireEmailVerification === false) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
       </div>
     );
   }
@@ -202,21 +209,21 @@ export default function ForgotPasswordPage() {
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
-          {/* 联系客服 */}
-          <div className="space-y-3">
+          {/* 联系客服 — 两渠道(WhatsApp + 微信),复用 ContactPopover,和全站客服入口一致 */}
+          <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
               <MessageCircle className="h-4 w-4" />
               {t("method_whatsapp")}
             </div>
-            <a
-              href={waLink || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border-2 border-[#25D366] bg-[#25D366]/5 text-sm font-semibold text-[#25D366] transition-all hover:bg-[#25D366]/10"
-            >
-              <MessageCircle className="h-4 w-4" />
-              {t("contact_whatsapp")}
-            </a>
+            <ContactPopover>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
+              >
+                <MessageCircle className="h-4 w-4" />
+                {tm("ctaContactUs")}
+              </button>
+            </ContactPopover>
           </div>
         </>
       )}
