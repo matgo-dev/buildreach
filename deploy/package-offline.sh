@@ -103,6 +103,9 @@ echo ""
 echo "=== 2/6 构建后端镜像 → ${BACKEND_IMAGE} ==="
 docker build --platform linux/amd64 \
   --build-arg BUILD_COMMIT="$(git -C "${PROJECT_ROOT}" rev-parse --short HEAD)" \
+  --build-arg BUILD_BRANCH="$(git -C "${PROJECT_ROOT}" rev-parse --abbrev-ref HEAD)" \
+  --build-arg BUILD_COMMIT_AUTHOR="$(git -C "${PROJECT_ROOT}" show -s --format=%an HEAD)" \
+  --build-arg BUILD_COMMIT_TIME="$(git -C "${PROJECT_ROOT}" show -s --format=%cI HEAD)" \
   --build-arg BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   -t "${BACKEND_IMAGE}" \
   "${PROJECT_ROOT}/backend"
