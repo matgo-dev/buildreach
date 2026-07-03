@@ -19,6 +19,16 @@ export function PublicNav() {
   const t = useTranslations("nav");
   const locale = useLocale();
   const items = isSupplierOnly ? [] : PUBLIC_NAV;
+  // 专区入口:仅对被授权买家显示(me.zones 非空)—— 纯权限门,公开/未授权用户看不到
+  const zones = isSupplierOnly ? [] : user?.zones ?? [];
+
+  const linkClass = (active: boolean) =>
+    "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 " +
+    (active ? "text-teal-900" : "text-gray-500 hover:bg-slate-50 hover:text-teal-900");
+  const activeBar = (
+    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gold" />
+  );
+
   return (
     <nav className="flex items-center gap-1" aria-label="主导航">
       {items.map((item) => {
@@ -28,16 +38,7 @@ export function PublicNav() {
             ? pathname === "/"
             : pathname === item.path || pathname.startsWith(item.path + "/");
         return (
-          <Link
-            key={item.path}
-            href={item.path}
-            className={
-              "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 " +
-              (active
-                ? "text-teal-900"
-                : "text-gray-500 hover:bg-slate-50 hover:text-teal-900")
-            }
-          >
+          <Link key={item.path} href={item.path} className={linkClass(active)}>
             <span className="block text-center leading-tight">
               <span className="block">{t(item.labelKey)}</span>
               {locale === "zh" && item.labelEn && (
@@ -46,9 +47,25 @@ export function PublicNav() {
                 </span>
               )}
             </span>
-            {active && (
-              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gold" />
-            )}
+            {active && activeBar}
+          </Link>
+        );
+      })}
+      {zones.map((z) => {
+        const href = `/zone/${z.code}`;
+        const active = pathname === href || pathname.startsWith(href + "/");
+        const label = locale === "zh" ? z.name_zh : z.name_en || z.name_zh;
+        return (
+          <Link key={z.code} href={href} className={linkClass(active)}>
+            <span className="block text-center leading-tight">
+              <span className="block">{label}</span>
+              {locale === "zh" && z.name_en && (
+                <span className="-mt-0.5 block text-[8px] font-normal text-gray-400">
+                  {z.name_en}
+                </span>
+              )}
+            </span>
+            {active && activeBar}
           </Link>
         );
       })}
