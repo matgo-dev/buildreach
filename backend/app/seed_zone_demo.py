@@ -23,13 +23,15 @@
 - buyer_member: (user_id, buyer_org_id)
 - zone_grant: (zone_id, buyer_org_id)
 
-用法:
+用法(仅限本地/联调,需显式 opt-in;生产严禁):
     cd backend
-    python app/seed_zone_demo.py
+    ALLOW_DEMO_SEED=1 python app/seed_zone_demo.py
+可选:DEMO_BUYER_PASSWORD=<自定义强口令> 覆盖默认弱口令。
 """
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -52,7 +54,7 @@ from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 ZONE_CODE = "CENTRAL_SOE"
 DEMO_BUYER_EMAIL = "zonebuyer@demo.local"
 DEMO_BUYER_USERNAME = "zone_demo_buyer"
-DEMO_BUYER_PASSWORD = "Aa123456789"
+DEMO_BUYER_PASSWORD = os.environ.get("DEMO_BUYER_PASSWORD", "Aa123456789")
 DEMO_BUYER_ORG_CODE = "ZONE-DEMO-BUYER-ORG"
 
 # 客户视角大类(zone_category),code 为专区内自有编号,与平台 category 树无关。
@@ -342,6 +344,16 @@ async def _execute() -> None:
     """连库执行种子。"""
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
     from app.core.config import settings
+
+    # 安全护栏:本脚本会创建带已知口令的可登录 demo 买家 + zone 授权,绝不能落到生产。
+    # ① 必须显式 opt-in(生产部署链路不会带这个变量);② 硬拦已知生产库主机。
+    if os.environ.get("ALLOW_DEMO_SEED") != "1":
+        raise SystemExit(
+            "拒绝执行:seed_zone_demo 会创建带弱口令的可登录 demo 买家账号 + zone 授权,仅限本地/联调。\n"
+            "确认在非生产环境后,设置 ALLOW_DEMO_SEED=1 再重跑;生产环境严禁执行。"
+        )
+    if "162.19.98.142" in (settings.DATABASE_URL or ""):
+        raise SystemExit("拒绝执行:DATABASE_URL 指向生产库(OVH 162.19.98.142),demo 种子严禁落生产。")
 
     engine = create_async_engine(settings.DATABASE_URL)
     Session = async_sessionmaker(engine, expire_on_commit=False)
