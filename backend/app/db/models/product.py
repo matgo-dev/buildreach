@@ -56,6 +56,12 @@ class ProductStatus:
         return target in cls.TRANSITIONS.get(current, ())
 
 
+class ProductVisibility:
+    PUBLIC = "PUBLIC"
+    ZONE_ONLY = "ZONE_ONLY"
+    ALL = (PUBLIC, ZONE_ONLY)
+
+
 class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     __tablename__ = "products"
     __table_args__ = (
@@ -133,6 +139,7 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         String(30), nullable=False, default=SupplyMode.SUPPLIER_DIRECT,
         server_default=SupplyMode.SUPPLIER_DIRECT,
     )
+    visibility: Mapped[str] = mapped_column(String(16), nullable=False, default=ProductVisibility.PUBLIC, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProductStatus.DRAFT)
     # 上架时间：ACTIVE 时写入，下架时清空，重新上架时更新
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
