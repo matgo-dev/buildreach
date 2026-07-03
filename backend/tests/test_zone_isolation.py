@@ -13,7 +13,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 
 from app.db.models.permission import Permission
-from app.db.models.product import Product, ProductVisibility
+from app.db.models.product import Product, ProductStatus, ProductVisibility
 from app.db.models.role import Role
 from app.db.models.role_permission import RolePermission
 from app.rbac.constants import Permissions
@@ -320,3 +320,204 @@ async def test_get_recent_views_filters_zone_only_products(db_session):
 
     assert p2.id in recent_ids, "PUBLIC 商品应在最近浏览中"
     assert p1.id not in recent_ids, "ZONE_ONLY 商品不应在最近浏览中（可见性泄露）"
+
+
+# ── Task 6: resolve_purchase_target() 授权路径集成测试 ────────────────────
+# 纯 SKU 解析分支(零/单/多 SKU、variants 消歧、sku_id 一致性)已在
+# tests/test_purchase_target_unit.py 覆盖；这里只测跨边界的授权接线
+# (grant / 白名单 / zone.status)，因为这些 bug 藏在 DB 缝隙里，mock 掉就失去意义。
+
+from app.db.models.buyer_organization import BuyerOrganization
+from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
+from app.services.purchase_target import ZoneAccessDeniedError, resolve_purchase_target
+
+
+async def _make_public_product(db_session, *, spu_code: str, status: str = ProductStatus.ACTIVE) -> Product:
+    p = Product(
+        spu_code=spu_code,
+        name_zh="授权测试商品",
+        category_code="04.001",
+        status=status,
+        visibility=ProductVisibility.PUBLIC,
+        moq=1,
+        unit="PCS",
+    )
+    db_session.add(p)
+    await db_session.flush()
+    return p
+
+
+async def _make_zone_only_product_row(db_session, *, spu_code: str) -> Product:
+    p = Product(
+        spu_code=spu_code,
+        name_zh="专供测试商品",
+        category_code="04.001",
+        status=ProductStatus.ACTIVE,
+        visibility=ProductVisibility.ZONE_ONLY,
+        moq=1,
+        unit="PCS",
+    )
+    db_session.add(p)
+    await db_session.flush()
+    return p
+
+
+async def _make_zone_with_product(db_session, *, zone_code: str, zone_status: str, product_id: int) -> Zone:
+    zone = Zone(code=zone_code, name_zh="测试专区", status=zone_status)
+    db_session.add(zone)
+    await db_session.flush()
+
+    zc = ZoneCategory(zone_id=zone.id, code="01", name_zh="测试类目")
+    db_session.add(zc)
+    await db_session.flush()
+
+    db_session.add(ZoneProduct(zone_id=zone.id, spu_id=product_id, zone_category_id=zc.id))
+    await db_session.flush()
+    return zone
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_public_active_authorized_without_org(db_session):
+    """PUBLIC + ACTIVE 商品：无需 buyer_org_id 即可授权通过。"""
+    product = await _make_public_product(db_session, spu_code="RPT-PUBLIC-OK")
+    target = await resolve_purchase_target(
+        db_session, product_id=product.id, buyer_org_id=None,
+    )
+    assert target.product.id == product.id
+    assert target.sku_id is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_denies_inactive_product_regardless_of_visibility(db_session):
+    """非 ACTIVE 商品一律拒绝，不管 visibility 是什么(§6.3:商品自身须可交易)。"""
+    product = await _make_public_product(
+        db_session, spu_code="RPT-INACTIVE", status=ProductStatus.INACTIVE,
+    )
+    with pytest.raises(ZoneAccessDeniedError):
+        await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=None)
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_denies_deleted_product(db_session):
+    """软删商品一律拒绝。"""
+    product = await _make_public_product(db_session, spu_code="RPT-DELETED")
+    from sqlalchemy import func, update
+    await db_session.execute(
+        update(Product).where(Product.id == product.id).values(deleted_at=func.now())
+    )
+    await db_session.flush()
+    with pytest.raises(ZoneAccessDeniedError):
+        await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=None)
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_zone_only_denied_without_org(db_session):
+    """ZONE_ONLY 商品：buyer_org_id 缺失直接拒绝，不查库。"""
+    product = await _make_zone_only_product_row(db_session, spu_code="RPT-ZONE-NOORG")
+    with pytest.raises(ZoneAccessDeniedError):
+        await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=None)
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_zone_only_denied_without_grant(db_session):
+    """ZONE_ONLY 商品：org 存在但没有该专区的 ZoneGrant，拒绝。"""
+    product = await _make_zone_only_product_row(db_session, spu_code="RPT-ZONE-NOGRANT")
+    await _make_zone_with_product(
+        db_session, zone_code="ZONE-NOGRANT", zone_status="ACTIVE", product_id=product.id,
+    )
+    org = BuyerOrganization(name="无授权买方组织")
+    db_session.add(org)
+    await db_session.flush()
+
+    with pytest.raises(ZoneAccessDeniedError):
+        await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=org.id)
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_zone_only_denied_when_zone_inactive(db_session):
+    """ZONE_ONLY 商品：即使有 grant + 白名单，专区本身 INACTIVE 时也拒绝交易。"""
+    product = await _make_zone_only_product_row(db_session, spu_code="RPT-ZONE-INACTIVE")
+    zone = await _make_zone_with_product(
+        db_session, zone_code="ZONE-INACTIVE", zone_status="INACTIVE", product_id=product.id,
+    )
+    org = BuyerOrganization(name="停用专区买方组织")
+    db_session.add(org)
+    await db_session.flush()
+    db_session.add(ZoneGrant(zone_id=zone.id, buyer_org_id=org.id))
+    await db_session.flush()
+
+    with pytest.raises(ZoneAccessDeniedError):
+        await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=org.id)
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_zone_only_allowed_with_active_grant(db_session):
+    """ZONE_ONLY 商品：grant + 白名单 + 专区 ACTIVE 全满足时授权通过。"""
+    product = await _make_zone_only_product_row(db_session, spu_code="RPT-ZONE-OK")
+    zone = await _make_zone_with_product(
+        db_session, zone_code="ZONE-OK", zone_status="ACTIVE", product_id=product.id,
+    )
+    org = BuyerOrganization(name="已授权买方组织")
+    db_session.add(org)
+    await db_session.flush()
+    db_session.add(ZoneGrant(zone_id=zone.id, buyer_org_id=org.id))
+    await db_session.flush()
+
+    target = await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=org.id)
+    assert target.product.id == product.id
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_zone_only_denied_for_product_outside_whitelist(db_session):
+    """ZONE_ONLY 商品：org 有该专区 grant，但商品不在该专区白名单(zone_products)内，拒绝。"""
+    product = await _make_zone_only_product_row(db_session, spu_code="RPT-ZONE-NOTLISTED")
+    zone = Zone(code="ZONE-NOTLISTED", name_zh="测试专区2", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.flush()
+    org = BuyerOrganization(name="白名单外买方组织")
+    db_session.add(org)
+    await db_session.flush()
+    db_session.add(ZoneGrant(zone_id=zone.id, buyer_org_id=org.id))
+    await db_session.flush()
+    # 注意：没有为该 product 建 ZoneProduct 白名单行
+
+    with pytest.raises(ZoneAccessDeniedError):
+        await resolve_purchase_target(db_session, product_id=product.id, buyer_org_id=org.id)
+
+
+@pytest.mark.asyncio
+async def test_resolve_purchase_target_resolves_multi_sku_via_db(db_session):
+    """端到端：多 ACTIVE SKU 商品经真实 DB 查询(批量加载 attrs)靠 selected_variants 唯一解析。"""
+    from app.db.models.product_attr import ProductAttr
+    from app.db.models.product_sku import ProductSku, SkuStatus
+
+    product = await _make_public_product(db_session, spu_code="RPT-MULTISKU")
+    sku_a = ProductSku(product_id=product.id, sku_code="RPT-MULTISKU-A", moq=1, status=SkuStatus.ACTIVE)
+    sku_b = ProductSku(product_id=product.id, sku_code="RPT-MULTISKU-B", moq=1, status=SkuStatus.ACTIVE)
+    db_session.add_all([sku_a, sku_b])
+    await db_session.flush()
+
+    db_session.add_all([
+        ProductAttr(
+            product_id=product.id, sku_id=sku_a.id,
+            attr_key_en="spec", attr_value_en="A", selectable=True,
+        ),
+        ProductAttr(
+            product_id=product.id, sku_id=sku_b.id,
+            attr_key_en="spec", attr_value_en="B", selectable=True,
+        ),
+    ])
+    await db_session.flush()
+
+    target = await resolve_purchase_target(
+        db_session, product_id=product.id, buyer_org_id=None,
+        selected_variants=[{"attr_name": "spec", "value": "B"}],
+    )
+    assert target.sku_id == sku_b.id
+    assert target.variant_snapshot == [{"attr_name": "spec", "value": "B"}]
+
+    from app.services.purchase_target import VariantUnresolvableError
+    with pytest.raises(VariantUnresolvableError):
+        await resolve_purchase_target(
+            db_session, product_id=product.id, buyer_org_id=None, selected_variants=[],
+        )
