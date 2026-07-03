@@ -57,12 +57,16 @@ router = APIRouter(
 
 # ── 序列化工具 ───────────────────────────────────────────
 
-def _enrich_attrs(attrs, template_map: dict) -> list[dict]:
-    """属性序列化：attr_unit/sort_order/display_name 从模板取,key/value 本地化。"""
+def _enrich_attrs(attrs, template_map: dict, scope: str) -> list[dict]:
+    """属性序列化：attr_unit/sort_order/display_name 从模板取,key/value 本地化。
+
+    template_map 按 (attr_key, scope) 键存(同轴 SPU/SKU 两级模板场景),
+    需带 scope 精确查找,避免同名 key 取到另一 scope 的模板。
+    """
     from app.core.i18n import get_localized
     result = []
     for attr in attrs:
-        tpl = template_map.get(attr.attr_key_en)
+        tpl = template_map.get((attr.attr_key_en, scope))
         result.append({
             "attr_key": get_localized(attr, "attr_key"),
             "attr_value": get_localized(attr, "attr_value"),
@@ -318,7 +322,7 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ):
     p = await product_svc.get_product(db, product_id)
-    tpl_map = {t.attr_key: t for t in await product_svc.get_attr_templates(db, p.category_code)}
+    tpl_map = {(t.attr_key, t.scope): t for t in await product_svc.get_attr_templates(db, p.category_code)}
 
     # 查创建人名称
     created_by_name = ""
@@ -341,7 +345,7 @@ async def get_product(
     skus_data = []
     for s in p.skus:
         d = _sku_to_operator(s)
-        d["attributes"] = _enrich_attrs(sku_attr_groups.get(s.id, []), tpl_map)
+        d["attributes"] = _enrich_attrs(sku_attr_groups.get(s.id, []), tpl_map, "SKU")
         skus_data.append(d)
 
     data = ProductOperatorDetail(
@@ -385,7 +389,7 @@ async def get_product(
         created_by_name=created_by_name,
         skus=skus_data,
         images=[_img_to_dict(img) for img in p.images],
-        attributes=_enrich_attrs(spu_attrs, tpl_map),
+        attributes=_enrich_attrs(spu_attrs, tpl_map, "SPU"),
         created_at=p.created_at,
         updated_at=p.updated_at,
     ).model_dump()

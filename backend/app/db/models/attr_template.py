@@ -11,7 +11,10 @@ class AttrTemplate(Base):
     __tablename__ = "attr_templates"
     __table_args__ = (
         Index("ix_attr_templates_category_code", "category_code"),
-        UniqueConstraint("category_code", "attr_key", name="uq_attr_templates_category_key"),
+        UniqueConstraint(
+            "category_code", "attr_key", "scope",
+            name="uq_attr_templates_category_key_scope",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

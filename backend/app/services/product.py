@@ -353,10 +353,14 @@ async def update_product(
 
 async def _load_template_map(
     db: AsyncSession, category_code: str,
-) -> dict[str, "AttrTemplate"]:
-    """加载品类(含祖先链)的属性模板,返回 {attr_key: template} 映射。"""
+) -> dict[tuple[str, str], "AttrTemplate"]:
+    """加载品类(含祖先链)的属性模板,返回 {(attr_key, scope): template} 映射。
+
+    同一 attr_key 可在 SPU 与 SKU 两个 scope 各有一条模板(变体轴场景),
+    按 (attr_key, scope) 键存,两条都保留,不互相覆盖。
+    """
     templates = await get_attr_templates(db, category_code)
-    return {t.attr_key: t for t in templates}
+    return {(t.attr_key, t.scope): t for t in templates}
 
 
 async def _add_attrs(
@@ -364,15 +368,23 @@ async def _add_attrs(
     product_id: int,
     attrs: list,
     *,
-    template_map: dict[str, "AttrTemplate"],
+    template_map: dict[tuple[str, str], "AttrTemplate"],
     category_code: str,
     expected_scope: str,
     sku_id: int | None = None,
 ) -> None:
     """添加属性,校验 attr_key ∈ 模板 + scope 一致性,unit/sort_order 从模板取。"""
     for attr in attrs:
-        tpl = template_map.get(attr.attr_key)
+        tpl = template_map.get((attr.attr_key, expected_scope))
         if tpl is None:
+            # 同 key 是否在另一 scope 下有模板(同轴 SPU/SKU 两级场景)：
+            # 若有，说明 key 合法但 scope 用错了，报更精确的 scope 不匹配错误。
+            other_tpl = next(
+                (t for (key, _scope), t in template_map.items() if key == attr.attr_key),
+                None,
+            )
+            if other_tpl is not None:
+                raise AttrScopeMismatchError(attr.attr_key, other_tpl.scope)
             if template_map:
                 # 品类有模板定义,拒绝模板外的属性
                 raise AttrKeyNotInTemplateError(attr.attr_key, category_code)
@@ -397,8 +409,7 @@ async def _add_attrs(
                 },
             ))
             continue
-        if tpl.scope != expected_scope:
-            raise AttrScopeMismatchError(attr.attr_key, tpl.scope)
+        # tpl 已按 (attr_key, expected_scope) 精确查得,scope 必然匹配,无需再校验。
 
         db.add(ProductAttr(
             product_id=product_id,
@@ -446,7 +457,10 @@ async def update_product_status(
         is_manual = (getattr(product, "source", "MANUAL") or "MANUAL") == "MANUAL"
         if is_manual:
             tpl_map = await _load_template_map(db, product.category_code)
-            required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
+            required_spu = [
+                attr_key for (attr_key, scope), t in tpl_map.items()
+                if scope == "SPU" and t.is_required
+            ]
             spu_attr_keys = {a.attr_key_en for a in product.attrs if a.sku_id is None}
             missing_spu = [k for k in required_spu if k not in spu_attr_keys]
             if missing_spu:
@@ -1533,13 +1547,15 @@ async def get_attr_templates(
     )
     all_templates = (await db.execute(q)).scalars().all()
 
-    # 按 attr_key 去重:同一 key 取最深(level 最大)的一条
-    best: dict[str, AttrTemplate] = {}
+    # 按 (attr_key, scope) 去重:同一 key 同一 scope 取最深(level 最大)的一条。
+    # 同一 key 不同 scope(SPU/SKU 两级)各自保留,不互相覆盖。
+    best: dict[tuple[str, str], AttrTemplate] = {}
     for t in all_templates:
         t_level = code_to_level.get(t.category_code, 0)
-        existing = best.get(t.attr_key)
+        dedup_key = (t.attr_key, t.scope)
+        existing = best.get(dedup_key)
         if existing is None or t_level > code_to_level.get(existing.category_code, 0):
-            best[t.attr_key] = t
+            best[dedup_key] = t
 
     # 排序:按所属分类 level 升序(L1→L2→L3),同级按 sort_order 升序
     result = sorted(
@@ -1794,7 +1810,7 @@ async def _create_sku_in_aggregate(
     product: Product,
     sku_data,
     *,
-    tpl_map: dict[str, "AttrTemplate"],
+    tpl_map: dict[tuple[str, str], "AttrTemplate"],
     source_lang: str,
 ) -> ProductSku:
     """聚合事务内创建单个 SKU（含属性、阶梯价），不 commit。"""
@@ -1862,7 +1878,7 @@ async def _update_sku_in_aggregate(
     sku: ProductSku,
     sku_data,
     *,
-    tpl_map: dict[str, "AttrTemplate"],
+    tpl_map: dict[tuple[str, str], "AttrTemplate"],
     operator_id: int | None = None,
 ) -> ProductSku:
     """聚合事务内更新单个 SKU（含属性、阶梯价），不 commit。"""
