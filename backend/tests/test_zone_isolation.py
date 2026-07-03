@@ -726,3 +726,46 @@ async def test_add_by_sku_id_and_by_variants_merge_to_one_line(client: AsyncClie
     assert len(rows) == 1, "两条入参路径应合并为一行"
     assert rows[0].quantity == 3
     assert rows[0].sku_id == sku.id
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_org_cannot_update_rfq_with_zone_only(client: AsyncClient, db_session):
+    """ZONE_ONLY 商品：无 grant 的买方借草稿改单更新不得绕过授权，PATCH 拒绝且不落库。"""
+    # 1. 创建一个 PUBLIC 商品，用于初始化 DRAFT RFQ
+    public_product = await _make_public_product(db_session, spu_code="T7-UPDATE-ALLOWED")
+    headers = await _login_default_buyer(client)
+    org_id = await _default_buyer_org_id(client, headers)
+
+    # 2. 用 PUBLIC 商品创建 DRAFT RFQ
+    r_create = await client.post(
+        "/api/v1/rfqs", headers=headers,
+        json={"items": [{"product_id": public_product.id, "selected_variants": [], "quantity": 1}], "as_draft": True},
+    )
+    assert r_create.status_code == 200, r_create.text
+    rfq_id = r_create.json()["data"]["id"]
+
+    # 3. 创建一个 ZONE_ONLY 商品，对应买方组织无 grant
+    zone_only_product = await _make_zone_only_product_row(db_session, spu_code="T7-UPDATE-DENIED")
+    zone = await _make_zone_with_product(
+        db_session, zone_code="ZONE-T7-UPDATE-DENY", zone_status="ACTIVE", product_id=zone_only_product.id,
+    )
+    # 注意：不给 org_id 赋予该 zone 的 grant，模拟无权限场景
+
+    # 4. PATCH 草稿 RFQ，试图将 ZONE_ONLY 商品换入
+    r_update = await client.patch(
+        f"/api/v1/rfqs/{rfq_id}", headers=headers,
+        json={"items": [{"product_id": zone_only_product.id, "selected_variants": [], "quantity": 1}]},
+    )
+    # 预期 422，code 40506 (RfqProductNotAvailableError)，offending_product_ids 包含 zone_only_product.id
+    assert r_update.status_code == 422, r_update.text
+    assert r_update.json()["code"] == 40506
+    assert zone_only_product.id in r_update.json()["data"]["offending_product_ids"]
+
+    # 5. 确认真的没有落库更新：RFQ 仍包含原 PUBLIC 商品，不含 ZONE_ONLY 商品
+    from app.db.models.rfq_item import RfqItem
+    rfq_items = (await db_session.execute(
+        select(RfqItem).where(RfqItem.rfq_id == rfq_id)
+    )).scalars().all()
+    assert len(rfq_items) == 1, "RFQ 应保持 1 个行项"
+    assert rfq_items[0].product_id == public_product.id, "RFQ 应保留原 PUBLIC 商品，未被替换"
+    assert not any(item.product_id == zone_only_product.id for item in rfq_items), "ZONE_ONLY 商品不得入库"
