@@ -96,6 +96,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         Permissions.BANNER_WRITE,
         # 运营分析(热门商品/转化漏斗)
         Permissions.ANALYTICS_READ,
+        # 央企/客户专区管理
+        Permissions.ZONE_MANAGE,
     ],
     "ADMIN": [
         *_AUTH_BASE,
