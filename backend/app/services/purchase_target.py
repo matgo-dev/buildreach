@@ -71,7 +71,8 @@ def _variants_to_map(selected_variants: list[dict] | None) -> dict:
 
 def _snapshot_of(tuple_map: dict) -> list[dict]:
     """{attr_key_en: attr_value_en} -> 既有落库/展示形状 [{"attr_name","value"}]。"""
-    return [{"attr_name": k, "value": v} for k, v in tuple_map.items()]
+    result = [{"attr_name": k, "value": v} for k, v in tuple_map.items()]
+    return sorted(result, key=lambda x: (x.get("attr_name", ""), x.get("value", "")))
 
 
 def _decide_target(

@@ -14,6 +14,7 @@ from app.services.purchase_target import (
     SkuMismatchError,
     VariantUnresolvableError,
     _decide_target,
+    _snapshot_of,
     _variants_to_map,
 )
 
@@ -115,3 +116,36 @@ def test_variants_to_map_accepts_multiple_shapes():
     assert _variants_to_map([{"key": "spec", "value": "A"}]) == {"spec": "A"}
     assert _variants_to_map(None) == {}
     assert _variants_to_map([]) == {}
+
+
+def test_snapshot_of_sorts_deterministically():
+    """_snapshot_of 必须按 (attr_name, value) 排序，使 variant_fingerprint() 产生一致的哈希。
+
+    输入 tuple_map 的迭代顺序不保证，但输出 snapshot 必须始终排序一致。
+    本测试用 2 个属性故意反序传入，验证输出已排序。
+    """
+    # 反序输入：先 "size": "L"，再 "color": "Red"
+    tuple_map = {"size": "L", "color": "Red"}
+    snapshot = _snapshot_of(tuple_map)
+
+    # 验证输出已按 (attr_name, value) 排序
+    # "color": "Red" 应排在 "size": "L" 前（色< 尺size）
+    assert snapshot == [
+        {"attr_name": "color", "value": "Red"},
+        {"attr_name": "size", "value": "L"},
+    ]
+
+
+def test_multi_sku_ambiguous_two_matches_raise_error():
+    """数据异常：两个 SKU 拥有相同的 selectable-attr 组合（规格冲突）。
+    selected_variants 本应唯一命中，但命中了 2 个，必须拒绝，不允许静默挑一个。
+    """
+    prod = _P()
+    # 两个 SKU，都有完全相同的规格 {"spec": "A"}
+    skus = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "A"})]
+    with pytest.raises(VariantUnresolvableError) as exc_info:
+        _decide_target(
+            prod, active_skus=skus, selected_variants=[{"attr_name": "spec", "value": "A"}], sku_id=None
+        )
+    # 错误消息应包含匹配数目
+    assert "2 skus" in str(exc_info.value)
