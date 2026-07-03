@@ -17,6 +17,7 @@ from app.db.models.buyer_event import BuyerEvent
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_image import ImageType, ProductImage
 from app.services._buyer_utils import thumb_url_from_image_key
+from app.services.product_visibility import public_visible
 
 
 # --------------- 事件类型常量 ---------------
@@ -177,10 +178,7 @@ async def get_recent_views(
     q = (
         select(Product, subq.c.last_viewed)
         .join(subq, Product.id == subq.c.resource_id)
-        .where(
-            Product.status == ProductStatus.ACTIVE,
-            Product.deleted_at.is_(None),
-        )
+        .where(public_visible())
         .order_by(subq.c.last_viewed.desc())
         .limit(limit)
     )

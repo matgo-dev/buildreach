@@ -231,3 +231,92 @@ async def test_zone_only_product_hidden_from_all_public_surfaces(client: AsyncCl
         (item["thumbnail"] or "").find(img_row) == -1
         for item in thumbnails
     )
+
+
+@pytest.mark.asyncio
+async def test_get_recent_views_filters_zone_only_products(db_session):
+    """get_recent_views() 应过滤 ZONE_ONLY 商品，防止可见性泄露。"""
+    from sqlalchemy import select as _select
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+    from app.db.models.buyer_event import BuyerEvent
+    from app.db.models.user import User
+    from app.db.models.buyer_organization import BuyerOrganization
+    from app.db.models.buyer_member import BuyerMember
+    from app.core.security import hash_password
+    from app.services.buyer_event import get_recent_views, EventType
+
+    # 准备买方组织和用户
+    buyer_org = BuyerOrganization(name="TestOrgRecent")
+    db_session.add(buyer_org)
+    await db_session.flush()
+
+    buyer_user = User(
+        email="buyer-recent@test.local",
+        username="buyer_recent_test",
+        name="Buyer Test",
+        password_hash=hash_password("Aa123456789"),
+    )
+    db_session.add(buyer_user)
+    await db_session.flush()
+
+    # 将用户加入组织
+    db_session.add(BuyerMember(user_id=buyer_user.id, buyer_org_id=buyer_org.id, is_owner=True))
+    await db_session.flush()
+
+    # 创建两个 PUBLIC + ACTIVE 商品 P1 和 P2
+    p1 = Product(
+        spu_code="TEST-P1-ZONE-LEAK",
+        name_zh="控制商品1",
+        category_code="04.001",
+        status=ProductStatus.ACTIVE,
+        visibility=ProductVisibility.PUBLIC,
+        moq=1,
+        unit="PCS",
+    )
+    db_session.add(p1)
+    await db_session.flush()
+
+    p2 = Product(
+        spu_code="TEST-P2-ZONE-LEAK",
+        name_zh="控制商品2",
+        category_code="04.001",
+        status=ProductStatus.ACTIVE,
+        visibility=ProductVisibility.PUBLIC,
+        moq=1,
+        unit="PCS",
+    )
+    db_session.add(p2)
+    await db_session.flush()
+
+    # 为 P1 和 P2 各记一条 VIEW_PRODUCT 事件
+    event_p1 = BuyerEvent(
+        buyer_org_id=buyer_org.id,
+        user_id=buyer_user.id,
+        event_type=EventType.VIEW_PRODUCT,
+        resource_type="product",
+        resource_id=p1.id,
+    )
+    db_session.add(event_p1)
+
+    event_p2 = BuyerEvent(
+        buyer_org_id=buyer_org.id,
+        user_id=buyer_user.id,
+        event_type=EventType.VIEW_PRODUCT,
+        resource_type="product",
+        resource_id=p2.id,
+    )
+    db_session.add(event_p2)
+    await db_session.flush()
+
+    # 将 P1 翻转到 ZONE_ONLY(模拟运营商隐藏商品到专区)
+    await db_session.execute(
+        update(Product).where(Product.id == p1.id).values(visibility=ProductVisibility.ZONE_ONLY)
+    )
+    await db_session.commit()
+
+    # 查询最近浏览: 应包含 P2，不应包含 P1
+    recent = await get_recent_views(db_session, buyer_user.id, limit=10)
+    recent_ids = [item["id"] for item in recent]
+
+    assert p2.id in recent_ids, "PUBLIC 商品应在最近浏览中"
+    assert p1.id not in recent_ids, "ZONE_ONLY 商品不应在最近浏览中（可见性泄露）"
