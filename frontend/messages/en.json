@@ -1258,6 +1258,7 @@
       "password": "Password",
       "accountStatus": "Account Status",
       "orgName": "Organization",
+      "orgUscc": "Unified Social Credit Code",
       "orgType": "Type",
       "orgRole": "Role",
       "orgStatus": "Status",
@@ -1275,6 +1276,8 @@
     "placeholders": {
       "notSet": "Not set",
       "enterName": "Enter your name",
+      "enterOrgName": "Enter organization name",
+      "enterUscc": "Enter unified social credit code",
       "enterNewEmail": "Enter new email",
       "enterNewPhone": "Enter new phone number",
       "enterNewUsername": "Enter new username",
@@ -1307,6 +1310,7 @@
     },
     "errors": {
       "nameRequired": "Name is required",
+      "orgNameRequired": "Organization name is required",
       "sameAsCurrentEmail": "Same as current email",
       "sameAsCurrentPhone": "Same as current phone",
       "sameAsCurrentUsername": "Same as current username",
@@ -1320,6 +1324,7 @@
     },
     "success": {
       "nameSaved": "Name updated",
+      "orgSaved": "Organization info updated",
       "emailSaved": "Email updated",
       "phoneSaved": "Phone updated",
       "phoneCleared": "Phone removed",

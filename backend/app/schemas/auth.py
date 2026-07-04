@@ -172,6 +172,8 @@ class OrganizationOut(BaseModel):
     is_owner: bool
     # 前端 dashboard banner 判定用:SupplierOrg.status / BuyerOrg.status
     status: str | None = None
+    # 买方组织统一社会信用代码(供 owner 自助维护 + 运营授权检索);supplier 恒 None
+    unified_social_credit_code: str | None = None
 
 
 class ZoneOut(BaseModel):

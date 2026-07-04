@@ -259,7 +259,7 @@ function AssignModal({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="按组织名搜索…"
+            placeholder="按组织名 / 统一社会信用代码搜索…"
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 placeholder-slate-400 focus:border-[#003366] focus:outline-none focus:ring-2 focus:ring-[#003366]/15"
           />
         </div>
@@ -288,10 +288,13 @@ function AssignModal({
                   className="flex items-center justify-between gap-3 border-b border-slate-50 px-4 py-2.5 last:border-b-0"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm text-slate-800">{org.name}</div>
-                    <div className="font-mono text-xs text-slate-400">
+                    <div className="truncate text-sm text-slate-800">
+                      {org.name || <span className="text-slate-400">(未填组织名)</span>}
+                    </div>
+                    <div className="truncate font-mono text-xs text-slate-400">
                       #{org.id}
                       {org.code ? ` · ${org.code}` : ""}
+                      {org.unified_social_credit_code ? ` · ${org.unified_social_credit_code}` : ""}
                     </div>
                   </div>
                   {already ? (

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
@@ -25,6 +25,7 @@ class BuyerOrgBrief(BaseModel):
     id: int
     name: str
     code: str | None = None
+    unified_social_credit_code: str | None = None
 
 
 @router.get("", summary="搜索买方组织")
@@ -35,12 +36,20 @@ async def list_buyer_orgs(
     current: CurrentUser = Depends(require_permission(Permissions.RFQ_CLAIM)),
     db: AsyncSession = Depends(get_db),
 ):
-    """按组织名模糊搜索 ACTIVE 买方组织。运营代录询价时选择买方。"""
+    """按组织名 / 编码 / 统一社会信用代码模糊搜索 ACTIVE 买方组织。
+
+    运营代录询价、或专区授权时选择买方(重名靠 uscc 区分,故三字段 OR 匹配)。
+    """
     base = select(BuyerOrganization).where(
         BuyerOrganization.status == BuyerOrgStatus.ACTIVE,
     )
     if q.strip():
-        base = base.where(BuyerOrganization.name.ilike(f"%{q.strip()}%"))
+        pat = f"%{q.strip()}%"
+        base = base.where(or_(
+            BuyerOrganization.name.ilike(pat),
+            BuyerOrganization.code.ilike(pat),
+            BuyerOrganization.unified_social_credit_code.ilike(pat),
+        ))
 
     # 总数
     count_q = select(func.count()).select_from(base.subquery())
@@ -53,7 +62,10 @@ async def list_buyer_orgs(
         .limit(page_size)
     )
     items = [
-        BuyerOrgBrief(id=org.id, name=org.name, code=org.code).model_dump()
+        BuyerOrgBrief(
+            id=org.id, name=org.name, code=org.code,
+            unified_social_credit_code=org.unified_social_credit_code,
+        ).model_dump()
         for org in rows.scalars().all()
     ]
 

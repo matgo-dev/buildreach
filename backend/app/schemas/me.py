@@ -31,6 +31,18 @@ class ProfileUpdateIn(BaseModel):
         return v
 
 
+class OrgUpdateIn(BaseModel):
+    """Owner 修改自己所属买方组织资料。
+
+    PATCH 语义:不传 = 不修改。
+    - name 传入即必须非空(组织名 NOT NULL,不允许清空)。
+    - unified_social_credit_code 传空字符串 = 清空(该字段可空且唯一)。
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    unified_social_credit_code: str | None = Field(default=None, max_length=18)
+
+
 class ChangeEmailIn(BaseModel):
     """改登录邮箱(敏感:需要 current_password)。"""
 

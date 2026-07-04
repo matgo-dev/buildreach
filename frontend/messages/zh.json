@@ -1258,6 +1258,7 @@
       "password": "密码",
       "accountStatus": "账户状态",
       "orgName": "组织",
+      "orgUscc": "统一社会信用代码",
       "orgType": "组织类型",
       "orgRole": "组织角色",
       "orgStatus": "组织状态",
@@ -1275,6 +1276,8 @@
     "placeholders": {
       "notSet": "未设置",
       "enterName": "请输入姓名",
+      "enterOrgName": "请输入组织名称",
+      "enterUscc": "请输入统一社会信用代码",
       "enterNewEmail": "请输入新邮箱",
       "enterNewPhone": "请输入新手机号",
       "enterNewUsername": "请输入新用户名",
@@ -1307,6 +1310,7 @@
     },
     "errors": {
       "nameRequired": "姓名不能为空",
+      "orgNameRequired": "组织名称不能为空",
       "sameAsCurrentEmail": "新邮箱与当前一致",
       "sameAsCurrentPhone": "新手机号与当前一致",
       "sameAsCurrentUsername": "新用户名与当前一致",
@@ -1320,6 +1324,7 @@
     },
     "success": {
       "nameSaved": "姓名已更新",
+      "orgSaved": "组织信息已更新",
       "emailSaved": "邮箱已更新",
       "phoneSaved": "手机号已更新",
       "phoneCleared": "手机号已清除",

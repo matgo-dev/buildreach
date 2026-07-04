@@ -19,7 +19,7 @@ import {
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/Toast";
-import { authApi } from "@/lib/auth";
+import { authApi, type OrganizationInfo } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useLocale } from "next-intl";
@@ -55,7 +55,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 // 可编辑字段标识
-type EditingField = "name" | "email" | "phone" | "username" | "password" | null;
+type EditingField = "name" | "email" | "phone" | "username" | "password" | "org" | null;
 
 function Inner() {
   const user = useAuthStore((s) => s.user);
@@ -354,10 +354,41 @@ function Inner() {
               className="scroll-mt-24"
             >
               <SectionCard icon={Building2} title={t("sections.organization")}>
-                <FieldRow
-                  label={t("fields.orgName")}
-                  value={user.organization!.name}
-                />
+                {editing === "org" ? (
+                  <div className="px-6 py-4">
+                    <OrgEditForm
+                      initialName={user.organization!.name}
+                      initialUscc={user.organization!.unified_social_credit_code ?? ""}
+                      t={t}
+                      toast={toast}
+                      onSaved={(org) => {
+                        setUser({ ...user, organization: org });
+                        stopEditing();
+                      }}
+                      onCancel={stopEditing}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {/* 仅买方组织 owner 可编辑名称/统一社会信用代码;供应商组织与非 owner 只读 */}
+                    <FieldRow
+                      label={t("fields.orgName")}
+                      value={user.organization!.name || t("placeholders.notSet")}
+                      onEdit={
+                        user.organization!.type === "BUYER_ORG" && user.organization!.is_owner
+                          ? () => startEditing("org")
+                          : undefined
+                      }
+                    />
+                    {user.organization!.type === "BUYER_ORG" && (
+                      <FieldRow
+                        label={t("fields.orgUscc")}
+                        value={user.organization!.unified_social_credit_code || t("placeholders.notSet")}
+                        onEdit={user.organization!.is_owner ? () => startEditing("org") : undefined}
+                      />
+                    )}
+                  </>
+                )}
                 <FieldRow
                   label={t("fields.orgType")}
                   value={t(`orgTypes.${user.organization!.type}`)}
@@ -618,6 +649,95 @@ function NameEditForm({
         />
         {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0D4D4D] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0D4D4D]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {t("actions.save")}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          {t("actions.cancel")}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function OrgEditForm({
+  initialName,
+  initialUscc,
+  t,
+  toast,
+  onSaved,
+  onCancel,
+}: {
+  initialName: string;
+  initialUscc: string;
+  t: TranslateFunc;
+  toast: Toast;
+  onSaved: (org: OrganizationInfo) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [uscc, setUscc] = useState(initialUscc);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError(t("errors.orgNameRequired"));
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      // uscc 传空串 = 清空(后端 PATCH 语义)
+      const org = await authApi.updateOrganization({
+        name: name.trim(),
+        unified_social_credit_code: uscc.trim(),
+      });
+      toast.success(t("success.orgSaved"));
+      onSaved(org);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : t("errors.saveFailed");
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
+      <div>
+        <Label htmlFor="editOrgName" className="text-xs text-slate-500">{t("fields.orgName")}</Label>
+        <InlineInput
+          id="editOrgName"
+          value={name}
+          onChange={(e) => { setName(e.target.value); setError(""); }}
+          placeholder={t("placeholders.enterOrgName")}
+          hasError={!!error}
+        />
+      </div>
+      <div>
+        <Label htmlFor="editOrgUscc" className="text-xs text-slate-500">{t("fields.orgUscc")}</Label>
+        <InlineInput
+          id="editOrgUscc"
+          value={uscc}
+          onChange={(e) => setUscc(e.target.value)}
+          placeholder={t("placeholders.enterUscc")}
+          maxLength={18}
+        />
+      </div>
+      {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex items-center gap-2">
         <button
           type="submit"
