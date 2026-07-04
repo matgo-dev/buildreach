@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import tempfile
 
 import pytest
 from PIL import Image
@@ -9,6 +10,14 @@ from app.core.config import settings
 from app.core.exceptions import BusinessError
 from app.services import upload_pipeline
 from app.services._buyer_utils import save_uploaded_image_from_path
+
+
+def test_temp_upload_dir_lives_under_system_tmp():
+    """中转临时目录必须在系统 /tmp 下,不能是源码树相对路径。
+
+    根因守卫:曾用 /app/tmp,非 root 容器里 /app 不可写 → 上传图片 500。
+    """
+    assert str(upload_pipeline._TMP_UPLOAD_DIR).startswith(tempfile.gettempdir())
 
 
 @pytest.mark.asyncio

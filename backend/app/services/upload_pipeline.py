@@ -14,7 +14,9 @@ from app.core.config import settings
 
 UPLOAD_CHUNK_SIZE = 1024 * 1024
 SNIFF_BYTES = 8192
-_TMP_UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "tmp" / "uploads"
+# 中转临时目录走系统 /tmp(恒可写、进程退出自动清、尊重 TMPDIR),
+# 不放源码树下的 /app/tmp —— 后者在非 root 容器里不可写会导致上传 500。
+_TMP_UPLOAD_DIR = Path(tempfile.gettempdir()) / "buildreach_uploads"
 _T = TypeVar("_T")
 
 _image_processing_semaphore = asyncio.Semaphore(

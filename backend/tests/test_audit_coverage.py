@@ -30,6 +30,7 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/auth/deactivate"),
     # auth — 自助资料变更,均走 me_service 内的 write_audit
     ("PATCH", "/api/v1/auth/me/profile"),
+    ("PATCH", "/api/v1/auth/me/organization"),
     ("POST", "/api/v1/auth/me/email"),
     ("POST", "/api/v1/auth/me/username"),
     ("POST", "/api/v1/auth/me/phone"),
