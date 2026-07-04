@@ -3,7 +3,9 @@
 把客户材料表(17 大类、去重 1646 SPU、含规格变体/单位)导入平台商品模型 + 专区白名单:
 - 1 个 zone(common-materials,复用 demo seed 建的;无则建)
 - 17 个 zone_categories(code=大类编号 01-17,name=大类名),幂等 upsert(改名复用 demo 的 01-05)
-- 1646 个 products:visibility=ZONE_ONLY + status=ACTIVE,category_code 取自 master_final.final_code
+- 1646 个 products:visibility=PUBLIC + status=ACTIVE,category_code 取自 master_final.final_code
+  (2026-07-04 廖总确认这批材料完全公开:当普通商城商品,进首页/主商城/按主品类树浏览检索;
+   zone_product 白名单/zone_grant 授权本期搁置,不影响公开)
   (1317 挂真实平台 leaf + 329 用 parent_hint 现有父 code 占位;code 是可晚绑定死元数据)
 - SKU:多规格→每规格 1 个 ACTIVE SKU + selectable 属性 spec;单/无规格→1 个默认 SKU
 - unit 取自 Excel 计量单位列(同 SPU 多单位取众数)
@@ -387,7 +389,7 @@ async def _upsert_product(db: AsyncSession, r: dict, stats: dict) -> Product:
         product.name_en = r["en"]
         product.category_code = r["category_code"]
         product.moq_unit = r["unit"]  # 真实计量单位存 moq_unit(平台惯例:unit 恒 PCS)
-        product.visibility = ProductVisibility.ZONE_ONLY
+        product.visibility = ProductVisibility.PUBLIC
         product.status = ProductStatus.ACTIVE
         stats["products_updated"] += 1
         await db.flush()
@@ -395,7 +397,7 @@ async def _upsert_product(db: AsyncSession, r: dict, stats: dict) -> Product:
 
     product = Product(
         spu_code=spu_code, name_zh=r["zh"], name_en=r["en"], category_code=r["category_code"],
-        status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
+        status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC,
         # 平台惯例:unit 恒默认 PCS(定价/下单读它),真实计量单位放 moq_unit
         unit="PCS", moq=1, moq_unit=r["unit"], source=SOURCE,
         source_meta={"batch": BATCH_ID, "大类": r["cat_name"], "kind": r["kind"]},
@@ -468,11 +470,59 @@ async def _upsert_zone_product(db: AsyncSession, zone: Zone, zc: ZoneCategory, p
     await db.flush()
 
 
+OFFICE_L1_CODE = "32"  # 办公用品一级类目(平台现有 31 个一级,取下一个)
+
+
+async def _ensure_office_l1_category(db: AsyncSession, stats: dict) -> None:
+    """确保一级类目「办公用品」(code=32)存在;办公家具/设备的 NEW占位 parent_hint=32 依赖它。
+    办公域本应独立成一级,不挂 临建设施(2026-07-04 用户拍板)。子叶 办公家具/办公设备/其他
+    仍走 _finalize_new_leaf_categories 在 32 下自动建。"""
+    existing = (await db.execute(
+        select(Category).where(Category.code == OFFICE_L1_CODE)
+    )).scalar_one_or_none()
+    if existing is not None:
+        if not existing.is_active:
+            existing.is_active = True
+        existing.short_name_zh = "办公"  # 目录树显示用短名(对齐平台 L1 惯例)
+        existing.short_name_en = existing.short_name_en or "Office"
+        existing.short_name_sw = existing.short_name_sw or "Ofisi"
+        stats["office_l1_existing"] += 1
+        return
+    max_sort = (await db.execute(
+        select(func.max(Category.sort_order)).where(Category.level == 1)
+    )).scalar() or 0
+    db.add(Category(
+        code=OFFICE_L1_CODE, name_zh="办公用品", name_en="Office Supplies",
+        short_name_zh="办公", short_name_en="Office", short_name_sw="Ofisi",
+        level=1, parent_code=None, sort_order=max_sort + 1,
+        is_active=True, is_leaf=False, source_lang="zh",
+        trans_meta={"name_zh": "src", "name_en": "manual"},
+    ))
+    await db.flush()
+    stats["office_l1_created"] += 1
+
+
+OFFICE_SUB_ORDER = ["办公家具", "办公设备", "其他"]  # 目录树里子叶展示顺序,「其他」殿后
+
+
+async def _order_office_subleaves(db: AsyncSession) -> None:
+    """按 OFFICE_SUB_ORDER 固定办公用品子叶展示顺序(自动建叶按字序会把「其他」排到最前)。"""
+    children = (await db.execute(
+        select(Category).where(Category.parent_code == OFFICE_L1_CODE, Category.is_active.is_(True))
+    )).scalars().all()
+    for child in children:
+        if child.name_zh in OFFICE_SUB_ORDER:
+            child.sort_order = OFFICE_SUB_ORDER.index(child.name_zh) + 1
+    await db.flush()
+
+
 async def run_import(db: AsyncSession) -> dict:
     stats = collections.Counter()
     rows = load_rows()
     stats["spu_total"] = len(rows)
+    await _ensure_office_l1_category(db, stats)
     await _finalize_new_leaf_categories(db, rows, stats)
+    await _order_office_subleaves(db)
     cat_stats = await _validate_category_codes(db, rows)
 
     zone = await _get_or_create_zone(db)
