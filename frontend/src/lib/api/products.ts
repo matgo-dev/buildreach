@@ -31,6 +31,8 @@ export interface ProductPublic {
   lead_time_min?: number | null;
   lead_time_max?: number | null;
   sku_count?: number;
+  /** SPU 英文名,专区列表返回作卡片副标;mall 不返回 */
+  name_en?: string | null;
 }
 
 export interface ProductListParams {

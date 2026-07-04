@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
+import { usePathname } from "next/navigation";
 import { Package, ShoppingCart, Loader2 } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
@@ -88,17 +89,27 @@ function findCategoryLabel(tree: CategoryTreeNode[], code: string): string {
 export function ProductCard({
   product,
   categoryTree,
+  href,
 }: {
   product: ProductPublic;
   categoryTree: CategoryTreeNode[];
+  /** 详情页链接,默认 `/mall/products/{id}`;专区等场景需覆盖为各自的详情路由 */
+  href?: string;
 }) {
   const t = useTranslations("mall");
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
   const router = useRouter();
+  const pathname = usePathname();
   const [adding, setAdding] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const zoneCodeFromPath = pathname?.match(/(?:^|\/)zone\/([^/?#]+)/)?.[1];
+  const detailHref =
+    href ?? (zoneCodeFromPath ? `/zone/${decodeURIComponent(zoneCodeFromPath)}/products/${product.id}` : `/mall/products/${product.id}`);
+  const rfqHref = zoneCodeFromPath
+    ? `/buyer/rfqs/create?product_id=${product.id}&zone_code=${encodeURIComponent(decodeURIComponent(zoneCodeFromPath))}`
+    : `/buyer/rfqs/create?product_id=${product.id}`;
 
   const prevCountRef = useRef(useCartStore.getState().count);
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
@@ -128,11 +139,11 @@ export function ProductCard({
     } finally {
       setAdding(false);
     }
-  }, [product.id, syncFromCart, toast, t]);
+  }, [product.id, router, syncFromCart, toast, t]);
 
   return (
     <Link
-      href={`/mall/products/${product.id}`}
+      href={detailHref}
       className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
     >
       {/* 图片区 — 撑满，窄边距 */}
@@ -174,6 +185,9 @@ export function ProductCard({
             </span>
           )}
           {product.name}
+          {product.name_en && product.name_en !== product.name && (
+            <span className="ml-1 font-normal text-muted">{product.name_en}</span>
+          )}
         </h3>
 
         {product.description && (
@@ -206,6 +220,10 @@ export function ProductCard({
           </p>
         )}
 
+        {product.sku_count != null && product.sku_count > 0 && (
+          <p className="text-xs text-muted">{t("specCount", { count: product.sku_count })}</p>
+        )}
+
         {/* 底部操作 */}
         <div className="flex gap-2 pt-1">
           <MallButton
@@ -215,7 +233,7 @@ export function ProductCard({
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
-              router.push(`/buyer/rfqs/create?product_id=${product.id}`);
+              router.push(rfqHref);
             }}
           >
             {t("startInquiry")}

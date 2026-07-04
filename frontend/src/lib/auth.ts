@@ -29,6 +29,8 @@ export interface MeData {
   language_preference?: string | null;
   /** 是否为地推演示账号(后端根据 DEMO_EMAILS 白名单判断) */
   is_demo?: boolean;
+  /** 当前用户可见的专区(经 buyer_members → zone_grants → zones,仅 ACTIVE 专区) */
+  zones: { code: string; name_zh: string; name_en: string | null }[];
 }
 
 export interface LoginResult {

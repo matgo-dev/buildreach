@@ -68,6 +68,7 @@ from app.db.models.rfq_quote_item_cost import RfqQuoteItemCost
 from app.db.models.user import User, UserStatus
 from app.db.models.user_role import UserRole
 from app.db.models.verification_code import VerificationCode, VerificationPurpose
+from app.db.models.zone import Zone, ZoneCategory, ZoneProduct, ZoneGrant
 __all__ = [
     # attachment
     "Attachment",
@@ -159,4 +160,9 @@ __all__ = [
     "VerificationCode",
     "VerificationPurpose",
     "UserStatus",
+    # zone (央企专区)
+    "Zone",
+    "ZoneCategory",
+    "ZoneProduct",
+    "ZoneGrant",
 ]

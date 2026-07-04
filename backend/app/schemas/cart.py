@@ -12,17 +12,22 @@ class CartItemAdd(BaseModel):
     product_id: int
     selected_variants: list[dict[str, str]] = Field(default_factory=list)
     # 示例: [{"attr_name": "material_type", "value": "normal_white_with_film"}]
+    # SKU 平铺列表点卡片可直接传 sku_id;两条入参路径都由 resolve_purchase_target 归一。
+    # TODO(Plan 3): 前端 SKU-flat UI 落地后才会真正传入此字段，当前 client 未接线。
+    sku_id: int | None = None
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
 
 
 class CartItemUpdate(BaseModel):
     quantity: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
     selected_variants: list[dict[str, str]] | None = None
+    # TODO(Plan 3): 前端 SKU-flat UI 落地后才会真正传入此字段，当前 client 未接线。
+    sku_id: int | None = None
 
     @model_validator(mode="after")
     def at_least_one(self) -> "CartItemUpdate":
-        if self.quantity is None and self.selected_variants is None:
-            raise ValueError("quantity or selected_variants required")
+        if self.quantity is None and self.selected_variants is None and self.sku_id is None:
+            raise ValueError("quantity or selected_variants or sku_id required")
         return self
 
 

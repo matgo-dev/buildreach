@@ -174,6 +174,12 @@ class OrganizationOut(BaseModel):
     status: str | None = None
 
 
+class ZoneOut(BaseModel):
+    code: str
+    name_zh: str
+    name_en: str | None = None
+
+
 class MeOut(BaseModel):
     id: int
     email: str | None = None
@@ -187,3 +193,4 @@ class MeOut(BaseModel):
     permissions: list[str]
     organization: OrganizationOut | None = None
     is_demo: bool = False
+    zones: list[ZoneOut] = []

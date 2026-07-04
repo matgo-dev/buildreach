@@ -54,7 +54,7 @@ from app.core.i18n_registry import get_i18n_fields
 from app.core.locale import SUPPORTED_LOCALES, get_current_locale
 from app.db.models.attr_template import AttrTemplate
 from app.db.models.category import Category
-from app.db.models.product import Product, ProductStatus, SupplyMode
+from app.db.models.product import Product, ProductStatus, ProductVisibility, SupplyMode
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_image import ProductImage, ImageType
 from app.db.models.product_sku import ProductSku, SkuStatus
@@ -85,6 +85,7 @@ from app.services._buyer_utils import (
     thumb_url_from_image_key,
 )
 from app.services.upload_pipeline import run_image_processing, stream_upload_file_to_temp
+from app.services.product_visibility import PUBLIC_VISIBLE_SQL, public_visible
 
 # i18n 字段声明:从注册表读取(单一来源)
 from app.db.models.product import Product as _Product
@@ -353,10 +354,14 @@ async def update_product(
 
 async def _load_template_map(
     db: AsyncSession, category_code: str,
-) -> dict[str, "AttrTemplate"]:
-    """加载品类(含祖先链)的属性模板,返回 {attr_key: template} 映射。"""
+) -> dict[tuple[str, str], "AttrTemplate"]:
+    """加载品类(含祖先链)的属性模板,返回 {(attr_key, scope): template} 映射。
+
+    同一 attr_key 可在 SPU 与 SKU 两个 scope 各有一条模板(变体轴场景),
+    按 (attr_key, scope) 键存,两条都保留,不互相覆盖。
+    """
     templates = await get_attr_templates(db, category_code)
-    return {t.attr_key: t for t in templates}
+    return {(t.attr_key, t.scope): t for t in templates}
 
 
 async def _add_attrs(
@@ -364,15 +369,23 @@ async def _add_attrs(
     product_id: int,
     attrs: list,
     *,
-    template_map: dict[str, "AttrTemplate"],
+    template_map: dict[tuple[str, str], "AttrTemplate"],
     category_code: str,
     expected_scope: str,
     sku_id: int | None = None,
 ) -> None:
     """添加属性,校验 attr_key ∈ 模板 + scope 一致性,unit/sort_order 从模板取。"""
     for attr in attrs:
-        tpl = template_map.get(attr.attr_key)
+        tpl = template_map.get((attr.attr_key, expected_scope))
         if tpl is None:
+            # 同 key 是否在另一 scope 下有模板(同轴 SPU/SKU 两级场景)：
+            # 若有，说明 key 合法但 scope 用错了，报更精确的 scope 不匹配错误。
+            other_tpl = next(
+                (t for (key, _scope), t in template_map.items() if key == attr.attr_key),
+                None,
+            )
+            if other_tpl is not None:
+                raise AttrScopeMismatchError(attr.attr_key, other_tpl.scope)
             if template_map:
                 # 品类有模板定义,拒绝模板外的属性
                 raise AttrKeyNotInTemplateError(attr.attr_key, category_code)
@@ -397,8 +410,7 @@ async def _add_attrs(
                 },
             ))
             continue
-        if tpl.scope != expected_scope:
-            raise AttrScopeMismatchError(attr.attr_key, tpl.scope)
+        # tpl 已按 (attr_key, expected_scope) 精确查得,scope 必然匹配,无需再校验。
 
         db.add(ProductAttr(
             product_id=product_id,
@@ -446,7 +458,10 @@ async def update_product_status(
         is_manual = (getattr(product, "source", "MANUAL") or "MANUAL") == "MANUAL"
         if is_manual:
             tpl_map = await _load_template_map(db, product.category_code)
-            required_spu = [k for k, t in tpl_map.items() if t.is_required and t.scope == "SPU"]
+            required_spu = [
+                attr_key for (attr_key, scope), t in tpl_map.items()
+                if scope == "SPU" and t.is_required
+            ]
             spu_attr_keys = {a.attr_key_en for a in product.attrs if a.sku_id is None}
             missing_spu = [k for k in required_spu if k not in spu_attr_keys]
             if missing_spu:
@@ -611,8 +626,8 @@ async def list_products_public(
     size: int = 20,
 ) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
     # 列表不加载图片关系，主图由 _batch_main_images 批量查
-    q = select(Product).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
-    count_q = select(func.count(Product.id)).where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+    q = select(Product).where(public_visible())
+    count_q = select(func.count(Product.id)).where(public_visible())
 
     if category_code:
         codes = await _descendant_category_codes(db, category_code)
@@ -758,6 +773,7 @@ async def sample_home_floor_products(
             JOIN cat_tree ON products.category_code = cat_tree.code
             WHERE products.status = :active_status
               AND products.deleted_at IS NULL
+              AND products.visibility = 'PUBLIC'
         )
         SELECT product_id
         FROM ranked
@@ -899,7 +915,7 @@ async def list_certification_options(db: AsyncSession) -> list[str]:
     result = await db.execute(text(
         "SELECT DISTINCT cert "
         "FROM products, jsonb_array_elements_text(certifications::jsonb) AS cert "
-        "WHERE status = 'ACTIVE' AND deleted_at IS NULL "
+        "WHERE " + PUBLIC_VISIBLE_SQL + " "
         "AND certifications IS NOT NULL "
         "ORDER BY cert"
     ))
@@ -929,7 +945,7 @@ async def list_brand_options(
     cnt = func.count().label("cnt")
     q = (
         select(brand_col, cnt)
-        .where(Product.status == ProductStatus.ACTIVE, _not_deleted(Product))
+        .where(public_visible())
         .where(brand_col.isnot(None), brand_col != "")
         .group_by(brand_col)
         .order_by(cnt.desc())
@@ -1533,13 +1549,15 @@ async def get_attr_templates(
     )
     all_templates = (await db.execute(q)).scalars().all()
 
-    # 按 attr_key 去重:同一 key 取最深(level 最大)的一条
-    best: dict[str, AttrTemplate] = {}
+    # 按 (attr_key, scope) 去重:同一 key 同一 scope 取最深(level 最大)的一条。
+    # 同一 key 不同 scope(SPU/SKU 两级)各自保留,不互相覆盖。
+    best: dict[tuple[str, str], AttrTemplate] = {}
     for t in all_templates:
         t_level = code_to_level.get(t.category_code, 0)
-        existing = best.get(t.attr_key)
+        dedup_key = (t.attr_key, t.scope)
+        existing = best.get(dedup_key)
         if existing is None or t_level > code_to_level.get(existing.category_code, 0):
-            best[t.attr_key] = t
+            best[dedup_key] = t
 
     # 排序:按所属分类 level 升序(L1→L2→L3),同级按 sort_order 升序
     result = sorted(
@@ -1794,7 +1812,7 @@ async def _create_sku_in_aggregate(
     product: Product,
     sku_data,
     *,
-    tpl_map: dict[str, "AttrTemplate"],
+    tpl_map: dict[tuple[str, str], "AttrTemplate"],
     source_lang: str,
 ) -> ProductSku:
     """聚合事务内创建单个 SKU（含属性、阶梯价），不 commit。"""
@@ -1862,7 +1880,7 @@ async def _update_sku_in_aggregate(
     sku: ProductSku,
     sku_data,
     *,
-    tpl_map: dict[str, "AttrTemplate"],
+    tpl_map: dict[tuple[str, str], "AttrTemplate"],
     operator_id: int | None = None,
 ) -> ProductSku:
     """聚合事务内更新单个 SKU（含属性、阶梯价），不 commit。"""

@@ -1227,6 +1227,38 @@ async def test_attr_template_nonexistent_code_returns_empty(client: AsyncClient)
     assert r.json()["data"] == []
 
 
+@pytest.mark.asyncio
+async def test_scope_aware_templates_keep_both_scopes(db_session):
+    """同一 category 同一 attr_key 建 SPU + SKU 两条模板(变体轴场景),
+    读取时两条都应保留,不能被折叠成一条。"""
+    from app.db.base import _utcnow
+    from app.db.models.category import Category
+    from app.db.models.attr_template import AttrTemplate
+    from app.services.product import get_attr_templates
+
+    now = _utcnow()
+    db_session.add(Category(
+        code="TSCOPE", name_zh="测试双scope", level=1, parent_code=None,
+        sort_order=0, is_active=True, is_leaf=True,
+        created_at=now, updated_at=now,
+    ))
+    await db_session.flush()
+
+    db_session.add(AttrTemplate(
+        category_code="TSCOPE", attr_key="spec", display_name="规格(选项轴)",
+        attr_type="select", sort_order=10, scope="SPU", selectable=True,
+    ))
+    db_session.add(AttrTemplate(
+        category_code="TSCOPE", attr_key="spec", display_name="规格(SKU取值)",
+        attr_type="select", sort_order=10, scope="SKU", selectable=True,
+    ))
+    await db_session.commit()
+
+    tpls = await get_attr_templates(db_session, "TSCOPE")
+    scopes = sorted(t.scope for t in tpls if t.attr_key == "spec")
+    assert scopes == ["SKU", "SPU"]  # 两条都在,没被折掉
+
+
 # ── 属性治理(v0.8) ────────────────────────────────────────
 
 

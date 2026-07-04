@@ -22,6 +22,9 @@ class RfqItemInput(BaseModel):
     selected_variants: list[dict[str, str]] = Field(default_factory=list)
     # 前端传当前 locale 的 key+value，后端转为英文后存入 variant_snapshot
     # 示例: [{"attr_name": "material_type", "value": "normal_white_with_film"}]
+    # SKU 平铺列表点卡片可直接传 sku_id;两条入参路径都由 resolve_purchase_target 归一。
+    # TODO(Plan 3): 前端 SKU-flat UI 落地后才会真正传入此字段，当前 client 未接线。
+    sku_id: int | None = None
     quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
     target_unit_price: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
     remark: str | None = None

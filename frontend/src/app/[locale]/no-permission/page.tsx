@@ -11,7 +11,7 @@ import { defaultDashboardOf } from "@/config/navigation";
 function NoPermissionContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const reason = params.get("reason"); // "role" | null
+  const reason = params.get("reason"); // "role" | "zone" | null
   const user = useAuthStore((s) => s.user);
   const t = useTranslations("noPermission");
 
@@ -22,7 +22,9 @@ function NoPermissionContent() {
     ? t("notLoggedIn")
     : reason === "role"
       ? t("reasonRole")
-      : t("reasonPermission");
+      : reason === "zone"
+        ? t("reasonZone")
+        : t("reasonPermission");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-6">
@@ -40,6 +42,9 @@ function NoPermissionContent() {
         {/* 说明 */}
         <p className="mt-3 text-sm text-slate-500">
           {t("description")}
+        </p>
+        <p className="mt-1 text-sm text-slate-400">
+          {hint}
         </p>
 
         {/* 操作按钮 */}

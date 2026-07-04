@@ -8,7 +8,7 @@
 - data/categories.csv — 声明式品类表,每行一个品类(L1-L4),约 6391 行,code 已预定义
 - data/attr_templates.csv — 每行一个 L1 下的属性,44 行
 
-落库:按 code / (category_code, attr_key) 查重,存在则更新,不存在则插入。
+落库:按 code / (category_code, attr_key, scope) 查重,存在则更新,不存在则插入。
 不删除任何已有数据,商品等引用品类的业务数据不受影响。
 幂等:重复运行结果一致。
 """
@@ -175,13 +175,15 @@ async def seed_categories(db: AsyncSession) -> None:
         c.is_leaf = c.code not in parent_codes_with_children
     await db.flush()
 
-    # upsert 属性模板(按唯一键 category_code + attr_key 查重)
+    # upsert 属性模板(按唯一键 category_code + attr_key + scope 查重;
+    # 同一 category_code+attr_key 可有 SPU/SKU 两条,scope 不同即为不同记录)
     attr_created, attr_updated = 0, 0
     for item in attr_rows:
         row = await db.execute(
             select(AttrTemplate).where(
                 AttrTemplate.category_code == item["category_code"],
                 AttrTemplate.attr_key == item["attr_key"],
+                AttrTemplate.scope == item["scope"],
             )
         )
         existing = row.scalar_one_or_none()

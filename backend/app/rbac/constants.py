@@ -75,6 +75,9 @@ class Permissions:
     BANNER_READ = "banner:read"
     BANNER_WRITE = "banner:write"
 
+    # ----- 业务-运营:zone(央企/客户专区)-----
+    ZONE_MANAGE = "zone:manage"
+
     # ----- 业务-运营:analytics -----
     ANALYTICS_READ = "analytics:read"
 
@@ -158,6 +161,8 @@ PERMISSION_META: dict[str, dict[str, str]] = {
     Permissions.BUYER_EVENT_READ: {"name": "查看买方行为记录", "module": ModuleLabel.BIZ_TRADE},
     Permissions.BANNER_READ: {"name": "查看轮播 Banner", "module": ModuleLabel.BIZ_OPERATION},
     Permissions.BANNER_WRITE: {"name": "管理轮播 Banner", "module": ModuleLabel.BIZ_OPERATION},
+
+    Permissions.ZONE_MANAGE: {"name": "管理央企/客户专区", "module": ModuleLabel.BIZ_OPERATION},
 
     Permissions.ANALYTICS_READ: {"name": "查看运营分析数据", "module": ModuleLabel.BIZ_OPERATION},
 

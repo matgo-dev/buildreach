@@ -20,6 +20,7 @@ from app.api.v1 import (
     operator_banners,
     operator_buyers,
     operator_products,
+    operator_zones,
     products,
     public_config,
     quotes,
@@ -27,6 +28,7 @@ from app.api.v1 import (
     suppliers,
     test_rbac,
     version,
+    zones,
 )
 from app.core.config import settings
 
@@ -44,6 +46,7 @@ api_router.include_router(products.router)
 api_router.include_router(operator_banners.router)
 api_router.include_router(operator_buyers.router)
 api_router.include_router(operator_products.router)
+api_router.include_router(operator_zones.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(buyer_events.router)
 api_router.include_router(buyer_prefs.router)
@@ -52,6 +55,7 @@ api_router.include_router(cart.router)
 api_router.include_router(rfqs.router)
 api_router.include_router(quotes.router)
 api_router.include_router(version.router)
+api_router.include_router(zones.router)
 
 # 调试/测试路由仅当 ENABLE_DEBUG_API=true 时挂载(生产默认关闭)
 if settings.ENABLE_DEBUG_API:
