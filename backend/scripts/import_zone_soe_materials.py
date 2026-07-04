@@ -3,7 +3,9 @@
 把客户材料表(17 大类、去重 1646 SPU、含规格变体/单位)导入平台商品模型 + 专区白名单:
 - 1 个 zone(common-materials,复用 demo seed 建的;无则建)
 - 17 个 zone_categories(code=大类编号 01-17,name=大类名),幂等 upsert(改名复用 demo 的 01-05)
-- 1646 个 products:visibility=ZONE_ONLY + status=ACTIVE,category_code 取自 master_final.final_code
+- 1646 个 products:visibility=PUBLIC + status=ACTIVE,category_code 取自 master_final.final_code
+  (2026-07-04 廖总确认这批材料完全公开:当普通商城商品,进首页/主商城/按主品类树浏览检索;
+   zone_product 白名单/zone_grant 授权本期搁置,不影响公开)
   (1317 挂真实平台 leaf + 329 用 parent_hint 现有父 code 占位;code 是可晚绑定死元数据)
 - SKU:多规格→每规格 1 个 ACTIVE SKU + selectable 属性 spec;单/无规格→1 个默认 SKU
 - unit 取自 Excel 计量单位列(同 SPU 多单位取众数)
@@ -387,7 +389,7 @@ async def _upsert_product(db: AsyncSession, r: dict, stats: dict) -> Product:
         product.name_en = r["en"]
         product.category_code = r["category_code"]
         product.moq_unit = r["unit"]  # 真实计量单位存 moq_unit(平台惯例:unit 恒 PCS)
-        product.visibility = ProductVisibility.ZONE_ONLY
+        product.visibility = ProductVisibility.PUBLIC
         product.status = ProductStatus.ACTIVE
         stats["products_updated"] += 1
         await db.flush()
@@ -395,7 +397,7 @@ async def _upsert_product(db: AsyncSession, r: dict, stats: dict) -> Product:
 
     product = Product(
         spu_code=spu_code, name_zh=r["zh"], name_en=r["en"], category_code=r["category_code"],
-        status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
+        status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC,
         # 平台惯例:unit 恒默认 PCS(定价/下单读它),真实计量单位放 moq_unit
         unit="PCS", moq=1, moq_unit=r["unit"], source=SOURCE,
         source_meta={"batch": BATCH_ID, "大类": r["cat_name"], "kind": r["kind"]},
