@@ -39,7 +39,7 @@ from app.core.dependencies import CurrentUser, get_current_user
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_attr import ProductAttr
-from app.db.models.product_sku import ProductSku
+from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 from app.db.session import get_db
 from app.schemas.product import ProductAttrSchema, ProductPublicDetail, SkuPublic
@@ -200,6 +200,28 @@ async def list_zone_categories(
     return success([_zone_category_to_public(zc) for zc in categories])
 
 
+async def _batch_active_sku_counts(
+    db: AsyncSession, product_ids: list[int]
+) -> dict[int, int]:
+    """一次聚合查询取每个商品的"规格数"(整页一条 GROUP BY,避免 N+1)。
+
+    口径与交易解析器 resolve_purchase_target 一致:ACTIVE 且未软删的 SKU,
+    即买家真正可选购的变体数。走 ix_product_skus_product_id 索引。
+    """
+    if not product_ids:
+        return {}
+    rows = await db.execute(
+        select(ProductSku.product_id, func.count(ProductSku.id))
+        .where(
+            ProductSku.product_id.in_(product_ids),
+            ProductSku.status == SkuStatus.ACTIVE,
+            ProductSku.deleted_at.is_(None),
+        )
+        .group_by(ProductSku.product_id)
+    )
+    return {pid: cnt for pid, cnt in rows.all()}
+
+
 @router.get("/{zone_code}/products", summary="专区白名单商品列表")
 async def list_zone_products(
     zone: Zone = Depends(require_zone_access),
@@ -251,16 +273,24 @@ async def list_zone_products(
     )
     products = (await db.execute(q)).scalars().all()
 
-    img_map = await product_svc._batch_main_images(db, [p.id for p in products])
+    pids = [p.id for p in products]
+    img_map = await product_svc._batch_main_images(db, pids)
+    sku_count_map = await _batch_active_sku_counts(db, pids)
+
+    # 本查询未预加载 images 关系;products 若没有主图,img_map 中不会有该 id 的条目。
+    # 必须显式传 (None, None) 而非让 img_map.get(p.id) 落回 None——_to_public()
+    # 在 main_image_urls=None 时会回退到同步访问 p.images,在异步会话下懒加载会炸。
+    items = []
+    for p in products:
+        item = _to_public(p, main_image_urls=img_map.get(p.id, (None, None)))
+        item["sku_count"] = sku_count_map.get(p.id, 0)
+        # 英文名(SPU 级,稳定有值)作卡片副标,填 zh locale 下名字与规格间的空白。
+        # 仅专区返回,mall 不带 → 公开卡片不受影响。
+        item["name_en"] = p.name_en
+        items.append(item)
 
     return success({
-        # 本查询未预加载 images 关系;products 若没有主图,img_map 中不会有该 id 的条目。
-        # 必须显式传 (None, None) 而非让 img_map.get(p.id) 落回 None——_to_public()
-        # 在 main_image_urls=None 时会回退到同步访问 p.images,在异步会话下懒加载会炸。
-        "items": [
-            _to_public(p, main_image_urls=img_map.get(p.id, (None, None)))
-            for p in products
-        ],
+        "items": items,
         "total": total,
         "page": page,
         "size": size,
@@ -320,8 +350,10 @@ async def get_zone_product(
     ).model_dump()
 
     # 追加 SKU 变体(公开详情本身不带,专区买家需要真实换购):按 ACTIVE 排序,is_default 优先。
+    # 口径须与列表"规格数"(_batch_active_sku_counts)一致:ACTIVE 且未软删。
+    # p.skus 关系不排软删,故必须显式过滤 deleted_at。
     skus = sorted(
-        [s for s in p.skus if s.status == "ACTIVE"],
+        [s for s in p.skus if s.status == SkuStatus.ACTIVE and s.deleted_at is None],
         key=lambda s: (not s.is_default, s.id),
     )
     detail["skus"] = [

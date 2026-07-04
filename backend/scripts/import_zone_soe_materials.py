@@ -1,7 +1,7 @@
-"""央企专区(CENTRAL_SOE)材料表 Excel 全量导入(Plan 2)。
+"""央企专区(common-materials)材料表 Excel 全量导入(Plan 2)。
 
 把客户材料表(17 大类、去重 1646 SPU、含规格变体/单位)导入平台商品模型 + 专区白名单:
-- 1 个 zone(CENTRAL_SOE,复用 demo seed 建的;无则建)
+- 1 个 zone(common-materials,复用 demo seed 建的;无则建)
 - 17 个 zone_categories(code=大类编号 01-17,name=大类名),幂等 upsert(改名复用 demo 的 01-05)
 - 1646 个 products:visibility=ZONE_ONLY + status=ACTIVE,category_code 取自 master_final.final_code
   (1317 挂真实平台 leaf + 329 用 parent_hint 现有父 code 占位;code 是可晚绑定死元数据)
@@ -63,7 +63,7 @@ from app.db.models.product_sku import ProductSku, SkuStatus  # noqa: E402
 from app.db.models.zone import Zone, ZoneCategory, ZoneProduct  # noqa: E402
 from app.services.product_code import platform_spu_code, platform_sku_code  # noqa: E402
 
-ZONE_CODE = "CENTRAL_SOE"
+ZONE_CODE = "common-materials"
 ZSOE_SOURCE = "ZSOE"  # 统一 code 规则里,央企材料表作为"来源 X"
 SOURCE = "IMPORT"
 BATCH_ID = "zone_soe_material_v1"

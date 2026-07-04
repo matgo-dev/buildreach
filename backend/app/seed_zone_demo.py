@@ -1,15 +1,15 @@
-"""央企专区(CENTRAL_SOE) demo 数据种子:zone + zone_categories + products + demo buyer。
+"""央企专区(common-materials) demo 数据种子:zone + zone_categories + products + demo buyer。
 
 ⚠️ 仅供本地/联调环境展示用 —— 是"真实 Excel 选品导入"(Task 11+，暂缓)的占位替身,
 手工造的示例数据,不代表真实选品结果。
 
 落库内容:
-- 1 个 zone(CENTRAL_SOE,与 /me 已返回的央企专区一致)
+- 1 个 zone(common-materials,与 /me 已返回的央企专区一致)
 - ~5 个 zone_categories(客户视角大类:钢筋类/水泥类/给排水/临时设施/强弱电)
 - ~15 个 products,全部 visibility=ZONE_ONLY + status=ACTIVE,category_code 均取自现有平台
   叶子品类(不臆造 code),简单商品(单默认 SKU)与变体商品(2-3 个 ACTIVE SKU,按 spec 区分)混合
 - 每个商品对应 1 条 zone_product(挂在其 zone_category 下,source=MANUAL)
-- 1 个 demo 买家(BuyerOrganization + User + BuyerMember)+ 对 CENTRAL_SOE 的 zone_grant
+- 1 个 demo 买家(BuyerOrganization + User + BuyerMember)+ 对 common-materials 的 zone_grant
 
 商品图片:v1 不种(留空),前端详情页走占位图 fallback。
 
@@ -53,7 +53,7 @@ from app.db.models.user import User
 from app.db.models.user_role import UserRole
 from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 
-ZONE_CODE = "CENTRAL_SOE"
+ZONE_CODE = "common-materials"
 DEMO_BUYER_EMAIL = "zonebuyer@demo.local"
 DEMO_BUYER_USERNAME = "zonebuyer"
 DEMO_BUYER_PASSWORD = os.environ.get("DEMO_BUYER_PASSWORD", "Aa123456789")
@@ -389,7 +389,7 @@ async def _execute() -> None:
     await engine.dispose()
 
     print("=" * 60)
-    print("央企专区(CENTRAL_SOE) Demo 数据 SUMMARY")
+    print("央企专区(common-materials) Demo 数据 SUMMARY")
     print("=" * 60)
     print(f"zone_code:            {summary['zone_code']}")
     print(f"demo login email:     {summary['demo_login_email']}")

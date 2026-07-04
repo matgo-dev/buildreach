@@ -39,8 +39,8 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 from app.db.models.product import Product  # noqa: E402
 from app.db.models.zone import Zone, ZoneProduct  # noqa: E402
 
-# 专区商品按"归属 CENTRAL_SOE 专区"圈定(spu_code 已中性化为 MG-P)
-ZONE_CODE = "CENTRAL_SOE"
+# 专区商品按"归属 common-materials 专区"圈定(spu_code 已中性化为 MG-P)
+ZONE_CODE = "common-materials"
 DEFAULT_THRESHOLD = 180.0
 
 DEFAULT_SOURCE_DIR = Path(

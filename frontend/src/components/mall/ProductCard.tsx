@@ -185,6 +185,9 @@ export function ProductCard({
             </span>
           )}
           {product.name}
+          {product.name_en && product.name_en !== product.name && (
+            <span className="ml-1 font-normal text-muted">{product.name_en}</span>
+          )}
         </h3>
 
         {product.description && (
@@ -215,6 +218,10 @@ export function ProductCard({
             <span className="font-extrabold text-navy">MOQ:</span>{" "}
             {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
           </p>
+        )}
+
+        {product.sku_count != null && product.sku_count > 0 && (
+          <p className="text-xs text-muted">{t("specCount", { count: product.sku_count })}</p>
         )}
 
         {/* 底部操作 */}

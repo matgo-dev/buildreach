@@ -29,7 +29,7 @@ class Zone(Base, TimestampUpdateMixin):
     __tablename__ = "zones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)  # CENTRAL_SOE
+    code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)  # common-materials
     name_zh: Mapped[str] = mapped_column(String(128), nullable=False)
     name_en: Mapped[str | None] = mapped_column(String(128))
     name_sw: Mapped[str | None] = mapped_column(String(128))

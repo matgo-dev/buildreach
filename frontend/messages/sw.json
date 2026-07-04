@@ -502,6 +502,7 @@
     "requestQuote": "Nenda kwenye Kikapu cha Maombi",
     "startInquiry": "Omba Bei",
     "addToInquiryCart": "Ongeza kwenye Kikapu",
+    "specCount": "vipimo {count}",
     "addedToCart": "Imeongezwa kwenye kikapu cha maombi",
     "alreadyInCart": "Tayari iko kwenye kikapu, idadi +1",
     "addToCartFailed": "Imeshindwa kuongeza kwenye kikapu",

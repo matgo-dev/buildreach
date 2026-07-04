@@ -502,6 +502,7 @@
     "requestQuote": "Go to Inquiry Basket",
     "startInquiry": "Inquire",
     "addToInquiryCart": "Add to Inquiry Basket",
+    "specCount": "{count} specs",
     "addedToCart": "Added to inquiry basket",
     "alreadyInCart": "Already in basket, quantity +1",
     "addToCartFailed": "Failed to add to inquiry basket",

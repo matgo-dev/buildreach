@@ -828,6 +828,8 @@ async def test_zone_products_list_and_category_filter(client: AsyncClient, db_se
     assert item["spu_code"] == "T11-LIST-PROD"
     # 公开卡片字段(与 GET /products 一致,前端 mall 组件复用)
     assert "main_image" in item and "moq" in item and "unit" in item
+    # 规格数(ACTIVE 且未软删的 SKU 数):fixture 造了 1 个 active SKU
+    assert item["sku_count"] == 1
 
     # 按正确的 zone_category_code 筛选:命中
     r2 = await client.get(
@@ -845,6 +847,44 @@ async def test_zone_products_list_and_category_filter(client: AsyncClient, db_se
     assert r3.status_code == 200, r3.text
     assert r3.json()["data"]["total"] == 0
     assert r3.json()["data"]["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_zone_products_sku_count_excludes_inactive_and_deleted(client: AsyncClient, db_session):
+    """规格数只算 ACTIVE 且未软删的 SKU,与 resolve_purchase_target 口径一致。
+
+    p.skus 关系不排软删,若计数漏了 deleted_at 过滤会把软删 SKU 多算——本例即回归护栏。
+    """
+    from sqlalchemy import func as _func, update as _update
+    from app.db.models.product_sku import ProductSku, SkuStatus
+
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-SKUCOUNT")
+    product = Product(
+        spu_code="SKUCOUNT-PROD", name_zh="规格数测试", category_code="04.001",
+        status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS",
+    )
+    db_session.add(product)
+    await db_session.flush()
+    # 2 ACTIVE + 1 INACTIVE + 1 软删(ACTIVE 但 deleted_at 有值)
+    db_session.add_all([
+        ProductSku(product_id=product.id, sku_code="SKUCOUNT-A", moq=1, status=SkuStatus.ACTIVE),
+        ProductSku(product_id=product.id, sku_code="SKUCOUNT-B", moq=1, status=SkuStatus.ACTIVE),
+        ProductSku(product_id=product.id, sku_code="SKUCOUNT-C", moq=1, status=SkuStatus.INACTIVE),
+    ])
+    deleted = ProductSku(product_id=product.id, sku_code="SKUCOUNT-D", moq=1, status=SkuStatus.ACTIVE)
+    db_session.add(deleted)
+    await db_session.flush()
+    await db_session.execute(
+        _update(ProductSku).where(ProductSku.id == deleted.id).values(deleted_at=_func.now())
+    )
+    db_session.add(ZoneProduct(zone_id=zone.id, spu_id=product.id, zone_category_id=zcat.id))
+    await db_session.commit()
+
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+    r = await client.get(f"/api/v1/zones/{zone.code}/products", headers=headers)
+    assert r.status_code == 200, r.text
+    item = next(i for i in r.json()["data"]["items"] if i["id"] == product.id)
+    assert item["sku_count"] == 2, "只算 ACTIVE 未删:排除 INACTIVE + 软删"
 
 
 @pytest.mark.asyncio

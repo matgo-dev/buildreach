@@ -502,6 +502,7 @@
     "requestQuote": "前往询价篮",
     "startInquiry": "发起询价",
     "addToInquiryCart": "加入询价篮",
+    "specCount": "{count}种规格",
     "addedToCart": "已加入询价篮",
     "alreadyInCart": "该商品已在询价篮中，数量+1",
     "addToCartFailed": "加入询价篮失败",

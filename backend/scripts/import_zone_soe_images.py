@@ -1,4 +1,4 @@
-"""央企专区(CENTRAL_SOE)商品图片导入。
+"""央企专区(common-materials)商品图片导入。
 
 材料表商品(ZSOE-* SPU)本身已由 import_zone_soe_materials.py 导入,但 v1 未带图,前端走占位图。
 本脚本把预匹配好的 xfs / okorder 平台图片(已下载到本地)按**商品中文名**挂到对应 ZSOE 商品上:
@@ -52,8 +52,8 @@ from app.db.models.zone import Zone, ZoneProduct  # noqa: E402
 # 可信本地文件(非用户上传),放开 PIL 像素上限,避免大图触发解压炸弹保护。
 Image.MAX_IMAGE_PIXELS = None
 
-# 专区商品按"归属 CENTRAL_SOE 专区"圈定(code 已中性化为 MG-P,不能再靠 spu_code 前缀认)
-ZONE_CODE = "CENTRAL_SOE"
+# 专区商品按"归属 common-materials 专区"圈定(code 已中性化为 MG-P,不能再靠 spu_code 前缀认)
+ZONE_CODE = "common-materials"
 UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
 
 # 缩略图参数(与 generate_product_thumbnails.py / thumb_url_from_image_key 的 _thumb.webp 约定一致)
@@ -207,7 +207,7 @@ def load_image_rows(source_dir: Path) -> list[dict]:
 
 
 async def _product_index(db: AsyncSession) -> dict[str, list[Product]]:
-    """CENTRAL_SOE 专区商品:硬归一化 name_zh → [商品](同名多商品挂同一批图)。"""
+    """common-materials 专区商品:硬归一化 name_zh → [商品](同名多商品挂同一批图)。"""
     zone_spu_ids = (
         select(ZoneProduct.spu_id)
         .join(Zone, Zone.id == ZoneProduct.zone_id)
