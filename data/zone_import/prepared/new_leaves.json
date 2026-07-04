@@ -1,0 +1,3547 @@
+[
+ {
+  "parent_hint_code": "18.002.004",
+  "new_zh": "级配天然砾石(路用回填料)",
+  "new_en": "Graded natural gravel/soil fill (road subgrade, CBR-graded, G-series)",
+  "count": 4,
+  "examples": [
+   "G15土",
+   "G3土",
+   "G45土",
+   "G7土"
+  ]
+ },
+ {
+  "parent_hint_code": "17.002",
+  "new_zh": "硅基防水憎水剂",
+  "new_en": "Silicone-based Water Repellent",
+  "count": 3,
+  "examples": [
+   "AQUASIL-硅基疏水剂",
+   "GALAXYAQUASTOP-防水剂",
+   "硅透明釉，防水"
+  ]
+ },
+ {
+  "parent_hint_code": "18.002.009",
+  "new_zh": "门窗玻璃腻子",
+  "new_en": "Window Glazing Putty",
+  "count": 2,
+  "examples": [
+   "窗户腻子-钢/木（1公斤、5公斤、30公斤）",
+   "窗户腻子-钢（1公斤、5公斤、30公斤）"
+  ]
+ },
+ {
+  "parent_hint_code": "26.001.006",
+  "new_zh": "消防水嘴",
+  "new_en": "Fire hose nozzle/spout",
+  "count": 2,
+  "examples": [
+   "普通水嘴",
+   "皮带水嘴"
+  ]
+ },
+ {
+  "parent_hint_code": "22.004",
+  "new_zh": "塑料垃圾桶(圆柱桶)",
+  "new_en": "Plastic trash can (cylindrical)",
+  "count": 1,
+  "examples": [
+   "塑料垃圾桶-圆柱桶"
+  ]
+ },
+ {
+  "parent_hint_code": "22.004",
+  "new_zh": "塑料垃圾桶(长方体桶)",
+  "new_en": "Plastic trash can (cuboid)",
+  "count": 1,
+  "examples": [
+   "塑料垃圾桶-长方体桶"
+  ]
+ },
+ {
+  "parent_hint_code": "22.005.013",
+  "new_zh": "安全指示牌",
+  "new_en": "Safety sign board",
+  "count": 1,
+  "examples": [
+   "安全指示牌"
+  ]
+ },
+ {
+  "parent_hint_code": "22.002.007",
+  "new_zh": "白色涤纶防护网",
+  "new_en": "White polyester safety mesh",
+  "count": 1,
+  "examples": [
+   "白色涤纶网"
+  ]
+ },
+ {
+  "parent_hint_code": "22.002.007",
+  "new_zh": "绿色密目式安全网",
+  "new_en": "Green dense mesh safety net",
+  "count": 1,
+  "examples": [
+   "绿色安全网"
+  ]
+ },
+ {
+  "parent_hint_code": "22.002.007",
+  "new_zh": "绿色防火安全网",
+  "new_en": "Green fireproof safety net",
+  "count": 1,
+  "examples": [
+   "绿色防火安全网"
+  ]
+ },
+ {
+  "parent_hint_code": "22.004",
+  "new_zh": "钢制柴油储油罐",
+  "new_en": "Steel diesel storage tank",
+  "count": 1,
+  "examples": [
+   "钢制储油罐"
+  ]
+ },
+ {
+  "parent_hint_code": "22.006.001",
+  "new_zh": "集装箱(通用)",
+  "new_en": "Shipping container (general)",
+  "count": 1,
+  "examples": [
+   "集装箱"
+  ]
+ },
+ {
+  "parent_hint_code": "04.008",
+  "new_zh": "脚轮/万向轮",
+  "new_en": "caster wheel",
+  "count": 1,
+  "examples": [
+   "万向轮"
+  ]
+ },
+ {
+  "parent_hint_code": "04.008",
+  "new_zh": "手拉葫芦/倒链",
+  "new_en": "chain block/hoist",
+  "count": 1,
+  "examples": [
+   "倒链葫芦"
+  ]
+ },
+ {
+  "parent_hint_code": "04.019.008",
+  "new_zh": "压力表",
+  "new_en": "pressure gauge",
+  "count": 1,
+  "examples": [
+   "压力表"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "双面胶带",
+  "new_en": "double-side tape",
+  "count": 1,
+  "examples": [
+   "双面胶带"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012.003",
+  "new_zh": "喷枪配件管",
+  "new_en": "spray gun hose",
+  "count": 1,
+  "examples": [
+   "喷枪管子"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012",
+  "new_zh": "喷雾器",
+  "new_en": "sprayer",
+  "count": 1,
+  "examples": [
+   "喷雾器"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "图钉",
+  "new_en": "thumbtack",
+  "count": 1,
+  "examples": [
+   "图钉"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "塑料餐桌",
+  "new_en": "plastic dining table",
+  "count": 1,
+  "examples": [
+   "塑料餐桌"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "塑料餐桌凳",
+  "new_en": "plastic dining chair",
+  "count": 1,
+  "examples": [
+   "塑料餐桌凳子"
+  ]
+ },
+ {
+  "parent_hint_code": "04.011.001",
+  "new_zh": "墨汁",
+  "new_en": "black ink",
+  "count": 1,
+  "examples": [
+   "墨汁"
+  ]
+ },
+ {
+  "parent_hint_code": "04.008",
+  "new_zh": "小推车/手推车",
+  "new_en": "wheelbarrow",
+  "count": 1,
+  "examples": [
+   "小推车"
+  ]
+ },
+ {
+  "parent_hint_code": "04.008",
+  "new_zh": "小推车轮",
+  "new_en": "wheelbarrow wheel",
+  "count": 1,
+  "examples": [
+   "小推车轱辘"
+  ]
+ },
+ {
+  "parent_hint_code": "04.007.003",
+  "new_zh": "尖头錾子",
+  "new_en": "point chisel",
+  "count": 1,
+  "examples": [
+   "尖头錾子"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "尼龙彩线",
+  "new_en": "nylon rope",
+  "count": 1,
+  "examples": [
+   "尼龙彩线"
+  ]
+ },
+ {
+  "parent_hint_code": "09",
+  "new_zh": "岩棉",
+  "new_en": "rock wool",
+  "count": 1,
+  "examples": [
+   "岩棉"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "帐篷",
+  "new_en": "tent",
+  "count": 1,
+  "examples": [
+   "帐篷"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "发电机电源转换开关",
+  "new_en": "generator transfer switch",
+  "count": 1,
+  "examples": [
+   "手动发电机电源转换开关"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "手电筒",
+  "new_en": "flashlight",
+  "count": 1,
+  "examples": [
+   "手电筒"
+  ]
+ },
+ {
+  "parent_hint_code": "04.020.001",
+  "new_zh": "拖把",
+  "new_en": "mop",
+  "count": 1,
+  "examples": [
+   "拖把"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "混凝土振动棒",
+  "new_en": "concrete vibrating poker",
+  "count": 1,
+  "examples": [
+   "振动棒"
+  ]
+ },
+ {
+  "parent_hint_code": "04.013.003",
+  "new_zh": "木工圆盘锯片",
+  "new_en": "wood cutting disc",
+  "count": 1,
+  "examples": [
+   "木工圆盘铁锯片"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "木工开孔器",
+  "new_en": "wood hole saw",
+  "count": 1,
+  "examples": [
+   "木工开孔器"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "木工铅笔",
+  "new_en": "woodworking pencil",
+  "count": 1,
+  "examples": [
+   "木工铅笔"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "木炭",
+  "new_en": "charcoal",
+  "count": 1,
+  "examples": [
+   "木炭"
+  ]
+ },
+ {
+  "parent_hint_code": "20.003.004",
+  "new_zh": "橡胶密封压条",
+  "new_en": "rubber weatherstrip",
+  "count": 1,
+  "examples": [
+   "橡胶式压条"
+  ]
+ },
+ {
+  "parent_hint_code": "20.003.004",
+  "new_zh": "毛刷密封压条",
+  "new_en": "brush weatherstrip",
+  "count": 1,
+  "examples": [
+   "毛刷式压条"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "水钻钻头",
+  "new_en": "diamond core drill bit",
+  "count": 1,
+  "examples": [
+   "水钻钻头"
+  ]
+ },
+ {
+  "parent_hint_code": "04.020.002",
+  "new_zh": "洋镐把",
+  "new_en": "mattock handle",
+  "count": 1,
+  "examples": [
+   "洋镐把"
+  ]
+ },
+ {
+  "parent_hint_code": "04.015",
+  "new_zh": "涂料桶",
+  "new_en": "paint bucket",
+  "count": 1,
+  "examples": [
+   "涂料桶"
+  ]
+ },
+ {
+  "parent_hint_code": "20.009.001",
+  "new_zh": "漏电保护器",
+  "new_en": "leakage protector (RCD)",
+  "count": 1,
+  "examples": [
+   "漏电保护器"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "瓷砖十字架(定位卡)",
+  "new_en": "tile leveling cross",
+  "count": 1,
+  "examples": [
+   "瓷砖十字架"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "瓷砖开孔器",
+  "new_en": "tile hole saw",
+  "count": 1,
+  "examples": [
+   "瓷砖开孔器"
+  ]
+ },
+ {
+  "parent_hint_code": "04.019.001",
+  "new_zh": "甲烷煤气",
+  "new_en": "methane gas",
+  "count": 1,
+  "examples": [
+   "甲烷煤气"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "电工胶带",
+  "new_en": "electrical tape",
+  "count": 1,
+  "examples": [
+   "电工胶带"
+  ]
+ },
+ {
+  "parent_hint_code": "04.019.007",
+  "new_zh": "电焊条",
+  "new_en": "welding electrode/rod",
+  "count": 1,
+  "examples": [
+   "电焊条"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "电锤冲击钻头",
+  "new_en": "rotary hammer drill bit",
+  "count": 1,
+  "examples": [
+   "电锤冲击钻头"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "尼龙线",
+  "new_en": "nylon line",
+  "count": 1,
+  "examples": [
+   "白色尼龙线"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "石笔",
+  "new_en": "slate pencil",
+  "count": 1,
+  "examples": [
+   "石笔"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "石蜡",
+  "new_en": "wax",
+  "count": 1,
+  "examples": [
+   "石蜡"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "砂轮切割片",
+  "new_en": "metal cutting disc",
+  "count": 1,
+  "examples": [
+   "砂轮切割片"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "砂轮磨光片",
+  "new_en": "grinding disc",
+  "count": 1,
+  "examples": [
+   "砂轮磨光片"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "破布/抹布",
+  "new_en": "rag",
+  "count": 1,
+  "examples": [
+   "破布"
+  ]
+ },
+ {
+  "parent_hint_code": "04.020.001",
+  "new_zh": "硬扫把",
+  "new_en": "hard broom",
+  "count": 1,
+  "examples": [
+   "硬扫把"
+  ]
+ },
+ {
+  "parent_hint_code": "04.018",
+  "new_zh": "碳刷",
+  "new_en": "carbon brush",
+  "count": 1,
+  "examples": [
+   "碳刷"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012",
+  "new_zh": "空压机导气管",
+  "new_en": "air compressor hose",
+  "count": 1,
+  "examples": [
+   "空压机导气管"
+  ]
+ },
+ {
+  "parent_hint_code": "20.009.001",
+  "new_zh": "空气开关/断路器",
+  "new_en": "circuit breaker",
+  "count": 1,
+  "examples": [
+   "空开"
+  ]
+ },
+ {
+  "parent_hint_code": "04.020.001",
+  "new_zh": "竹扫把",
+  "new_en": "bamboo broom",
+  "count": 1,
+  "examples": [
+   "竹扫把"
+  ]
+ },
+ {
+  "parent_hint_code": "04.020.001",
+  "new_zh": "簸箕",
+  "new_en": "dustpan",
+  "count": 1,
+  "examples": [
+   "簸箕"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "粉笔",
+  "new_en": "chalk",
+  "count": 1,
+  "examples": [
+   "粉笔"
+  ]
+ },
+ {
+  "parent_hint_code": "04.018",
+  "new_zh": "线鼻子/接线端子",
+  "new_en": "cable lug",
+  "count": 1,
+  "examples": [
+   "线鼻子"
+  ]
+ },
+ {
+  "parent_hint_code": "04.016.001",
+  "new_zh": "绑丝钳",
+  "new_en": "wire tying plier",
+  "count": 1,
+  "examples": [
+   "绑丝钳"
+  ]
+ },
+ {
+  "parent_hint_code": "09",
+  "new_zh": "抹灰网格带",
+  "new_en": "anti-crack mesh tape",
+  "count": 1,
+  "examples": [
+   "网格带"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "美纹纸胶带",
+  "new_en": "masking tape",
+  "count": 1,
+  "examples": [
+   "美纹纸胶带"
+  ]
+ },
+ {
+  "parent_hint_code": "03",
+  "new_zh": "生料带",
+  "new_en": "PTFE thread seal tape",
+  "count": 1,
+  "examples": [
+   "聚四氟乙烯生料带"
+  ]
+ },
+ {
+  "parent_hint_code": "09.005.001",
+  "new_zh": "EPS泡沫板",
+  "new_en": "EPS foam board",
+  "count": 1,
+  "examples": [
+   "膨胀性聚苯乙烯泡沫板"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "草酸",
+  "new_en": "oxalic acid",
+  "count": 1,
+  "examples": [
+   "草酸"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "警示三角架",
+  "new_en": "warning triangle",
+  "count": 1,
+  "examples": [
+   "警示三角"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "警示带",
+  "new_en": "warning tape",
+  "count": 1,
+  "examples": [
+   "警示带"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "记号马克笔",
+  "new_en": "mark pen",
+  "count": 1,
+  "examples": [
+   "记号马克笔"
+  ]
+ },
+ {
+  "parent_hint_code": "04.020.001",
+  "new_zh": "软扫把",
+  "new_en": "soft broom",
+  "count": 1,
+  "examples": [
+   "软扫把"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012",
+  "new_zh": "软水管",
+  "new_en": "garden hose",
+  "count": 1,
+  "examples": [
+   "软水管"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "透明胶带",
+  "new_en": "scotch tape",
+  "count": 1,
+  "examples": [
+   "透明胶带"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "金刚石切割片",
+  "new_en": "diamond cutting disc",
+  "count": 1,
+  "examples": [
+   "金刚石切割片"
+  ]
+ },
+ {
+  "parent_hint_code": "09.003.001",
+  "new_zh": "钢丝绳U型卡扣",
+  "new_en": "wire rope U-bolt clamp",
+  "count": 1,
+  "examples": [
+   "钢丝绳U型卡扣"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "钢钻头",
+  "new_en": "HSS metal drill bit",
+  "count": 1,
+  "examples": [
+   "钢钻头"
+  ]
+ },
+ {
+  "parent_hint_code": "09",
+  "new_zh": "铁皮瓦/镀锌瓦楞板",
+  "new_en": "zinc roofing sheet",
+  "count": 1,
+  "examples": [
+   "铁皮瓦"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "防蚁药/杀虫剂",
+  "new_en": "anti-ant medicine",
+  "count": 1,
+  "examples": [
+   "防蚂蚁药"
+  ]
+ },
+ {
+  "parent_hint_code": "09",
+  "new_zh": "防裂网/抹灰网",
+  "new_en": "plaster reinforcing mesh",
+  "count": 1,
+  "examples": [
+   "防裂网/抹灰网"
+  ]
+ },
+ {
+  "parent_hint_code": "01",
+  "new_zh": "雨布/防雨篷布",
+  "new_en": "rain tarp",
+  "count": 1,
+  "examples": [
+   "雨布"
+  ]
+ },
+ {
+  "parent_hint_code": "20.004.006",
+  "new_zh": "闭门器顺位器",
+  "new_en": "door coordinator",
+  "count": 1,
+  "examples": [
+   "顺位器"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "食用盐",
+  "new_en": "salt",
+  "count": 1,
+  "examples": [
+   "食用盐"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "麻花钻头",
+  "new_en": "twist drill bit",
+  "count": 1,
+  "examples": [
+   "麻花钻头"
+  ]
+ },
+ {
+  "parent_hint_code": "04",
+  "new_zh": "麻袋片",
+  "new_en": "sack cloth",
+  "count": 1,
+  "examples": [
+   "麻袋片"
+  ]
+ },
+ {
+  "parent_hint_code": "09",
+  "new_zh": "黑塑料布",
+  "new_en": "black plastic sheet",
+  "count": 1,
+  "examples": [
+   "黑塑料布"
+  ]
+ },
+ {
+  "parent_hint_code": "22.004.007",
+  "new_zh": "脚手架钢管",
+  "new_en": "Scaffolding steel pipe",
+  "count": 1,
+  "examples": [
+   "脚手架钢管"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "会议桌",
+  "new_en": "Conference table",
+  "count": 1,
+  "examples": [
+   "会议桌"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "保险箱",
+  "new_en": "Safe",
+  "count": 1,
+  "examples": [
+   "保险箱"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "前台接待桌",
+  "new_en": "Reception desk",
+  "count": 1,
+  "examples": [
+   "前台板桌"
+  ]
+ },
+ {
+  "parent_hint_code": "10.004",
+  "new_zh": "台式电脑",
+  "new_en": "Desktop computer",
+  "count": 1,
+  "examples": [
+   "台式电脑"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "塑料凳子",
+  "new_en": "Plastic stool",
+  "count": 1,
+  "examples": [
+   "塑料凳子"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "塑料桌子",
+  "new_en": "Plastic table",
+  "count": 1,
+  "examples": [
+   "塑料桌子"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "实木凳子",
+  "new_en": "Solid wood stool",
+  "count": 1,
+  "examples": [
+   "实木凳子"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "实木办公桌",
+  "new_en": "Solid wood office desk",
+  "count": 1,
+  "examples": [
+   "实木办公桌"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "实木餐桌",
+  "new_en": "Solid wood dining table",
+  "count": 1,
+  "examples": [
+   "实木餐桌"
+  ]
+ },
+ {
+  "parent_hint_code": "10.004",
+  "new_zh": "打印机",
+  "new_en": "Printer",
+  "count": 1,
+  "examples": [
+   "打印机"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "电脑桌",
+  "new_en": "Computer desk",
+  "count": 1,
+  "examples": [
+   "电脑桌"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "皮革长条沙发",
+  "new_en": "Pew sofa",
+  "count": 1,
+  "examples": [
+   "皮尤沙发"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "真皮沙发",
+  "new_en": "Leather sofa",
+  "count": 1,
+  "examples": [
+   "真皮沙发"
+  ]
+ },
+ {
+  "parent_hint_code": "10.004",
+  "new_zh": "笔记本电脑",
+  "new_en": "Laptop computer",
+  "count": 1,
+  "examples": [
+   "笔记本电脑"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "老板椅",
+  "new_en": "Executive chair",
+  "count": 1,
+  "examples": [
+   "老板椅"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "茶几",
+  "new_en": "Coffee table",
+  "count": 1,
+  "examples": [
+   "茶几"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "货架",
+  "new_en": "Storage shelf/rack",
+  "count": 1,
+  "examples": [
+   "货架"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "钢制书架",
+  "new_en": "Steel bookshelf",
+  "count": 1,
+  "examples": [
+   "钢制书架"
+  ]
+ },
+ {
+  "parent_hint_code": "10",
+  "new_zh": "钢制文件柜",
+  "new_en": "Steel filing cabinet",
+  "count": 1,
+  "examples": [
+   "钢制文件柜"
+  ]
+ },
+ {
+  "parent_hint_code": "19.007",
+  "new_zh": "地毯",
+  "new_en": "Carpet",
+  "count": 1,
+  "examples": [
+   "地毯"
+  ]
+ },
+ {
+  "parent_hint_code": "19.007",
+  "new_zh": "地毯衬垫",
+  "new_en": "Carpet underlay/pad",
+  "count": 1,
+  "examples": [
+   "地毯垫"
+  ]
+ },
+ {
+  "parent_hint_code": "19.005",
+  "new_zh": "铝合金隔断",
+  "new_en": "Aluminum partition",
+  "count": 1,
+  "examples": [
+   "铝合金隔断"
+  ]
+ },
+ {
+  "parent_hint_code": "31.004.001",
+  "new_zh": "万用电表(万用表)",
+  "new_en": "multimeter",
+  "count": 1,
+  "examples": [
+   "万用电表"
+  ]
+ },
+ {
+  "parent_hint_code": "12.002.003",
+  "new_zh": "主馈线",
+  "new_en": "main feeder cable",
+  "count": 1,
+  "examples": [
+   "主馈线"
+  ]
+ },
+ {
+  "parent_hint_code": "13.001.001",
+  "new_zh": "乳白玻璃",
+  "new_en": "opal glass",
+  "count": 1,
+  "examples": [
+   "乳白玻璃"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.007",
+  "new_zh": "传真机",
+  "new_en": "facsimile printer",
+  "count": 1,
+  "examples": [
+   "传真机"
+  ]
+ },
+ {
+  "parent_hint_code": "12.002.003",
+  "new_zh": "供电干线",
+  "new_en": "main supply line",
+  "count": 1,
+  "examples": [
+   "供电干线"
+  ]
+ },
+ {
+  "parent_hint_code": "12.002.003",
+  "new_zh": "出线",
+  "new_en": "outgoing line",
+  "count": 1,
+  "examples": [
+   "出线"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.004",
+  "new_zh": "前端放大器",
+  "new_en": "front-end amplifier",
+  "count": 1,
+  "examples": [
+   "前端放大器"
+  ]
+ },
+ {
+  "parent_hint_code": "31.006.005",
+  "new_zh": "励磁机",
+  "new_en": "exciter",
+  "count": 1,
+  "examples": [
+   "励磁机"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.004",
+  "new_zh": "单频道放大器",
+  "new_en": "single-channel amplifier",
+  "count": 1,
+  "examples": [
+   "单频道放大器"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.002",
+  "new_zh": "卫星",
+  "new_en": "satellite",
+  "count": 1,
+  "examples": [
+   "卫星"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.002",
+  "new_zh": "发射机",
+  "new_en": "transmitter",
+  "count": 1,
+  "examples": [
+   "发射机"
+  ]
+ },
+ {
+  "parent_hint_code": "11.004.001",
+  "new_zh": "吊臂灯柱",
+  "new_en": "davit lighting column",
+  "count": 1,
+  "examples": [
+   "吊臂灯柱"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.007",
+  "new_zh": "同声翻译系统",
+  "new_en": "simultaneous interpretation system",
+  "count": 1,
+  "examples": [
+   "同声翻译系统"
+  ]
+ },
+ {
+  "parent_hint_code": "31.006.005",
+  "new_zh": "同步器",
+  "new_en": "synchronizer",
+  "count": 1,
+  "examples": [
+   "同步器"
+  ]
+ },
+ {
+  "parent_hint_code": "12.006.003",
+  "new_zh": "天线信号放大器",
+  "new_en": "Antenna signal amplifier",
+  "count": 1,
+  "examples": [
+   "天线放大器"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "子母钟系统",
+  "new_en": "Master-slave clock system",
+  "count": 1,
+  "examples": [
+   "子母钟系统"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "子钟",
+  "new_en": "Slave clock",
+  "count": 1,
+  "examples": [
+   "子钟"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "电机定子",
+  "new_en": "Motor stator",
+  "count": 1,
+  "examples": [
+   "定子"
+  ]
+ },
+ {
+  "parent_hint_code": "12.002.003",
+  "new_zh": "实心导体电缆",
+  "new_en": "Solid conductor cable",
+  "count": 1,
+  "examples": [
+   "实心电缆"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "广播音响系统",
+  "new_en": "Broadcast and public address system",
+  "count": 1,
+  "examples": [
+   "广播音响系统"
+  ]
+ },
+ {
+  "parent_hint_code": "11.001.001",
+  "new_zh": "广照型灯具",
+  "new_en": "Wide beam distribution luminaire",
+  "count": 1,
+  "examples": [
+   "广照型"
+  ]
+ },
+ {
+  "parent_hint_code": "31.008.002",
+  "new_zh": "弹簧储能操动机构",
+  "new_en": "Spring energy storage operating mechanism",
+  "count": 1,
+  "examples": [
+   "弹簧储能操动机构"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.008",
+  "new_zh": "录像带",
+  "new_en": "Video tape",
+  "count": 1,
+  "examples": [
+   "录像带"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.004",
+  "new_zh": "感光探测器",
+  "new_en": "Photosensitive detector",
+  "count": 1,
+  "examples": [
+   "感光探测器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.004",
+  "new_zh": "感压探测器",
+  "new_en": "Pressure detector",
+  "count": 1,
+  "examples": [
+   "感压探测器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "感应电动机",
+  "new_en": "Induction motor",
+  "count": 1,
+  "examples": [
+   "感应电动机"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.004",
+  "new_zh": "感温探测器",
+  "new_en": "Temperature detector",
+  "count": 1,
+  "examples": [
+   "感温探测器"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "感烟探测器",
+  "new_en": "Smoke detector",
+  "count": 1,
+  "examples": [
+   "感烟探测器"
+  ]
+ },
+ {
+  "parent_hint_code": "31.008.002",
+  "new_zh": "手动操动机构",
+  "new_en": "Manual operating mechanism",
+  "count": 1,
+  "examples": [
+   "手动操动机构"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.007",
+  "new_zh": "打印机",
+  "new_en": "Printer",
+  "count": 1,
+  "examples": [
+   "打印机"
+  ]
+ },
+ {
+  "parent_hint_code": "12.006.001",
+  "new_zh": "扬声器",
+  "new_en": "Loudspeaker",
+  "count": 1,
+  "examples": [
+   "扬声器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.002.009",
+  "new_zh": "拉线开关",
+  "new_en": "Pull cord switch",
+  "count": 1,
+  "examples": [
+   "拉线开关"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.004",
+  "new_zh": "信号接收机",
+  "new_en": "Signal receiver",
+  "count": 1,
+  "examples": [
+   "接收机"
+  ]
+ },
+ {
+  "parent_hint_code": "31.002.002",
+  "new_zh": "电气控制柜",
+  "new_en": "Electrical control cabinet",
+  "count": 1,
+  "examples": [
+   "控制柜"
+  ]
+ },
+ {
+  "parent_hint_code": "13.011.002",
+  "new_zh": "搪瓷制品",
+  "new_en": "Enamel/porcelain enamel product",
+  "count": 1,
+  "examples": [
+   "搪瓷"
+  ]
+ },
+ {
+  "parent_hint_code": "12.002.003",
+  "new_zh": "支馈线",
+  "new_en": "Branch feeder line",
+  "count": 1,
+  "examples": [
+   "支馈线"
+  ]
+ },
+ {
+  "parent_hint_code": "14.002.011",
+  "new_zh": "信号放大器",
+  "new_en": "Amplifier",
+  "count": 1,
+  "examples": [
+   "放大器"
+  ]
+ },
+ {
+  "parent_hint_code": "12.006.004",
+  "new_zh": "数字电话交换机",
+  "new_en": "Digital telephone exchange (PBX)",
+  "count": 1,
+  "examples": [
+   "数字电话交换机"
+  ]
+ },
+ {
+  "parent_hint_code": "31.007.003",
+  "new_zh": "断接卡",
+  "new_en": "Disconnecting terminal block",
+  "count": 1,
+  "examples": [
+   "断接卡"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.002",
+  "new_zh": "无线寻呼机",
+  "new_en": "Wireless pager",
+  "count": 1,
+  "examples": [
+   "无线传呼机"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.002",
+  "new_zh": "无线寻呼系统",
+  "new_en": "Wireless paging system",
+  "count": 1,
+  "examples": [
+   "无线传呼系统"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "智能型离子感烟探测器",
+  "new_en": "Intelligent ionization smoke detector",
+  "count": 1,
+  "examples": [
+   "智能型离子感烟探测器"
+  ]
+ },
+ {
+  "parent_hint_code": "31.006.013",
+  "new_zh": "柴油发电机组",
+  "new_en": "Diesel generator set",
+  "count": 1,
+  "examples": [
+   "柴油发电机（组）"
+  ]
+ },
+ {
+  "parent_hint_code": "12.004.001",
+  "new_zh": "橡胶绝缘材料",
+  "new_en": "Rubber insulation material",
+  "count": 1,
+  "examples": [
+   "橡皮"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.003",
+  "new_zh": "母钟(主时钟系统)",
+  "new_en": "master clock",
+  "count": 1,
+  "examples": [
+   "母钟"
+  ]
+ },
+ {
+  "parent_hint_code": "11.002.003",
+  "new_zh": "氙灯",
+  "new_en": "xenon lamp",
+  "count": 1,
+  "examples": [
+   "氙灯"
+  ]
+ },
+ {
+  "parent_hint_code": "11.001.001",
+  "new_zh": "深照型灯具",
+  "new_en": "narrow-beam distribution luminaire",
+  "count": 1,
+  "examples": [
+   "深照型"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "滑环式电动机",
+  "new_en": "slip-ring motor",
+  "count": 1,
+  "examples": [
+   "滑环式电动机"
+  ]
+ },
+ {
+  "parent_hint_code": "13.003.001",
+  "new_zh": "火警接线端子箱",
+  "new_en": "fire alarm terminal box",
+  "count": 1,
+  "examples": [
+   "火警接线端子箱"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "电传打字机",
+  "new_en": "teleprinter",
+  "count": 1,
+  "examples": [
+   "电传打字机"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "电动发电机组",
+  "new_en": "motor-generator set",
+  "count": 1,
+  "examples": [
+   "电动发电机（组）"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "电话分机",
+  "new_en": "telephone extension",
+  "count": 1,
+  "examples": [
+   "电话分机"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "电话单机",
+  "new_en": "telephone set",
+  "count": 1,
+  "examples": [
+   "电话单机"
+  ]
+ },
+ {
+  "parent_hint_code": "31.002.006",
+  "new_zh": "百叶窗",
+  "new_en": "louvres",
+  "count": 1,
+  "examples": [
+   "百叶窗"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "程控交换机",
+  "new_en": "program-controlled telephone exchange",
+  "count": 1,
+  "examples": [
+   "程控交换机"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "紧急电话",
+  "new_en": "emergency telephone",
+  "count": 1,
+  "examples": [
+   "紧急电话"
+  ]
+ },
+ {
+  "parent_hint_code": "11.002.004",
+  "new_zh": "红外线灯",
+  "new_en": "infrared lamp",
+  "count": 1,
+  "examples": [
+   "红外线灯"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.011",
+  "new_zh": "线路放大器",
+  "new_en": "line amplifier",
+  "count": 1,
+  "examples": [
+   "线路放大器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "绕线式电动机",
+  "new_en": "wound-rotor induction motor",
+  "count": 1,
+  "examples": [
+   "绕线式电动机"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.004",
+  "new_zh": "视频编辑控制器",
+  "new_en": "Video edit controller",
+  "count": 1,
+  "examples": [
+   "编辑控制器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "自激电动机",
+  "new_en": "Self-excited motor",
+  "count": 1,
+  "examples": [
+   "自激电动机"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.004",
+  "new_zh": "解调器",
+  "new_en": "Demodulator",
+  "count": 1,
+  "examples": [
+   "解调器"
+  ]
+ },
+ {
+  "parent_hint_code": "12.006.001",
+  "new_zh": "话筒",
+  "new_en": "Microphone",
+  "count": 1,
+  "examples": [
+   "话筒"
+  ]
+ },
+ {
+  "parent_hint_code": "02.006.004",
+  "new_zh": "调制器",
+  "new_en": "Modulator",
+  "count": 1,
+  "examples": [
+   "调制器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "起动电动机",
+  "new_en": "Starting motor",
+  "count": 1,
+  "examples": [
+   "起动电动机"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "电动机转子",
+  "new_en": "Motor rotor",
+  "count": 1,
+  "examples": [
+   "转子"
+  ]
+ },
+ {
+  "parent_hint_code": "11.005.002",
+  "new_zh": "配照型灯具",
+  "new_en": "Semi-direct distribution luminaire",
+  "count": 1,
+  "examples": [
+   "配照型"
+  ]
+ },
+ {
+  "parent_hint_code": "13.011.002",
+  "new_zh": "隔热板",
+  "new_en": "Heat shield board",
+  "count": 1,
+  "examples": [
+   "隔热板"
+  ]
+ },
+ {
+  "parent_hint_code": "14.002.011",
+  "new_zh": "音频放大器",
+  "new_en": "Audio-frequency amplifier",
+  "count": 1,
+  "examples": [
+   "音频放大器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.002.011",
+  "new_zh": "音频混合器",
+  "new_en": "Audio-frequency mixer",
+  "count": 1,
+  "examples": [
+   "音频混合器"
+  ]
+ },
+ {
+  "parent_hint_code": "14.002.011",
+  "new_zh": "扬声器",
+  "new_en": "Loudspeaker",
+  "count": 1,
+  "examples": [
+   "高音喇叭"
+  ]
+ },
+ {
+  "parent_hint_code": "14.001.002",
+  "new_zh": "鼠笼式感应电动机",
+  "new_en": "Squirrel cage induction motor",
+  "count": 1,
+  "examples": [
+   "鼠笼式感应电动机"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "预制混凝土拼装房",
+  "new_en": "precast concrete house",
+  "count": 1,
+  "examples": [
+   "混凝土预制拼装房"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "预制混凝土路沿石",
+  "new_en": "precast concrete curb",
+  "count": 1,
+  "examples": [
+   "路沿石"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "预制混凝土井盖",
+  "new_en": "precast concrete manhole cover",
+  "count": 1,
+  "examples": [
+   "预制混凝土井盖"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "预制混凝土盖板",
+  "new_en": "precast concrete cover slab",
+  "count": 1,
+  "examples": [
+   "预制混凝土盖板"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "预制混凝土防撞隔离墩",
+  "new_en": "precast concrete barrier",
+  "count": 1,
+  "examples": [
+   "预制混凝土防撞隔离墩"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "一氧化碳一氧化碳气体",
+  "new_en": "carbon monoxide gas",
+  "count": 1,
+  "examples": [
+   "一氧化碳"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "工业锅炉(三回程)",
+  "new_en": "three-pass industrial boiler",
+  "count": 1,
+  "examples": [
+   "三回程锅炉"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "丙烷气",
+  "new_en": "propane gas",
+  "count": 1,
+  "examples": [
+   "丙烷气"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.002",
+  "new_zh": "两级加热器",
+  "new_en": "two-stage heater",
+  "count": 1,
+  "examples": [
+   "两级加热器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "二氧化碳",
+  "new_en": "carbon dioxide gas",
+  "count": 1,
+  "examples": [
+   "二氧化碳"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "仪表板",
+  "new_en": "metering/instrument panel",
+  "count": 1,
+  "examples": [
+   "仪表板"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.002",
+  "new_zh": "散热器传热肋片",
+  "new_en": "radiator heat transfer fin",
+  "count": 1,
+  "examples": [
+   "传热肋片"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "锅炉供油管",
+  "new_en": "boiler oil supply pipe",
+  "count": 1,
+  "examples": [
+   "供油管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "冰蓄冷低温送风系统",
+  "new_en": "ice storage low-temp air distribution system",
+  "count": 1,
+  "examples": [
+   "冰蓄冷低温送风"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "冰蓄冷空调系统",
+  "new_en": "ice storage air conditioning system",
+  "count": 1,
+  "examples": [
+   "冰蓄冷空调"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "冷冻水",
+  "new_en": "chilled water",
+  "count": 1,
+  "examples": [
+   "冷冻水"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "分析仪表",
+  "new_en": "analyzing instrument",
+  "count": 1,
+  "examples": [
+   "分析仪表"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "分汽缸",
+  "new_en": "steam manifold/header",
+  "count": 1,
+  "examples": [
+   "分汽缸"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "加湿器",
+  "new_en": "humidifier",
+  "count": 1,
+  "examples": [
+   "加湿器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "压力式温度计",
+  "new_en": "pressure type thermometer",
+  "count": 1,
+  "examples": [
+   "压力式温度计"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "双炉胆蒸汽锅炉",
+  "new_en": "double-flue steam boiler",
+  "count": 1,
+  "examples": [
+   "双炉胆蒸汽锅炉"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "取样管",
+  "new_en": "sampling pipe",
+  "count": 1,
+  "examples": [
+   "取样管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "吹除管",
+  "new_en": "blow-off pipe",
+  "count": 1,
+  "examples": [
+   "吹除管"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "喷嘴",
+  "new_en": "nozzle",
+  "count": 1,
+  "examples": [
+   "喷嘴"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "地脚螺栓",
+  "new_en": "foundation bolt",
+  "count": 1,
+  "examples": [
+   "地脚螺栓"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "天然气",
+  "new_en": "natural gas",
+  "count": 1,
+  "examples": [
+   "天然气"
+  ]
+ },
+ {
+  "parent_hint_code": "24.011",
+  "new_zh": "密闭罩",
+  "new_en": "exhausted enclosure/hood",
+  "count": 1,
+  "examples": [
+   "密闭罩"
+  ]
+ },
+ {
+  "parent_hint_code": "24.012",
+  "new_zh": "尘埃离子计数器",
+  "new_en": "airborne particle counter",
+  "count": 1,
+  "examples": [
+   "尘埃离子计数器"
+  ]
+ },
+ {
+  "parent_hint_code": "05",
+  "new_zh": "干燥压缩空气",
+  "new_en": "dry compressed air",
+  "count": 1,
+  "examples": [
+   "干燥压缩空气"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "干蒸汽加湿器",
+  "new_en": "dry steam humidifier",
+  "count": 1,
+  "examples": [
+   "干蒸汽加湿器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006.004",
+  "new_zh": "往复式制冷机",
+  "new_en": "reciprocating refrigerator",
+  "count": 1,
+  "examples": [
+   "往复式制冷机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.004",
+  "new_zh": "往复式蒸汽机(给水泵)",
+  "new_en": "reciprocating steam-driven feed pump",
+  "count": 1,
+  "examples": [
+   "往复式蒸汽机"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.004",
+  "new_zh": "恒压阀",
+  "new_en": "pressure sustaining valve",
+  "count": 1,
+  "examples": [
+   "恒压阀"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "恒温式疏水器",
+  "new_en": "thermostatic steam trap",
+  "count": 1,
+  "examples": [
+   "恒温式疏水器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "手孔",
+  "new_en": "handhole",
+  "count": 1,
+  "examples": [
+   "手孔"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "报警器",
+  "new_en": "alarm device",
+  "count": 1,
+  "examples": [
+   "报警器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.002.003",
+  "new_zh": "冷却塔挡水板",
+  "new_en": "cooling tower water baffle/drift eliminator",
+  "count": 1,
+  "examples": [
+   "挡水板"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "排气管",
+  "new_en": "exhaust pipe",
+  "count": 1,
+  "examples": [
+   "排气管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "放散管",
+  "new_en": "discharge/vent pipe",
+  "count": 1,
+  "examples": [
+   "放散管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "断油阀",
+  "new_en": "oil cut-off valve",
+  "count": 1,
+  "examples": [
+   "断油阀"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "旁路管",
+  "new_en": "bypass pipe",
+  "count": 1,
+  "examples": [
+   "旁路管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.002",
+  "new_zh": "暖风机",
+  "new_en": "unit heater",
+  "count": 1,
+  "examples": [
+   "暖风机"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "槽车",
+  "new_en": "tank wagon",
+  "count": 1,
+  "examples": [
+   "槽车"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "氟里昂",
+  "new_en": "freon/refrigerant",
+  "count": 1,
+  "examples": [
+   "氟里昂"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氢气",
+  "new_en": "hydrogen gas",
+  "count": 1,
+  "examples": [
+   "氢"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氢气纯化器",
+  "new_en": "hydrogen purifier",
+  "count": 1,
+  "examples": [
+   "氢气纯化器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氦气",
+  "new_en": "helium gas",
+  "count": 1,
+  "examples": [
+   "氦气"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氨气",
+  "new_en": "ammonia gas",
+  "count": 1,
+  "examples": [
+   "氨气"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氩气",
+  "new_en": "argon gas",
+  "count": 1,
+  "examples": [
+   "氩气"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氩气纯化装置",
+  "new_en": "argon purifier",
+  "count": 1,
+  "examples": [
+   "氩气纯化装置"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "氪气",
+  "new_en": "krypton gas",
+  "count": 1,
+  "examples": [
+   "氪气"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "水泥板",
+  "new_en": "cement board",
+  "count": 1,
+  "examples": [
+   "水泥板"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "水管路系统",
+  "new_en": "water piping system",
+  "count": 1,
+  "examples": [
+   "水管路系统"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001",
+  "new_zh": "污水管冲洗阀",
+  "new_en": "sewer pipe flush valve",
+  "count": 1,
+  "examples": [
+   "污水管冲洗阀"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "汽化器",
+  "new_en": "vaporizer/evaporator",
+  "count": 1,
+  "examples": [
+   "汽化器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "油气两用锅炉",
+  "new_en": "gas and oil dual-fuel boiler",
+  "count": 1,
+  "examples": [
+   "油/气两用锅炉"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "油毛毡",
+  "new_en": "asphalt felt",
+  "count": 1,
+  "examples": [
+   "油毛毡"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "泡沫塑料",
+  "new_en": "plastic foam insulation",
+  "count": 1,
+  "examples": [
+   "泡沫塑料"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "活性炭",
+  "new_en": "activated carbon",
+  "count": 1,
+  "examples": [
+   "活性炭"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "流量指示器",
+  "new_en": "flow indicator",
+  "count": 1,
+  "examples": [
+   "流量指示器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "浮桶式疏水器",
+  "new_en": "open float steam trap",
+  "count": 1,
+  "examples": [
+   "浮桶式输水器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "浮球式疏水器",
+  "new_en": "float steam trap",
+  "count": 1,
+  "examples": [
+   "浮球式输水器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "液化石油气",
+  "new_en": "liquefied petroleum gas",
+  "count": 1,
+  "examples": [
+   "液化石油气"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "液氧",
+  "new_en": "liquid oxygen",
+  "count": 1,
+  "examples": [
+   "液氧"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "游离水",
+  "new_en": "free water",
+  "count": 1,
+  "examples": [
+   "游离水"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "湿球温度计",
+  "new_en": "wet bulb thermometer",
+  "count": 1,
+  "examples": [
+   "湿球温度计"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "火焰滞留器",
+  "new_en": "flame detainer/retainer",
+  "count": 1,
+  "examples": [
+   "火焰滞留器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "炉壳",
+  "new_en": "furnace shell",
+  "count": 1,
+  "examples": [
+   "炉壳"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "炉膛",
+  "new_en": "furnace chamber",
+  "count": 1,
+  "examples": [
+   "炉膛"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "烟囱",
+  "new_en": "chimney",
+  "count": 1,
+  "examples": [
+   "烟囱"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "热动力式疏水器",
+  "new_en": "thermodynamic steam trap",
+  "count": 1,
+  "examples": [
+   "热动力式疏水器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "煤仓",
+  "new_en": "coal bunker",
+  "count": 1,
+  "examples": [
+   "煤仓"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "燃气导管",
+  "new_en": "gas lead pipe",
+  "count": 1,
+  "examples": [
+   "燃气导管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "燃气蒸汽锅炉",
+  "new_en": "gas-fired steam boiler",
+  "count": 1,
+  "examples": [
+   "燃气蒸汽锅炉"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "燃油热水锅炉",
+  "new_en": "oil-fired hot water boiler",
+  "count": 1,
+  "examples": [
+   "燃油热水锅炉"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "燃烧器",
+  "new_en": "burner",
+  "count": 1,
+  "examples": [
+   "燃烧器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "燃烧用氧",
+  "new_en": "combustion oxygen",
+  "count": 1,
+  "examples": [
+   "燃烧用氧"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "玻璃棉",
+  "new_en": "glass wool insulation",
+  "count": 1,
+  "examples": [
+   "玻璃棉"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "玻璃窗",
+  "new_en": "glazing window",
+  "count": 1,
+  "examples": [
+   "玻璃窗"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "玻璃纤维",
+  "new_en": "glass fiber",
+  "count": 1,
+  "examples": [
+   "玻璃纤维"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "电冰箱",
+  "new_en": "electric refrigerator (household)",
+  "count": 1,
+  "examples": [
+   "电冰箱"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "电子计算器",
+  "new_en": "electronic calculator",
+  "count": 1,
+  "examples": [
+   "电子计算器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "电解槽",
+  "new_en": "electrolysis cell",
+  "count": 1,
+  "examples": [
+   "电解槽"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.002",
+  "new_zh": "电(空气)加热器",
+  "new_en": "electric air heater",
+  "count": 1,
+  "examples": [
+   "电（空气）加热器"
+  ]
+ },
+ {
+  "parent_hint_code": "05",
+  "new_zh": "真空",
+  "new_en": "vacuum (state)",
+  "count": 1,
+  "examples": [
+   "真空"
+  ]
+ },
+ {
+  "parent_hint_code": "05",
+  "new_zh": "真空吸尘器",
+  "new_en": "vacuum cleaner",
+  "count": 1,
+  "examples": [
+   "真空吸尘器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "石棉板",
+  "new_en": "asbestos board",
+  "count": 1,
+  "examples": [
+   "石棉板"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "碱液箱",
+  "new_en": "alkaline liquid tank",
+  "count": 1,
+  "examples": [
+   "碱液箱"
+  ]
+ },
+ {
+  "parent_hint_code": "07.007.002",
+  "new_zh": "离心式压缩机",
+  "new_en": "centrifugal compressor",
+  "count": 1,
+  "examples": [
+   "离心式压缩机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.007.002",
+  "new_zh": "离心式双体空压机",
+  "new_en": "centrifugal dual air compressor",
+  "count": 1,
+  "examples": [
+   "离心式双体空压机"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "离心玻璃棉管壳",
+  "new_en": "centrifugal glass wool pipe sheath",
+  "count": 1,
+  "examples": [
+   "离心玻璃棉管壳"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "空气冷却式汽化器",
+  "new_en": "air-cooled vaporizer",
+  "count": 1,
+  "examples": [
+   "空气冷却式汽化器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.002.002",
+  "new_zh": "空气净化器",
+  "new_en": "air cleaner/purifier (whole unit)",
+  "count": 1,
+  "examples": [
+   "空气净化器"
+  ]
+ },
+ {
+  "parent_hint_code": "07.007.002",
+  "new_zh": "空气压缩机",
+  "new_en": "air compressor (generic)",
+  "count": 1,
+  "examples": [
+   "空气压缩机"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "空气洗涤器",
+  "new_en": "air washer",
+  "count": 1,
+  "examples": [
+   "空气洗涤器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "窗帘",
+  "new_en": "window curtain",
+  "count": 1,
+  "examples": [
+   "窗帘"
+  ]
+ },
+ {
+  "parent_hint_code": "24.012",
+  "new_zh": "粒子计数器",
+  "new_en": "particle counter",
+  "count": 1,
+  "examples": [
+   "粒子计数器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "纯氧",
+  "new_en": "pure oxygen",
+  "count": 1,
+  "examples": [
+   "纯氧"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "脉冲式疏水器",
+  "new_en": "impulse steam trap",
+  "count": 1,
+  "examples": [
+   "脉冲式疏水器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "膨胀水管",
+  "new_en": "expansion water pipe",
+  "count": 1,
+  "examples": [
+   "膨胀水管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "膨胀水箱",
+  "new_en": "expansion tank",
+  "count": 1,
+  "examples": [
+   "膨胀水箱"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "膨胀阀",
+  "new_en": "expansion valve",
+  "count": 1,
+  "examples": [
+   "膨胀阀"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "自动补水装置",
+  "new_en": "automatic water feeder",
+  "count": 1,
+  "examples": [
+   "自动补水装置"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "自来水管",
+  "new_en": "tap water pipe",
+  "count": 1,
+  "examples": [
+   "自来水管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "蒸汽",
+  "new_en": "steam",
+  "count": 1,
+  "examples": [
+   "蒸汽"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "蒸汽出口",
+  "new_en": "steam outlet",
+  "count": 1,
+  "examples": [
+   "蒸汽出口"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "蒸汽加湿器",
+  "new_en": "steam humidifier",
+  "count": 1,
+  "examples": [
+   "蒸汽加湿器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.002",
+  "new_zh": "蒸汽加热器",
+  "new_en": "steam heated air heater",
+  "count": 1,
+  "examples": [
+   "蒸汽加热器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "蒸汽室",
+  "new_en": "steam chamber",
+  "count": 1,
+  "examples": [
+   "蒸汽室"
+  ]
+ },
+ {
+  "parent_hint_code": "07.004",
+  "new_zh": "蒸汽泵",
+  "new_en": "steam pump",
+  "count": 1,
+  "examples": [
+   "蒸汽泵"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "补充水管",
+  "new_en": "water feed pipe",
+  "count": 1,
+  "examples": [
+   "补充水管"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "超声波加湿器",
+  "new_en": "supersonic wave humidifier",
+  "count": 1,
+  "examples": [
+   "超声波加湿器"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "超温指示灯",
+  "new_en": "over-temperature indicator light",
+  "count": 1,
+  "examples": [
+   "超温指示灯"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "转轮除湿机",
+  "new_en": "rotary dehumidifier",
+  "count": 1,
+  "examples": [
+   "转轮除湿机"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "过压指示器",
+  "new_en": "over-pressure indicator",
+  "count": 1,
+  "examples": [
+   "过压指示器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "重型蒸汽发生器",
+  "new_en": "heavy duty steam generator",
+  "count": 1,
+  "examples": [
+   "重型蒸汽发生器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007.008",
+  "new_zh": "锅炉支座",
+  "new_en": "boiler base/support",
+  "count": 1,
+  "examples": [
+   "锅炉支座"
+  ]
+ },
+ {
+  "parent_hint_code": "05.008.001",
+  "new_zh": "锥形阀",
+  "new_en": "cone valve",
+  "count": 1,
+  "examples": [
+   "锥形阀"
+  ]
+ },
+ {
+  "parent_hint_code": "24.007",
+  "new_zh": "闭式膨胀水箱",
+  "new_en": "closed expansion water tank",
+  "count": 1,
+  "examples": [
+   "闭式膨胀水箱"
+  ]
+ },
+ {
+  "parent_hint_code": "24.008",
+  "new_zh": "阻火器",
+  "new_en": "fire stop/flame arrestor",
+  "count": 1,
+  "examples": [
+   "阻火器"
+  ]
+ },
+ {
+  "parent_hint_code": "24.006",
+  "new_zh": "集水盘",
+  "new_en": "condensate drain pan",
+  "count": 1,
+  "examples": [
+   "集水盘"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "高发泡聚氯乙烯管壳",
+  "new_en": "high foamed PVC pipe sheath",
+  "count": 1,
+  "examples": [
+   "高发泡聚氯乙烯管壳"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "高温绝热层",
+  "new_en": "high temperature insulation layer",
+  "count": 1,
+  "examples": [
+   "高温绝热层"
+  ]
+ },
+ {
+  "parent_hint_code": "24",
+  "new_zh": "高纯氧",
+  "new_en": "high purity oxygen",
+  "count": 1,
+  "examples": [
+   "高纯氧"
+  ]
+ },
+ {
+  "parent_hint_code": "21.002",
+  "new_zh": "木质电线杆",
+  "new_en": "Wooden utility pole",
+  "count": 1,
+  "examples": [
+   "木电线杆"
+  ]
+ },
+ {
+  "parent_hint_code": "18.003.001",
+  "new_zh": "防滑颗粒添加剂",
+  "new_en": "Anti-slip Granular Additive",
+  "count": 1,
+  "examples": [
+   "GALAXY保护粒状GNG"
+  ]
+ },
+ {
+  "parent_hint_code": "18.003.001",
+  "new_zh": "脱漆剂",
+  "new_en": "Paint Remover",
+  "count": 1,
+  "examples": [
+   "脱漆剂"
+  ]
+ },
+ {
+  "parent_hint_code": "26.001",
+  "new_zh": "室内消火栓给水泵",
+  "new_en": "Feeding pump for indoor fire hydrant",
+  "count": 1,
+  "examples": [
+   "室内消火栓给水泵"
+  ]
+ },
+ {
+  "parent_hint_code": "26.001",
+  "new_zh": "消防泵",
+  "new_en": "Fire-fighting pump",
+  "count": 1,
+  "examples": [
+   "消防泵"
+  ]
+ },
+ {
+  "parent_hint_code": "26.003.001",
+  "new_zh": "温度调节器",
+  "new_en": "Thermostat",
+  "count": 1,
+  "examples": [
+   "温度调节器"
+  ]
+ },
+ {
+  "parent_hint_code": "26.001",
+  "new_zh": "自动喷水灭火泵",
+  "new_en": "Automatic sprinkler fire pump",
+  "count": 1,
+  "examples": [
+   "自动喷水灭火泵"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "电动修边机/木工镂铣机",
+  "new_en": "Electric trimmer/router",
+  "count": 1,
+  "examples": [
+   "修边机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "电动冲击扳手",
+  "new_en": "Electric impact wrench",
+  "count": 1,
+  "examples": [
+   "冲击扳手"
+  ]
+ },
+ {
+  "parent_hint_code": "07.007",
+  "new_zh": "工业吹风机(鼓风机)",
+  "new_en": "Industrial air blower",
+  "count": 1,
+  "examples": [
+   "吹风机"
+  ]
+ },
+ {
+  "parent_hint_code": "04.004",
+  "new_zh": "电动套丝机",
+  "new_en": "Electric pipe threading machine",
+  "count": 1,
+  "examples": [
+   "套丝机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "混凝土平板振动器",
+  "new_en": "Concrete plate vibrator",
+  "count": 1,
+  "examples": [
+   "平板振动器"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "混凝土搅拌机",
+  "new_en": "Concrete mixer",
+  "count": 1,
+  "examples": [
+   "搅拌机"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012",
+  "new_zh": "气动/电动钉枪",
+  "new_en": "Pneumatic nail gun",
+  "count": 1,
+  "examples": [
+   "气钉枪"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "混凝土振捣器(汽油式)",
+  "new_en": "Petrol concrete vibrator",
+  "count": 1,
+  "examples": [
+   "汽油振捣器"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012",
+  "new_zh": "热风枪",
+  "new_en": "Hot air gun",
+  "count": 1,
+  "examples": [
+   "热风枪"
+  ]
+ },
+ {
+  "parent_hint_code": "04.017",
+  "new_zh": "电动割草机",
+  "new_en": "Electric lawnmower",
+  "count": 1,
+  "examples": [
+   "电动割草机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "混凝土振捣器(电动式)",
+  "new_en": "Electric concrete vibrator",
+  "count": 1,
+  "examples": [
+   "电动振捣器"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "立式打夯机",
+  "new_en": "Vertical tamping rammer",
+  "count": 1,
+  "examples": [
+   "立式打夯机"
+  ]
+ },
+ {
+  "parent_hint_code": "04.012",
+  "new_zh": "气动/电动码钉枪",
+  "new_en": "Pneumatic stapler",
+  "count": 1,
+  "examples": [
+   "蚊钉枪"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "蛙式打夯机",
+  "new_en": "Frog rammer",
+  "count": 1,
+  "examples": [
+   "蛙式打夯机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.005",
+  "new_zh": "桥式行车(行吊)",
+  "new_en": "Bridge crane",
+  "count": 1,
+  "examples": [
+   "行吊"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "混凝土配料机",
+  "new_en": "Concrete batching machine",
+  "count": 1,
+  "examples": [
+   "配料机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "钢筋弯曲机",
+  "new_en": "Rebar bending machine",
+  "count": 1,
+  "examples": [
+   "钢筋弯曲机"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "钢筋连接机(套筒挤压/直螺纹套丝一体机)",
+  "new_en": "Rebar coupler/connecting machine",
+  "count": 1,
+  "examples": [
+   "钢筋连接机"
+  ]
+ },
+ {
+  "parent_hint_code": "18.002.004",
+  "new_zh": "回填土(天然素土)",
+  "new_en": "Natural backfill soil",
+  "count": 1,
+  "examples": [
+   "回填土"
+  ]
+ },
+ {
+  "parent_hint_code": "19.007.006",
+  "new_zh": "坦噶石(天然建筑石材)",
+  "new_en": "Tanga stone (natural building stone)",
+  "count": 1,
+  "examples": [
+   "坦噶石"
+  ]
+ },
+ {
+  "parent_hint_code": "18.002.004",
+  "new_zh": "壤土/红土(路用天然土)",
+  "new_en": "Moram/lateritic soil (road construction)",
+  "count": 1,
+  "examples": [
+   "毛壤土"
+  ]
+ },
+ {
+  "parent_hint_code": "18.002.004",
+  "new_zh": "毛石(块石)",
+  "new_en": "Rubble stone / hardcore",
+  "count": 1,
+  "examples": [
+   "毛石"
+  ]
+ },
+ {
+  "parent_hint_code": "19.006",
+  "new_zh": "碎石混凝土砌块",
+  "new_en": "Aggregate/chippings concrete block",
+  "count": 1,
+  "examples": [
+   "石子砖"
+  ]
+ },
+ {
+  "parent_hint_code": "19.006",
+  "new_zh": "混凝土砂砖",
+  "new_en": "Sand concrete block",
+  "count": 1,
+  "examples": [
+   "砂砖"
+  ]
+ },
+ {
+  "parent_hint_code": "19.006",
+  "new_zh": "混凝土空心砌块",
+  "new_en": "Concrete hollow block",
+  "count": 1,
+  "examples": [
+   "空心砖"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌45度弯头",
+  "new_en": "Galvanized 45° elbow",
+  "count": 1,
+  "examples": [
+   "45°镀锌弯头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌90度内丝弯头",
+  "new_en": "Galvanized 90° female thread elbow",
+  "count": 1,
+  "examples": [
+   "90°镀锌内丝弯头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌90度外丝弯头",
+  "new_en": "Galvanized 90° male thread elbow",
+  "count": 1,
+  "examples": [
+   "90°镀锌外丝弯头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌90度弯头",
+  "new_en": "Galvanized 90° elbow",
+  "count": 1,
+  "examples": [
+   "90°镀锌弯头"
+  ]
+ },
+ {
+  "parent_hint_code": "28.008",
+  "new_zh": "HDPE化粪池",
+  "new_en": "HDPE septic tank",
+  "count": 1,
+  "examples": [
+   "HDPE化粪池"
+  ]
+ },
+ {
+  "parent_hint_code": "28.008.004",
+  "new_zh": "HDPE手轮闸阀",
+  "new_en": "HDPE gate valve",
+  "count": 1,
+  "examples": [
+   "HDPE手轮闸阀"
+  ]
+ },
+ {
+  "parent_hint_code": "28.008",
+  "new_zh": "HDPE水箱",
+  "new_en": "HDPE water tank",
+  "count": 1,
+  "examples": [
+   "HDPE水箱"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "热熔焊接机(塑料管)",
+  "new_en": "Plastic pipe hot-melt welding machine",
+  "count": 1,
+  "examples": [
+   "HDPE热熔器"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003.008",
+  "new_zh": "热熔焊接机嘴头",
+  "new_en": "Hot-melt welding machine mould/head",
+  "count": 1,
+  "examples": [
+   "HDPE热熔器嘴头"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003",
+  "new_zh": "热熔焊接机(PPR管)",
+  "new_en": "PPR pipe hot-melt welding machine",
+  "count": 1,
+  "examples": [
+   "PPR热熔器"
+  ]
+ },
+ {
+  "parent_hint_code": "07.003.008",
+  "new_zh": "热熔焊接机嘴头(PPR管)",
+  "new_en": "PPR welding machine mould/head",
+  "count": 1,
+  "examples": [
+   "PPR热熔器嘴头"
+  ]
+ },
+ {
+  "parent_hint_code": "28.003.004",
+  "new_zh": "PVC给水手轮闸阀",
+  "new_en": "PVC water supply gate valve",
+  "count": 1,
+  "examples": [
+   "PVC手轮闸阀"
+  ]
+ },
+ {
+  "parent_hint_code": "27.002.002",
+  "new_zh": "冲洗水箱",
+  "new_en": "Flushing cistern",
+  "count": 1,
+  "examples": [
+   "冲洗水箱"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.011",
+  "new_zh": "冲洗调节器",
+  "new_en": "Flush regulator",
+  "count": 1,
+  "examples": [
+   "冲洗调节器"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.009",
+  "new_zh": "净水器",
+  "new_en": "Water purifier",
+  "count": 1,
+  "examples": [
+   "净水器"
+  ]
+ },
+ {
+  "parent_hint_code": "27.002",
+  "new_zh": "净身盆",
+  "new_en": "Bidet",
+  "count": 1,
+  "examples": [
+   "净身盆"
+  ]
+ },
+ {
+  "parent_hint_code": "30.005.001",
+  "new_zh": "出屋面构件泛水板",
+  "new_en": "Roof outlet flashing board",
+  "count": 1,
+  "examples": [
+   "出屋面构件泛水板"
+  ]
+ },
+ {
+  "parent_hint_code": "30.005.001",
+  "new_zh": "天沟泛水板",
+  "new_en": "Valley flashing board",
+  "count": 1,
+  "examples": [
+   "天沟泛水板"
+  ]
+ },
+ {
+  "parent_hint_code": "30.005.001",
+  "new_zh": "屋脊泛水板",
+  "new_en": "Ridge flashing board",
+  "count": 1,
+  "examples": [
+   "屋脊泛水板"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.009",
+  "new_zh": "干手器",
+  "new_en": "Hand dryer",
+  "count": 1,
+  "examples": [
+   "干手器"
+  ]
+ },
+ {
+  "parent_hint_code": "27.002.002",
+  "new_zh": "座盖",
+  "new_en": "Toilet seat/cover",
+  "count": 1,
+  "examples": [
+   "座盖"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "快开阀",
+  "new_en": "Quick opening valve",
+  "count": 1,
+  "examples": [
+   "快开阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "报警阀",
+  "new_en": "Alarming valve",
+  "count": 1,
+  "examples": [
+   "报警阀"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "拦污栅",
+  "new_en": "Sewer grille/trash rack",
+  "count": 1,
+  "examples": [
+   "拦污栅"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "提升阀",
+  "new_en": "Poppet valve",
+  "count": 1,
+  "examples": [
+   "提升阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "旋转阀",
+  "new_en": "Rotary valve",
+  "count": 1,
+  "examples": [
+   "旋转阀"
+  ]
+ },
+ {
+  "parent_hint_code": "30.005.001",
+  "new_zh": "檐口泛水板",
+  "new_en": "Eaves flashing board",
+  "count": 1,
+  "examples": [
+   "檐口泛水板"
+  ]
+ },
+ {
+  "parent_hint_code": "25.003",
+  "new_zh": "水锤压力消除罐",
+  "new_en": "Water hammer arrestor tank",
+  "count": 1,
+  "examples": [
+   "水锤压力消除罐"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.009",
+  "new_zh": "流过式加热器",
+  "new_en": "Flow-type heater",
+  "count": 1,
+  "examples": [
+   "流过式加热器"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.009",
+  "new_zh": "温度调节器",
+  "new_en": "Thermostat",
+  "count": 1,
+  "examples": [
+   "温度调节器"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "溢流阀",
+  "new_en": "Overflow valve",
+  "count": 1,
+  "examples": [
+   "溢流阀"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.009",
+  "new_zh": "热水器",
+  "new_en": "Water heater",
+  "count": 1,
+  "examples": [
+   "热水器"
+  ]
+ },
+ {
+  "parent_hint_code": "30.007.001",
+  "new_zh": "球墨井盖",
+  "new_en": "DI manhole cover",
+  "count": 1,
+  "examples": [
+   "球墨井盖"
+  ]
+ },
+ {
+  "parent_hint_code": "25.003.007",
+  "new_zh": "电磁流量计",
+  "new_en": "Electromagnetic flowmeter",
+  "count": 1,
+  "examples": [
+   "电磁流量计"
+  ]
+ },
+ {
+  "parent_hint_code": "30.005.001",
+  "new_zh": "盖檐条",
+  "new_en": "Edging strip",
+  "count": 1,
+  "examples": [
+   "盖檐条"
+  ]
+ },
+ {
+  "parent_hint_code": "30.005.001",
+  "new_zh": "盖缝条",
+  "new_en": "Apron strip",
+  "count": 1,
+  "examples": [
+   "盖缝条"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "管形阀",
+  "new_en": "Tube valve",
+  "count": 1,
+  "examples": [
+   "管形阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "节流阀",
+  "new_en": "Throttle valve",
+  "count": 1,
+  "examples": [
+   "节流阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.001.005",
+  "new_zh": "起动阀",
+  "new_en": "Start-up valve",
+  "count": 1,
+  "examples": [
+   "起动阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌三通",
+  "new_en": "Galvanized tee",
+  "count": 1,
+  "examples": [
+   "镀锌三通"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌内丝三通",
+  "new_en": "Galvanized female thread tee",
+  "count": 1,
+  "examples": [
+   "镀锌内丝三通"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌内丝接头",
+  "new_en": "Galvanized female thread connector",
+  "count": 1,
+  "examples": [
+   "镀锌内丝接头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌单连内丝球阀",
+  "new_en": "Galvanized single union&female thread ball valve",
+  "count": 1,
+  "examples": [
+   "镀锌单连内丝球阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌单连球阀水龙头",
+  "new_en": "Galvanized single union&male thread ball valve",
+  "count": 1,
+  "examples": [
+   "镀锌单连球阀水龙头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌双外丝接头",
+  "new_en": "Galvanized nipple",
+  "count": 1,
+  "examples": [
+   "镀锌双外丝接头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌双连球阀",
+  "new_en": "Galvanized double union ball valve",
+  "count": 1,
+  "examples": [
+   "镀锌双连球阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌变径",
+  "new_en": "Galvanized reducer",
+  "count": 1,
+  "examples": [
+   "镀锌变径"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌四通",
+  "new_en": "Galvanized cross",
+  "count": 1,
+  "examples": [
+   "镀锌四通"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌外丝三通",
+  "new_en": "Galvanized male thread tee",
+  "count": 1,
+  "examples": [
+   "镀锌外丝三通"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌外丝接头",
+  "new_en": "Galvanized male thread connector",
+  "count": 1,
+  "examples": [
+   "镀锌外丝接头"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌手轮闸阀",
+  "new_en": "Galvanized gate valve",
+  "count": 1,
+  "examples": [
+   "镀锌手轮闸阀"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌直接",
+  "new_en": "Galvanized socket",
+  "count": 1,
+  "examples": [
+   "镀锌直接"
+  ]
+ },
+ {
+  "parent_hint_code": "25.002.003",
+  "new_zh": "镀锌补芯",
+  "new_en": "Galvanized bushing",
+  "count": 1,
+  "examples": [
+   "镀锌补芯"
+  ]
+ },
+ {
+  "parent_hint_code": "27.003.009",
+  "new_zh": "饮水器",
+  "new_en": "Water dispenser",
+  "count": 1,
+  "examples": [
+   "饮水器"
+  ]
+ },
+ {
+  "parent_hint_code": "27.002.002",
+  "new_zh": "马桶水箱",
+  "new_en": "Closet tank",
+  "count": 1,
+  "examples": [
+   "马桶水箱"
+  ]
+ },
+ {
+  "parent_hint_code": "22",
+  "new_zh": "储物设施",
+  "new_en": "Storage Facilities"
+ },
+ {
+  "parent_hint_code": "22",
+  "new_zh": "办公用品",
+  "new_en": "Office Supplies"
+ }
+]
