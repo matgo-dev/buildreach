@@ -78,13 +78,10 @@ WORKDIR /app
 COPY --chown=appuser:appuser . .
 
 # entrypoint 需要可执行 + 创建上传目录（volume 挂载点）
-# /app 属 root,appuser 无法在其下 mkdir,故上传/临时目录必须在此预建并 chown。
-# /app/tmp/uploads 是 upload_pipeline 的临时落盘目录(非 volume),漏建会导致上传 500。
 RUN chmod +x docker-entrypoint.sh \
     && mkdir -p /app/uploads \
     && mkdir -p /app/private_uploads/attachments \
-    && mkdir -p /app/tmp/uploads \
-    && chown -R appuser:appuser /app/uploads /app/private_uploads /app/tmp
+    && chown -R appuser:appuser /app/uploads /app/private_uploads
 
 ARG BUILD_COMMIT=dev
 ARG BUILD_BRANCH=-
