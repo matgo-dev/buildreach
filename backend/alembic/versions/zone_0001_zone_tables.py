@@ -25,7 +25,6 @@ def upgrade() -> None:
         sa.Column("name_sw", sa.String(128)),
         sa.Column("status", sa.String(16), nullable=False, server_default="ACTIVE"),
         sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"),
-        sa.Column("settings", sa.JSON, nullable=False, server_default="{}"),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint("code", name="uq_zones_code"),

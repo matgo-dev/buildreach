@@ -436,7 +436,7 @@
     "cantFindHint": "Can't find what you need?",
     "contactService": "Contact Support",
     "loading": "Loading...",
-    "searchPlaceholder": "Search by name, brand, model, SPU code...",
+    "searchPlaceholder": "Search by name, brand, model, spec, SPU code...",
     "sortNewest": "Newest",
     "sortPriceAsc": "Price: Low to High",
     "sortPriceDesc": "Price: High to Low",
@@ -711,6 +711,7 @@
     "showMore": "Show more",
     "navMyOrders": "Order Tracking",
     "navAiAssistant": "AI Assistant",
+    "navExclusiveZone": "Exclusive Zone",
     "heroStat1Value": "30+ Categories",
     "heroStat1Label": "Curated building material catalog",
     "heroStat2Value": "200+ Factories",
@@ -1232,6 +1233,7 @@
     "systemConfig": "Settings",
     "auditLogs": "Audit Logs",
     "permissionMatrix": "Permission Matrix",
+    "zoneGrants": "Zone Access",
     "buyerApiDebug": "Buyer API Debug",
     "supplierApiDebug": "Supplier API Debug",
     "operatorApiDebug": "Operator API Debug",
@@ -1866,6 +1868,13 @@
     "landingSubtitle": "Whitelisted products for your company — dedicated fulfillment",
     "allCategories": "All Categories",
     "backToZone": "Back to Zone",
-    "price": "Price"
+    "price": "Price",
+    "addToInquiry": "Add to Inquiry",
+    "selectSpecFirst": "Select a spec first",
+    "specFilter": "Spec Filter",
+    "specFilterPlaceholder": "Enter spec, e.g. 4L, DN50, 42.5",
+    "applyFilter": "Apply",
+    "clearSpecFilter": "Clear spec filter",
+    "clearSearch": "Clear search"
   }
 }

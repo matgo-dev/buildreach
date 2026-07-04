@@ -6,6 +6,7 @@
  */
 import {
   type LucideIcon,
+  KeyRound,
   Package,
   Receipt,
   ScrollText,
@@ -99,6 +100,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { path: "/operator/products",        labelKey: "productManagement", label: "商品管理",   labelEn: "Products",      icon: Package,         resource: "product",  requiredPermissions: [Permissions.PRODUCT_READ],         description: "SPU 列表 / 上下架 / 进入编辑详情" },
           { path: "/operator/rfqs",            labelKey: "rfqManagement",   label: "询价管理",     labelEn: "RFQ",           icon: Send,            resource: "rfq",      requiredPermissions: [Permissions.RFQ_READ],             description: "全平台询价单受理与管理" },
+          { path: "/operator/zones",           labelKey: "zoneGrants",      label: "专区授权",     labelEn: "Zone Access",   icon: KeyRound,        resource: null,       requiredPermissions: [Permissions.ZONE_MANAGE],          description: "给买家组织授权访问央企专区" },
         ],
       },
     ],

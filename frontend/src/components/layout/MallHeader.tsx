@@ -41,34 +41,54 @@ export function MallHeader() {
   const user = useAuthStore((s) => s.user);
   const cartCount = useCartStore((s) => s.count);
   const router = useRouter();
-  const locale = useLocale();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations("mall");
   const [searchValue, setSearchValue] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
 
+  useEffect(() => {
+    setSearchValue(searchParams.get("keyword") || "");
+  }, [searchParams]);
+
+  const searchHref = useCallback(
+    (kw: string) => {
+      const zoneMatch = pathname.match(/^\/zone\/([^/]+)/);
+      if (!zoneMatch) {
+        return `/mall${kw ? `?keyword=${encodeURIComponent(kw)}` : ""}`;
+      }
+      const p = new URLSearchParams(searchParams.toString());
+      if (kw) p.set("keyword", kw);
+      else p.delete("keyword");
+      p.delete("page");
+      const qs = p.toString();
+      return `/zone/${zoneMatch[1]}${qs ? `?${qs}` : ""}`;
+    },
+    [pathname, searchParams],
+  );
+
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       const kw = searchValue.trim();
-      const qs = kw ? `?keyword=${encodeURIComponent(kw)}` : "";
-      router.push(`/mall${qs}`);
+      router.push(searchHref(kw));
       setSearchFocused(false);
       // 延迟刷新最近搜索缓存，等后端 BackgroundTask 写入完成
       if (kw) {
         setTimeout(() => mutate("buyer-recent-searches"), 1500);
       }
     },
-    [searchValue, router, locale],
+    [searchValue, router, searchHref],
   );
 
   const handleSelectSearch = useCallback(
     (kw: string) => {
       setSearchValue(kw);
-      router.push(`/mall?keyword=${encodeURIComponent(kw)}`);
+      router.push(searchHref(kw));
       setSearchFocused(false);
     },
-    [router, locale],
+    [router, searchHref],
   );
 
   return (

@@ -55,7 +55,7 @@ from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 
 ZONE_CODE = "CENTRAL_SOE"
 DEMO_BUYER_EMAIL = "zonebuyer@demo.local"
-DEMO_BUYER_USERNAME = "zone_demo_buyer"
+DEMO_BUYER_USERNAME = "zonebuyer"
 DEMO_BUYER_PASSWORD = os.environ.get("DEMO_BUYER_PASSWORD", "Aa123456789")
 DEMO_BUYER_ORG_CODE = "ZONE-DEMO-BUYER-ORG"
 
@@ -119,7 +119,7 @@ async def _get_or_create_zone(db: AsyncSession) -> Zone:
     zone = row.scalar_one_or_none()
     if zone is not None:
         return zone
-    zone = Zone(code=ZONE_CODE, name_zh="央企专区", name_en="Central SOE Zone", status="ACTIVE")
+    zone = Zone(code=ZONE_CODE, name_zh="常用材料", name_en="Common Materials", status="ACTIVE")
     db.add(zone)
     await db.flush()
     return zone
@@ -261,6 +261,14 @@ async def _get_or_create_demo_buyer(db: AsyncSession) -> tuple[BuyerOrganization
             password_hash=hash_password(DEMO_BUYER_PASSWORD),
         )
         db.add(user)
+        await db.flush()
+    elif user.username != DEMO_BUYER_USERNAME:
+        username_owner = (
+            await db.execute(select(User).where(User.username == DEMO_BUYER_USERNAME))
+        ).scalar_one_or_none()
+        if username_owner is not None and username_owner.id != user.id:
+            raise RuntimeError(f"demo buyer username already exists: {DEMO_BUYER_USERNAME}")
+        user.username = DEMO_BUYER_USERNAME
         await db.flush()
 
     # 赋 BUYER 角色:种子直插 User 不走注册流程,否则 me.roles 为空、买家功能(询价篮/RFQ)gating 失效。

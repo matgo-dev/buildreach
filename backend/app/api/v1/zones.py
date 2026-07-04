@@ -22,7 +22,7 @@ from __future__ import annotations
 import math
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.products import (
@@ -38,6 +38,8 @@ from app.core.locale import get_current_locale
 from app.core.dependencies import CurrentUser, get_current_user
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.product import Product, ProductStatus
+from app.db.models.product_attr import ProductAttr
+from app.db.models.product_sku import ProductSku
 from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 from app.db.session import get_db
 from app.schemas.product import ProductAttrSchema, ProductPublicDetail, SkuPublic
@@ -123,6 +125,67 @@ def _build_sku_public(sku, sku_attrs: list, locale: str) -> dict:
     ).model_dump()
 
 
+def _like(text: str) -> str:
+    return f"%{text.strip()}%"
+
+
+def _zone_keyword_filter(keyword: str):
+    kw = _like(keyword)
+    return or_(
+        Product.name_zh.ilike(kw),
+        Product.name_en.ilike(kw),
+        Product.name_sw.ilike(kw),
+        Product.brand_zh.ilike(kw),
+        Product.brand_en.ilike(kw),
+        Product.brand_sw.ilike(kw),
+        Product.manufacturer_model.ilike(kw),
+        Product.spu_code.ilike(kw),
+        exists(
+            select(ProductSku.id).where(
+                ProductSku.product_id == Product.id,
+                ProductSku.deleted_at.is_(None),
+                ProductSku.status == "ACTIVE",
+                or_(
+                    ProductSku.sku_code.ilike(kw),
+                    ProductSku.name_zh.ilike(kw),
+                    ProductSku.name_en.ilike(kw),
+                    ProductSku.name_sw.ilike(kw),
+                    ProductSku.manufacturer_model.ilike(kw),
+                ),
+            )
+        ),
+        exists(
+            select(ProductAttr.id).where(
+                ProductAttr.product_id == Product.id,
+                ProductAttr.sku_id.is_not(None),
+                or_(
+                    ProductAttr.attr_key_zh.ilike(kw),
+                    ProductAttr.attr_key_en.ilike(kw),
+                    ProductAttr.attr_key_sw.ilike(kw),
+                    ProductAttr.attr_value_zh.ilike(kw),
+                    ProductAttr.attr_value_en.ilike(kw),
+                    ProductAttr.attr_value_sw.ilike(kw),
+                ),
+            )
+        ),
+    )
+
+
+def _zone_spec_filter(spec: str):
+    kw = _like(spec)
+    return exists(
+        select(ProductAttr.id).where(
+            ProductAttr.product_id == Product.id,
+            ProductAttr.sku_id.is_not(None),
+            or_(
+                ProductAttr.attr_value_zh.ilike(kw),
+                ProductAttr.attr_value_en.ilike(kw),
+                ProductAttr.attr_value_sw.ilike(kw),
+            ),
+        )
+    )
+
+
 @router.get("/{zone_code}/categories", summary="专区客户视角大类导航")
 async def list_zone_categories(
     zone: Zone = Depends(require_zone_access),
@@ -141,6 +204,8 @@ async def list_zone_categories(
 async def list_zone_products(
     zone: Zone = Depends(require_zone_access),
     zone_category_code: str | None = Query(None, description="按客户视角大类筛选"),
+    keyword: str | None = Query(None, description="关键词:商品名/品牌/型号/SKU/规格/商品编码"),
+    spec: str | None = Query(None, description="规格值筛选"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
@@ -164,6 +229,10 @@ async def list_zone_products(
     ]
     if zone_category_id is not None:
         base_filters.append(ZoneProduct.zone_category_id == zone_category_id)
+    if keyword and keyword.strip():
+        base_filters.append(_zone_keyword_filter(keyword))
+    if spec and spec.strip():
+        base_filters.append(_zone_spec_filter(spec))
 
     count_q = (
         select(func.count(ZoneProduct.id))

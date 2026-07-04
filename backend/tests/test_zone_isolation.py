@@ -913,3 +913,131 @@ async def test_zone_product_detail_404_for_product_outside_whitelist(client: Asy
         f"/api/v1/zones/{zone.code}/products/{other_product.id}", headers=headers,
     )
     assert r.status_code == 404, r.text
+
+
+# ── 运营端专区授权管理 (operator_zones) 关键路径接线 ────────────────────
+# 纯接线(权限门 / 落库 / 幂等 / 撤销),bug 藏在缝隙里,只测关键路径,不追求全覆盖。
+
+
+@pytest.mark.asyncio
+async def test_operator_grant_lifecycle(client: AsyncClient, db_session):
+    """运营:列专区 → 授权买家组织(落库)→ 列表可见 → 撤销(删库)。"""
+    zone = Zone(code="ZONE-OP-LIFE", name_zh="运营授权测试专区", status="ACTIVE")
+    db_session.add(zone)
+    org = BuyerOrganization(name="运营授权测试组织")
+    db_session.add(org)
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+
+    # 专区列表含新建专区
+    r = await client.get("/api/v1/operator/zones", headers=headers)
+    assert r.status_code == 200, r.text
+    assert any(z["code"] == "ZONE-OP-LIFE" for z in r.json()["data"])
+
+    # 授权前列表为空
+    r = await client.get(f"/api/v1/operator/zones/{zone.code}/grants", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"] == []
+
+    # 授权 → 落库 + granted_by 记录当前运营
+    r = await client.post(
+        f"/api/v1/operator/zones/{zone.code}/grants",
+        headers=headers, json={"buyer_org_id": org.id},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["buyer_org_id"] == org.id
+
+    row = (await db_session.execute(
+        select(ZoneGrant).where(
+            ZoneGrant.zone_id == zone.id, ZoneGrant.buyer_org_id == org.id
+        )
+    )).scalar_one()
+    assert row.granted_by is not None
+
+    # 列表可见
+    r = await client.get(f"/api/v1/operator/zones/{zone.code}/grants", headers=headers)
+    assert any(g["buyer_org_id"] == org.id for g in r.json()["data"])
+
+    # 撤销 → 删库
+    r = await client.delete(
+        f"/api/v1/operator/zones/{zone.code}/grants/{org.id}", headers=headers
+    )
+    assert r.status_code == 200, r.text
+    assert (await db_session.execute(
+        select(ZoneGrant).where(
+            ZoneGrant.zone_id == zone.id, ZoneGrant.buyer_org_id == org.id
+        )
+    )).scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_operator_grant_idempotent(client: AsyncClient, db_session):
+    """重复授权同一组织不报错,且只落一行。"""
+    zone = Zone(code="ZONE-OP-IDEM", name_zh="幂等测试专区", status="ACTIVE")
+    db_session.add(zone)
+    org = BuyerOrganization(name="幂等测试组织")
+    db_session.add(org)
+    await db_session.commit()
+    headers = await _login_operator(client)
+
+    for _ in range(2):
+        r = await client.post(
+            f"/api/v1/operator/zones/{zone.code}/grants",
+            headers=headers, json={"buyer_org_id": org.id},
+        )
+        assert r.status_code == 200, r.text
+
+    rows = (await db_session.execute(
+        select(ZoneGrant).where(
+            ZoneGrant.zone_id == zone.id, ZoneGrant.buyer_org_id == org.id
+        )
+    )).scalars().all()
+    assert len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_operator_grant_not_found_cases(client: AsyncClient, db_session):
+    """未知专区 / 未知组织 → 404。"""
+    zone = Zone(code="ZONE-OP-404", name_zh="404测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.commit()
+    headers = await _login_operator(client)
+
+    # 未知专区
+    r = await client.post(
+        "/api/v1/operator/zones/NOPE-ZONE/grants",
+        headers=headers, json={"buyer_org_id": 1},
+    )
+    assert r.status_code == 404, r.text
+
+    # 未知组织
+    r = await client.post(
+        f"/api/v1/operator/zones/{zone.code}/grants",
+        headers=headers, json={"buyer_org_id": 999999},
+    )
+    assert r.status_code == 404, r.text
+
+    # 撤销不存在的授权 → 404
+    r = await client.delete(
+        f"/api/v1/operator/zones/{zone.code}/grants/999999", headers=headers
+    )
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
+async def test_operator_zone_grants_require_zone_manage(client: AsyncClient, db_session):
+    """无 zone:manage 权限的买方访问运营授权接口 → 403。"""
+    zone = Zone(code="ZONE-OP-PERM", name_zh="权限门测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.commit()
+    headers = await _login_default_buyer(client)  # 买方无 zone:manage
+
+    r = await client.get("/api/v1/operator/zones", headers=headers)
+    assert r.status_code == 403, r.text
+
+    r = await client.post(
+        f"/api/v1/operator/zones/{zone.code}/grants",
+        headers=headers, json={"buyer_org_id": 1},
+    )
+    assert r.status_code == 403, r.text

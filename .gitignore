@@ -66,3 +66,12 @@ frontend/pnpm-workspace.yaml
 
 # ---- 本机代码索引 ----
 .codegraph/
+
+# ---- 工具/临时产物(不入库) ----
+.playwright-mcp/
+/output/
+/tmp/
+
+# ---- 央企专区导入 pipeline:重产物本地保留,只入库 prepared/ 决策文件 + README ----
+data/zone_import/raw/
+data/zone_import/working/

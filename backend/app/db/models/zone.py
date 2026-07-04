@@ -1,7 +1,7 @@
 """央企专区(Zone)四表:zones / zone_categories / zone_products / zone_grants。
 
 设计要点:
-- zones:专区主表,`settings` JSON 作为扩展接缝,承载每专区差异化配置(展示粒度/主题/文案/入口)。
+- zones:专区主表(code / 多语名 / status / sort_order)。
 - zone_categories:专区自有类目树(区别于全局 categories),`(zone_id, id)` 唯一约束供
   zone_products 的复合外键引用,保证类目必须属于同一 zone。
 - zone_products:专区选品,`zone_category_id` 不直接建单列 FK,而是与 zone_id 一起组成
@@ -35,7 +35,6 @@ class Zone(Base, TimestampUpdateMixin):
     name_sw: Mapped[str | None] = mapped_column(String(128))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ACTIVE")  # ACTIVE/INACTIVE
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    settings: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)  # 扩展接缝:每专区差异化配置,数据驱动
 
 
 class ZoneCategory(Base, TimestampUpdateMixin, I18nMixin):

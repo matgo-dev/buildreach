@@ -19,6 +19,8 @@ export interface ZoneCategory {
 
 export interface ZoneProductListParams {
   zone_category_code?: string;
+  keyword?: string;
+  spec?: string;
   page?: number;
   size?: number;
 }
@@ -37,6 +39,8 @@ export const zonesApi = {
   products: (zoneCode: string, params: ZoneProductListParams = {}) => {
     const qs = new URLSearchParams();
     if (params.zone_category_code) qs.set("zone_category_code", params.zone_category_code);
+    if (params.keyword) qs.set("keyword", params.keyword);
+    if (params.spec) qs.set("spec", params.spec);
     if (params.page) qs.set("page", String(params.page));
     if (params.size) qs.set("size", String(params.size));
     const q = qs.toString();

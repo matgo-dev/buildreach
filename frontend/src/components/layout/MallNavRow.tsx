@@ -4,8 +4,6 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { ShieldCheck } from "lucide-react";
-
 import { useAuthStore } from "@/stores/authStore";
 
 /** Mall 导航行 — 白底,底线暖金色。参考 HTML .nav-row */
@@ -40,6 +38,8 @@ export function MallNavRow() {
   // 收紧内边距(px-2/sm:px-3),让整排双语项 + 专区一行装下不横滑。
   const itemBase =
     "relative h-[44px] sm:h-[50px] inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 transition-colors -mb-px";
+  const zoneItemBase =
+    "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px] font-extrabold transition-colors";
 
   const renderNavLink = (link: NavLink) => {
     // href 可能带 query(如 /mall?procurement=local),按路径 + query 双匹配高亮。
@@ -93,13 +93,12 @@ export function MallNavRow() {
       <Link
         key={z.code}
         href={href}
-        className={`${itemBase} gap-1 ${
+        className={`${zoneItemBase} ${
           active
-            ? "text-teal-800 border-b-[3px] border-gold"
-            : "text-teal-800 hover:text-teal-900"
+            ? "border-gold bg-teal-50 text-teal-900 shadow-[inset_0_-2px_0_#e3a615]"
+            : "border-teal-100 bg-teal-50/70 text-teal-800 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
         }`}
       >
-        <ShieldCheck className="h-4 w-4 shrink-0" />
         {z.name_zh}
       </Link>
     );
@@ -110,11 +109,18 @@ export function MallNavRow() {
       className="sticky top-0 md:top-[82px] z-[70] bg-white border-b border-line"
       style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05)" }}
     >
-      <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center min-h-[44px] sm:min-h-[50px] gap-0 overflow-x-auto scrollbar-hide">
-        {/* 首页 → 采购路径 → 央企专区(授权买家)→ 其余入口 */}
-        {NAV_LINKS.slice(0, 2).map(renderNavLink)}
-        {zones.map(renderZoneLink)}
-        {NAV_LINKS.slice(2).map(renderNavLink)}
+      <div className="mx-auto flex min-h-[44px] max-w-mall items-center justify-between gap-4 overflow-x-auto px-3 scrollbar-hide sm:min-h-[50px] sm:px-6">
+        <div className="flex min-w-max items-center gap-0">
+          {NAV_LINKS.map(renderNavLink)}
+        </div>
+        {zones.length > 0 && (
+          <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-line pl-4">
+            <span className="hidden text-[11px] font-semibold text-gray-400 lg:inline">
+              {t("navExclusiveZone")}
+            </span>
+            {zones.map(renderZoneLink)}
+          </div>
+        )}
       </div>
     </nav>
   );

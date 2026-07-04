@@ -436,7 +436,7 @@
     "cantFindHint": "Hupati unachotaka?",
     "contactService": "Wasiliana na Msaada",
     "loading": "Inapakia...",
-    "searchPlaceholder": "Tafuta kwa jina, chapa, modeli, msimbo wa SPU...",
+    "searchPlaceholder": "Tafuta kwa jina, chapa, modeli, kipimo, msimbo wa SPU...",
     "sortNewest": "Mpya Zaidi",
     "sortPriceAsc": "Bei: Chini hadi Juu",
     "sortPriceDesc": "Bei: Juu hadi Chini",
@@ -711,6 +711,7 @@
     "showMore": "Onyesha zaidi",
     "navMyOrders": "Fuatilia Agizo",
     "navAiAssistant": "Msaidizi wa AI",
+    "navExclusiveZone": "Eneo Maalum",
     "heroStat1Value": "Aina 10+",
     "heroStat1Label": "Orodha ya vifaa vya ujenzi",
     "heroStat2Value": "Viwanda 200+",
@@ -1232,6 +1233,7 @@
     "systemConfig": "Mipangilio",
     "auditLogs": "Kumbukumbu za Ukaguzi",
     "permissionMatrix": "Mfumo wa Ruhusa",
+    "zoneGrants": "Ufikiaji wa Kanda",
     "buyerApiDebug": "Utatuzi wa API ya Mnunuzi",
     "supplierApiDebug": "Utatuzi wa API ya Msambazaji",
     "operatorApiDebug": "Utatuzi wa API ya Opereta",
@@ -1866,6 +1868,13 @@
     "landingSubtitle": "Bidhaa zilizoteuliwa kwa kampuni yako — utekelezaji wa pekee",
     "allCategories": "Aina Zote",
     "backToZone": "Rudi kwenye Eneo",
-    "price": "Bei"
+    "price": "Bei",
+    "addToInquiry": "Ongeza kwenye Ombi",
+    "selectSpecFirst": "Chagua vipimo kwanza",
+    "specFilter": "Chuja Kipimo",
+    "specFilterPlaceholder": "Weka kipimo, mfano 4L, DN50, 42.5",
+    "applyFilter": "Chuja",
+    "clearSpecFilter": "Futa kichujio cha kipimo",
+    "clearSearch": "Futa utafutaji"
   }
 }

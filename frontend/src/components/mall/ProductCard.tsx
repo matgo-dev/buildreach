@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
+import { usePathname } from "next/navigation";
 import { Package, ShoppingCart, Loader2 } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
@@ -98,10 +99,17 @@ export function ProductCard({
   const t = useTranslations("mall");
   const categoryLabel = findCategoryLabel(categoryTree, product.category_code);
   const router = useRouter();
+  const pathname = usePathname();
   const [adding, setAdding] = useState(false);
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const zoneCodeFromPath = pathname?.match(/(?:^|\/)zone\/([^/?#]+)/)?.[1];
+  const detailHref =
+    href ?? (zoneCodeFromPath ? `/zone/${decodeURIComponent(zoneCodeFromPath)}/products/${product.id}` : `/mall/products/${product.id}`);
+  const rfqHref = zoneCodeFromPath
+    ? `/buyer/rfqs/create?product_id=${product.id}&zone_code=${encodeURIComponent(decodeURIComponent(zoneCodeFromPath))}`
+    : `/buyer/rfqs/create?product_id=${product.id}`;
 
   const prevCountRef = useRef(useCartStore.getState().count);
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
@@ -131,11 +139,11 @@ export function ProductCard({
     } finally {
       setAdding(false);
     }
-  }, [product.id, syncFromCart, toast, t]);
+  }, [product.id, router, syncFromCart, toast, t]);
 
   return (
     <Link
-      href={href ?? `/mall/products/${product.id}`}
+      href={detailHref}
       className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
     >
       {/* 图片区 — 撑满，窄边距 */}
@@ -218,7 +226,7 @@ export function ProductCard({
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
-              router.push(`/buyer/rfqs/create?product_id=${product.id}`);
+              router.push(rfqHref);
             }}
           >
             {t("startInquiry")}

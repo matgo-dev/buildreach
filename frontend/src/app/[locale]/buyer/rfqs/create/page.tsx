@@ -28,6 +28,7 @@ import { imageUrl } from "@/lib/env";
 import { getCart, removeCartItem, updateCartItem, type CartItemPublic } from "@/lib/api/cart";
 import { createRfq } from "@/lib/api/rfqs";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
+import { zonesApi } from "@/lib/api/zones";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -63,6 +64,17 @@ function getOffendingProductIds(err: ApiError): number[] {
   return data.offending_product_ids.filter((id): id is number => typeof id === "number");
 }
 
+function inferZoneCodeFromReferrer(): string | null {
+  if (typeof document === "undefined" || !document.referrer) return null;
+  try {
+    const referrer = new URL(document.referrer);
+    const match = referrer.pathname.match(/(?:^|\/)zone\/([^/?#]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 interface ManualItem {
   product_id: number;
   selected_variants: Array<{ attr_name: string; value: string }>;
@@ -70,6 +82,7 @@ interface ManualItem {
   variant_display: string;
   unit: string;
   quantity: number;
+  source_zone_code?: string;
 }
 
 interface DraftData {
@@ -502,6 +515,48 @@ function RfqCreateContent() {
   const triggerRefresh = useCartStore((s) => s.triggerRefresh);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
+  const loadPurchasableProduct = useCallback(
+    async (productId: number, preferredZoneCode?: string | null) => {
+      const triedZoneCodes = new Set<string>();
+      const isSkippableZoneError = (err: unknown) =>
+        err instanceof ApiError &&
+        (err.status === 404 || err.status === 403 || err.code === 40008 || err.code === 40300);
+
+      if (preferredZoneCode) {
+        triedZoneCodes.add(preferredZoneCode);
+        try {
+          return await zonesApi.product(preferredZoneCode, productId);
+        } catch (err) {
+          if (!isSkippableZoneError(err)) {
+            throw err;
+          }
+        }
+      }
+
+      try {
+        return await getProduct(productId);
+      } catch (err) {
+        if (!(err instanceof ApiError) || (err.status !== 404 && err.code !== 40008)) {
+          throw err;
+        }
+      }
+
+      for (const z of user?.zones ?? []) {
+        if (triedZoneCodes.has(z.code)) continue;
+        try {
+          return await zonesApi.product(z.code, productId);
+        } catch (err) {
+          if (isSkippableZoneError(err)) {
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new ApiError({ code: 40008, message: "Product not found", status: 404 });
+    },
+    [user?.zones],
+  );
+
   // 解析 URL 参数
   const itemIds = useMemo(() => {
     const raw = searchParams.get("items") ?? "";
@@ -510,6 +565,7 @@ function RfqCreateContent() {
       .map((s) => parseInt(s, 10))
       .filter((n) => !isNaN(n));
   }, [searchParams]);
+  const itemIdsKey = useMemo(() => itemIds.join(","), [itemIds]);
 
   // 从 URL product_id 参数自动添加商品
   const productIdParam = useMemo(() => {
@@ -518,11 +574,20 @@ function RfqCreateContent() {
     const n = parseInt(raw, 10);
     return isNaN(n) ? null : n;
   }, [searchParams]);
+  const zoneCodeParam = useMemo(
+    () => searchParams.get("zone_code") || inferZoneCodeFromReferrer(),
+    [searchParams],
+  );
   const productIdLoadedRef = useRef(false);
 
   // 入口路径区分
   const isCartPath = itemIds.length > 0;
   const isDirectPath = productIdParam !== null && !isCartPath;
+  const entryKey = isCartPath
+    ? `cart:${itemIdsKey}`
+    : isDirectPath
+      ? `product:${zoneCodeParam ?? ""}:${productIdParam}`
+      : "free";
 
   // 加载询价篮数据
   const [cartItems, setCartItems] = useState<CartItemPublic[]>([]);
@@ -531,12 +596,17 @@ function RfqCreateContent() {
 
   useEffect(() => {
     if (itemIds.length === 0) {
+      setCartItems([]);
       setLoading(false);
       return;
     }
 
+    let cancelled = false;
+    setLoading(true);
+    setItemsWarning(null);
     getCart()
       .then((cart) => {
+        if (cancelled) return;
         const matched = cart.items.filter(
           (i) => itemIds.includes(i.item_id) && i.is_purchasable,
         );
@@ -549,10 +619,17 @@ function RfqCreateContent() {
         }
       })
       .catch(() => {
+        if (cancelled) return;
         setItemsWarning(t("itemsAllMissing"));
       })
-      .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [itemIdsKey, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 删除询价行（不删询价篮，只是本次提交不含该项）
   const handleRemoveCartItem = useCallback((itemId: number) => {
@@ -590,6 +667,15 @@ function RfqCreateContent() {
 
   // 草稿持久化（含 manualItems）
   const draftKey = `${DRAFT_KEY_PREFIX}${user?.id ?? "anon"}`;
+  const createFreshDraft = useCallback(
+    (): DraftData => ({
+      ...emptyDraft(),
+      contact_name: user?.name ?? "",
+      contact_phone: user?.phone ?? "",
+      contact_email: user?.email ?? "",
+    }),
+    [user?.email, user?.name, user?.phone],
+  );
 
   const [draft, setDraft] = useState<DraftData>(() => {
     if (typeof window === "undefined") return emptyDraft();
@@ -610,15 +696,30 @@ function RfqCreateContent() {
       } catch {}
     }
 
-    return {
-      ...emptyDraft(),
-      contact_name: user?.name ?? "",
-      contact_phone: user?.phone ?? "",
-      contact_email: user?.email ?? "",
-    };
+    return createFreshDraft();
   });
 
   const manualItems = draft.manualItems;
+  const entryKeyRef = useRef(entryKey);
+
+  useEffect(() => {
+    if (entryKeyRef.current === entryKey) return;
+    entryKeyRef.current = entryKey;
+    idemRef.current = null;
+    setItemsWarning(null);
+
+    if (isDirectPath) {
+      productIdLoadedRef.current = false;
+      setCartItems([]);
+      setDraft(createFreshDraft());
+      return;
+    }
+
+    if (isCartPath) {
+      productIdLoadedRef.current = false;
+      setDraft(createFreshDraft());
+    }
+  }, [createFreshDraft, entryKey, isCartPath, isDirectPath]);
 
   useEffect(() => {
     try {
@@ -645,33 +746,39 @@ function RfqCreateContent() {
 
   // 从 URL product_id 自动添加商品到手动列表
   useEffect(() => {
-    if (!productIdParam || productIdLoadedRef.current) return;
+    if (!productIdParam) return;
+    if (!user) return;
+    const itemKey = makeItemKey(productIdParam, []);
+    const hasOnlyDirectItem =
+      cartItems.length === 0 &&
+      manualItems.length === 1 &&
+      makeItemKey(manualItems[0].product_id, manualItems[0].selected_variants) === itemKey &&
+      (manualItems[0].source_zone_code ?? null) === zoneCodeParam;
+    if (productIdLoadedRef.current && hasOnlyDirectItem) return;
     productIdLoadedRef.current = true;
 
-    getProduct(productIdParam)
+    loadPurchasableProduct(productIdParam, zoneCodeParam)
       .then((detail) => {
-        const itemKey = makeItemKey(productIdParam, []);
-        const alreadyInCart = cartItems.some(
-          (i) => makeItemKey(i.product_id, i.selected_variants) === itemKey,
-        );
-        const alreadyManual = manualItems.some(
-          (i) => makeItemKey(i.product_id, i.selected_variants) === itemKey,
-        );
-        if (alreadyInCart || alreadyManual) return;
-
-        handleAddManualItem({
-          product_id: detail.id,
-          selected_variants: [],
-          product_name: detail.name,
-          variant_display: "\u2014",
-          unit: detail.unit || "PCS",
-          quantity: 1,
-        });
+        setCartItems([]);
+        setDraft((prev) => ({
+          ...prev,
+          manualItems: [{
+            product_id: detail.id,
+            selected_variants: [],
+            product_name: detail.name,
+            variant_display: "\u2014",
+            unit: detail.unit || "PCS",
+            quantity: 1,
+            source_zone_code: zoneCodeParam ?? undefined,
+          }],
+        }));
+        idemRef.current = null;
       })
       .catch(() => {
+        productIdLoadedRef.current = false;
         toast.error(t("productNotFound"));
       });
-  }, [productIdParam, cartItems, manualItems, handleAddManualItem, toast, t]);
+  }, [productIdParam, zoneCodeParam, user, cartItems, manualItems, loadPurchasableProduct, toast, t]);
 
   const handleRemoveManualItem = useCallback((idx: number) => {
     setDraft((prev) => ({
@@ -728,7 +835,7 @@ function RfqCreateContent() {
 
       for (const item of manualItems) {
         try {
-          await getProduct(item.product_id);
+          await loadPurchasableProduct(item.product_id, item.source_zone_code);
           availableManualItems.push(item);
         } catch (err) {
           if (err instanceof ApiError && (err.status === 404 || err.code === 40008)) {
@@ -830,7 +937,7 @@ function RfqCreateContent() {
       setSubmitting(false);
       setSavingDraft(false);
     }
-  }, [submitting, savingDraft, canSubmit, hasRemark, totalItemCount, cartItems, manualItems, draft, draftKey, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
+  }, [submitting, savingDraft, canSubmit, hasRemark, totalItemCount, cartItems, manualItems, draft, draftKey, loadPurchasableProduct, syncFromCart, triggerRefresh, toast, t, tError, router, locale]);
 
   const handleSubmit = useCallback(() => doCreate(false), [doCreate]);
   const handleSaveDraft = useCallback(() => doCreate(true), [doCreate]);

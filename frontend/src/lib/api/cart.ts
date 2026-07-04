@@ -49,9 +49,11 @@ export async function addCartItem(
   productId: number,
   selectedVariants: Array<{ attr_name: string; value: string }>,
   quantity: number,
+  skuId?: number | null,
 ): Promise<CartPublic> {
   return api.post<CartPublic>("/api/v1/cart/items", {
     product_id: productId,
+    sku_id: skuId ?? undefined,
     selected_variants: selectedVariants,
     quantity,
   });
@@ -60,7 +62,7 @@ export async function addCartItem(
 /** 修改询价篮项（数量 / 变体均可单独传） */
 export async function updateCartItem(
   itemId: number,
-  patch: { quantity?: number; selected_variants?: Array<{ attr_name: string; value: string }> },
+  patch: { quantity?: number; selected_variants?: Array<{ attr_name: string; value: string }>; sku_id?: number | null },
 ): Promise<CartPublic> {
   return api.patch<CartPublic>(`/api/v1/cart/items/${itemId}`, patch);
 }
