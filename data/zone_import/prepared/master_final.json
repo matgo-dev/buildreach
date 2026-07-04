@@ -1577,7 +1577,7 @@
  {
   "大类": "五金耗材类",
   "zh": "双面胶带",
-  "final_code": "04",
+  "final_code": "03",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -1631,20 +1631,20 @@
  {
   "大类": "五金耗材类",
   "zh": "塑料餐桌",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "五金耗材类",
   "zh": "塑料餐桌凳子",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "五金耗材类",
@@ -1739,11 +1739,11 @@
  {
   "大类": "五金耗材类",
   "zh": "帐篷",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "其他"
  },
  {
   "大类": "五金耗材类",
@@ -1991,7 +1991,7 @@
  {
   "大类": "五金耗材类",
   "zh": "木工开孔器",
-  "final_code": "04",
+  "final_code": "06",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2081,7 +2081,7 @@
  {
   "大类": "五金耗材类",
   "zh": "水钻钻头",
-  "final_code": "04",
+  "final_code": "06",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2180,7 +2180,7 @@
  {
   "大类": "五金耗材类",
   "zh": "瓷砖开孔器",
-  "final_code": "04",
+  "final_code": "06",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2225,7 +2225,7 @@
  {
   "大类": "五金耗材类",
   "zh": "电锤冲击钻头",
-  "final_code": "04",
+  "final_code": "06",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2441,7 +2441,7 @@
  {
   "大类": "五金耗材类",
   "zh": "美纹纸胶带",
-  "final_code": "04",
+  "final_code": "03",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2558,7 +2558,7 @@
  {
   "大类": "五金耗材类",
   "zh": "透明胶带",
-  "final_code": "04",
+  "final_code": "03",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2585,7 +2585,7 @@
  {
   "大类": "五金耗材类",
   "zh": "金刚石切割片",
-  "final_code": "04",
+  "final_code": "06",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -2720,11 +2720,11 @@
  {
   "大类": "五金耗材类",
   "zh": "防蚂蚁药",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "其他"
  },
  {
   "大类": "五金耗材类",
@@ -2747,11 +2747,11 @@
  {
   "大类": "五金耗材类",
   "zh": "雨布",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "其他"
  },
  {
   "大类": "五金耗材类",
@@ -2873,146 +2873,146 @@
  {
   "大类": "家具家电类",
   "zh": "会议桌",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "保险箱",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "前台板桌",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "台式电脑",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公设备"
  },
  {
   "大类": "家具家电类",
   "zh": "塑料凳子",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "塑料桌子",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "实木凳子",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "实木办公桌",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "实木餐桌",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "打印机",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公设备"
  },
  {
   "大类": "家具家电类",
   "zh": "电脑桌",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "皮尤沙发",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "真皮沙发",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "笔记本电脑",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公设备"
  },
  {
   "大类": "家具家电类",
   "zh": "老板椅",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "茶几",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
@@ -3026,20 +3026,20 @@
  {
   "大类": "家具家电类",
   "zh": "钢制书架",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "家具家电类",
   "zh": "钢制文件柜",
-  "final_code": "22",
+  "final_code": "32",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
-  "new_zh": "办公用品"
+  "new_zh": "办公家具"
  },
  {
   "大类": "平立面装修类",
@@ -7121,7 +7121,7 @@
  {
   "大类": "暖通气动类",
   "zh": "分析仪表",
-  "final_code": "24",
+  "final_code": "14",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -7238,7 +7238,7 @@
  {
   "大类": "暖通气动类",
   "zh": "压力式温度计",
-  "final_code": "24",
+  "final_code": "14",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -7418,7 +7418,7 @@
  {
   "大类": "暖通气动类",
   "zh": "地脚螺栓",
-  "final_code": "24",
+  "final_code": "08",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -8075,7 +8075,7 @@
  {
   "大类": "暖通气动类",
   "zh": "油毛毡",
-  "final_code": "24",
+  "final_code": "16",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -8129,7 +8129,7 @@
  {
   "大类": "暖通气动类",
   "zh": "泡沫塑料",
-  "final_code": "24",
+  "final_code": "16",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -8174,7 +8174,7 @@
  {
   "大类": "暖通气动类",
   "zh": "流量指示器",
-  "final_code": "24",
+  "final_code": "14",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -8228,7 +8228,7 @@
  {
   "大类": "暖通气动类",
   "zh": "湿球温度计",
-  "final_code": "24",
+  "final_code": "14",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -8444,7 +8444,7 @@
  {
   "大类": "暖通气动类",
   "zh": "玻璃纤维",
-  "final_code": "24",
+  "final_code": "16",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -8615,7 +8615,7 @@
  {
   "大类": "暖通气动类",
   "zh": "石棉板",
-  "final_code": "24",
+  "final_code": "16",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -9236,7 +9236,7 @@
  {
   "大类": "暖通气动类",
   "zh": "高发泡聚氯乙烯管壳",
-  "final_code": "24",
+  "final_code": "16",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,
@@ -9254,7 +9254,7 @@
  {
   "大类": "暖通气动类",
   "zh": "高温绝热层",
-  "final_code": "24",
+  "final_code": "16",
   "kind": "NEW占位",
   "conf": "new",
   "img": 0,

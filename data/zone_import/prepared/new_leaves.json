@@ -3540,8 +3540,18 @@
   "new_en": "Storage Facilities"
  },
  {
-  "parent_hint_code": "22",
-  "new_zh": "办公用品",
-  "new_en": "Office Supplies"
+  "parent_hint_code": "32",
+  "new_zh": "办公家具",
+  "new_en": "Office Furniture"
+ },
+ {
+  "parent_hint_code": "32",
+  "new_zh": "办公设备",
+  "new_en": "Office Equipment"
+ },
+ {
+  "parent_hint_code": "32",
+  "new_zh": "其他",
+  "new_en": "Others"
  }
 ]

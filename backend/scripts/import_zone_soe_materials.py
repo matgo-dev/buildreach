@@ -470,11 +470,59 @@ async def _upsert_zone_product(db: AsyncSession, zone: Zone, zc: ZoneCategory, p
     await db.flush()
 
 
+OFFICE_L1_CODE = "32"  # 办公用品一级类目(平台现有 31 个一级,取下一个)
+
+
+async def _ensure_office_l1_category(db: AsyncSession, stats: dict) -> None:
+    """确保一级类目「办公用品」(code=32)存在;办公家具/设备的 NEW占位 parent_hint=32 依赖它。
+    办公域本应独立成一级,不挂 临建设施(2026-07-04 用户拍板)。子叶 办公家具/办公设备/其他
+    仍走 _finalize_new_leaf_categories 在 32 下自动建。"""
+    existing = (await db.execute(
+        select(Category).where(Category.code == OFFICE_L1_CODE)
+    )).scalar_one_or_none()
+    if existing is not None:
+        if not existing.is_active:
+            existing.is_active = True
+        existing.short_name_zh = "办公"  # 目录树显示用短名(对齐平台 L1 惯例)
+        existing.short_name_en = existing.short_name_en or "Office"
+        existing.short_name_sw = existing.short_name_sw or "Ofisi"
+        stats["office_l1_existing"] += 1
+        return
+    max_sort = (await db.execute(
+        select(func.max(Category.sort_order)).where(Category.level == 1)
+    )).scalar() or 0
+    db.add(Category(
+        code=OFFICE_L1_CODE, name_zh="办公用品", name_en="Office Supplies",
+        short_name_zh="办公", short_name_en="Office", short_name_sw="Ofisi",
+        level=1, parent_code=None, sort_order=max_sort + 1,
+        is_active=True, is_leaf=False, source_lang="zh",
+        trans_meta={"name_zh": "src", "name_en": "manual"},
+    ))
+    await db.flush()
+    stats["office_l1_created"] += 1
+
+
+OFFICE_SUB_ORDER = ["办公家具", "办公设备", "其他"]  # 目录树里子叶展示顺序,「其他」殿后
+
+
+async def _order_office_subleaves(db: AsyncSession) -> None:
+    """按 OFFICE_SUB_ORDER 固定办公用品子叶展示顺序(自动建叶按字序会把「其他」排到最前)。"""
+    children = (await db.execute(
+        select(Category).where(Category.parent_code == OFFICE_L1_CODE, Category.is_active.is_(True))
+    )).scalars().all()
+    for child in children:
+        if child.name_zh in OFFICE_SUB_ORDER:
+            child.sort_order = OFFICE_SUB_ORDER.index(child.name_zh) + 1
+    await db.flush()
+
+
 async def run_import(db: AsyncSession) -> dict:
     stats = collections.Counter()
     rows = load_rows()
     stats["spu_total"] = len(rows)
+    await _ensure_office_l1_category(db, stats)
     await _finalize_new_leaf_categories(db, rows, stats)
+    await _order_office_subleaves(db)
     cat_stats = await _validate_category_codes(db, rows)
 
     zone = await _get_or_create_zone(db)
