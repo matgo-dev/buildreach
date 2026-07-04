@@ -18,10 +18,13 @@ from app.core.exceptions import (
     ConflictError,
     InvalidCredentialsError,
     NotFoundError,
+    PermissionDeniedError,
 )
 from app.core.phone import normalize_phone_to_e164, try_normalize_phone
 from app.core.security import verify_password
 from app.db.models.audit_log import AuditStatus
+from app.db.models.buyer_member import BuyerMember
+from app.db.models.buyer_organization import BuyerOrganization
 from app.db.models.user import User
 
 
@@ -127,6 +130,76 @@ async def update_profile(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def update_buyer_organization(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    user_email: str | None,
+    name: str | None,
+    unified_social_credit_code: str | None,
+    request: Request | None = None,
+) -> BuyerOrganization:
+    """Owner 修改自己所属买方组织的资料。PATCH 语义:None=不改。
+
+    - 仅 is_owner=True 的成员可改,否则 403(其他成员只读)。
+    - name 传入即非空(schema 保证);unified_social_credit_code 传空串=清空。
+    - unified_social_credit_code 唯一,撞其他组织 → 409。
+    """
+    row = await db.execute(
+        select(BuyerMember, BuyerOrganization)
+        .join(BuyerOrganization, BuyerOrganization.id == BuyerMember.buyer_org_id)
+        .where(BuyerMember.user_id == user_id)
+        .limit(1)
+    )
+    record = row.first()
+    if record is None:
+        raise NotFoundError("未关联任何买方组织")
+    member, org = record
+    if not member.is_owner:
+        raise PermissionDeniedError("仅组织所有者可修改组织信息")
+
+    changes: dict[str, dict[str, str | None]] = {}
+
+    if name is not None and name != org.name:
+        changes["name"] = {"old": org.name, "new": name}
+        org.name = name
+
+    if unified_social_credit_code is not None:
+        new_uscc = unified_social_credit_code.strip() or None
+        if new_uscc != org.unified_social_credit_code:
+            if new_uscc is not None:
+                dup = await db.execute(
+                    select(BuyerOrganization.id).where(
+                        BuyerOrganization.unified_social_credit_code == new_uscc,
+                        BuyerOrganization.id != org.id,
+                    )
+                )
+                if dup.scalar_one_or_none() is not None:
+                    raise ConflictError("该统一社会信用代码已被其他组织使用")
+            changes["unified_social_credit_code"] = {
+                "old": org.unified_social_credit_code, "new": new_uscc,
+            }
+            org.unified_social_credit_code = new_uscc
+
+    if not changes:
+        return org
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.BUYER_ORG,
+        action=AuditAction.UPDATE,
+        user_id=user_id,
+        user_email=user_email,
+        resource_id=org.id,
+        request=request,
+        extra={"changes": changes},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(org)
+    return org
 
 
 async def change_email(

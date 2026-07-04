@@ -5,6 +5,7 @@ export interface BuyerOrgBrief {
   id: number;
   name: string;
   code: string | null;
+  unified_social_credit_code?: string | null;
 }
 
 export interface BuyerOrgListResponse {
