@@ -995,6 +995,17 @@ async def test_operator_grant_lifecycle(client: AsyncClient, db_session):
     )).scalar_one()
     assert row.granted_by is not None
 
+    # 审计:授权应写一条 CREATE
+    from app.db.models.audit_log import AuditLog
+    audit = (await db_session.execute(
+        select(AuditLog).where(
+            AuditLog.resource_type == "zone_grant",
+            AuditLog.resource_id == str(org.id),
+            AuditLog.action == "CREATE",
+        )
+    )).scalar_one_or_none()
+    assert audit is not None, "授权应写审计日志"
+
     # 列表可见
     r = await client.get(f"/api/v1/operator/zones/{zone.code}/grants", headers=headers)
     assert any(g["buyer_org_id"] == org.id for g in r.json()["data"])
@@ -1009,6 +1020,16 @@ async def test_operator_grant_lifecycle(client: AsyncClient, db_session):
             ZoneGrant.zone_id == zone.id, ZoneGrant.buyer_org_id == org.id
         )
     )).scalar_one_or_none() is None
+
+    # 审计:撤销应写一条 DELETE
+    audit_del = (await db_session.execute(
+        select(AuditLog).where(
+            AuditLog.resource_type == "zone_grant",
+            AuditLog.resource_id == str(org.id),
+            AuditLog.action == "DELETE",
+        )
+    )).scalar_one_or_none()
+    assert audit_del is not None, "撤销应写审计日志"
 
 
 @pytest.mark.asyncio

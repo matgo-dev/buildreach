@@ -92,6 +92,9 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/operator/banners"),
     ("PUT", "/api/v1/operator/banners/{banner_id}"),
     ("DELETE", "/api/v1/operator/banners/{banner_id}"),
+    # operator — 专区授权管理(授权/撤销买家组织,安全相关,写审计)
+    ("POST", "/api/v1/operator/zones/{zone_code}/grants"),
+    ("DELETE", "/api/v1/operator/zones/{zone_code}/grants/{buyer_org_id}"),
     # rfq — 报价文档重试
     ("POST", "/api/v1/rfqs/{rfq_id}/quote-documents/retry"),
 }

@@ -5,10 +5,12 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.core.dependencies import CurrentUser
 from app.core.exceptions import NotFoundError, success
 from app.db.session import get_db
@@ -47,6 +49,7 @@ async def list_grants(
 async def create_grant(
     zone_code: str,
     payload: GrantCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current: CurrentUser = Depends(require_permission(Permissions.ZONE_MANAGE)),
 ):
@@ -58,6 +61,18 @@ async def create_grant(
     )
     if status == "org_not_found":
         raise NotFoundError("买家组织不存在")
+    if status == "created":  # 幂等重复授权不产生状态变更,不审计
+        await write_audit(
+            db,
+            resource_type=AuditResourceType.ZONE_GRANT,
+            action=AuditAction.CREATE,
+            user_id=current.id,
+            user_email=current.email,
+            resource_id=payload.buyer_org_id,
+            request=request,
+            extra={"zone_code": zone_code, "buyer_org_id": payload.buyer_org_id},
+            commit=False,
+        )
     await db.commit()
     return success(row)
 
@@ -66,8 +81,9 @@ async def create_grant(
 async def delete_grant(
     zone_code: str,
     buyer_org_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
-    _current: CurrentUser = Depends(require_permission(Permissions.ZONE_MANAGE)),
+    current: CurrentUser = Depends(require_permission(Permissions.ZONE_MANAGE)),
 ):
     zone = await zone_grant_service._get_zone(db, zone_code)
     if zone is None:
@@ -75,5 +91,16 @@ async def delete_grant(
     ok = await zone_grant_service.revoke(db, zone, buyer_org_id)
     if not ok:
         raise NotFoundError("该组织未被授权此专区")
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.ZONE_GRANT,
+        action=AuditAction.DELETE,
+        user_id=current.id,
+        user_email=current.email,
+        resource_id=buyer_org_id,
+        request=request,
+        extra={"zone_code": zone_code, "buyer_org_id": buyer_org_id},
+        commit=False,
+    )
     await db.commit()
     return success(None)
