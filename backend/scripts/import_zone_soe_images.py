@@ -47,11 +47,13 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.db.models.product import Product  # noqa: E402
 from app.db.models.product_image import ImageType, ProductImage  # noqa: E402
+from app.db.models.zone import Zone, ZoneProduct  # noqa: E402
 
 # 可信本地文件(非用户上传),放开 PIL 像素上限,避免大图触发解压炸弹保护。
 Image.MAX_IMAGE_PIXELS = None
 
-ZSOE_SPU_PREFIX = "ZSOE-"
+# 专区商品按"归属 CENTRAL_SOE 专区"圈定(code 已中性化为 MG-P,不能再靠 spu_code 前缀认)
+ZONE_CODE = "CENTRAL_SOE"
 UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
 
 # 缩略图参数(与 generate_product_thumbnails.py / thumb_url_from_image_key 的 _thumb.webp 约定一致)
@@ -205,12 +207,14 @@ def load_image_rows(source_dir: Path) -> list[dict]:
 
 
 async def _product_index(db: AsyncSession) -> dict[str, list[Product]]:
-    """ZSOE 商品:硬归一化 name_zh → [商品](同名多商品挂同一批图)。"""
+    """CENTRAL_SOE 专区商品:硬归一化 name_zh → [商品](同名多商品挂同一批图)。"""
+    zone_spu_ids = (
+        select(ZoneProduct.spu_id)
+        .join(Zone, Zone.id == ZoneProduct.zone_id)
+        .where(Zone.code == ZONE_CODE)
+    )
     products = (await db.execute(
-        select(Product).where(
-            Product.spu_code.like(f"{ZSOE_SPU_PREFIX}%"),
-            Product.deleted_at.is_(None),
-        )
+        select(Product).where(Product.id.in_(zone_spu_ids), Product.deleted_at.is_(None))
     )).scalars().all()
     index: dict[str, list[Product]] = collections.defaultdict(list)
     for p in products:

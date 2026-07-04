@@ -39,7 +39,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import collections
-import hashlib
 import os
 import re
 import sys
@@ -62,8 +61,10 @@ from app.db.models.product import Product, ProductStatus, ProductVisibility  # n
 from app.db.models.product_attr import ProductAttr  # noqa: E402
 from app.db.models.product_sku import ProductSku, SkuStatus  # noqa: E402
 from app.db.models.zone import Zone, ZoneCategory, ZoneProduct  # noqa: E402
+from app.services.product_code import platform_spu_code, platform_sku_code  # noqa: E402
 
 ZONE_CODE = "CENTRAL_SOE"
+ZSOE_SOURCE = "ZSOE"  # 统一 code 规则里,央企材料表作为"来源 X"
 SOURCE = "IMPORT"
 BATCH_ID = "zone_soe_material_v1"
 DEMO_SPU_PREFIX = "ZONE-DEMO-"
@@ -104,14 +105,13 @@ def _norm(v) -> str:
 
 
 def _spu_code(cat_code: str, name_zh: str) -> str:
-    h = hashlib.md5(_hard(name_zh).encode("utf-8")).hexdigest()[:8]
-    return f"ZSOE-{cat_code}-{h}"
+    # 统一 code 规则:自建材料表当来源 X=ZSOE,稳定键=大类编号:归一化中文名(不可变业务键)
+    return platform_spu_code(ZSOE_SOURCE, f"{cat_code}:{_hard(name_zh)}")
 
 
 def _sku_code(spu_code: str, spec: str | None) -> str:
-    if not spec:
-        return f"{spu_code}-D"
-    return f"{spu_code}-{hashlib.md5(_hard(spec).encode('utf-8')).hexdigest()[:6]}"
+    # SKU 稳定键 = 平台 spu_code : 归一化规格(无规格用 D)
+    return platform_sku_code(ZSOE_SOURCE, f"{spu_code}:{_hard(spec) if spec else 'D'}")
 
 
 def _new_leaf_en_map() -> dict[tuple[str, str], str]:

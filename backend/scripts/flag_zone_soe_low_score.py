@@ -37,8 +37,10 @@ from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.db.models.product import Product  # noqa: E402
+from app.db.models.zone import Zone, ZoneProduct  # noqa: E402
 
-ZSOE_SPU_PREFIX = "ZSOE-"
+# 专区商品按"归属 CENTRAL_SOE 专区"圈定(spu_code 已中性化为 MG-P)
+ZONE_CODE = "CENTRAL_SOE"
 DEFAULT_THRESHOLD = 180.0
 
 DEFAULT_SOURCE_DIR = Path(
@@ -91,11 +93,13 @@ async def run_flag(db: AsyncSession, source_dir: Path, threshold: float, unflag:
     stats = collections.Counter()
     score_by_name = load_score_by_name(source_dir)
 
+    zone_spu_ids = (
+        select(ZoneProduct.spu_id)
+        .join(Zone, Zone.id == ZoneProduct.zone_id)
+        .where(Zone.code == ZONE_CODE)
+    )
     products = (await db.execute(
-        select(Product).where(
-            Product.spu_code.like(f"{ZSOE_SPU_PREFIX}%"),
-            Product.deleted_at.is_(None),
-        )
+        select(Product).where(Product.id.in_(zone_spu_ids), Product.deleted_at.is_(None))
     )).scalars().all()
     stats["zsoe_products"] = len(products)
 
