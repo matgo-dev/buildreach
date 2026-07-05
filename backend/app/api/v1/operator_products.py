@@ -548,10 +548,13 @@ async def upload_image(
     request: Request,
     file: UploadFile = File(...),
     sku_id: int | None = Query(None),
+    image_type: str = Query("GALLERY"),
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    img = await product_svc.add_product_image(db, product_id, file, sku_id=sku_id)
+    img = await product_svc.add_product_image(
+        db, product_id, file, image_type=image_type, sku_id=sku_id
+    )
     await write_audit(
         db, resource_type=AuditResourceType.PRODUCT, action=AuditAction.CREATE,
         user_id=current.id, user_email=current.email,
