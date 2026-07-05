@@ -13,6 +13,8 @@ interface NavLink {
   labelKey: string;
   /** 未接入的功能标灰 */
   disabled?: boolean;
+  /** 买家专属操作(购物车/订单),对内部员工(运营/管理员)隐藏 */
+  buyerOnly?: boolean;
 }
 
 const NAV_LINKS: NavLink[] = [
@@ -22,8 +24,8 @@ const NAV_LINKS: NavLink[] = [
   // 本地/进口的区分后续通过 procurement 参数落地筛选。
   { href: "/mall?procurement=local",  labelKey: "navLocalProcurement" },
   { href: "/mall?procurement=import", labelKey: "navImportProcurement" },
-  { href: "/buyer/cart",  labelKey: "navQuoteRequest" },
-  { href: "/order-tracking", labelKey: "navMyOrders" },
+  { href: "/buyer/cart",  labelKey: "navQuoteRequest", buyerOnly: true },
+  { href: "/order-tracking", labelKey: "navMyOrders", buyerOnly: true },
   { href: "/ai-assistant",   labelKey: "navAiAssistant" },
 ];
 
@@ -34,6 +36,9 @@ export function MallNavRow() {
   // 专区入口:仅对被授权买家显示(me.zones 非空)—— 纯权限门,公开/未授权用户看不到
   const user = useAuthStore((s) => s.user);
   const zones = user?.zones ?? [];
+  // 内部员工(运营/管理员)隐藏买家专属操作(购物车/订单)
+  const isStaff = user?.roles?.some((r) => r === "OPERATOR" || r === "ADMIN") ?? false;
+  const navLinks = isStaff ? NAV_LINKS.filter((l) => !l.buyerOnly) : NAV_LINKS;
 
   // 收紧内边距(px-2/sm:px-3),让整排双语项 + 专区一行装下不横滑。
   const itemBase =
@@ -111,7 +116,7 @@ export function MallNavRow() {
     >
       <div className="mx-auto flex min-h-[44px] max-w-mall items-center justify-between gap-4 overflow-x-auto px-3 scrollbar-hide sm:min-h-[50px] sm:px-6">
         <div className="flex min-w-max items-center gap-0">
-          {NAV_LINKS.map(renderNavLink)}
+          {navLinks.map(renderNavLink)}
         </div>
         {zones.length > 0 && (
           <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-line pl-4">

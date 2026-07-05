@@ -47,6 +47,8 @@ export function MallHeader() {
   const [searchValue, setSearchValue] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const isBuyer = useAuthStore((s) => s.hasRole("BUYER"));
+  // 内部员工(运营/管理员)隐藏询价车(买家专属操作)
+  const isStaff = useAuthStore((s) => s.hasRole("OPERATOR") || s.hasRole("ADMIN"));
 
   useEffect(() => {
     setSearchValue(searchParams.get("keyword") || "");
@@ -158,7 +160,8 @@ export function MallHeader() {
 
         {/* 右:购物车 + 语言切换(账号入口已移至 TopStrip) */}
         <div className="flex items-center gap-1.5">
-          {/* 询价车 */}
+          {/* 询价车 —— 买家专属,对内部员工隐藏 */}
+          {!isStaff && (
           <Link
             href={user ? "/buyer/cart" : "/login"}
             className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
@@ -176,6 +179,7 @@ export function MallHeader() {
               )}
             </div>
           </Link>
+          )}
 
           {/* 帮助中心 */}
           <Link
