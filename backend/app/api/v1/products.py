@@ -279,7 +279,7 @@ async def list_products(
             )
 
     return success({
-        "items": [_to_public(p, main_image_urls=img_map.get(p.id)) for p in items],
+        "items": [_to_public(p, main_image_urls=img_map.get(p.id, (None, None))) for p in items],
         "total": total,
         "page": page,
         "size": size,
@@ -327,7 +327,7 @@ async def home_floor_products(
         floors[config["id"]] = {
             "categories": [_floor_category_to_public(category) for category in categories[:10]],
             "products": [
-                _to_public(product, main_image_urls=img_map.get(product.id))
+                _to_public(product, main_image_urls=img_map.get(product.id, (None, None)))
                 for product in products
             ],
         }
