@@ -9,6 +9,7 @@ import { CategoryCascader, EMPTY_CATEGORY, type SelectedCategory, getLeafCode } 
 import { operatorProductsApi, type AttrTemplate, type ProductAttrInput, type PriceTierInput, type AggregateSkuInput } from "@/lib/api/operatorProducts";
 import { SKU_UNITS, type SkuUnitCode } from "@/lib/api/operatorProducts";
 import { ApiError } from "@/lib/api";
+import { MAX_SPU_IMAGES } from "@/lib/productImageRules";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/Toast";
 import { SectionAnchorNav } from "./SectionAnchorNav";
@@ -950,7 +951,7 @@ export function ProductCreatePage() {
             <span className="text-xs text-slate-500">{t("section_images_subtitle")}</span>
           </div>
           <div className="mb-3.5 rounded border-l-[3px] border-pink-500 bg-pink-50 px-2.5 py-1.5 text-xs text-slate-500">
-            {t("section_images_hint")}
+            {t("section_images_hint", { max: MAX_SPU_IMAGES })}
           </div>
           <SpuImageUploader files={spuImageFiles} onChange={(files) => { setSpuImageFiles(files); clearFieldError("images"); }} t={t} />
           {fieldErrors.images && (

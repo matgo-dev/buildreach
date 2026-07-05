@@ -1,9 +1,8 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Search, X } from "lucide-react";
 import useSWR from "swr";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -29,13 +28,7 @@ function ZoneContent() {
 
   const urlCat = searchParams.get("cat") || "";
   const urlKeyword = searchParams.get("keyword") || "";
-  const urlSpec = searchParams.get("spec") || "";
   const urlPage = parseInt(searchParams.get("page") || "1", 10) || 1;
-  const [specInput, setSpecInput] = useState(urlSpec);
-
-  useEffect(() => {
-    setSpecInput(urlSpec);
-  }, [urlSpec]);
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -65,19 +58,6 @@ function ZoneContent() {
     [updateParams]
   );
 
-  const handleSpecSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      updateParams({ spec: specInput.trim() || undefined, page: undefined });
-    },
-    [specInput, updateParams]
-  );
-
-  const clearSpec = useCallback(() => {
-    setSpecInput("");
-    updateParams({ spec: undefined, page: undefined });
-  }, [updateParams]);
-
   const {
     data: categories,
     isLoading: categoriesLoading,
@@ -93,19 +73,18 @@ function ZoneContent() {
     isLoading: productsLoading,
     mutate: refetchProducts,
   } = useSWR<ProductListResponse>(
-    `/api/v1/zones/${zoneCode}/products?cat=${urlCat}&keyword=${urlKeyword}&spec=${urlSpec}&page=${urlPage}&locale=${locale}`,
+    `/api/v1/zones/${zoneCode}/products?cat=${urlCat}&keyword=${urlKeyword}&page=${urlPage}&locale=${locale}`,
     () =>
       zonesApi.products(zoneCode, {
         zone_category_code: urlCat || undefined,
         keyword: urlKeyword || undefined,
-        spec: urlSpec || undefined,
         page: urlPage,
         size: PAGE_SIZE,
       }),
     { revalidateOnFocus: false }
   );
 
-  const clearAll = () => updateParams({ cat: undefined, keyword: undefined, spec: undefined, page: undefined });
+  const clearAll = () => updateParams({ cat: undefined, keyword: undefined, page: undefined });
 
   const productHref = useMemo(
     () => (productId: number) => `/zone/${zoneCode}/products/${productId}`,
@@ -124,50 +103,6 @@ function ZoneContent() {
             onSelect={handleCategorySelect}
           />
         )}
-
-        <form
-          onSubmit={handleSpecSubmit}
-          className="flex flex-col gap-3 rounded-xl border border-line bg-white px-3 py-3 sm:flex-row sm:items-center"
-        >
-          <label className="shrink-0 text-sm font-semibold text-slate-700">
-            {t("specFilter")}
-          </label>
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={specInput}
-              onChange={(e) => setSpecInput(e.target.value)}
-              placeholder={t("specFilterPlaceholder")}
-              className="h-9 w-full rounded-md border border-slate-200 bg-slate-50 pl-9 pr-9 text-sm text-slate-700 outline-none transition-colors focus:border-teal-700 focus:bg-white"
-            />
-            {specInput && (
-              <button
-                type="button"
-                onClick={clearSpec}
-                className="absolute right-2 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
-                aria-label={t("clearSpecFilter")}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            className="h-9 rounded-md bg-teal-800 px-4 text-sm font-semibold text-white transition-colors hover:bg-teal-900"
-          >
-            {t("applyFilter")}
-          </button>
-          {(urlKeyword || urlSpec) && (
-            <button
-              type="button"
-              onClick={() => updateParams({ keyword: undefined, spec: undefined, page: undefined })}
-              className="h-9 rounded-md px-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            >
-              {t("clearSearch")}
-            </button>
-          )}
-        </form>
 
         {/* 商品网格 */}
         <ProductGrid

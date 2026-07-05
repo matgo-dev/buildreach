@@ -75,7 +75,7 @@ from app.schemas.product import (
     SupplierRelationUpdate,
 )
 
-MAX_IMAGES_PER_PRODUCT = 8
+MAX_IMAGES_PER_PRODUCT = 20
 
 # 图片校验常量从公共模块导入
 from app.services._buyer_utils import (

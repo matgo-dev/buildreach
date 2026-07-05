@@ -2,7 +2,7 @@
 
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/stores/authStore";
 
@@ -33,6 +33,7 @@ export function MallNavRow() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations("mall");
+  const locale = useLocale();
   // 专区入口:仅对被授权买家显示(me.zones 非空)—— 纯权限门,公开/未授权用户看不到
   const user = useAuthStore((s) => s.user);
   const zones = user?.zones ?? [];
@@ -94,6 +95,8 @@ export function MallNavRow() {
   }) => {
     const href = `/zone/${z.code}`;
     const active = pathname === href || pathname.startsWith(href + "/");
+    // 中文用 name_zh,其它语种(en/sw)优先 name_en,缺失回退中文
+    const label = locale === "zh" ? z.name_zh : z.name_en || z.name_zh;
     return (
       <Link
         key={z.code}
@@ -104,7 +107,7 @@ export function MallNavRow() {
             : "border-teal-100 bg-teal-50/70 text-teal-800 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
         }`}
       >
-        {z.name_zh}
+        {label}
       </Link>
     );
   };

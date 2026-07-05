@@ -7,6 +7,7 @@ import { ProductImage } from "@/lib/api/operatorProducts";
 import { useToast } from "@/components/ui/Toast";
 import { compressImage } from "@/lib/image-compress";
 import { imageUrl } from "@/lib/env";
+import { MAX_SPU_IMAGES } from "@/lib/productImageRules";
 
 export interface ImageChange {
   added: File[];
@@ -22,7 +23,6 @@ interface EditImagesProps {
   previews: string[];
 }
 
-const MAX_IMAGES = 8;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MIN_DIMENSION = 200;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -47,7 +47,7 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
 
   const visibleImages = images.filter((img) => !imageChange.removed.includes(img.id));
   const totalCount = visibleImages.length + imageChange.added.length;
-  const canAdd = totalCount < MAX_IMAGES;
+  const canAdd = totalCount < MAX_SPU_IMAGES;
   const currentMainId = imageChange.newMainId || images.find((img) => img.image_type === "MAIN")?.id || null;
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +57,7 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
     setValidating(true);
     const valid: File[] = [];
     for (const file of files) {
-      if (totalCount + valid.length >= MAX_IMAGES) break;
+      if (totalCount + valid.length >= MAX_SPU_IMAGES) break;
       if (!ACCEPTED_TYPES.includes(file.type)) {
         toastWarning(t("imageRejectFormat"));
         continue;
@@ -109,7 +109,7 @@ export default function EditImages({ images, imageChange, onChange, previews }: 
   return (
     <section className="bg-white rounded-lg shadow-sm p-5">
       <h3 className="text-sm font-semibold text-slate-800 mb-4">
-        {t("productImages")} <span className="text-slate-400 font-normal">({totalCount}/8)</span>
+        {t("productImages")} <span className="text-slate-400 font-normal">({totalCount}/{MAX_SPU_IMAGES})</span>
       </h3>
       <div className="flex flex-wrap gap-3">
         {visibleImages.map((img, idx) => (
