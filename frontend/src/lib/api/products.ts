@@ -132,6 +132,8 @@ export interface ProductPublicDetail {
   unit: string;
   attribute_groups: AttrGroup[];
   images: ProductImage[];
+  // 默认 SKU 的规格展示串(与 cart/RFQ 的 variant_display 同口径);简单商品为 null。
+  default_variant_display?: string | null;
   // 兼容字段:买方 API 已不返回,RFQ 模块仍引用(后续迁移到运营 API)
   skus?: SkuPublic[];
   attributes?: ProductAttr[];

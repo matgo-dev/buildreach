@@ -44,6 +44,7 @@ from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
 from app.db.session import get_db
 from app.schemas.product import ProductAttrSchema, ProductPublicDetail, SkuPublic
 from app.services import product as product_svc
+from app.services.purchase_target import default_sku_variant_display
 
 router = APIRouter(prefix="/zones", tags=["zones"])
 
@@ -347,6 +348,7 @@ async def get_zone_product(
         volume_cbm=p.volume_cbm,
         attribute_groups=_build_attribute_groups(spu_attrs, locale),
         images=all_images,
+        default_variant_display=default_sku_variant_display(p),
     ).model_dump()
 
     # 追加 SKU 变体(公开详情本身不带,专区买家需要真实换购):按 ACTIVE 排序,is_default 优先。

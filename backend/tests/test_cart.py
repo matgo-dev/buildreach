@@ -460,7 +460,9 @@ async def test_selected_variants_in_response(client, db_session):
     item = r.json()["data"]["items"][0]
     assert item["selected_variants"] == [{"attr_name": "color", "value": "red"}]
     assert item["variant_display"] is not None
-    assert "color" in item["variant_display"]
+    # 只拼规格值、不带属性名前缀(attr_name 是内部键,不展示给买家)
+    assert "red" in item["variant_display"]
+    assert "color" not in item["variant_display"]
 
 
 # ── Task 2: 变体编辑扩展测试 ────────────────────────────────

@@ -62,12 +62,13 @@ async def normalize_variants_to_en(
 def variant_snapshot_to_display(snapshot: list[dict], locale: str = "zh") -> str | None:
     """将 variant_snapshot 拼接为人类可读文本。
 
-    MVP: 直接用英文原值拼接。后续可按 locale 反查 product_attrs 翻译。
+    只拼规格值、不带属性名前缀（attr_name 是内部英文键如 "spec"，不应展示给买家；
+    展示语境都带「变体规格」列头，键名冗余）。多轴用 " / " 连接。
     """
     if not snapshot:
         return None
-    parts = [f"{s.get('attr_name', '')}: {s.get('value', '')}" for s in snapshot]
-    return " / ".join(parts)
+    parts = [str(s.get("value", "")) for s in snapshot if s.get("value")]
+    return " / ".join(parts) or None
 
 
 async def get_viewable_product(db: AsyncSession, product_id: int):
