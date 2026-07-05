@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from uuid import UUID
 
 from fastapi import Request
 from sqlalchemy import delete, distinct, func, select, text
@@ -48,6 +49,21 @@ def parse_device_type(ua: str) -> str:
     return "desktop"
 
 
+def _valid_session_id(raw: str | None) -> str | None:
+    """校验客户端 x-session-id 为合法 UUID，否则丢弃。
+
+    session_id 客户端可任意伪造，用作游客归属键前必须校验:
+    - 挡住伪造/垃圾值无限灌库(非法值 → 无归属主体 → 事件丢弃)
+    - 保证不超过列宽 String(36)，避免 insert 失败被静默吞掉
+    """
+    if not raw:
+        return None
+    try:
+        return str(UUID(raw))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
 # --------------- 事件记录 ---------------
 
 async def record_event(
@@ -76,7 +92,7 @@ async def record_event(
     device_type = None
     ip = None
     if request is not None:
-        session_id = request.headers.get("x-session-id")
+        session_id = _valid_session_id(request.headers.get("x-session-id"))
         referrer = request.headers.get("referer")
         ua = request.headers.get("user-agent", "")
         device_type = parse_device_type(ua) if ua else None

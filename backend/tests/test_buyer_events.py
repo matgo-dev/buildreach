@@ -258,18 +258,24 @@ class _FakeReq:
         self.client = None
 
 
+_SESS_1 = "11111111-1111-1111-1111-111111111111"
+_SESS_2 = "22222222-2222-2222-2222-222222222222"
+_SESS_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+_SESS_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
+
 async def test_guest_search_recorded_by_session(db_session):
     """游客(无 user_id)搜索按 session_id 落库，user_id / org 为空。"""
     await record_event(
         db_session, buyer_org_id=None, user_id=None,
         event_type=EventType.SEARCH,
         extra={"keyword": "guest_cement"},
-        request=_FakeReq(session_id="sess-guest-1"),
+        request=_FakeReq(session_id=_SESS_1),
     )
     await db_session.flush()
 
     rows = (await db_session.execute(
-        select(BuyerEvent).where(BuyerEvent.session_id == "sess-guest-1")
+        select(BuyerEvent).where(BuyerEvent.session_id == _SESS_1)
     )).scalars().all()
     assert len(rows) == 1
     assert rows[0].user_id is None
@@ -279,7 +285,7 @@ async def test_guest_search_recorded_by_session(db_session):
 
 async def test_guest_dedup_by_session(db_session):
     """同一 session 同关键词 5 分钟内去重。"""
-    req = _FakeReq(session_id="sess-guest-2")
+    req = _FakeReq(session_id=_SESS_2)
     for _ in range(3):
         await record_event(
             db_session, buyer_org_id=None, user_id=None,
@@ -289,14 +295,14 @@ async def test_guest_dedup_by_session(db_session):
         await db_session.flush()
 
     rows = (await db_session.execute(
-        select(BuyerEvent).where(BuyerEvent.session_id == "sess-guest-2")
+        select(BuyerEvent).where(BuyerEvent.session_id == _SESS_2)
     )).scalars().all()
     assert len(rows) == 1
 
 
 async def test_guest_different_sessions_not_deduped(db_session):
     """不同 session 同关键词各记一条(是两个游客)。"""
-    for sid in ["sess-a", "sess-b"]:
+    for sid in [_SESS_A, _SESS_B]:
         await record_event(
             db_session, buyer_org_id=None, user_id=None,
             event_type=EventType.SEARCH,
@@ -327,6 +333,25 @@ async def test_event_dropped_without_subject(db_session):
     rows = (await db_session.execute(
         select(BuyerEvent).where(
             BuyerEvent.extra["keyword"].astext == "orphan_kw"
+        )
+    )).scalars().all()
+    assert rows == []
+
+
+async def test_guest_invalid_session_id_dropped(db_session):
+    """非法 session_id(伪造/非 UUID/超长) → 无归属主体，丢弃。"""
+    for bad_sid in ["sess-forged", "a" * 100, "not-a-uuid"]:
+        await record_event(
+            db_session, buyer_org_id=None, user_id=None,
+            event_type=EventType.SEARCH,
+            extra={"keyword": "forged_kw"},
+            request=_FakeReq(session_id=bad_sid),
+        )
+        await db_session.flush()
+
+    rows = (await db_session.execute(
+        select(BuyerEvent).where(
+            BuyerEvent.extra["keyword"].astext == "forged_kw"
         )
     )).scalars().all()
     assert rows == []
