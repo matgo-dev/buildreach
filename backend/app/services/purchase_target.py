@@ -84,18 +84,20 @@ def _decide_target(
 
     - 显式传 sku_id：必须命中 active_skus 中的一个；若同时传了 selected_variants，
       两者描述的规格必须一致，否则拒绝（防止前端传的展示信息与真实绑定的 SKU 对不上）。
-    - 未传 sku_id 且 active SKU 数 <= 1：直接绑定该 SKU（或商品级 None，无 SKU 概念）。
-    - 未传 sku_id 且多个 active SKU 且提供了 selected_variants：必须唯一定位到一个 SKU，
-      零匹配 / 多匹配一律拒绝 —— 绝不默认挑一个（防 orphan）。
-    - 未传 sku_id 且多个 active SKU 且未提供 selected_variants(空)：
-      默认拒绝（同上，避免静默挑一个）；但 allow_spu_level=True 时视为"整 SPU 交易"
-      （购物车/询价单的既有整 SPU 加购/询价流程），放行为 (None, [])。
-      注意：这只放宽"完全未选择"的场景 —— 提供了 selected_variants 但解析不到
-      唯一 SKU（0 或 >1 匹配）仍然一律拒绝，因为那是一次"提供了但无法兑现"的
-      真实错误，不是整 SPU 语义。
+    - 传了 selected_variants：必须唯一定位到一个 active SKU，零匹配 / 多匹配一律拒绝
+      —— 绝不默认挑一个（防 orphan）。
+    - 未指定规格（无 sku_id 且 selected_variants 空）：一律解析到 is_default SKU
+      （单 SKU 即它自己）。这样"列表页无规格加购"与"详情页选默认规格加购"解析到同一
+      SKU、算出同一 variant_snapshot、同一 fingerprint → 合并同一行，杜绝"同商品两条"。
+    - 多个 active SKU 但无 default（数据质量问题）或零 SKU：allow_spu_level=True 时按
+      "整 SPU 交易"放行为 (None, [])（零 SKU 简单商品的既有加购/询价语义），否则拒绝。
+
+    关键：variant_snapshot 始终从"解析到的 SKU 的 selectable attrs"算，绝不透传入参，
+    使 fingerprint 只由解析结果决定、与从哪个入口(列表/详情)进来无关。
     """
     sel = _variants_to_map(selected_variants)
 
+    # 1. 显式 sku_id：必须命中 active，且与 sel(若有)一致
     if sku_id is not None:
         match = next((s for s in active_skus if s.id == sku_id), None)
         if match is None:
@@ -104,15 +106,24 @@ def _decide_target(
             raise SkuMismatchError("selected_variants inconsistent with sku_id")
         return match.id, _snapshot_of(_tuple_of(match.attrs))
 
-    if len(active_skus) <= 1:
-        default = next((s for s in active_skus if getattr(s, "is_default", False)), None)
-        chosen = default or (active_skus[0] if active_skus else None)
-        return (chosen.id if chosen else None), (selected_variants or [])
-
+    # 2. 未指定规格：解析到 default SKU（单 SKU 即它自己），快照从该 SKU 算 —— 使列表页
+    #    (空输入)与详情页(sku_id/规格)对同一商品产出同一 fingerprint、合并同一行。
+    #    多 SKU 无 default(数据质量问题)：allow_spu_level 时整 SPU 放行，否则拒绝。
+    #    零 SKU：SPU 级，本就无 SKU 概念，(None, [])。
     if not sel:
-        if allow_spu_level:
-            return None, []
-        raise VariantUnresolvableError("multiple active skus require selected_variants")
+        default = next((s for s in active_skus if getattr(s, "is_default", False)), None)
+        chosen = default or (active_skus[0] if len(active_skus) == 1 else None)
+        if chosen is not None:
+            return chosen.id, _snapshot_of(_tuple_of(chosen.attrs))
+        if active_skus and not allow_spu_level:
+            raise VariantUnresolvableError("multiple active skus without default require selected_variants")
+        return None, []
+
+    # 3. 传了规格且有 SKU：必须唯一命中一个 active SKU（0 / >1 一律拒绝，绝不静默挑一个）。
+    #    零 SKU 商品：无 SKU 可匹配，按既有 SPU 级"描述性规格"语义原样保留 selected_variants
+    #    (由上层 normalize_variants_to_en 归一)，不误判为"解析失败"。
+    if not active_skus:
+        return None, selected_variants or []
     matches = [s for s in active_skus if _tuple_of(s.attrs) == sel]
     if len(matches) != 1:
         raise VariantUnresolvableError(f"selected_variants resolve to {len(matches)} skus")
@@ -187,14 +198,12 @@ async def resolve_purchase_target(
         product, active_skus, selected_variants, sku_id, allow_spu_level=allow_spu_level,
     )
 
-    if sku_id is None and len(active_skus) <= 1:
-        # 仅"未显式传 sku_id 且 <=1 active SKU"这条 _decide_target 分支未走
-        # _tuple_of/_snapshot_of 归一化（原样透传 selected_variants），复用既有
-        # normalize_variants_to_en 保持与历史行为一致：跨语言(zh/sw→en)匹配
-        # product_attrs + 排序，使 fingerprint 与旧调用方一致。
-        # 注意：显式传 sku_id 的分支（无论 active_skus 有几个）已在 _decide_target
-        # 内用 _snapshot_of(_tuple_of(...)) 算出正确快照，这里不能覆盖，否则会把
-        # "按 sku_id 加购但未传 selected_variants"的快照错误地清空为 []。
+    if sku_id is None and len(active_skus) == 0:
+        # 仅"零 SKU 商品(SPU 级,无 SKU 概念)"这条分支的快照来自入参:此时无 SKU 可
+        # 算快照,复用 normalize_variants_to_en 做跨语言(zh/sw→en)归一 + 排序,与历史
+        # 一致。凡是解析到了具体 SKU(单/多/显式 sku_id)的快照都已由 _decide_target 用
+        # _snapshot_of(_tuple_of(sku.attrs)) 从 SKU 算出,这里绝不能覆盖 —— 否则会把
+        # "列表页无规格加购单 SKU 商品"的规范快照清空为 [],与详情页快照不一致 → 双行。
         snapshot = await normalize_variants_to_en(db, product_id, selected_variants)
 
     return PurchaseTarget(product=product, sku_id=resolved_sku_id, variant_snapshot=snapshot)
