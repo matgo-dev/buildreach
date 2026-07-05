@@ -825,11 +825,17 @@ async def submit_rfq(
     if not active_items and not rfq.remark:
         raise RfqNoValidItemsError()
 
-    # 二次校验：草稿保存后商品可能被下架/删除，提交前重新确认
+    # 二次校验：草稿保存后商品可能被下架/删除，或专区 grant 被撤销，提交前重新确认。
+    # 必须走 resolve_purchase_target（与购物车改单同口径）：仅查 SPU active/未软删不够，
+    # ZONE_ONLY 商品还要复检本 org 的专区授权——否则"授权态存草稿→撤权→提交"可绕过授权。
     offending: list[int] = []
     for it in active_items:
-        product = await _get_viewable_product(db, it.product_id)
-        if not product:
+        try:
+            await resolve_purchase_target(
+                db, product_id=it.product_id, buyer_org_id=rfq.buyer_org_id,
+                allow_spu_level=True,
+            )
+        except ZoneAccessDeniedError:
             offending.append(it.product_id)
     if offending:
         raise RfqProductNotAvailableError(offending)
