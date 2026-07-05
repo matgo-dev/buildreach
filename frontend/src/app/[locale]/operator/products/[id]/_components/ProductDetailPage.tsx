@@ -597,7 +597,7 @@ export default function ProductDetailPage() {
                 <div
                   key={img.id}
                   className={`relative group w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
-                  onClick={() => !isEditing && setLightbox({ images: spuImages.map((i) => ({ url: imageUrl(i.full_url) })), index: idx })}
+                  onClick={() => setLightbox({ images: spuImages.map((i) => ({ url: imageUrl(i.full_url) })), index: idx })}
                 >
                   <img src={imageUrl(img.full_url)} alt="" className="w-full h-full object-cover" loading="lazy" />
                   {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
