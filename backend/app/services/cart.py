@@ -103,13 +103,11 @@ def _check_purchasable_product(product) -> tuple[bool, str | None]:
 
 
 def _variants_to_display(variants: list[dict]) -> str | None:
-    """将 selected_variants 拼为可读字符串。"""
+    """将 selected_variants 拼为可读字符串：只拼规格值，不带属性名前缀
+    （attr_name 是内部英文键，不展示给买家；同 variant_snapshot_to_display 口径）。"""
     if not variants:
         return None
-    return " / ".join(
-        f"{sv.get('attr_name', '')}: {sv.get('value', '')}"
-        for sv in variants
-    )
+    return " / ".join(str(sv.get("value", "")) for sv in variants if sv.get("value")) or None
 
 
 # ── 买方组织前置校验 ────────────────────────────────────

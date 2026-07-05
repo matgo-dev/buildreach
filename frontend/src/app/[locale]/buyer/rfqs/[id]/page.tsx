@@ -690,6 +690,7 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
           <thead>
             <tr className="bg-gray-50 text-left text-xs text-gray-500">
               <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
+              <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
               <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
             </tr>
           </thead>
@@ -756,6 +757,9 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
 
                     </div>
                   </div>
+                </td>
+                <td className={`px-5 py-3 align-top text-xs ${item.variant_display ? "text-gray-600" : "text-gray-400"}`}>
+                  {item.variant_display || t("noSpec")}
                 </td>
                 <td className={`px-5 py-3 text-right align-top font-semibold ${unavailable ? "text-gray-400" : "text-gray-800"}`}>
                   {item.quantity} {item.uom_snapshot ?? ""}

@@ -252,3 +252,89 @@ def test_multi_sku_ambiguous_two_matches_raise_error():
         )
     # 错误消息应包含匹配数目
     assert "2 skus" in str(exc_info.value)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# default_sku_variant_display() —— 默认 SKU 规格展示串(直询预览用)
+# 挑默认 SKU 的规则须与 _decide_target 分支 2 一致;展示口径须与 cart 的 variant_display 一致。
+# ─────────────────────────────────────────────────────────────────────────────
+from app.db.models.product_sku import SkuStatus  # noqa: E402
+from app.services.purchase_target import default_sku_variant_display  # noqa: E402
+
+
+class _Sku:
+    def __init__(self, id, is_default=False, status=SkuStatus.ACTIVE, deleted_at=None):
+        self.id = id
+        self.is_default = is_default
+        self.status = status
+        self.deleted_at = deleted_at
+
+
+class _PAttr:
+    def __init__(self, sku_id, key, value, selectable=True):
+        self.sku_id = sku_id
+        self.attr_key_en = key
+        self.attr_value_en = value
+        self.selectable = selectable
+
+
+class _Prod:
+    def __init__(self, skus, attrs):
+        self.skus = skus
+        self.attrs = attrs
+
+
+def test_default_display_multi_sku_picks_default():
+    """多 SKU:落到 is_default(1L),展示与 cart 同口径,只拼值 '1L'。"""
+    prod = _Prod(
+        skus=[_Sku(id=1, is_default=True), _Sku(id=2)],
+        attrs=[_PAttr(1, "spec", "1L"), _PAttr(2, "spec", "4L")],
+    )
+    assert default_sku_variant_display(prod) == "1L"
+
+
+def test_default_display_simple_product_none():
+    """简单商品:单默认 SKU 无 selectable 规格 → None(前端显示无具体规格)。"""
+    prod = _Prod(skus=[_Sku(id=1, is_default=True)], attrs=[])
+    assert default_sku_variant_display(prod) is None
+
+
+def test_default_display_single_sku_without_default_flag():
+    """仅 1 个 SKU、未标 is_default:仍视作默认(与 _decide_target 分支 2 一致)。"""
+    prod = _Prod(skus=[_Sku(id=9)], attrs=[_PAttr(9, "size", "M")])
+    assert default_sku_variant_display(prod) == "M"
+
+
+def test_default_display_multi_sku_no_default_none():
+    """多 SKU 且无 default(数据质量问题):无法预判 → None。"""
+    prod = _Prod(
+        skus=[_Sku(id=1), _Sku(id=2)],
+        attrs=[_PAttr(1, "spec", "1L"), _PAttr(2, "spec", "4L")],
+    )
+    assert default_sku_variant_display(prod) is None
+
+
+def test_default_display_excludes_non_selectable_attrs():
+    """默认 SKU 上的非 selectable 属性不计入展示(与 _tuple_of 口径一致)。"""
+    prod = _Prod(
+        skus=[_Sku(id=1, is_default=True)],
+        attrs=[_PAttr(1, "spec", "1L"), _PAttr(1, "note", "x", selectable=False)],
+    )
+    assert default_sku_variant_display(prod) == "1L"
+
+
+def test_default_display_ignores_inactive_and_deleted_skus():
+    """非 ACTIVE / 软删的 SKU 不参与默认挑选。"""
+    prod = _Prod(
+        skus=[
+            _Sku(id=1, is_default=True, status=SkuStatus.INACTIVE),
+            _Sku(id=2, deleted_at="2026-01-01"),
+            _Sku(id=3, is_default=True),
+        ],
+        attrs=[_PAttr(3, "spec", "2L")],
+    )
+    assert default_sku_variant_display(prod) == "2L"
+
+
+def test_default_display_no_skus_none():
+    assert default_sku_variant_display(_Prod(skus=[], attrs=[])) is None

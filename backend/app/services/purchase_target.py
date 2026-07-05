@@ -24,7 +24,7 @@ from app.db.models.product import Product, ProductStatus, ProductVisibility
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.zone import Zone, ZoneGrant, ZoneProduct
-from app.services._variant_utils import normalize_variants_to_en
+from app.services._variant_utils import normalize_variants_to_en, variant_snapshot_to_display
 
 
 class ZoneAccessDeniedError(Exception):
@@ -74,6 +74,31 @@ def _snapshot_of(tuple_map: dict) -> list[dict]:
     """{attr_key_en: attr_value_en} -> 既有落库/展示形状 [{"attr_name","value"}]。"""
     result = [{"attr_name": k, "value": v} for k, v in tuple_map.items()]
     return sorted(result, key=lambda x: (x.get("attr_name", ""), x.get("value", "")))
+
+
+def default_sku_variant_display(product) -> str | None:
+    """默认 SKU 的 selectable 规格展示串，与 cart/RFQ 的 variant_display 完全同口径。
+
+    用途：详情页/直询预览。买方未选规格时，resolve_purchase_target 会把交易解析到
+    is_default SKU（单 SKU 即它自己），这里提前把那个 SKU 的规格拼出来展示，使
+    「列表页直询」与「加购物篮」显示一致（都落到默认 SKU）。默认 SKU 的挑选规则与
+    _decide_target 分支 2 一致；无 selectable 规格（简单商品）返回 None。
+
+    要求 product 已 eager-load .skus(排软删) 与 .attrs。
+    """
+    skus = [
+        s for s in (product.skus or [])
+        if s.status == SkuStatus.ACTIVE and getattr(s, "deleted_at", None) is None
+    ]
+    if not skus:
+        return None
+    default = next((s for s in skus if getattr(s, "is_default", False)), None)
+    if default is None:
+        default = skus[0] if len(skus) == 1 else None
+    if default is None:  # 多 SKU 无 default（数据质量问题）→ 无法预判，不展示
+        return None
+    sku_attrs = [a for a in (product.attrs or []) if a.sku_id == default.id]
+    return variant_snapshot_to_display(_snapshot_of(_tuple_of(sku_attrs)))
 
 
 def _decide_target(

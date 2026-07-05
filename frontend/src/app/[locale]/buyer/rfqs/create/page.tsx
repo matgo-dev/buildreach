@@ -32,7 +32,9 @@ import { zonesApi } from "@/lib/api/zones";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 
-const DRAFT_KEY_PREFIX = "rfq_draft_";
+// v2: 作废旧草稿 key —— 历史上入口路径(直询)曾把商品写进共享草稿,老 sessionStorage 里
+// 可能残留跨入口的 manualItem;换 key 让所有旧草稿一次性失效,不用手动清。
+const DRAFT_KEY_PREFIX = "rfq_draft_v2_";
 const CURRENCIES = ["USD", "KES", "CNY"];
 
 /** 去重 key：按 product_id + 规范化 variants JSON */
@@ -64,6 +66,11 @@ function getOffendingProductIds(err: ApiError): number[] {
   return data.offending_product_ids.filter((id): id is number => typeof id === "number");
 }
 
+/** 是否有真实规格：排除空、null 及占位符 em-dash */
+function hasSpec(display: string | null | undefined): boolean {
+  return !!display && display !== "—";
+}
+
 function inferZoneCodeFromReferrer(): string | null {
   if (typeof document === "undefined" || !document.referrer) return null;
   try {
@@ -84,6 +91,9 @@ interface ManualItem {
   quantity: number;
   source_zone_code?: string;
 }
+
+// 篮子路径没有「手动加商品」入口,任何 manualItem 都是跨入口残留(旧草稿),稳定空引用兜底。
+const EMPTY_MANUAL_ITEMS: ManualItem[] = [];
 
 interface DraftData {
   contact_name: string;
@@ -699,7 +709,9 @@ function RfqCreateContent() {
     return createFreshDraft();
   });
 
-  const manualItems = draft.manualItems;
+  // 篮子路径只认篮中商品:忽略任何 manualItem(旧草稿跨入口残留),既不渲染也不提交。
+  // 从设计上篮子路径本就没有手动加商品入口,这是语义正确的过滤而非补丁。
+  const manualItems = isCartPath ? EMPTY_MANUAL_ITEMS : draft.manualItems;
   const entryKeyRef = useRef(entryKey);
 
   useEffect(() => {
@@ -721,11 +733,15 @@ function RfqCreateContent() {
     }
   }, [createFreshDraft, entryKey, isCartPath, isDirectPath]);
 
+  // 只有自由路径(无入口参数)才写共享草稿。入口路径(篮子/直询)每次从 URL/篮子重建、
+  // 本就不恢复旧草稿(见 useState 初始化注释),若也写进去会把直询商品污染进自由路径的恢复 → 跨入口残留。
+  const isFreePath = !isCartPath && !isDirectPath;
   useEffect(() => {
+    if (!isFreePath) return;
     try {
       sessionStorage.setItem(draftKey, JSON.stringify(draft));
     } catch {}
-  }, [draft, draftKey]);
+  }, [draft, draftKey, isFreePath]);
 
   const updateDraft = useCallback(<K extends keyof DraftData>(key: K, value: DraftData[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -757,8 +773,12 @@ function RfqCreateContent() {
     if (productIdLoadedRef.current && hasOnlyDirectItem) return;
     productIdLoadedRef.current = true;
 
+    // \u7ade\u6001\u9632\u62a4\uff1a\u82e5\u5728 fetch \u672a\u8fd4\u56de\u524d\u5207\u6362\u4e86\u5165\u53e3(\u5982\u76f4\u8be2\u2192\u8be2\u4ef7\u7bee),cleanup \u7f6e cancelled\uff0c
+    // \u8fdf\u5230\u7684 resolve \u4e0d\u5f97\u518d\u5199\u5165\u8349\u7a3f\u2014\u2014\u5426\u5219\u4f1a\u628a\u4e0a\u4e00\u4e2a\u76f4\u8be2\u5546\u54c1\u6cc4\u6f0f\u8fdb\u5f53\u524d\u7bee\u5b50\u8def\u5f84\u3002
+    let cancelled = false;
     loadPurchasableProduct(productIdParam, zoneCodeParam)
       .then((detail) => {
+        if (cancelled) return;
         setCartItems([]);
         setDraft((prev) => ({
           ...prev,
@@ -766,7 +786,9 @@ function RfqCreateContent() {
             product_id: detail.id,
             selected_variants: [],
             product_name: detail.name,
-            variant_display: "\u2014",
+            // \u672a\u9009\u89c4\u683c \u2192 \u63d0\u4ea4\u65f6\u540e\u7aef\u89e3\u6790\u5230 is_default SKU;\u8fd9\u91cc\u7528\u540e\u7aef\u9884\u7b97\u597d\u7684\u9ed8\u8ba4\u89c4\u683c\u4e32\u5c55\u793a\uff0c
+            // \u4e0e\u300c\u52a0\u8d2d\u7269\u7bee\u300d\u843d\u5230\u540c\u4e00\u9ed8\u8ba4 SKU \u7684\u663e\u793a\u4e00\u81f4\uff08\u7b80\u5355\u5546\u54c1\u4e3a null \u2192 \u663e\u793a\u65e0\u5177\u4f53\u89c4\u683c\uff09\u3002
+            variant_display: detail.default_variant_display || "\u2014",
             unit: detail.unit || "PCS",
             quantity: 1,
             source_zone_code: zoneCodeParam ?? undefined,
@@ -775,9 +797,13 @@ function RfqCreateContent() {
         idemRef.current = null;
       })
       .catch(() => {
+        if (cancelled) return;
         productIdLoadedRef.current = false;
         toast.error(t("productNotFound"));
       });
+    return () => {
+      cancelled = true;
+    };
   }, [productIdParam, zoneCodeParam, user, cartItems, manualItems, loadPurchasableProduct, toast, t]);
 
   const handleRemoveManualItem = useCallback((idx: number) => {
@@ -1037,6 +1063,7 @@ function RfqCreateContent() {
             <thead>
               <tr className="bg-gray-50 text-left text-xs text-gray-500">
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
+                <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
                 {!isCartPath && <th className="w-12 px-3 py-2.5" />}
               </tr>
@@ -1047,6 +1074,9 @@ function RfqCreateContent() {
                 <tr key={`cart-${item.item_id}`} className="border-t border-gray-100 even:bg-slate-50/50">
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name ?? "—"}
+                  </td>
+                  <td className={`px-5 py-3 align-top text-xs ${hasSpec(item.variant_display) ? "text-gray-600" : "text-gray-400"}`}>
+                    {hasSpec(item.variant_display) ? item.variant_display : t("noSpec")}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {isCartPath ? (
@@ -1095,6 +1125,9 @@ function RfqCreateContent() {
                   <td className="px-5 py-3 font-medium text-gray-800">
                     {item.product_name}
                   </td>
+                  <td className={`px-5 py-3 align-top text-xs ${hasSpec(item.variant_display) ? "text-gray-600" : "text-gray-400"}`}>
+                    {hasSpec(item.variant_display) ? item.variant_display : t("noSpec")}
+                  </td>
                   <td className="px-5 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5">
                       <input
@@ -1127,7 +1160,7 @@ function RfqCreateContent() {
               {/* 添加商品按钮 — 始终显示（篮子路径和直询路径除外） */}
               {!isCartPath && !isDirectPath && (
                 <tr className="border-t border-gray-100">
-                  <td colSpan={3} className="px-5 py-3">
+                  <td colSpan={4} className="px-5 py-3">
                     <button
                       type="button"
                       onClick={() => setShowSearch(true)}

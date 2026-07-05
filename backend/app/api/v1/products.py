@@ -30,6 +30,7 @@ from app.schemas.product import (
 )
 from app.services import product as product_svc
 from app.services._buyer_utils import thumb_url_from_image_key
+from app.services.purchase_target import default_sku_variant_display
 
 from app.services.buyer_event import EventType, record_event_background
 
@@ -384,6 +385,7 @@ async def get_product(
         volume_cbm=p.volume_cbm,
         attribute_groups=_build_attribute_groups(spu_attrs, locale),
         images=all_images,
+        default_variant_display=default_sku_variant_display(p),
     ).model_dump()
 
     # 买方行为埋点: VIEW_PRODUCT

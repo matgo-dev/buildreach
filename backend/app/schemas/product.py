@@ -289,6 +289,9 @@ class ProductPublicDetail(BaseModel):
     volume_cbm: Decimal | None = None
     attribute_groups: List[AttrGroup] = []
     images: List[ProductImageSchema] = []
+    # 默认 SKU 的规格展示串（与 cart/RFQ 的 variant_display 同口径）；简单商品为 None。
+    # 直询预览用：未选规格时交易会解析到 is_default SKU，前端据此显示其规格。
+    default_variant_display: str | None = None
 
 
 # ---------- 商品(SPU) — 运营（含供应商 + i18n 分列原始数据） ----------
