@@ -281,12 +281,12 @@ export default function ProductDetailPage() {
   };
 
   // ── 图片即时操作 ──
-  const handleImageUpload = async (files: FileList) => {
+  const handleImageUpload = async (files: FileList, imageType?: string) => {
     if (!product) return;
     setImageUploading(true);
     try {
       for (const file of Array.from(files)) {
-        await operatorProductsApi.uploadImage(product.id, file);
+        await operatorProductsApi.uploadImage(product.id, file, undefined, imageType);
       }
       await mutate();
       toastSuccess(t("imageUploaded"));
@@ -579,46 +579,73 @@ export default function ProductDetailPage() {
             </div>
           </section>
 
-          {/* 商品图片（仅 SPU 级，sku_id 为空） */}
-          {(() => { const spuImages = product.images.filter((img) => img.sku_id == null); return (
-          <section id="image-section" className="bg-white rounded-lg shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-800">{t("productImages")} <span className="text-slate-400 font-normal">({spuImages.length}/{MAX_SPU_IMAGES})</span></h3>
-              {isEditing && spuImages.length < MAX_SPU_IMAGES && (
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
-                  {imageUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                  {t("uploadImage")}
-                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => { if (e.target.files) handleImageUpload(e.target.files); e.target.value = ""; }} disabled={imageUploading} />
-                </label>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {spuImages.map((img, idx) => (
-                <div
-                  key={img.id}
-                  className={`relative group w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
-                  onClick={() => setLightbox({ images: spuImages.map((i) => ({ url: imageUrl(i.full_url) })), index: idx })}
-                >
-                  <img src={imageUrl(img.full_url)} alt="" className="w-full h-full object-cover" loading="lazy" />
-                  {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
-                  {isEditing && (
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                      {img.image_type !== "MAIN" && (
-                        <button onClick={(e) => { e.stopPropagation(); handleSetMainImage(img.id); }} className="p-1 bg-white/90 rounded-full hover:bg-white" title={t("setAsMain")}>
-                          <Star className="h-3.5 w-3.5 text-amber-500" />
-                        </button>
-                      )}
-                      <button onClick={(e) => { e.stopPropagation(); handleImageDelete(img.id); }} className="p-1 bg-white/90 rounded-full hover:bg-white" title={t("deleteImage")}>
-                        <X className="h-3.5 w-3.5 text-red-500" />
+          {/* 商品图片（仅 SPU 级，sku_id 为空）：主图/轮播 与 详情页图 分区 */}
+          {(() => {
+            const spuImages = product.images.filter((img) => img.sku_id == null);
+            const carouselImages = spuImages.filter((img) => img.image_type !== "DETAIL");
+            const detailImages = spuImages.filter((img) => img.image_type === "DETAIL");
+            const canAdd = spuImages.length < MAX_SPU_IMAGES;
+
+            const uploadBtn = (imageType?: string) => (
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                {imageUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                {t("uploadImage")}
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => { if (e.target.files) handleImageUpload(e.target.files, imageType); e.target.value = ""; }} disabled={imageUploading} />
+              </label>
+            );
+
+            const renderThumb = (img: ProductImage, idx: number, images: ProductImage[], allowSetMain: boolean) => (
+              <div
+                key={img.id}
+                className={`relative group w-24 h-24 rounded-lg overflow-hidden border-2 cursor-pointer hover:shadow-md transition-shadow ${img.image_type === "MAIN" ? "border-blue-500" : "border-slate-200"} bg-slate-100`}
+                onClick={() => setLightbox({ images: images.map((i) => ({ url: imageUrl(i.full_url) })), index: idx })}
+              >
+                <img src={imageUrl(img.full_url)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                {img.image_type === "MAIN" && <span className="absolute top-0 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-br">{t("mainImage")}</span>}
+                {isEditing && (
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                    {allowSetMain && img.image_type !== "MAIN" && (
+                      <button onClick={(e) => { e.stopPropagation(); handleSetMainImage(img.id); }} className="p-1 bg-white/90 rounded-full hover:bg-white" title={t("setAsMain")}>
+                        <Star className="h-3.5 w-3.5 text-amber-500" />
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button onClick={(e) => { e.stopPropagation(); handleImageDelete(img.id); }} className="p-1 bg-white/90 rounded-full hover:bg-white" title={t("deleteImage")}>
+                      <X className="h-3.5 w-3.5 text-red-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+
+            return (
+            <section id="image-section" className="bg-white rounded-lg shadow-sm p-5 space-y-6">
+              {/* 主图 / 轮播图 */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-semibold text-slate-800">{t("carouselImages")} <span className="text-slate-400 font-normal">({spuImages.length}/{MAX_SPU_IMAGES})</span></h3>
+                  {isEditing && canAdd && uploadBtn()}
                 </div>
-              ))}
-              {spuImages.length === 0 && <div className="text-slate-400 text-sm">{t("noImages")}</div>}
-            </div>
-          </section>
-          ); })()}
+                <p className="text-[11px] text-slate-400 mb-3">{t("carouselImagesHint")}</p>
+                <div className="flex flex-wrap gap-3">
+                  {carouselImages.map((img, idx) => renderThumb(img, idx, carouselImages, true))}
+                  {carouselImages.length === 0 && <div className="text-slate-400 text-sm">{t("noImages")}</div>}
+                </div>
+              </div>
+              {/* 详情页图 */}
+              <div className="border-t border-slate-100 pt-5">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-semibold text-slate-800">{t("detailImages")}</h3>
+                  {isEditing && canAdd && uploadBtn("DETAIL")}
+                </div>
+                <p className="text-[11px] text-slate-400 mb-3">{t("detailImagesHint")}</p>
+                <div className="flex flex-wrap gap-3">
+                  {detailImages.map((img, idx) => renderThumb(img, idx, detailImages, false))}
+                  {detailImages.length === 0 && <div className="text-slate-400 text-sm">{t("noImages")}</div>}
+                </div>
+              </div>
+            </section>
+            );
+          })()}
 
           {/* SPU 属性 */}
           {product.attributes.filter((a) => a.sku_id == null).length > 0 && (

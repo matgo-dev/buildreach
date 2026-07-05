@@ -477,8 +477,11 @@ export const operatorProductsApi = {
     api.post<SkuCreatedResponse>(`${PREFIX}/${productId}/skus`, data),
 
   /** 上传图片（multipart/form-data）；SKU 图带 sku_id */
-  uploadImage: async (productId: number, file: File, skuId?: number): Promise<ProductImage> => {
-    const qs = skuId != null ? `?sku_id=${skuId}` : "";
+  uploadImage: async (productId: number, file: File, skuId?: number, imageType?: string): Promise<ProductImage> => {
+    const params = new URLSearchParams();
+    if (skuId != null) params.set("sku_id", String(skuId));
+    if (imageType) params.set("image_type", imageType);
+    const qs = params.toString() ? `?${params.toString()}` : "";
     const url = `${getApiBase()}${PREFIX}/${productId}/images${qs}`;
 
     const formData = new FormData();

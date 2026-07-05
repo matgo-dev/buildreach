@@ -1431,7 +1431,11 @@ async def add_product_image(
         temp_upload.cleanup()
 
     actual_type = image_type if image_type in ImageType.ALL else ImageType.GALLERY
-    if not product.images:
+    # 首张“主图区”图片(非详情图)自动置为主图;详情图不参与主图指派,
+    # 且缺主图时(如主图被删)下一张主图区图片自动补位
+    if actual_type != ImageType.DETAIL and not any(
+        i.image_type == ImageType.MAIN for i in product.images
+    ):
         actual_type = ImageType.MAIN
 
     next_sort = len(product.images)

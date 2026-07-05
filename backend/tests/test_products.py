@@ -861,6 +861,41 @@ async def test_upload_image_with_sku_id(client: AsyncClient):
     assert r.json()["data"]["sku_id"] == sku_id
 
 
+async def _upload_typed_image(client, headers, pid, image_type=None):
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(50, 120, 200)).save(buf, format="PNG")
+    buf.seek(0)
+    qs = f"?image_type={image_type}" if image_type else ""
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/images{qs}",
+        headers=headers,
+        files={"file": ("t.png", buf, "image/png")},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["data"]
+
+
+@pytest.mark.asyncio
+async def test_detail_image_never_becomes_main(client: AsyncClient):
+    """详情图不参与主图指派:即便是首张上传,也不会被自动置为 MAIN。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "IMG-DETAIL-001")
+
+    # 首张就传详情图 → 保持 DETAIL,不抢主图
+    first = await _upload_typed_image(client, headers, pid, "DETAIL")
+    assert first["image_type"] == "DETAIL"
+
+    # 随后传一张主图区图片 → 补位成 MAIN
+    second = await _upload_typed_image(client, headers, pid)
+    assert second["image_type"] == "MAIN"
+
+    r = await client.get(f"/api/v1/operator/products/{pid}", headers=headers)
+    types = sorted(i["image_type"] for i in r.json()["data"]["images"])
+    assert types == ["DETAIL", "MAIN"]
+
+
 # ── 供货关系（挂 SKU）────────────────────────────────────
 
 @pytest.mark.asyncio
