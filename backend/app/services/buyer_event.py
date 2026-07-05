@@ -53,8 +53,8 @@ def parse_device_type(ua: str) -> str:
 async def record_event(
     db: AsyncSession,
     *,
-    buyer_org_id: int,
-    user_id: int,
+    buyer_org_id: int | None,
+    user_id: int | None,
     event_type: str,
     resource_type: str | None = None,
     resource_id: int | None = None,
@@ -63,32 +63,12 @@ async def record_event(
 ) -> None:
     """记录买方行为事件（含去重）。
 
-    去重规则: 同一 user_id + event_type + resource_id，5 分钟内不重复记录。
+    归属主体: 登录买家按 user_id，游客按 session_id。二者皆无则无法归属，丢弃。
+    去重规则: 同一主体 + event_type + resource_id，5 分钟内不重复记录。
     SEARCH 事件按 keyword 去重。
     """
     now = _utcnow()
     cutoff = now - DEDUP_WINDOW
-
-    # 去重查询
-    if event_type == EventType.SEARCH:
-        keyword = (extra or {}).get("keyword", "")
-        dup_q = select(BuyerEvent.id).where(
-            BuyerEvent.user_id == user_id,
-            BuyerEvent.event_type == event_type,
-            BuyerEvent.extra["keyword"].astext == keyword,
-            BuyerEvent.created_at > cutoff,
-        ).limit(1)
-    else:
-        dup_q = select(BuyerEvent.id).where(
-            BuyerEvent.user_id == user_id,
-            BuyerEvent.event_type == event_type,
-            BuyerEvent.resource_id == resource_id,
-            BuyerEvent.created_at > cutoff,
-        ).limit(1)
-
-    dup = (await db.execute(dup_q)).scalar_one_or_none()
-    if dup is not None:
-        return
 
     # 从 request 提取上下文
     session_id = None
@@ -101,6 +81,35 @@ async def record_event(
         ua = request.headers.get("user-agent", "")
         device_type = parse_device_type(ua) if ua else None
         ip = request.client.host if request.client else None
+
+    # 归属主体: 登录按 user_id，游客按 session_id；都没有则无法归属，丢弃
+    if user_id is not None:
+        subject = BuyerEvent.user_id == user_id
+    elif session_id:
+        subject = BuyerEvent.session_id == session_id
+    else:
+        return
+
+    # 去重查询
+    if event_type == EventType.SEARCH:
+        keyword = (extra or {}).get("keyword", "")
+        dup_q = select(BuyerEvent.id).where(
+            subject,
+            BuyerEvent.event_type == event_type,
+            BuyerEvent.extra["keyword"].astext == keyword,
+            BuyerEvent.created_at > cutoff,
+        ).limit(1)
+    else:
+        dup_q = select(BuyerEvent.id).where(
+            subject,
+            BuyerEvent.event_type == event_type,
+            BuyerEvent.resource_id == resource_id,
+            BuyerEvent.created_at > cutoff,
+        ).limit(1)
+
+    dup = (await db.execute(dup_q)).scalar_one_or_none()
+    if dup is not None:
+        return
 
     event = BuyerEvent(
         buyer_org_id=buyer_org_id,
@@ -122,8 +131,8 @@ async def record_event(
 # --------------- BackgroundTask 辅助 ---------------
 
 async def record_event_background(
-    buyer_org_id: int,
-    user_id: int,
+    buyer_org_id: int | None,
+    user_id: int | None,
     event_type: str,
     resource_type: str | None,
     resource_id: int | None,
