@@ -55,6 +55,61 @@ def test_single_default_sku_binds_it():
     assert sku_id == 7
 
 
+def test_single_sku_snapshot_derived_from_sku_not_input():
+    """单 SKU 有 selectable attr:列表路径(空输入)、详情路径(sku_id)、详情路径(variants)
+    必须产出同一 (sku_id, snapshot) —— 快照从解析到的 SKU 算,不从入参透传。
+
+    这是"同商品从列表加和从详情加产生两条篮子记录"bug 的根因契约:
+    三条入口指纹一致 → 合并同一行。旧实现的单 SKU 分支透传 selected_variants,
+    列表路径快照为 []、详情路径快照为 SKU attrs,两者指纹不同 → 双行。
+    """
+    prod = _P()
+    sku = _S(id=5, tuple={"spec": "phi6"}, is_default=True)
+    expect = (5, [{"attr_name": "spec", "value": "phi6"}])
+
+    # 列表路径:完全空输入(allow_spu_level 不影响,单 SKU 直接绑)
+    a = _decide_target(prod, active_skus=[sku], selected_variants=[], sku_id=None, allow_spu_level=True)
+    # 详情路径:显式 sku_id,不带 variants
+    b = _decide_target(prod, active_skus=[sku], selected_variants=[], sku_id=5)
+    # 详情路径:带 variants
+    c = _decide_target(
+        prod, active_skus=[sku], selected_variants=[{"attr_name": "spec", "value": "phi6"}], sku_id=None
+    )
+    assert a == b == c == expect
+
+
+def test_multi_sku_no_selection_binds_default_sku():
+    """多 SKU 但设了 is_default:未选规格的加购(列表页)解析到默认 SKU,
+    而非落 sku_id=NULL 泛询价行。这样"列表加默认 == 详情选默认" → 合并同一行。
+    """
+    prod = _P()
+    skus = [
+        _S(id=1, tuple={"spec": "phi6"}, is_default=True),
+        _S(id=2, tuple={"spec": "phi8"}),
+    ]
+    sku_id, snap = _decide_target(
+        prod, active_skus=skus, selected_variants=[], sku_id=None, allow_spu_level=True,
+    )
+    assert sku_id == 1
+    assert snap == [{"attr_name": "spec", "value": "phi6"}]
+
+
+def test_multi_sku_default_binds_even_without_spu_level_flag():
+    """有 default 就是"有明确答案",无论 allow_spu_level 与否都绑 default,不报错。
+    allow_spu_level 只在"多 SKU 且无 default"时才决定是泛询价还是拒绝。
+    """
+    prod = _P()
+    skus = [
+        _S(id=1, tuple={"spec": "phi6"}, is_default=True),
+        _S(id=2, tuple={"spec": "phi8"}),
+    ]
+    sku_id, snap = _decide_target(
+        prod, active_skus=skus, selected_variants=[], sku_id=None, allow_spu_level=False,
+    )
+    assert sku_id == 1
+    assert snap == [{"attr_name": "spec", "value": "phi6"}]
+
+
 def test_multi_sku_requires_variants_else_reject():
     prod = _P()
     skus = [_S(id=1, tuple={"spec": "A"}), _S(id=2, tuple={"spec": "B"})]

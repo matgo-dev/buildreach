@@ -182,6 +182,50 @@ async def test_add_same_product_different_variant_order_merges(client, db_sessio
 
 
 @pytest.mark.asyncio
+async def test_list_and_detail_add_same_sku_merge(client, db_session):
+    """列表页加购(无规格)与详情页加购(带 sku_id)对同一单 SKU 商品必须合并成一行。
+
+    回归"同商品从列表加、从详情加产生两条篮子记录"bug:根因是 variant_snapshot 从入参
+    透传,导致列表路径(空)与详情路径(SKU attrs)fingerprint 不同。修复后快照恒从解析到
+    的 SKU 算,两路径同指纹 → 合并。本测试专盯 resolve_purchase_target 的 wiring
+    (含 post-block 收窄),纯逻辑分支由 test_purchase_target_unit 覆盖。
+    """
+    from app.db.models.product_attr import ProductAttr
+    from app.db.models.product_sku import ProductSku, SkuStatus
+
+    headers = await _buyer_headers(client)
+    op = await _op_headers(client)
+    product_id = await _create_purchasable_product(client, op, db_session)
+
+    sku = ProductSku(
+        product_id=product_id, sku_code="CART-MERGE-SKU", moq=1,
+        is_default=True, status=SkuStatus.ACTIVE,
+    )
+    db_session.add(sku)
+    await db_session.flush()
+    db_session.add(ProductAttr(
+        product_id=product_id, sku_id=sku.id,
+        attr_key_en="spec", attr_value_en="phi6", selectable=True,
+    ))
+    await db_session.commit()
+
+    # 列表路径:只传 product_id,不带规格
+    r1 = await client.post("/api/v1/cart/items", headers=headers, json={
+        "product_id": product_id, "quantity": "3.000",
+    })
+    assert r1.status_code == 200, r1.text
+    # 详情路径:显式 sku_id
+    r2 = await client.post("/api/v1/cart/items", headers=headers, json={
+        "product_id": product_id, "sku_id": sku.id, "quantity": "2.000",
+    })
+    assert r2.status_code == 200, r2.text
+
+    items = [i for i in r2.json()["data"]["items"] if i["product_id"] == product_id]
+    assert len(items) == 1, f"应合并成一行,实得 {len(items)} 行"
+    assert Decimal(items[0]["quantity"]) == Decimal("5.000")
+
+
+@pytest.mark.asyncio
 async def test_update_item_quantity(client, db_session):
     """PATCH /cart/items/{item_id} 改量。"""
     headers = await _buyer_headers(client)
