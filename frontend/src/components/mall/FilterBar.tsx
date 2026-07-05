@@ -222,12 +222,12 @@ export function FilterBar({
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           <ListFilter className="h-3.5 w-3.5 text-muted mr-0.5 shrink-0" />
 
-          {/* 最新上架 */}
+          {/* 默认排序 — 基线状态,不做填充高亮,仅用文字色示意当前项 */}
           <button
             onClick={() => onSortChange("newest")}
             className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               sort === "newest"
-                ? "bg-teal-900 text-white shadow-sm"
+                ? "text-teal-900"
                 : "text-ink hover:bg-teal-50 hover:text-teal-900"
             }`}
           >

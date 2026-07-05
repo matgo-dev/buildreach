@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/Toast";
 import EditBasicInfo from "./EditBasicInfo";
 import SkuEditModal, { SkuFormData } from "./SkuEditModal";
 import { imageUrl } from "@/lib/env";
+import { MAX_SPU_IMAGES } from "@/lib/productImageRules";
 
 // 状态颜色映射（label 通过 t() 读取，不在此硬编码）
 const STATUS_STYLES: Record<string, { dot: string; bg: string; text: string; labelKey: string }> = {
@@ -582,8 +583,8 @@ export default function ProductDetailPage() {
           {(() => { const spuImages = product.images.filter((img) => img.sku_id == null); return (
           <section id="image-section" className="bg-white rounded-lg shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-800">{t("productImages")} <span className="text-slate-400 font-normal">({spuImages.length}/8)</span></h3>
-              {isEditing && spuImages.length < 8 && (
+              <h3 className="text-sm font-semibold text-slate-800">{t("productImages")} <span className="text-slate-400 font-normal">({spuImages.length}/{MAX_SPU_IMAGES})</span></h3>
+              {isEditing && spuImages.length < MAX_SPU_IMAGES && (
                 <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
                   {imageUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                   {t("uploadImage")}

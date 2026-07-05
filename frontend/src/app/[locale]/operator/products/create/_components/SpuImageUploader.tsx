@@ -2,8 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { MAX_SPU_IMAGES } from "@/lib/productImageRules";
 
-const MAX_IMAGES = 8;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MIN_DIMENSION = 200;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -39,7 +39,7 @@ export function SpuImageUploader({ files, onChange, t }: Props) {
       setValidating(true);
       const accepted: File[] = [];
       for (const file of Array.from(selected)) {
-        if (files.length + accepted.length >= MAX_IMAGES) break;
+        if (files.length + accepted.length >= MAX_SPU_IMAGES) break;
 
         // 格式校验
         if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -107,7 +107,7 @@ export function SpuImageUploader({ files, onChange, t }: Props) {
           </div>
         ))}
 
-        {files.length < MAX_IMAGES && (
+        {files.length < MAX_SPU_IMAGES && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
