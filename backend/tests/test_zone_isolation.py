@@ -10,7 +10,7 @@ import io
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 
 from app.db.models.permission import Permission
 from app.db.models.product import Product, ProductStatus, ProductVisibility
@@ -1102,3 +1102,52 @@ async def test_operator_zone_grants_require_zone_manage(client: AsyncClient, db_
         headers=headers, json={"buyer_org_id": 1},
     )
     assert r.status_code == 403, r.text
+
+
+@pytest.mark.asyncio
+async def test_submit_draft_rechecks_zone_grant_after_revoke(client: AsyncClient, db_session):
+    """撤权后提交草稿必须被拒(PR#309 Finding#1 回归)。
+
+    触发链:授权态把 ZONE_ONLY 商品存成 DRAFT 询价 → 运营撤销该 org 的专区 grant →
+    买方 submit。修复前 submit 二次校验只走 _get_viewable_product(仅查 SPU active/软删),
+    不复检专区授权,撤权后仍能提交越权成单;修复后 submit 走 resolve_purchase_target,
+    与购物车改单同口径,授权失效即拒。
+    """
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T7-REVOKE-SUBMIT")
+    product, _sku = await _make_variant_product_in_zone(
+        db_session, zone, zcat, spu_code="T7-REVOKE-SUBMIT",
+    )
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+    org_id = await _default_buyer_org_id(client, headers)
+
+    # 授权态:建 DRAFT 询价(as_draft=True),此时授权合法应 200
+    r = await client.post(
+        "/api/v1/rfqs", headers=headers,
+        json={"as_draft": True, "items": [{
+            "product_id": product.id,
+            "selected_variants": [{"attr_name": "spec", "value": "A"}],
+            "quantity": 1,
+        }]},
+    )
+    assert r.status_code == 200, r.text
+    rfq_id = r.json()["data"]["id"]
+    assert r.json()["data"]["status"] == "DRAFT"
+
+    # 运营撤销该 org 的专区 grant
+    await db_session.execute(
+        delete(ZoneGrant).where(
+            ZoneGrant.zone_id == zone.id, ZoneGrant.buyer_org_id == org_id,
+        )
+    )
+    await db_session.commit()
+
+    # 买方提交草稿:授权已失效,必须被拒(40506),商品出现在 offending 列表
+    r2 = await client.patch(f"/api/v1/rfqs/{rfq_id}/submit", headers=headers)
+    assert r2.status_code == 422, r2.text
+    assert r2.json()["code"] == 40506
+    assert product.id in r2.json()["data"]["offending_product_ids"]
+
+    # 状态未流转,仍是 DRAFT(提交被拦在二次校验前的落库之前)
+    from app.db.models.rfq import Rfq, RfqStatus
+    rfq = (await db_session.execute(select(Rfq).where(Rfq.id == rfq_id))).scalar_one()
+    assert rfq.status == RfqStatus.DRAFT
