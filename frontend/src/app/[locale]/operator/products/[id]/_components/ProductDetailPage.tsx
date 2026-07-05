@@ -622,7 +622,7 @@ export default function ProductDetailPage() {
               {/* 主图 / 轮播图 */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-sm font-semibold text-slate-800">{t("carouselImages")} <span className="text-slate-400 font-normal">({spuImages.length}/{MAX_SPU_IMAGES})</span></h3>
+                  <h3 className="text-sm font-semibold text-slate-800">{t("carouselImages")} <span className="text-slate-400 font-normal">({carouselImages.length}) · {spuImages.length}/{MAX_SPU_IMAGES}</span></h3>
                   {isEditing && canAdd && uploadBtn()}
                 </div>
                 <p className="text-[11px] text-slate-400 mb-3">{t("carouselImagesHint")}</p>
@@ -634,7 +634,7 @@ export default function ProductDetailPage() {
               {/* 详情页图 */}
               <div className="border-t border-slate-100 pt-5">
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-sm font-semibold text-slate-800">{t("detailImages")}</h3>
+                  <h3 className="text-sm font-semibold text-slate-800">{t("detailImages")} <span className="text-slate-400 font-normal">({detailImages.length})</span></h3>
                   {isEditing && canAdd && uploadBtn("DETAIL")}
                 </div>
                 <p className="text-[11px] text-slate-400 mb-3">{t("detailImagesHint")}</p>

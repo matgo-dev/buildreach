@@ -896,6 +896,43 @@ async def test_detail_image_never_becomes_main(client: AsyncClient):
     assert types == ["DETAIL", "MAIN"]
 
 
+@pytest.mark.asyncio
+async def test_detail_only_product_cannot_publish(client: AsyncClient):
+    """只有详情图、没有主图区图片的商品不能上架(否则封面会兜底到详情长图)。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-DETAILONLY-001")
+    await _create_test_sku(client, headers, pid, "PUB-DETAILONLY-SKU")
+    await _upload_typed_image(client, headers, pid, "DETAIL")
+
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+    assert r.status_code == 400
+    assert r.json()["code"] == 40204
+    assert "image" in r.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_client_main_type(client: AsyncClient):
+    """客户端不能通过 image_type=MAIN 注入第二张主图。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "IMG-NOMAININJECT-001")
+
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    PILImage.new("RGB", (300, 300), color=(10, 20, 30)).save(buf, format="PNG")
+    buf.seek(0)
+    r = await client.post(
+        f"/api/v1/operator/products/{pid}/images?image_type=MAIN",
+        headers=headers,
+        files={"file": ("m.png", buf, "image/png")},
+    )
+    assert r.status_code == 422
+
+
 # ── 供货关系（挂 SKU）────────────────────────────────────
 
 @pytest.mark.asyncio

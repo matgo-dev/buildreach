@@ -548,7 +548,8 @@ async def upload_image(
     request: Request,
     file: UploadFile = File(...),
     sku_id: int | None = Query(None),
-    image_type: str = Query("GALLERY"),
+    # 客户端只能选主图区(GALLERY)或详情图(DETAIL);MAIN 仅由服务端自动指派或 set-main 接口设置
+    image_type: str = Query("GALLERY", pattern="^(GALLERY|DETAIL)$"),
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):

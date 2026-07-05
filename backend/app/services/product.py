@@ -467,8 +467,12 @@ async def update_product_status(
             if missing_spu:
                 errors.append({"key": "publish_missing_spu_attrs", "params": {"attrs": ", ".join(missing_spu)}})
 
-        # ── 通用校验:所有来源都必须有图片 ──
-        if not product.images:
+        # ── 通用校验:必须有至少一张可当封面的主图区图片(MAIN/GALLERY,非详情图) ──
+        has_cover = any(
+            img.deleted_at is None and img.image_type != ImageType.DETAIL
+            for img in product.images
+        )
+        if not has_cover:
             errors.append({"key": "publish_no_image"})
 
         if errors:
@@ -541,6 +545,8 @@ async def _batch_main_images(
         select(ProductImage.product_id, ProductImage.image_key)
         .where(
             ProductImage.product_id.in_(product_ids),
+            # 详情图不作封面,避免缺 MAIN 时兜底取到详情长图
+            ProductImage.image_type != ImageType.DETAIL,
             _not_deleted(ProductImage),
         )
         .order_by(
@@ -1376,6 +1382,21 @@ async def list_sku_suppliers(
 # ── 图片（SPU + SKU 维度）────────────────────────────────
 
 
+def resolve_uploaded_image_type(
+    requested: str, *, sku_id: int | None, has_spu_main: bool
+) -> str:
+    """决定新上传图片的最终类型(纯逻辑,便于单测)。
+
+    - 非法类型回落 GALLERY;
+    - 详情图(DETAIL)不参与主图指派;
+    - 仅 SPU 级(sku_id 为空)非详情图,在缺 SPU 主图时补位为 MAIN
+      (首图或主图被删后的下一张)。SKU 级图片绝不占用 SPU 主图。
+    """
+    actual = requested if requested in ImageType.ALL else ImageType.GALLERY
+    if sku_id is None and actual != ImageType.DETAIL and not has_spu_main:
+        actual = ImageType.MAIN
+    return actual
+
 
 async def add_product_image(
     db: AsyncSession,
@@ -1430,13 +1451,13 @@ async def add_product_image(
     finally:
         temp_upload.cleanup()
 
-    actual_type = image_type if image_type in ImageType.ALL else ImageType.GALLERY
-    # 首张“主图区”图片(非详情图)自动置为主图;详情图不参与主图指派,
-    # 且缺主图时(如主图被删)下一张主图区图片自动补位
-    if actual_type != ImageType.DETAIL and not any(
-        i.image_type == ImageType.MAIN for i in product.images
-    ):
-        actual_type = ImageType.MAIN
+    has_spu_main = any(
+        i.sku_id is None and i.image_type == ImageType.MAIN and i.deleted_at is None
+        for i in product.images
+    )
+    actual_type = resolve_uploaded_image_type(
+        image_type, sku_id=sku_id, has_spu_main=has_spu_main
+    )
 
     next_sort = len(product.images)
     img = ProductImage(

@@ -195,7 +195,9 @@ def _get_main_image_url(p) -> str | None:
         return None
     main = next((i for i in imgs if i.image_type == ImageType.MAIN), None)
     if not main:
-        main = sorted(imgs, key=lambda i: i.sort_order)[0]
+        # 详情图不作封面兜底,优先主图区图片(MAIN/GALLERY)
+        pool = [i for i in imgs if i.image_type != ImageType.DETAIL] or imgs
+        main = sorted(pool, key=lambda i: i.sort_order)[0]
     return f"{settings.IMAGE_PATH_PREFIX}/{main.image_key}"
 
 
