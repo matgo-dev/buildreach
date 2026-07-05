@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Settings, ShieldCheck, User } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Settings, ShieldCheck, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { useLogout } from "@/hooks/useAuth";
+import { workspaceDashboardOf } from "@/config/navigation";
 
 /** 顶部深青公告条 — 公告 + 帮助 + 账号小入口 */
 export function TopStrip() {
@@ -54,6 +55,9 @@ function UserDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // 内部员工(运营/管理员)在公开商城页也能一键回工作台
+  const isStaff = user.roles?.some((r) => r === "OPERATOR" || r === "ADMIN");
+
   // 路由切换时关闭
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -80,6 +84,16 @@ function UserDropdown() {
 
       {open && (
         <div className="absolute right-0 top-full z-[200] mt-1.5 w-40 rounded-lg border border-line bg-white py-1 shadow-lg">
+          {isStaff && (
+            <Link
+              href={workspaceDashboardOf(user.roles)}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 text-slate-400" />
+              {t("menuDashboard")}
+            </Link>
+          )}
           <Link
             href="/account"
             onClick={() => setOpen(false)}

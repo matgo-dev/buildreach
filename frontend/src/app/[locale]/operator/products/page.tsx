@@ -59,17 +59,6 @@ function formatTime(iso: string | null): string {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function formatPrice(min: number | null, max: number | null, currency?: string | null): string | null {
-  if (min == null && max == null) return null;
-  const suffix = currency ? ` ${currency}` : "";
-  if (min != null && max != null) {
-    if (min === max) return Number(min).toLocaleString() + suffix;
-    return `${Number(min).toLocaleString()} - ${Number(max).toLocaleString()}${suffix}`;
-  }
-  const val = min ?? max;
-  return Number(val).toLocaleString() + suffix;
-}
-
 // ---------- 可排序表头 ----------
 
 function SortableHeader({
@@ -232,9 +221,6 @@ function ProductListInner() {
       if (sortBy === "updated_at") {
         va = a.updated_at ? new Date(a.updated_at).getTime() : null;
         vb = b.updated_at ? new Date(b.updated_at).getTime() : null;
-      } else if (sortBy === "price_min") {
-        va = a.price_min;
-        vb = b.price_min;
       } else if (sortBy === "sku_count") {
         va = a.sku_count;
         vb = b.sku_count;
@@ -468,7 +454,6 @@ function ProductListInner() {
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colProductInfo")}</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colSpuCode")}</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colCategory")}</th>
-              <SortableHeader label={t("colPrice")} field="price_min" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right" />
               <SortableHeader label={t("colSkuCount")} field="sku_count" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="center" />
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colSupplyMode")}</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">{t("colStatus")}</th>
@@ -479,7 +464,7 @@ function ProductListInner() {
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={canApprove ? 9 : 8} className="px-4 py-16 text-center text-slate-400">
+                <td colSpan={canApprove ? 8 : 7} className="px-4 py-16 text-center text-slate-400">
                   <Loader2 className="inline h-5 w-5 animate-spin" />
                   <span className="ml-2">{t("loading")}</span>
                 </td>
@@ -488,7 +473,7 @@ function ProductListInner() {
 
             {!loading && items.length === 0 && !hasFilters && (
               <tr>
-                <td colSpan={canApprove ? 9 : 8} className="px-4 py-16 text-center">
+                <td colSpan={canApprove ? 8 : 7} className="px-4 py-16 text-center">
                   <Package className="mx-auto h-12 w-12 text-slate-300" />
                   <p className="mt-3 text-base font-medium text-slate-500">{t("emptyTitle")}</p>
                   <p className="mt-1 text-sm text-slate-400">{t("emptyHint")}</p>
@@ -506,7 +491,7 @@ function ProductListInner() {
 
             {!loading && items.length === 0 && hasFilters && (
               <tr>
-                <td colSpan={canApprove ? 9 : 8} className="px-4 py-16 text-center">
+                <td colSpan={canApprove ? 8 : 7} className="px-4 py-16 text-center">
                   <Search className="mx-auto h-12 w-12 text-slate-300" />
                   <p className="mt-3 text-base font-medium text-slate-500">{t("noResultTitle")}</p>
                   <p className="mt-1 text-sm text-slate-400">{t("noResultHint")}</p>
@@ -517,7 +502,6 @@ function ProductListInner() {
             {!loading &&
               sortedItems.map((item) => {
                 const statusStyle = STATUS_STYLES[item.status] ?? STATUS_STYLES.DRAFT;
-                const priceText = formatPrice(item.price_min, item.price_max, item.currency);
                 const catName = resolveCategoryName(item.category_code, catMap);
 
                 return (
@@ -581,14 +565,6 @@ function ProductListInner() {
                     <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.spu_code}</td>
 
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{catName}</td>
-
-                    <td className="px-4 py-3 text-right">
-                      {priceText ? (
-                        <span className="text-slate-700">{priceText}</span>
-                      ) : (
-                        <span className="italic text-slate-400">{t("noPrice")}</span>
-                      )}
-                    </td>
 
                     <td className="px-4 py-3 text-center">
                       <span
