@@ -115,7 +115,8 @@ export function MallNavRow() {
       style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05)" }}
     >
       <div className="mx-auto flex min-h-[44px] max-w-mall items-center justify-between gap-4 overflow-x-auto px-3 scrollbar-hide sm:min-h-[50px] sm:px-6">
-        <div className="flex min-w-max items-center gap-0">
+        {/* 移动端:自然宽度靠左可横滑;桌面端:铺满可用空间等间距(有专区时自动落在专区左侧) */}
+        <div className="flex min-w-max items-center gap-0 sm:min-w-0 sm:flex-1 sm:justify-between">
           {navLinks.map(renderNavLink)}
         </div>
         {zones.length > 0 && (
