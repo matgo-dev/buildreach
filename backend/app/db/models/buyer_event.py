@@ -26,15 +26,16 @@ class BuyerEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    buyer_org_id: Mapped[int] = mapped_column(
+    # 游客事件无归属机构/用户，按 session_id 归属，故均可空
+    buyer_org_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("buyer_organizations.id", name="fk_buyer_events_org_id"),
-        nullable=False,
+        nullable=True,
     )
-    user_id: Mapped[int] = mapped_column(
+    user_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", name="fk_buyer_events_user_id"),
-        nullable=False,
+        nullable=True,
     )
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     event_type: Mapped[str] = mapped_column(String(30), nullable=False)

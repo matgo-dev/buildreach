@@ -263,21 +263,20 @@ async def list_products(
         brand=brand,
         keyword=keyword, sort=sort, page=page, size=size,
     )
-    # 买方行为埋点: SEARCH / VIEW_CATEGORY
+    # 买方行为埋点: SEARCH / VIEW_CATEGORY（游客也记录，按 session_id 归属）
     buyer_uid, buyer_org = await _resolve_buyer_identity(authorization, db)
-    if buyer_uid and buyer_org:
-        if keyword:
-            background_tasks.add_task(
-                record_event_background, buyer_org, buyer_uid,
-                EventType.SEARCH, None, None,
-                {"keyword": keyword, "results": total}, request,
-            )
-        elif category_code:
-            background_tasks.add_task(
-                record_event_background, buyer_org, buyer_uid,
-                EventType.VIEW_CATEGORY, "category", None,
-                {"category_code": category_code}, request,
-            )
+    if keyword:
+        background_tasks.add_task(
+            record_event_background, buyer_org, buyer_uid,
+            EventType.SEARCH, None, None,
+            {"keyword": keyword, "results": total}, request,
+        )
+    elif category_code:
+        background_tasks.add_task(
+            record_event_background, buyer_org, buyer_uid,
+            EventType.VIEW_CATEGORY, "category", None,
+            {"category_code": category_code}, request,
+        )
 
     return success({
         "items": [_to_public(p, main_image_urls=img_map.get(p.id, (None, None))) for p in items],
@@ -388,13 +387,12 @@ async def get_product(
         default_variant_display=default_sku_variant_display(p),
     ).model_dump()
 
-    # 买方行为埋点: VIEW_PRODUCT
+    # 买方行为埋点: VIEW_PRODUCT（游客也记录，按 session_id 归属）
     buyer_uid, buyer_org = await _resolve_buyer_identity(authorization, db)
-    if buyer_uid and buyer_org:
-        background_tasks.add_task(
-            record_event_background, buyer_org, buyer_uid,
-            EventType.VIEW_PRODUCT, "product", product_id,
-            {}, request,
-        )
+    background_tasks.add_task(
+        record_event_background, buyer_org, buyer_uid,
+        EventType.VIEW_PRODUCT, "product", product_id,
+        {}, request,
+    )
 
     return success(data)
