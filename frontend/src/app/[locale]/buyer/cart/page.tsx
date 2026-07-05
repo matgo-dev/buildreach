@@ -39,6 +39,7 @@ function CartContent() {
   const t = useTranslations("cart");
   const tCommon = useTranslations("common");
   const tError = useTranslations("error");
+  const tRfq = useTranslations("rfq"); // 复用 skuSpec/noSpec，避免重复 i18n key
   const toast = useToast();
   const syncFromCart = useCartStore((s) => s.syncFromCart);
   const refreshFlag = useCartStore((s) => s.refreshFlag);
@@ -213,6 +214,7 @@ function CartContent() {
             className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
           />
           <span className="flex-1 font-medium">{t("productInfo")}</span>
+          <span className="w-28 font-medium">{tRfq("skuSpec")}</span>
           <span className="w-20 text-center font-medium">{t("quantity")}</span>
           <span className="w-10" />
         </div>
@@ -322,8 +324,14 @@ function CartContent() {
                 </div>
                 </div>{/* 关闭移动端 wrapper */}
 
-                {/* 数量 + 删除：移动端横排在底部，PC 端保持原位 */}
+                {/* 变体规格 + 数量 + 删除：移动端横排在底部，PC 端各归其列 */}
                 <div className="flex items-center gap-3 sm:contents pl-7 sm:pl-0">
+                {/* 变体规格 — 只显示规格值(同 create 页口径),无则「无具体规格」 */}
+                <div className="sm:w-28 shrink-0 pt-1 text-xs">
+                  <span className={item.variant_display ? "text-gray-600" : "text-gray-400"}>
+                    {item.variant_display || tRfq("noSpec")}
+                  </span>
+                </div>
                 <div className="sm:w-24 shrink-0 sm:text-center pt-1">
                   {!unavailable ? (
                     <div className="flex items-center gap-2 sm:block">
