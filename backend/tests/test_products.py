@@ -81,6 +81,7 @@ async def _create_test_sku(
     client: AsyncClient, headers: dict, product_id: int,
     sku_code: str = "TEST-SKU-001", is_default: bool = True,
     price_tiers: list | None = None,
+    attributes: list | None = None,
 ) -> int:
     payload = {
         "sku_code": sku_code,
@@ -95,6 +96,8 @@ async def _create_test_sku(
     }
     if price_tiers is not None:
         payload["price_tiers"] = price_tiers
+    if attributes is not None:
+        payload["attributes"] = attributes
     r = await client.post(
         f"/api/v1/operator/products/{product_id}/skus",
         headers=headers,
@@ -283,6 +286,8 @@ async def _add_spu_attr(
     attr_value_zh: str | None = None,
     value_type: str = "text",
     sort_order: int = 0,
+    sku_id: int | None = None,
+    selectable: bool = False,
 ):
     """直接往 product_attrs 表插属性。
 
@@ -292,6 +297,7 @@ async def _add_spu_attr(
     from app.db.models.product_attr import ProductAttr
     attr = ProductAttr(
         product_id=product_id,
+        sku_id=sku_id,
         attr_key_en=attr_key,
         attr_value_en=attr_value,
         attr_group=attr_group,
@@ -299,6 +305,7 @@ async def _add_spu_attr(
         attr_value_zh=attr_value_zh,
         value_type=value_type,
         sort_order=sort_order,
+        selectable=selectable,
         source_lang="en",
     )
     db_session.add(attr)
@@ -370,6 +377,56 @@ async def test_public_detail_i18n_zh(client: AsyncClient, db_session):
     item = key_group["items"][0]
     assert item["key"] == "材质"
     assert item["values"][0]["value"] == "铝合金"
+
+
+@pytest.mark.asyncio
+async def test_public_detail_variant_skus_matrix_is_stable_and_localized(client: AsyncClient, db_session):
+    """买方详情下发 active SKU 矩阵:英文键值用于提交,本地化键值用于展示,不暴露完整 skus。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-VAR-MATRIX")
+    sku_a = await _create_test_sku(client, headers, pid, "PUB-VAR-MATRIX-A", is_default=True)
+    sku_b = await _create_test_sku(client, headers, pid, "PUB-VAR-MATRIX-B", is_default=False)
+    await _upload_test_image(client, headers, pid)
+
+    await _add_spu_attr(
+        db_session, pid, "Color", "Red",
+        attr_key_zh="颜色", attr_value_zh="红色",
+        sort_order=1, sku_id=sku_a, selectable=True,
+    )
+    await _add_spu_attr(
+        db_session, pid, "Size", "Small",
+        attr_key_zh="尺寸", attr_value_zh="小号",
+        sort_order=2, sku_id=sku_a, selectable=True,
+    )
+    await _add_spu_attr(
+        db_session, pid, "Color", "Blue",
+        attr_key_zh="颜色", attr_value_zh="蓝色",
+        sort_order=1, sku_id=sku_b, selectable=True,
+    )
+    await _add_spu_attr(
+        db_session, pid, "Size", "Large",
+        attr_key_zh="尺寸", attr_value_zh="大号",
+        sort_order=2, sku_id=sku_b, selectable=True,
+    )
+
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+
+    r = await client.get(f"/api/v1/products/{pid}", headers={"Accept-Language": "zh"})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert "skus" not in data
+    assert len(data["variant_skus"]) == 2
+
+    default = next(s for s in data["variant_skus"] if s["is_default"])
+    assert default["sku_id"] == sku_a
+    assert default["attributes"] == [
+        {"attr_name": "Color", "value": "Red", "display_name": "颜色", "display_value": "红色"},
+        {"attr_name": "Size", "value": "Small", "display_name": "尺寸", "display_value": "小号"},
+    ]
 
 
 # ── 运营 SPU CRUD ────────────────────────────────────────

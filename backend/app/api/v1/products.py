@@ -19,6 +19,7 @@ from app.core.i18n import get_localized
 from app.core.locale import get_current_locale
 from app.db.models.product import ProductStatus, ProductVisibility
 from app.db.models.product_image import ImageType
+from app.db.models.product_sku import SkuStatus
 from app.db.session import get_db
 from app.schemas.product import (
     AttrGroup,
@@ -27,6 +28,8 @@ from app.schemas.product import (
     ProductImageSchema,
     ProductPublic,
     ProductPublicDetail,
+    VariantSkuAttr,
+    VariantSkuOption,
 )
 from app.services import product as product_svc
 from app.services._buyer_utils import thumb_url_from_image_key
@@ -175,6 +178,37 @@ def _localized_attr(attr, field: str, locale: str) -> str:
     """属性字段 i18n:统一走 get_localized,列名已规范化为 {field}_{locale}。"""
     from app.core.i18n import get_localized
     return get_localized(attr, field)
+
+
+def _build_variant_skus(product) -> list[dict]:
+    """ACTIVE SKU 规格矩阵:交易用英文键值 + 展示用本地化键值,不暴露价格。"""
+    attrs_by_sku: dict[int, list] = {}
+    for attr in product.attrs or []:
+        if attr.sku_id is not None and getattr(attr, "selectable", False):
+            attrs_by_sku.setdefault(attr.sku_id, []).append(attr)
+
+    result = []
+    for sku in product.skus or []:
+        if sku.status != SkuStatus.ACTIVE or getattr(sku, "deleted_at", None) is not None:
+            continue
+        attrs = sorted(attrs_by_sku.get(sku.id, []), key=lambda a: (a.sort_order or 0, a.attr_key_en or ""))
+        result.append(
+            VariantSkuOption(
+                sku_id=sku.id,
+                is_default=bool(getattr(sku, "is_default", False)),
+                attributes=[
+                    VariantSkuAttr(
+                        attr_name=a.attr_key_en,
+                        value=a.attr_value_en,
+                        display_name=_localized_attr(a, "attr_key", ""),
+                        display_value=_localized_attr(a, "attr_value", ""),
+                    )
+                    for a in attrs
+                    if a.attr_key_en and a.attr_value_en
+                ],
+            ).model_dump()
+        )
+    return result
 
 
 def _img_to_dict(img) -> dict:
@@ -396,6 +430,7 @@ async def get_product(
         attribute_groups=_build_attribute_groups(spu_attrs, locale),
         images=all_images,
         default_variant_display=default_sku_variant_display(p),
+        variant_skus=_build_variant_skus(p),
     ).model_dump()
 
     # 买方行为埋点: VIEW_PRODUCT（游客也记录，按 session_id 归属）

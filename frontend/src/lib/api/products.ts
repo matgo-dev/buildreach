@@ -113,6 +113,19 @@ export interface AttrGroup {
   items: AttrItem[];
 }
 
+export interface VariantSkuAttr {
+  attr_name: string;
+  value: string;
+  display_name: string;
+  display_value: string;
+}
+
+export interface VariantSkuOption {
+  sku_id: number;
+  is_default: boolean;
+  attributes: VariantSkuAttr[];
+}
+
 export interface ProductPublicDetail {
   id: number;
   spu_code: string;
@@ -136,6 +149,8 @@ export interface ProductPublicDetail {
   images: ProductImage[];
   // 默认 SKU 的规格展示串(与 cart/RFQ 的 variant_display 同口径);简单商品为 null。
   default_variant_display?: string | null;
+  /** RFQ 添加弹窗用:ACTIVE SKU 的可选规格矩阵,不含价格/供应商 */
+  variant_skus?: VariantSkuOption[];
   // 兼容字段:买方 API 已不返回,RFQ 模块仍引用(后续迁移到运营 API)
   skus?: SkuPublic[];
   attributes?: ProductAttr[];

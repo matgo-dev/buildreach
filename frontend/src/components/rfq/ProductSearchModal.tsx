@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Search, X, MapPin, Package, ChevronDown, Check, Plus } from "lucide-react";
 
 import { imageUrl } from "@/lib/env";
-import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
+import { listProducts, getProduct, type ProductPublic, type VariantSkuAttr, type VariantSkuOption } from "@/lib/api/products";
 
 /** 买家询价"添加商品"选中项(中性形状,各页自行适配为 EditItem/ManualItem) */
 export interface PickedProduct {
   product_id: number;
   selected_variants: Array<{ attr_name: string; value: string }>;
+  sku_id?: number | null;
   product_name: string;
   variant_display: string;
   unit: string;
@@ -36,13 +37,20 @@ export function buildVariantDisplay(
   return parts.join(" / ") || "—";
 }
 
+interface VariantAxisValue {
+  value: string;
+  label: string;
+}
+
 interface VariantAxis {
   key: string;
-  values: string[];
+  label: string;
+  values: VariantAxisValue[];
 }
 
 interface VariantData {
   axes: VariantAxis[];
+  skus: VariantSkuOption[];
   unit: string;
   loading: boolean;
 }
@@ -51,6 +59,38 @@ const PAGE_SIZE = 20;
 
 // mall 列表回 has_variants;zone 列表回 sku_count —— 两者兼容
 const hasVariants = (p: ProductPublic) => p.has_variants ?? (p.sku_count ?? 0) > 1;
+
+const variantAttrsOf = (sku: VariantSkuOption): Array<{ attr_name: string; value: string }> =>
+  sku.attributes.map((a) => ({ attr_name: a.attr_name, value: a.value }));
+
+const variantDisplayOf = (attrs: VariantSkuAttr[]): string => {
+  const parts = attrs.map((a) => a.display_value || a.value).filter(Boolean);
+  return parts.join(" / ") || "—";
+};
+
+const attrMapOf = (sku: VariantSkuOption): Record<string, string> =>
+  Object.fromEntries(sku.attributes.map((a) => [a.attr_name, a.value]));
+
+const buildVariantAxes = (skus: VariantSkuOption[]): VariantAxis[] => {
+  const axisMap = new Map<string, { label: string; values: Map<string, string> }>();
+  for (const sku of skus) {
+    for (const attr of sku.attributes) {
+      if (!attr.attr_name || !attr.value) continue;
+      if (!axisMap.has(attr.attr_name)) {
+        axisMap.set(attr.attr_name, {
+          label: attr.display_name || attr.attr_name,
+          values: new Map(),
+        });
+      }
+      axisMap.get(attr.attr_name)!.values.set(attr.value, attr.display_value || attr.value);
+    }
+  }
+  return Array.from(axisMap.entries()).map(([key, axis]) => ({
+    key,
+    label: axis.label,
+    values: Array.from(axis.values.entries()).map(([value, label]) => ({ value, label })),
+  }));
+};
 
 export default function ProductSearchModal({
   open,
@@ -136,23 +176,17 @@ export default function ProductSearchModal({
       }
       setExpandedId(p.id);
       if (variantMap[p.id]) return;
-      setVariantMap((prev) => ({ ...prev, [p.id]: { axes: [], unit: p.unit || "PCS", loading: true } }));
+      setVariantMap((prev) => ({ ...prev, [p.id]: { axes: [], skus: [], unit: p.unit || "PCS", loading: true } }));
       try {
         const detail = await getProduct(p.id);
-        const axes: VariantAxis[] = [];
-        for (const group of detail.attribute_groups ?? []) {
-          for (const item of group.items ?? []) {
-            if (item.selectable && item.values.length > 0) {
-              axes.push({ key: item.key, values: item.values.map((v) => v.value) });
-            }
-          }
-        }
+        const skus = detail.variant_skus ?? [];
+        const axes = buildVariantAxes(skus);
         setVariantMap((prev) => ({
           ...prev,
-          [p.id]: { axes, unit: detail.unit || p.unit || "PCS", loading: false },
+          [p.id]: { axes, skus, unit: detail.unit || p.unit || "PCS", loading: false },
         }));
       } catch {
-        setVariantMap((prev) => ({ ...prev, [p.id]: { axes: [], unit: p.unit || "PCS", loading: false } }));
+        setVariantMap((prev) => ({ ...prev, [p.id]: { axes: [], skus: [], unit: p.unit || "PCS", loading: false } }));
       }
     },
     [expandedId, variantMap],
@@ -172,14 +206,49 @@ export default function ProductSearchModal({
     [axisSel],
   );
 
+  const selectedSkuOf = useCallback(
+    (data: VariantData | undefined, productId: number): VariantSkuOption | null => {
+      if (!data || data.axes.length === 0) return null;
+      const sel = axisSel[productId] ?? {};
+      if (data.axes.some((axis) => !sel[axis.key])) return null;
+      return data.skus.find((sku) => {
+        const attrs = attrMapOf(sku);
+        return data.axes.every((axis) => attrs[axis.key] === sel[axis.key]);
+      }) ?? null;
+    },
+    [axisSel],
+  );
+
+  const canPick = useCallback(
+    (data: VariantData, productId: number, axisKey: string, value: string): boolean => {
+      const current = axisSel[productId] ?? {};
+      return data.skus.some((sku) => {
+        const attrs = attrMapOf(sku);
+        if (attrs[axisKey] !== value) return false;
+        return Object.entries(current).every(([key, selected]) => {
+          if (!selected || key === axisKey) return true;
+          return attrs[key] === selected;
+        });
+      });
+    },
+    [axisSel],
+  );
+
   // 加入(数量默认 1,加进清单后在数量列改)
   const emit = useCallback(
-    (p: ProductPublic, variants: Array<{ attr_name: string; value: string }>, unit: string) => {
+    (
+      p: ProductPublic,
+      variants: Array<{ attr_name: string; value: string }>,
+      unit: string,
+      skuId?: number | null,
+      variantDisplay?: string,
+    ) => {
       onAdd({
         product_id: p.id,
         selected_variants: variants,
+        sku_id: skuId ?? undefined,
         product_name: p.name,
-        variant_display: variants.length > 0 ? buildVariantDisplay(variants) : "—",
+        variant_display: variantDisplay ?? (variants.length > 0 ? buildVariantDisplay(variants) : "—"),
         unit: unit || p.unit || "PCS",
         quantity: 1,
       });
@@ -250,9 +319,11 @@ export default function ProductSearchModal({
                 const simpleAdded = !variant && existingKeys.has(makeVariantKey(p.id, []));
                 const isExpanded = expandedId === p.id;
                 const data = variantMap[p.id];
-                const picked = variantsOf(p.id);
-                const pickedExists = existingKeys.has(makeVariantKey(p.id, picked));
-                const allAxesPicked = !!data && picked.length === data.axes.length;
+                const selectedSku = selectedSkuOf(data, p.id);
+                const picked = selectedSku ? variantAttrsOf(selectedSku) : variantsOf(p.id);
+                const pickedExists = selectedSku ? existingKeys.has(makeVariantKey(p.id, picked)) : false;
+                const allAxesPicked = !!data && data.axes.length > 0 && !!selectedSku;
+                const canAddPicked = allAxesPicked && !pickedExists;
                 return (
                   <div
                     key={p.id}
@@ -334,22 +405,26 @@ export default function ProductSearchModal({
                           <div className="space-y-3">
                             {data.axes.map((axis) => (
                               <div key={axis.key} className="flex flex-wrap items-center gap-2">
-                                <span className="w-16 shrink-0 text-xs font-medium text-gray-500">{axis.key}</span>
+                                <span className="w-16 shrink-0 text-xs font-medium text-gray-500">{axis.label}</span>
                                 {axis.values.map((v) => {
-                                  const active = (axisSel[p.id] ?? {})[axis.key] === v;
+                                  const active = (axisSel[p.id] ?? {})[axis.key] === v.value;
+                                  const available = active || canPick(data, p.id, axis.key, v.value);
                                   return (
                                     <button
-                                      key={v}
+                                      key={v.value}
                                       type="button"
-                                      onClick={() => pickAxis(p.id, axis.key, v)}
+                                      disabled={!available}
+                                      onClick={() => available && pickAxis(p.id, axis.key, v.value)}
                                       className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition-colors ${
                                         active
                                           ? "border-[#00505a] bg-[#00505a]/10 font-medium text-[#00505a]"
-                                          : "border-gray-200 text-gray-600 hover:border-[#00505a]/40"
+                                          : available
+                                            ? "border-gray-200 text-gray-600 hover:border-[#00505a]/40"
+                                            : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
                                       }`}
                                     >
                                       {active && <Check className="h-3 w-3" />}
-                                      {v}
+                                      {v.label}
                                     </button>
                                   );
                                 })}
@@ -358,10 +433,16 @@ export default function ProductSearchModal({
                             <div className="flex justify-end pt-1">
                               <button
                                 type="button"
-                                disabled={!allAxesPicked || pickedExists}
-                                onClick={() => emit(p, picked, data.unit)}
+                                disabled={!canAddPicked}
+                                onClick={() => selectedSku && emit(
+                                  p,
+                                  picked,
+                                  data.unit,
+                                  selectedSku.sku_id,
+                                  variantDisplayOf(selectedSku.attributes),
+                                )}
                                 className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
-                                  !allAxesPicked || pickedExists
+                                  !canAddPicked
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                     : "bg-[#00505a] text-white hover:bg-[#003f46]"
                                 }`}
@@ -373,20 +454,34 @@ export default function ProductSearchModal({
                           </div>
                         ) : (
                           // has_variants 但无可选轴(异常/纯展示属性):按默认规格加
-                          <div className="flex items-center justify-end">
-                            <button
-                              type="button"
-                              disabled={existingKeys.has(makeVariantKey(p.id, []))}
-                              onClick={() => emit(p, [], data?.unit || p.unit || "PCS")}
-                              className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
-                                existingKeys.has(makeVariantKey(p.id, []))
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  : "bg-[#00505a] text-white hover:bg-[#003f46]"
-                              }`}
-                            >
-                              {existingKeys.has(makeVariantKey(p.id, [])) ? t("alreadyAdded") : t("addProduct")}
-                            </button>
-                          </div>
+                          (() => {
+                            const fallbackSku = data?.skus.find((sku) => sku.is_default) ?? (data?.skus.length === 1 ? data.skus[0] : null);
+                            const fallbackVariants = fallbackSku ? variantAttrsOf(fallbackSku) : [];
+                            const fallbackExists = existingKeys.has(makeVariantKey(p.id, fallbackVariants));
+                            const fallbackDisabled = fallbackExists || (!!data && data.skus.length > 1 && !fallbackSku);
+                            return (
+                              <div className="flex items-center justify-end">
+                                <button
+                                  type="button"
+                                  disabled={fallbackDisabled}
+                                  onClick={() => emit(
+                                    p,
+                                    fallbackVariants,
+                                    data?.unit || p.unit || "PCS",
+                                    fallbackSku?.sku_id,
+                                    fallbackSku ? variantDisplayOf(fallbackSku.attributes) : "—",
+                                  )}
+                                  className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+                                    fallbackDisabled
+                                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                      : "bg-[#00505a] text-white hover:bg-[#003f46]"
+                                  }`}
+                                >
+                                  {fallbackExists ? t("alreadyAdded") : t("addProduct")}
+                                </button>
+                              </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}

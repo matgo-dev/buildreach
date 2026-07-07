@@ -66,6 +66,21 @@ class AttrGroup(BaseModel):
     items: List[AttrItem]
 
 
+class VariantSkuAttr(BaseModel):
+    """买方可选 SKU 规格属性：英文键值用于交易解析，本地化键值用于展示。"""
+    attr_name: str
+    value: str
+    display_name: str
+    display_value: str
+
+
+class VariantSkuOption(BaseModel):
+    """买方可选 SKU 矩阵项，不含价格/供应商等敏感字段。"""
+    sku_id: int
+    is_default: bool = False
+    attributes: List[VariantSkuAttr] = []
+
+
 class ProductAttrCreate(BaseModel):
     attr_key: str
     attr_value: str
@@ -295,6 +310,8 @@ class ProductPublicDetail(BaseModel):
     # 默认 SKU 的规格展示串（与 cart/RFQ 的 variant_display 同口径）；简单商品为 None。
     # 直询预览用：未选规格时交易会解析到 is_default SKU，前端据此显示其规格。
     default_variant_display: str | None = None
+    # RFQ 添加弹窗用：ACTIVE SKU 的可选规格矩阵，只含 sku_id + selectable attrs。
+    variant_skus: List[VariantSkuOption] = []
 
 
 # ---------- 商品(SPU) — 运营（含供应商 + i18n 分列原始数据） ----------

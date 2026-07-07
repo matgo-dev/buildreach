@@ -30,6 +30,7 @@ const CURRENCIES = ["USD", "KES", "CNY"];
 interface EditItem {
   product_id: number;
   selected_variants: Array<{ attr_name: string; value: string }>;
+  sku_id?: number | null;
   product_name: string;
   variant_display: string;
   unit: string;
@@ -81,6 +82,7 @@ function RfqEditContent() {
           rfq.items.map((it) => ({
             product_id: it.product_id,
             selected_variants: it.variant_snapshot ?? [],
+            sku_id: undefined,
             product_name: it.product_name_snapshot ?? "\u2014",
             variant_display: it.variant_display ?? "\u2014",
             unit: it.uom_snapshot ?? "PCS",
@@ -130,7 +132,7 @@ function RfqEditContent() {
   // 构建请求体（排除失效商品行）
   const availableItems = useMemo(() => items.filter((i) => i.product_available), [items]);
   const buildPayload = useCallback(() => ({
-    items: availableItems.map((i) => ({ product_id: i.product_id, selected_variants: i.selected_variants, quantity: i.quantity })),
+    items: availableItems.map((i) => ({ product_id: i.product_id, selected_variants: i.selected_variants, sku_id: i.sku_id, quantity: i.quantity })),
     contact_name: contactName || undefined,
     contact_phone: contactPhone || undefined,
     contact_email: contactEmail || undefined,

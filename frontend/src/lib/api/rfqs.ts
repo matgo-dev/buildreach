@@ -11,6 +11,7 @@ import type { AttachmentPublic } from "./attachments";
 export interface RfqItemInput {
   product_id: number;
   selected_variants?: Array<{ attr_name: string; value: string }>;
+  sku_id?: number | null;
   quantity: number;
   target_unit_price?: number;
   remark?: string;
@@ -203,6 +204,7 @@ export async function editRfqItem(
   itemId: number,
   payload: {
     selected_variants?: Array<{ attr_name: string; value: string }>;
+    sku_id?: number | null;
     quantity?: number;
     target_unit_price?: number;
     remark?: string;

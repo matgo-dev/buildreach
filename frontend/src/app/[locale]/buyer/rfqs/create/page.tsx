@@ -80,6 +80,7 @@ function inferZoneCodeFromReferrer(): string | null {
 interface ManualItem {
   product_id: number;
   selected_variants: Array<{ attr_name: string; value: string }>;
+  sku_id?: number | null;
   product_name: string;
   variant_display: string;
   unit: string;
@@ -575,6 +576,7 @@ function RfqCreateContent() {
         ...availableManualItems.map((m) => ({
           product_id: m.product_id,
           selected_variants: m.selected_variants,
+          sku_id: m.sku_id,
           quantity: m.quantity,
         })),
       ];
