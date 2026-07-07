@@ -1008,6 +1008,7 @@
     "productName": "Product",
     "skuSpec": "Variant",
     "noSpec": "No specific variant",
+    "selectSpec": "Select spec",
     "quantity": "Qty",
     "deliveryPlace": "Delivery Place",
     "deliveryPlaceholder": "e.g. Nairobi, Kenya",

@@ -280,8 +280,17 @@ async def list_products(
             {"category_code": category_code}, request,
         )
 
+    # has_variants:前端据此区分"无规格一键加"与"多规格需选轴"(询价添加弹窗)。
+    # 只暴露布尔,不带回 sku_count/价格,维持买家列表广告牌口径。
+    sku_count_map = await product_svc.batch_active_sku_counts(db, [p.id for p in items])
+    out = []
+    for p in items:
+        d = _to_public(p, main_image_urls=img_map.get(p.id, (None, None)))
+        d["has_variants"] = sku_count_map.get(p.id, 0) > 1
+        out.append(d)
+
     return success({
-        "items": [_to_public(p, main_image_urls=img_map.get(p.id, (None, None))) for p in items],
+        "items": out,
         "total": total,
         "page": page,
         "size": size,

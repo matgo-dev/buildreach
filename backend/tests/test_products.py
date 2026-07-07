@@ -175,11 +175,36 @@ async def test_public_list_billboard_no_price(client: AsyncClient):
     assert "spu_code" in item
     assert "name" in item
     assert "unit" in item
-    # 广告牌模式:无价格/SKU
+    # 广告牌模式:无价格/无原始 SKU 计数
     _REMOVED_LIST_FIELDS = {"price_min", "price_max", "currency",
                             "lead_time_min", "lead_time_max", "sku_count"}
     for field in _REMOVED_LIST_FIELDS:
         assert field not in item, f"Buyer list should not contain '{field}'"
+    # 但暴露布尔 has_variants(询价弹窗按此决定选规格 UI);仅一个默认 SKU → False
+    assert item["has_variants"] is False
+
+
+@pytest.mark.asyncio
+async def test_public_list_has_variants_flag(client: AsyncClient):
+    """买家列表 has_variants:多个 ACTIVE SKU → True,供询价弹窗决定选规格 UI。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-VAR-001")
+    await _create_test_sku(client, headers, pid, "PUB-VAR-SKU-A", is_default=True)
+    await _create_test_sku(client, headers, pid, "PUB-VAR-SKU-B", is_default=False)
+    await _upload_test_image(client, headers, pid)
+
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.get("/api/v1/products?keyword=PUB-VAR-001")
+    assert r.status_code == 200
+    item = next(i for i in r.json()["data"]["items"] if i["spu_code"] == "PUB-VAR-001")
+    assert item["has_variants"] is True
+    assert "sku_count" not in item  # 只暴露布尔,不带回原始计数
 
 
 @pytest.mark.asyncio

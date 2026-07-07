@@ -31,6 +31,8 @@ export interface ProductPublic {
   lead_time_min?: number | null;
   lead_time_max?: number | null;
   sku_count?: number;
+  /** 买家列表:是否有多个可选购变体(询价"添加商品"弹窗据此决定是否需选规格) */
+  has_variants?: boolean;
   /** SPU 英文名,专区列表返回作卡片副标;mall 不返回 */
   name_en?: string | null;
 }

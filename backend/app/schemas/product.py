@@ -260,6 +260,9 @@ class ProductPublic(BaseModel):
     unit: str | None = None
     moq: int | None = None
     moq_unit: str | None = None
+    # 是否有多个可选购变体(ACTIVE SKU>1)。仅暴露布尔,不泄露数量/价格,保持广告牌口径。
+    # 询价"添加商品"弹窗据此区分:无变体→批量勾选加,有变体→展开选规格。变体本身在详情页已公开。
+    has_variants: bool = False
 
 
 class ProductPublicDetail(BaseModel):

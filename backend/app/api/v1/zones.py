@@ -201,26 +201,8 @@ async def list_zone_categories(
     return success([_zone_category_to_public(zc) for zc in categories])
 
 
-async def _batch_active_sku_counts(
-    db: AsyncSession, product_ids: list[int]
-) -> dict[int, int]:
-    """一次聚合查询取每个商品的"规格数"(整页一条 GROUP BY,避免 N+1)。
-
-    口径与交易解析器 resolve_purchase_target 一致:ACTIVE 且未软删的 SKU,
-    即买家真正可选购的变体数。走 ix_product_skus_product_id 索引。
-    """
-    if not product_ids:
-        return {}
-    rows = await db.execute(
-        select(ProductSku.product_id, func.count(ProductSku.id))
-        .where(
-            ProductSku.product_id.in_(product_ids),
-            ProductSku.status == SkuStatus.ACTIVE,
-            ProductSku.deleted_at.is_(None),
-        )
-        .group_by(ProductSku.product_id)
-    )
-    return {pid: cnt for pid, cnt in rows.all()}
+# 规格数口径统一收敛到 product_svc.batch_active_sku_counts(全站唯一来源)
+_batch_active_sku_counts = product_svc.batch_active_sku_counts
 
 
 @router.get("/{zone_code}/products", summary="专区白名单商品列表")

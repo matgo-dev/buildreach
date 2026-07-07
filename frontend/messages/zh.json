@@ -1008,6 +1008,7 @@
     "productName": "商品",
     "skuSpec": "变体规格",
     "noSpec": "无具体规格",
+    "selectSpec": "选规格",
     "quantity": "数量",
     "deliveryPlace": "交货地点",
     "deliveryPlaceholder": "如: Nairobi, Kenya",
