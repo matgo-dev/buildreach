@@ -184,18 +184,18 @@ def _build_variant_skus(product) -> list[dict]:
     """ACTIVE SKU 规格矩阵:交易用英文键值 + 展示用本地化键值,不暴露价格。"""
     attrs_by_sku: dict[int, list] = {}
     for attr in product.attrs or []:
-        if attr.sku_id is not None and getattr(attr, "selectable", False):
+        if attr.sku_id is not None and attr.selectable:
             attrs_by_sku.setdefault(attr.sku_id, []).append(attr)
 
     result = []
     for sku in product.skus or []:
-        if sku.status != SkuStatus.ACTIVE or getattr(sku, "deleted_at", None) is not None:
+        if sku.status != SkuStatus.ACTIVE or sku.deleted_at is not None:
             continue
         attrs = sorted(attrs_by_sku.get(sku.id, []), key=lambda a: (a.sort_order or 0, a.attr_key_en or ""))
         result.append(
             VariantSkuOption(
                 sku_id=sku.id,
-                is_default=bool(getattr(sku, "is_default", False)),
+                is_default=bool(sku.is_default),
                 attributes=[
                     VariantSkuAttr(
                         attr_name=a.attr_key_en,
