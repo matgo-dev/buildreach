@@ -429,6 +429,58 @@ async def test_public_detail_variant_skus_matrix_is_stable_and_localized(client:
     ]
 
 
+@pytest.mark.asyncio
+async def test_public_detail_variant_skus_excludes_nonpurchasable(client: AsyncClient, db_session):
+    """矩阵只含"可购买"变体:软删 / 非 ACTIVE 的 SKU 整条排除,非 selectable 的展示属性也剔除。
+    这三条排除分支若写错,会把买家实际选不到的规格暴露到询价选轴,故各自断言。"""
+    from sqlalchemy import func, update
+    from app.db.models.product_sku import ProductSku, SkuStatus
+
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-VAR-FILTER")
+    sku_ok = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-OK", is_default=True)
+    sku_ok2 = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-OK2", is_default=False)
+    sku_soft = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-SOFT", is_default=False)
+    sku_inact = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-INACT", is_default=False)
+    await _upload_test_image(client, headers, pid)
+
+    # 两条可购买 SKU 的 selectable 轴 + 一条挂在 default 上的非 selectable 展示属性
+    await _add_spu_attr(db_session, pid, "Color", "Red", sort_order=1, sku_id=sku_ok, selectable=True)
+    await _add_spu_attr(db_session, pid, "Material", "Steel", sort_order=2, sku_id=sku_ok, selectable=False)
+    await _add_spu_attr(db_session, pid, "Color", "Blue", sort_order=1, sku_id=sku_ok2, selectable=True)
+    # 软删 / 非 ACTIVE 的 SKU 也各挂一条 selectable 轴,验证是整条 SKU 被排除、而非靠属性缺失
+    await _add_spu_attr(db_session, pid, "Color", "Green", sort_order=1, sku_id=sku_soft, selectable=True)
+    await _add_spu_attr(db_session, pid, "Color", "Black", sort_order=1, sku_id=sku_inact, selectable=True)
+
+    await db_session.execute(
+        update(ProductSku).where(ProductSku.id == sku_soft).values(deleted_at=func.now())
+    )
+    await db_session.execute(
+        update(ProductSku).where(ProductSku.id == sku_inact).values(status=SkuStatus.INACTIVE)
+    )
+    await db_session.flush()
+
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+
+    r = await client.get(f"/api/v1/products/{pid}")
+    assert r.status_code == 200
+    vs = r.json()["data"]["variant_skus"]
+    # 软删 / 非 ACTIVE SKU 不下发
+    assert {s["sku_id"] for s in vs} == {sku_ok, sku_ok2}
+    # 非 selectable 展示属性(Material)不进矩阵:default 只剩 Color 轴
+    default = next(s for s in vs if s["sku_id"] == sku_ok)
+    assert [a["attr_name"] for a in default["attributes"]] == ["Color"]
+
+    # 列表 has_variants 同口径:仅 2 条可购买 → True(软删/非 ACTIVE 不计数)
+    r2 = await client.get("/api/v1/products?keyword=PUB-VAR-FILTER")
+    item = next(i for i in r2.json()["data"]["items"] if i["spu_code"] == "PUB-VAR-FILTER")
+    assert item["has_variants"] is True
+
+
 # ── 运营 SPU CRUD ────────────────────────────────────────
 
 @pytest.mark.asyncio
