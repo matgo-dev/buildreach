@@ -2,9 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, Search, X, MapPin, Package, ChevronDown, Check } from "lucide-react";
+import { Loader2, Search, X, MapPin, Package, ChevronDown, Check, Plus } from "lucide-react";
 
-import { useToast } from "@/components/ui/Toast";
 import { imageUrl } from "@/lib/env";
 import { listProducts, getProduct, type ProductPublic } from "@/lib/api/products";
 
@@ -65,7 +64,6 @@ export default function ProductSearchModal({
   existingKeys: Set<string>;
 }) {
   const t = useTranslations("rfq");
-  const toast = useToast();
 
   const [keyword, setKeyword] = useState("");
   const [products, setProducts] = useState<ProductPublic[]>([]);
@@ -75,25 +73,20 @@ export default function ProductSearchModal({
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // 无规格商品:批量勾选
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   // 多规格商品:展开选轴
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [variantMap, setVariantMap] = useState<Record<number, VariantData>>({});
   const [axisSel, setAxisSel] = useState<Record<number, Record<string, string>>>({});
-  const [expandedQty, setExpandedQty] = useState("1");
 
   const resetAll = useCallback(() => {
     setKeyword("");
     setProducts([]);
     setSearched(false);
-    setSelected(new Set());
     setPage(1);
     setHasMore(false);
     setExpandedId(null);
     setVariantMap({});
     setAxisSel({});
-    setExpandedQty("1");
   }, []);
 
   useEffect(() => {
@@ -142,7 +135,6 @@ export default function ProductSearchModal({
         return;
       }
       setExpandedId(p.id);
-      setExpandedQty("1");
       if (variantMap[p.id]) return;
       setVariantMap((prev) => ({ ...prev, [p.id]: { axes: [], unit: p.unit || "PCS", loading: true } }));
       try {
@@ -180,81 +172,20 @@ export default function ProductSearchModal({
     [axisSel],
   );
 
-  const handleAddVariant = useCallback(
-    (p: ProductPublic) => {
-      const data = variantMap[p.id];
-      const variants = variantsOf(p.id);
-      if (data && variants.length < data.axes.length) {
-        toast.error(t("selectSpec"));
-        return;
-      }
-      const qty = Number(expandedQty);
-      if (!qty || qty <= 0) {
-        toast.error(`${t("quantity")} > 0`);
-        return;
-      }
-      const key = makeVariantKey(p.id, variants);
-      if (existingKeys.has(key)) {
-        toast.error(t("alreadyAdded"));
-        return;
-      }
+  // 加入(数量默认 1,加进清单后在数量列改)
+  const emit = useCallback(
+    (p: ProductPublic, variants: Array<{ attr_name: string; value: string }>, unit: string) => {
       onAdd({
         product_id: p.id,
         selected_variants: variants,
         product_name: p.name,
-        variant_display: buildVariantDisplay(variants),
-        unit: data?.unit || p.unit || "PCS",
-        quantity: qty,
-      });
-      setExpandedId(null);
-    },
-    [variantMap, variantsOf, expandedQty, existingKeys, onAdd, toast, t],
-  );
-
-  const toggleSelect = useCallback((productId: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
-  }, []);
-
-  // 可批量勾选的商品 = 无规格 且 未添加
-  const selectableIds = useMemo(
-    () =>
-      products
-        .filter((p) => !hasVariants(p) && !existingKeys.has(makeVariantKey(p.id, [])))
-        .map((p) => p.id),
-    [products, existingKeys],
-  );
-  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
-  const toggleAll = useCallback(() => {
-    if (allSelected) setSelected(new Set());
-    else setSelected(new Set(selectableIds));
-  }, [allSelected, selectableIds]);
-
-  const handleBatchAdd = useCallback(() => {
-    if (selected.size === 0) {
-      onClose();
-      return;
-    }
-    for (const pid of selected) {
-      const p = products.find((x) => x.id === pid);
-      if (!p) continue;
-      if (existingKeys.has(makeVariantKey(p.id, []))) continue;
-      onAdd({
-        product_id: p.id,
-        selected_variants: [],
-        product_name: p.name,
-        variant_display: "—",
-        unit: p.unit || "PCS",
+        variant_display: variants.length > 0 ? buildVariantDisplay(variants) : "—",
+        unit: unit || p.unit || "PCS",
         quantity: 1,
       });
-    }
-    setSelected(new Set());
-    onClose();
-  }, [selected, products, existingKeys, onAdd, onClose]);
+    },
+    [onAdd],
+  );
 
   if (!open) return null;
 
@@ -300,21 +231,6 @@ export default function ProductSearchModal({
           </div>
         </div>
 
-        {/* 全选栏(仅无规格商品) */}
-        {!searching && products.length > 0 && selectableIds.length > 0 && (
-          <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-2">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleAll}
-              className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]/20 cursor-pointer"
-            />
-            <span className="text-xs text-gray-500">
-              {t("selectAll")}({selectableIds.length})
-            </span>
-          </div>
-        )}
-
         {/* 结果列表 */}
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {searching && (
@@ -331,49 +247,27 @@ export default function ProductSearchModal({
             <div className="space-y-2">
               {products.map((p) => {
                 const variant = hasVariants(p);
-                const alreadyAdded = !variant && existingKeys.has(makeVariantKey(p.id, []));
-                const isSelected = selected.has(p.id);
+                const simpleAdded = !variant && existingKeys.has(makeVariantKey(p.id, []));
                 const isExpanded = expandedId === p.id;
                 const data = variantMap[p.id];
                 const picked = variantsOf(p.id);
-                const pickedKey = makeVariantKey(p.id, picked);
-                const pickedExists = existingKeys.has(pickedKey);
+                const pickedExists = existingKeys.has(makeVariantKey(p.id, picked));
                 const allAxesPicked = !!data && picked.length === data.axes.length;
                 return (
                   <div
                     key={p.id}
                     className={`overflow-hidden rounded-lg border transition-shadow ${
-                      alreadyAdded
+                      simpleAdded
                         ? "border-gray-100 bg-gray-50 opacity-60"
-                        : isSelected || isExpanded
+                        : isExpanded
                           ? "border-[#00505a] bg-[#00505a]/5 shadow-sm"
                           : "border-gray-200 hover:shadow-sm"
                     }`}
                   >
                     <div
-                      onClick={() => {
-                        if (variant) handleExpand(p);
-                        else if (!alreadyAdded) toggleSelect(p.id);
-                      }}
-                      className={`flex gap-3 p-3 ${alreadyAdded ? "cursor-not-allowed" : "cursor-pointer"}`}
+                      onClick={() => variant && handleExpand(p)}
+                      className={`flex gap-3 p-3 ${variant ? "cursor-pointer" : ""}`}
                     >
-                      {/* 勾选框(无规格) / 占位(多规格) */}
-                      <div className="flex shrink-0 items-center">
-                        {variant ? (
-                          <ChevronDown
-                            className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                          />
-                        ) : (
-                          <input
-                            type="checkbox"
-                            checked={alreadyAdded || isSelected}
-                            disabled={alreadyAdded}
-                            onChange={() => !alreadyAdded && toggleSelect(p.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]/20 cursor-pointer disabled:cursor-not-allowed"
-                          />
-                        )}
-                      </div>
                       {/* 商品图 */}
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
                         {p.main_image ? (
@@ -405,23 +299,33 @@ export default function ProductSearchModal({
                           {p.unit && <span>{t("unit")}: {p.unit}</span>}
                         </div>
                       </div>
-                      {/* 右侧标签 */}
+                      {/* 右侧操作 */}
                       <div className="flex shrink-0 items-center">
-                        {alreadyAdded ? (
+                        {simpleAdded ? (
                           <span className="rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-400">
                             {t("alreadyAdded")}
                           </span>
                         ) : variant ? (
-                          <span className="rounded-md border border-[#00505a]/30 px-3 py-1 text-xs font-medium text-[#00505a]">
+                          <span className="inline-flex items-center gap-1 rounded-md border border-[#00505a]/30 px-3 py-1 text-xs font-medium text-[#00505a]">
                             {t("selectSpec")}
+                            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                           </span>
-                        ) : null}
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => emit(p, [], p.unit || "PCS")}
+                            className="inline-flex items-center gap-1 rounded-md bg-[#00505a] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#003f46]"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            {t("addProduct")}
+                          </button>
+                        )}
                       </div>
                     </div>
 
                     {/* 展开:选规格面板 */}
                     {variant && isExpanded && (
-                      <div className="border-t border-gray-100 bg-white px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="border-t border-gray-100 bg-white px-4 py-3">
                         {data?.loading ? (
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-5 w-5 animate-spin text-[#00505a]" />
@@ -451,40 +355,30 @@ export default function ProductSearchModal({
                                 })}
                               </div>
                             ))}
-                            <div className="flex items-center justify-between pt-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-500">{t("quantity")}</span>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={expandedQty}
-                                  onChange={(e) => setExpandedQty(e.target.value)}
-                                  className="h-8 w-20 rounded border border-gray-200 px-2 text-right text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
-                                />
-                                <span className="text-xs text-gray-400">{data.unit}</span>
-                              </div>
+                            <div className="flex justify-end pt-1">
                               <button
                                 type="button"
                                 disabled={!allAxesPicked || pickedExists}
-                                onClick={() => handleAddVariant(p)}
-                                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+                                onClick={() => emit(p, picked, data.unit)}
+                                className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
                                   !allAxesPicked || pickedExists
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                     : "bg-[#00505a] text-white hover:bg-[#003f46]"
                                 }`}
                               >
+                                {!pickedExists && <Plus className="h-3.5 w-3.5" />}
                                 {pickedExists ? t("alreadyAdded") : t("addProduct")}
                               </button>
                             </div>
                           </div>
                         ) : (
-                          // sku_count>1 但无可选轴(异常/纯展示属性):按无规格默认加
+                          // has_variants 但无可选轴(异常/纯展示属性):按默认规格加
                           <div className="flex items-center justify-end">
                             <button
                               type="button"
                               disabled={existingKeys.has(makeVariantKey(p.id, []))}
-                              onClick={() => handleAddVariant(p)}
-                              className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+                              onClick={() => emit(p, [], data?.unit || p.unit || "PCS")}
+                              className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
                                 existingKeys.has(makeVariantKey(p.id, []))
                                   ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                   : "bg-[#00505a] text-white hover:bg-[#003f46]"
@@ -517,17 +411,14 @@ export default function ProductSearchModal({
           )}
         </div>
 
-        {/* 底部:批量添加无规格商品 */}
-        <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
-          <span className="text-sm text-gray-500">
-            {selected.size > 0 && t("selectedCount", { count: selected.size })}
-          </span>
+        {/* 底部:完成 */}
+        <div className="flex items-center justify-end border-t border-gray-200 px-5 py-3">
           <button
             type="button"
-            onClick={handleBatchAdd}
+            onClick={onClose}
             className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
           >
-            {selected.size > 0 ? t("addSelected", { count: selected.size }) : t("doneSelection")}
+            {t("doneSelection")}
           </button>
         </div>
       </div>
