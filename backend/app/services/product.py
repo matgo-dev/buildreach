@@ -564,6 +564,28 @@ async def _batch_main_images(
     }
 
 
+async def batch_active_sku_counts(
+    db: AsyncSession, product_ids: list[int],
+) -> dict[int, int]:
+    """一次聚合查询取每个商品的"规格数"(整页一条 GROUP BY,避免 N+1)。
+
+    口径与交易解析器 resolve_purchase_target 一致:ACTIVE 且未软删的 SKU,
+    即买家真正可选购的变体数。是全站"规格数"的唯一口径来源(列表/专区共用)。
+    """
+    if not product_ids:
+        return {}
+    rows = await db.execute(
+        select(ProductSku.product_id, func.count(ProductSku.id))
+        .where(
+            ProductSku.product_id.in_(product_ids),
+            ProductSku.status == SkuStatus.ACTIVE,
+            ProductSku.deleted_at.is_(None),
+        )
+        .group_by(ProductSku.product_id)
+    )
+    return {pid: cnt for pid, cnt in rows.all()}
+
+
 def _build_keyword_filter(keyword: str):
     """keyword 搜索过滤：名称/品牌全语言匹配 + 型号 + SPU 编码。"""
     kw = f"%{keyword}%"

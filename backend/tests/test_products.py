@@ -81,6 +81,7 @@ async def _create_test_sku(
     client: AsyncClient, headers: dict, product_id: int,
     sku_code: str = "TEST-SKU-001", is_default: bool = True,
     price_tiers: list | None = None,
+    attributes: list | None = None,
 ) -> int:
     payload = {
         "sku_code": sku_code,
@@ -95,6 +96,8 @@ async def _create_test_sku(
     }
     if price_tiers is not None:
         payload["price_tiers"] = price_tiers
+    if attributes is not None:
+        payload["attributes"] = attributes
     r = await client.post(
         f"/api/v1/operator/products/{product_id}/skus",
         headers=headers,
@@ -175,11 +178,36 @@ async def test_public_list_billboard_no_price(client: AsyncClient):
     assert "spu_code" in item
     assert "name" in item
     assert "unit" in item
-    # 广告牌模式:无价格/SKU
+    # 广告牌模式:无价格/无原始 SKU 计数
     _REMOVED_LIST_FIELDS = {"price_min", "price_max", "currency",
                             "lead_time_min", "lead_time_max", "sku_count"}
     for field in _REMOVED_LIST_FIELDS:
         assert field not in item, f"Buyer list should not contain '{field}'"
+    # 但暴露布尔 has_variants(询价弹窗按此决定选规格 UI);仅一个默认 SKU → False
+    assert item["has_variants"] is False
+
+
+@pytest.mark.asyncio
+async def test_public_list_has_variants_flag(client: AsyncClient):
+    """买家列表 has_variants:多个 ACTIVE SKU → True,供询价弹窗决定选规格 UI。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-VAR-001")
+    await _create_test_sku(client, headers, pid, "PUB-VAR-SKU-A", is_default=True)
+    await _create_test_sku(client, headers, pid, "PUB-VAR-SKU-B", is_default=False)
+    await _upload_test_image(client, headers, pid)
+
+    r = await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.get("/api/v1/products?keyword=PUB-VAR-001")
+    assert r.status_code == 200
+    item = next(i for i in r.json()["data"]["items"] if i["spu_code"] == "PUB-VAR-001")
+    assert item["has_variants"] is True
+    assert "sku_count" not in item  # 只暴露布尔,不带回原始计数
 
 
 @pytest.mark.asyncio
@@ -258,6 +286,8 @@ async def _add_spu_attr(
     attr_value_zh: str | None = None,
     value_type: str = "text",
     sort_order: int = 0,
+    sku_id: int | None = None,
+    selectable: bool = False,
 ):
     """直接往 product_attrs 表插属性。
 
@@ -267,6 +297,7 @@ async def _add_spu_attr(
     from app.db.models.product_attr import ProductAttr
     attr = ProductAttr(
         product_id=product_id,
+        sku_id=sku_id,
         attr_key_en=attr_key,
         attr_value_en=attr_value,
         attr_group=attr_group,
@@ -274,6 +305,7 @@ async def _add_spu_attr(
         attr_value_zh=attr_value_zh,
         value_type=value_type,
         sort_order=sort_order,
+        selectable=selectable,
         source_lang="en",
     )
     db_session.add(attr)
@@ -345,6 +377,108 @@ async def test_public_detail_i18n_zh(client: AsyncClient, db_session):
     item = key_group["items"][0]
     assert item["key"] == "材质"
     assert item["values"][0]["value"] == "铝合金"
+
+
+@pytest.mark.asyncio
+async def test_public_detail_variant_skus_matrix_is_stable_and_localized(client: AsyncClient, db_session):
+    """买方详情下发 active SKU 矩阵:英文键值用于提交,本地化键值用于展示,不暴露完整 skus。"""
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-VAR-MATRIX")
+    sku_a = await _create_test_sku(client, headers, pid, "PUB-VAR-MATRIX-A", is_default=True)
+    sku_b = await _create_test_sku(client, headers, pid, "PUB-VAR-MATRIX-B", is_default=False)
+    await _upload_test_image(client, headers, pid)
+
+    await _add_spu_attr(
+        db_session, pid, "Color", "Red",
+        attr_key_zh="颜色", attr_value_zh="红色",
+        sort_order=1, sku_id=sku_a, selectable=True,
+    )
+    await _add_spu_attr(
+        db_session, pid, "Size", "Small",
+        attr_key_zh="尺寸", attr_value_zh="小号",
+        sort_order=2, sku_id=sku_a, selectable=True,
+    )
+    await _add_spu_attr(
+        db_session, pid, "Color", "Blue",
+        attr_key_zh="颜色", attr_value_zh="蓝色",
+        sort_order=1, sku_id=sku_b, selectable=True,
+    )
+    await _add_spu_attr(
+        db_session, pid, "Size", "Large",
+        attr_key_zh="尺寸", attr_value_zh="大号",
+        sort_order=2, sku_id=sku_b, selectable=True,
+    )
+
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+
+    r = await client.get(f"/api/v1/products/{pid}", headers={"Accept-Language": "zh"})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert "skus" not in data
+    assert len(data["variant_skus"]) == 2
+
+    default = next(s for s in data["variant_skus"] if s["is_default"])
+    assert default["sku_id"] == sku_a
+    assert default["attributes"] == [
+        {"attr_name": "Color", "value": "Red", "display_name": "颜色", "display_value": "红色"},
+        {"attr_name": "Size", "value": "Small", "display_name": "尺寸", "display_value": "小号"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_public_detail_variant_skus_excludes_nonpurchasable(client: AsyncClient, db_session):
+    """矩阵只含"可购买"变体:软删 / 非 ACTIVE 的 SKU 整条排除,非 selectable 的展示属性也剔除。
+    这三条排除分支若写错,会把买家实际选不到的规格暴露到询价选轴,故各自断言。"""
+    from sqlalchemy import func, update
+    from app.db.models.product_sku import ProductSku, SkuStatus
+
+    headers = await _login_operator(client)
+    cat_code = await _get_first_category_code(client)
+    pid = await _create_test_product(client, headers, cat_code, "PUB-VAR-FILTER")
+    sku_ok = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-OK", is_default=True)
+    sku_ok2 = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-OK2", is_default=False)
+    sku_soft = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-SOFT", is_default=False)
+    sku_inact = await _create_test_sku(client, headers, pid, "PUB-VAR-FILTER-INACT", is_default=False)
+    await _upload_test_image(client, headers, pid)
+
+    # 两条可购买 SKU 的 selectable 轴 + 一条挂在 default 上的非 selectable 展示属性
+    await _add_spu_attr(db_session, pid, "Color", "Red", sort_order=1, sku_id=sku_ok, selectable=True)
+    await _add_spu_attr(db_session, pid, "Material", "Steel", sort_order=2, sku_id=sku_ok, selectable=False)
+    await _add_spu_attr(db_session, pid, "Color", "Blue", sort_order=1, sku_id=sku_ok2, selectable=True)
+    # 软删 / 非 ACTIVE 的 SKU 也各挂一条 selectable 轴,验证是整条 SKU 被排除、而非靠属性缺失
+    await _add_spu_attr(db_session, pid, "Color", "Green", sort_order=1, sku_id=sku_soft, selectable=True)
+    await _add_spu_attr(db_session, pid, "Color", "Black", sort_order=1, sku_id=sku_inact, selectable=True)
+
+    await db_session.execute(
+        update(ProductSku).where(ProductSku.id == sku_soft).values(deleted_at=func.now())
+    )
+    await db_session.execute(
+        update(ProductSku).where(ProductSku.id == sku_inact).values(status=SkuStatus.INACTIVE)
+    )
+    await db_session.flush()
+
+    await client.patch(
+        f"/api/v1/operator/products/{pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+
+    r = await client.get(f"/api/v1/products/{pid}")
+    assert r.status_code == 200
+    vs = r.json()["data"]["variant_skus"]
+    # 软删 / 非 ACTIVE SKU 不下发
+    assert {s["sku_id"] for s in vs} == {sku_ok, sku_ok2}
+    # 非 selectable 展示属性(Material)不进矩阵:default 只剩 Color 轴
+    default = next(s for s in vs if s["sku_id"] == sku_ok)
+    assert [a["attr_name"] for a in default["attributes"]] == ["Color"]
+
+    # 列表 has_variants 同口径:仅 2 条可购买 → True(软删/非 ACTIVE 不计数)
+    r2 = await client.get("/api/v1/products?keyword=PUB-VAR-FILTER")
+    item = next(i for i in r2.json()["data"]["items"] if i["spu_code"] == "PUB-VAR-FILTER")
+    assert item["has_variants"] is True
 
 
 # ── 运营 SPU CRUD ────────────────────────────────────────

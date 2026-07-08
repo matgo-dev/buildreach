@@ -19,6 +19,7 @@ from app.core.i18n import get_localized
 from app.core.locale import get_current_locale
 from app.db.models.product import ProductStatus, ProductVisibility
 from app.db.models.product_image import ImageType
+from app.db.models.product_sku import SkuStatus
 from app.db.session import get_db
 from app.schemas.product import (
     AttrGroup,
@@ -27,6 +28,8 @@ from app.schemas.product import (
     ProductImageSchema,
     ProductPublic,
     ProductPublicDetail,
+    VariantSkuAttr,
+    VariantSkuOption,
 )
 from app.services import product as product_svc
 from app.services._buyer_utils import thumb_url_from_image_key
@@ -177,6 +180,37 @@ def _localized_attr(attr, field: str, locale: str) -> str:
     return get_localized(attr, field)
 
 
+def _build_variant_skus(product) -> list[dict]:
+    """ACTIVE SKU 规格矩阵:交易用英文键值 + 展示用本地化键值,不暴露价格。"""
+    attrs_by_sku: dict[int, list] = {}
+    for attr in product.attrs or []:
+        if attr.sku_id is not None and attr.selectable:
+            attrs_by_sku.setdefault(attr.sku_id, []).append(attr)
+
+    result = []
+    for sku in product.skus or []:
+        if sku.status != SkuStatus.ACTIVE or sku.deleted_at is not None:
+            continue
+        attrs = sorted(attrs_by_sku.get(sku.id, []), key=lambda a: (a.sort_order or 0, a.attr_key_en or ""))
+        result.append(
+            VariantSkuOption(
+                sku_id=sku.id,
+                is_default=bool(sku.is_default),
+                attributes=[
+                    VariantSkuAttr(
+                        attr_name=a.attr_key_en,
+                        value=a.attr_value_en,
+                        display_name=_localized_attr(a, "attr_key", ""),
+                        display_value=_localized_attr(a, "attr_value", ""),
+                    )
+                    for a in attrs
+                    if a.attr_key_en and a.attr_value_en
+                ],
+            ).model_dump()
+        )
+    return result
+
+
 def _img_to_dict(img) -> dict:
     d = ProductImageSchema.model_validate(img).model_dump()
     d["full_url"] = f"{settings.IMAGE_PATH_PREFIX}/{img.image_key}"
@@ -280,8 +314,17 @@ async def list_products(
             {"category_code": category_code}, request,
         )
 
+    # has_variants:前端据此区分"无规格一键加"与"多规格需选轴"(询价添加弹窗)。
+    # 只暴露布尔,不带回 sku_count/价格,维持买家列表广告牌口径。
+    sku_count_map = await product_svc.batch_active_sku_counts(db, [p.id for p in items])
+    out = []
+    for p in items:
+        d = _to_public(p, main_image_urls=img_map.get(p.id, (None, None)))
+        d["has_variants"] = sku_count_map.get(p.id, 0) > 1
+        out.append(d)
+
     return success({
-        "items": [_to_public(p, main_image_urls=img_map.get(p.id, (None, None))) for p in items],
+        "items": out,
         "total": total,
         "page": page,
         "size": size,
@@ -387,6 +430,7 @@ async def get_product(
         attribute_groups=_build_attribute_groups(spu_attrs, locale),
         images=all_images,
         default_variant_display=default_sku_variant_display(p),
+        variant_skus=_build_variant_skus(p),
     ).model_dump()
 
     # 买方行为埋点: VIEW_PRODUCT（游客也记录，按 session_id 归属）
