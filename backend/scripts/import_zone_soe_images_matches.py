@@ -54,6 +54,14 @@ matched_category_path。若 material_name 在央企材料表里重名,必须补 
     python scripts/import_zone_soe_images_matches.py --source-dir /path/to/run --dry-run
     python scripts/import_zone_soe_images_matches.py --source-dir /path/to/run --commit
     python scripts/import_zone_soe_images_matches.py --report
+
+台账路径:默认写仓库 data/zone_import/soe_image_refresh_ledger.csv(本地方便)。
+生产用宿主机持久路径,避免容器重部署丢台账——bind mount 一个 host 目录进容器,
+再用 --ledger-path 或 env ZONE_SOE_LEDGER_PATH 指过去,例如:
+
+    docker run ... -v /opt/buildreach/data/zone_ledger:/ledger ... \
+      python scripts/import_zone_soe_images_matches.py --source-dir /src --commit \
+      --ledger-path /ledger/soe_image_refresh_ledger.csv
 """
 from __future__ import annotations
 
@@ -541,19 +549,30 @@ def make_thumbnail(original_path: Path) -> bool:
 
 # ----------------------------- 台账 -----------------------------
 
-def _load_ledger() -> dict[str, dict]:
-    if not LEDGER_PATH.exists():
+def _resolve_ledger_path(cli_path: Path | None) -> Path:
+    """台账路径优先级:CLI --ledger-path > env ZONE_SOE_LEDGER_PATH > 仓库默认。
+
+    生产建议指向 OVH 宿主机持久路径(bind mount),避免容器重部署丢台账。
+    """
+    if cli_path is not None:
+        return cli_path
+    env = os.environ.get("ZONE_SOE_LEDGER_PATH")
+    return Path(env) if env else LEDGER_PATH
+
+
+def _load_ledger(ledger_path: Path) -> dict[str, dict]:
+    if not ledger_path.exists():
         return {}
-    with LEDGER_PATH.open(encoding="utf-8", newline="") as f:
+    with ledger_path.open(encoding="utf-8", newline="") as f:
         return {r["spu_code"]: r for r in csv.DictReader(f) if r.get("spu_code")}
 
 
-def _upsert_ledger(new_rows: list[dict]) -> None:
-    ledger = _load_ledger()
+def _upsert_ledger(ledger_path: Path, new_rows: list[dict]) -> None:
+    ledger = _load_ledger(ledger_path)
     for r in new_rows:
         ledger[r["spu_code"]] = r
-    LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with LEDGER_PATH.open("w", encoding="utf-8", newline="") as f:
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    with ledger_path.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=LEDGER_FIELDS)
         w.writeheader()
         for spu in sorted(ledger):
@@ -563,7 +582,7 @@ def _upsert_ledger(new_rows: list[dict]) -> None:
 # ----------------------------- 主流程 -----------------------------
 
 async def run_import(
-    db: AsyncSession, source_dir: Path, zone_code: str, dry_run: bool, min_cover_side: int
+    db: AsyncSession, source_dir: Path, zone_code: str, dry_run: bool, min_cover_side: int, ledger_path: Path
 ) -> dict:
     stats: collections.Counter = collections.Counter()
     rows = load_input_rows(source_dir)
@@ -700,7 +719,7 @@ async def run_import(
 
     if not dry_run:
         await db.flush()
-        _upsert_ledger(ledger_rows)
+        _upsert_ledger(ledger_path, ledger_rows)
 
     return {
         "stats": dict(stats),
@@ -711,9 +730,9 @@ async def run_import(
     }
 
 
-async def run_report(db: AsyncSession, zone_code: str) -> dict:
+async def run_report(db: AsyncSession, zone_code: str, ledger_path: Path) -> dict:
     zone_products = await _zone_products_named(db, zone_code)
-    ledger = _load_ledger()
+    ledger = _load_ledger(ledger_path)
     updated, held, pending = [], [], []
     for spu, name in sorted(zone_products.items()):
         row = ledger.get(spu)
@@ -734,7 +753,7 @@ async def run_report(db: AsyncSession, zone_code: str) -> dict:
     }
 
 
-def _print_import(source_dir: Path, zone_code: str, dry_run: bool, min_cover_side: int, result: dict) -> None:
+def _print_import(source_dir: Path, zone_code: str, dry_run: bool, min_cover_side: int, ledger_path: Path, result: dict) -> None:
     s = result["stats"]
     print("=" * 72)
     print(f"央企专区图片+分类更新 {'[DRY-RUN 未落库/未拷图/未写台账]' if dry_run else '[已落库 COMMIT]'}")
@@ -771,12 +790,13 @@ def _print_import(source_dir: Path, zone_code: str, dry_run: bool, min_cover_sid
         for item in result["unresolved"][:20]:
             print(f"  - {item}")
     if dry_run:
-        print("\n这是干跑,数据库/文件系统/台账未改动。确认无误后用 --commit 落库。")
+        print(f"\n台账路径(未写):          {ledger_path}")
+        print("这是干跑,数据库/文件系统/台账未改动。确认无误后用 --commit 落库。")
     else:
-        print(f"\n台账已更新:               {LEDGER_PATH}")
+        print(f"\n台账已更新:               {ledger_path}")
 
 
-def _print_report(zone_code: str, rep: dict) -> None:
+def _print_report(zone_code: str, ledger_path: Path, rep: dict) -> None:
     print("=" * 72)
     print(f"央企专区图片+分类更新台账报告  zone={zone_code}")
     print("=" * 72)
@@ -794,10 +814,10 @@ def _print_report(zone_code: str, rep: dict) -> None:
             print(f"  - {spu}  {name}")
     if rep["stray"]:
         print(f"\n⚠️ 台账有但已不在专区({len(rep['stray'])}):{rep['stray'][:5]}")
-    print(f"\n台账文件:                 {LEDGER_PATH}")
+    print(f"\n台账文件:                 {ledger_path}")
 
 
-async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover_side: int) -> None:
+async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover_side: int, ledger_path: Path) -> None:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.core.config import settings
@@ -822,16 +842,16 @@ async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover
     Session = async_sessionmaker(engine, expire_on_commit=False)
     async with Session() as db:
         if mode == "report":
-            rep = await run_report(db, zone_code)
-            _print_report(zone_code, rep)
+            rep = await run_report(db, zone_code, ledger_path)
+            _print_report(zone_code, ledger_path, rep)
         else:
             assert source_dir is not None
-            result = await run_import(db, source_dir, zone_code, dry_run, min_cover_side)
+            result = await run_import(db, source_dir, zone_code, dry_run, min_cover_side, ledger_path)
             if dry_run:
                 await db.rollback()
             else:
                 await db.commit()
-            _print_import(source_dir, zone_code, dry_run, min_cover_side, result)
+            _print_import(source_dir, zone_code, dry_run, min_cover_side, ledger_path, result)
     await engine.dispose()
 
 
@@ -840,6 +860,10 @@ def main() -> None:
     parser.add_argument("--source-dir", type=Path, help="九云图片 run 目录(--report 时可省)")
     parser.add_argument("--zone-code", default=ZONE_CODE)
     parser.add_argument("--min-cover-side", type=int, default=MIN_COVER_SIDE, help="最佳主图 min(宽,高) 低于此判低清并 hold")
+    parser.add_argument(
+        "--ledger-path", type=Path, default=None,
+        help="台账 CSV 路径(默认取 env ZONE_SOE_LEDGER_PATH,再默认仓库 data/zone_import/;生产用宿主机持久路径)",
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--dry-run", action="store_true")
     group.add_argument("--commit", action="store_true")
@@ -849,7 +873,8 @@ def main() -> None:
     mode = "report" if args.report else ("commit" if args.commit else "dry-run")
     if mode != "report" and args.source_dir is None:
         parser.error("--dry-run/--commit 需要 --source-dir")
-    asyncio.run(_execute(mode, args.source_dir, args.zone_code, args.min_cover_side))
+    ledger_path = _resolve_ledger_path(args.ledger_path)
+    asyncio.run(_execute(mode, args.source_dir, args.zone_code, args.min_cover_side, ledger_path))
 
 
 if __name__ == "__main__":
