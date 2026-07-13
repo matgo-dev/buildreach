@@ -106,7 +106,7 @@ export function CategorySidebar({
         }}
       >
         {/* 头部 — 固定不滚动 */}
-        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-800 text-white shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-700 text-white shrink-0">
           <LayoutGrid className="w-4 h-4" />
           <span className="text-sm font-bold">{t("allCategoryNav")}</span>
         </div>
@@ -150,7 +150,7 @@ export function CategorySidebar({
                     <span
                       className={`text-[13px] leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis block ${
                         isHovered || hasActiveChild
-                          ? "text-teal-800 font-bold"
+                          ? "text-teal-700 font-bold"
                           : "text-gray-700"
                       }`}
                     >

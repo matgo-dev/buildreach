@@ -43,7 +43,7 @@ function HeroSection({ t }: { t: ReturnType<typeof useTranslations> }) {
       <section
         className="relative overflow-hidden rounded-2xl"
         style={{
-          background: "linear-gradient(135deg, #00505a 0%, #003a40 100%)",
+          background: "linear-gradient(135deg, #0c9468 0%, #0a7a56 100%)",
         }}
       >
         {/* 动画光晕 */}

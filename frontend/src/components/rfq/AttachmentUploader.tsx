@@ -195,8 +195,8 @@ export default function AttachmentUploader({
           }}
           className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed py-4 text-sm transition-colors ${
             dragOver
-              ? "border-[#00505a]/60 bg-[#00505a]/5 text-gray-600"
-              : "border-gray-200 text-gray-400 hover:border-[#00505a]/40 hover:text-gray-500"
+              ? "border-[#0c9468]/60 bg-[#0c9468]/5 text-gray-600"
+              : "border-gray-200 text-gray-400 hover:border-[#0c9468]/40 hover:text-gray-500"
           }`}
           onClick={() => inputRef.current?.click()}
         >

@@ -122,7 +122,7 @@ function HowToBuyContent() {
                   isFirst ? "pl-4 pr-6 rounded-l-lg" : "pl-7 pr-6"
                 } ${isLast ? "rounded-r-lg" : ""} ${
                   isActive
-                    ? "bg-[#00505a] text-white"
+                    ? "bg-[#0c9468] text-white"
                     : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                 }`}
                 style={{
@@ -158,7 +158,7 @@ function HowToBuyContent() {
       <>
       {/* ===== Hero — 紧凑全宽 ===== */}
       <div className="mx-auto max-w-mall px-6 pt-6">
-        <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-6 py-7">
+        <div className="rounded-2xl bg-gradient-to-r from-[#0c9468] to-[#0a7a56] px-6 py-7">
           {/* 上：标题 + stats 同一行 */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
             <div>
@@ -309,7 +309,7 @@ function HowToBuyContent() {
             </div>
 
             {/* CTA */}
-            <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
+            <div className="rounded-xl bg-gradient-to-br from-[#0c9468] to-[#0a7a56] p-4 text-center">
               <p className="text-[13px] text-white/90 font-medium mb-2.5">
                 {t("ctaCardText")}
               </p>

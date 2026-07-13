@@ -70,7 +70,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
               onClick={() => onPageChange(p)}
               className={`flex h-7 min-w-[28px] items-center justify-center rounded border text-xs font-medium transition-colors ${
                 p === page
-                  ? "border-teal-900 bg-teal-900 text-white"
+                  ? "border-teal-700 bg-teal-700 text-white"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50"
               }`}
             >

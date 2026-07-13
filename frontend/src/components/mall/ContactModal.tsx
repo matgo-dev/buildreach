@@ -38,7 +38,7 @@ export function ContactModal() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* 头部 */}
-            <div className="bg-teal-800 px-3 py-2 flex items-center justify-between">
+            <div className="bg-teal-700 px-3 py-2 flex items-center justify-between">
               <p className="text-white text-[13px] font-bold">{t("consultantTitle")}</p>
               <button
                 onClick={close}

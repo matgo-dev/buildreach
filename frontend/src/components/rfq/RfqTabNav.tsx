@@ -48,7 +48,7 @@ export function RfqTabNav() {
             href={tab.href}
             className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${
               isActive
-                ? "bg-[#00505a] text-white font-semibold shadow-sm"
+                ? "bg-[#0c9468] text-white font-semibold shadow-sm"
                 : "text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-700"
             }`}
           >
@@ -58,7 +58,7 @@ export function RfqTabNav() {
               <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-medium ${
                 isActive
                   ? "bg-white/20 text-white"
-                  : "bg-[#00505a] text-white"
+                  : "bg-[#0c9468] text-white"
               }`}>
                 {tab.badge}
               </span>

@@ -1052,7 +1052,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         <button
           type="submit"
           disabled={loading || authCfgLoading}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
             <>
@@ -1067,9 +1067,9 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 服务条款 */}
         <p className="text-center text-xs text-gray-400">
           {t("terms_prefix")}{" "}
-          <button type="button" onClick={() => setLegalModal("terms")} className="text-[#00505a] underline hover:text-[#003d3d]">{t("terms_link")}</button>
+          <button type="button" onClick={() => setLegalModal("terms")} className="text-[#0c9468] underline hover:text-[#0a7a56]">{t("terms_link")}</button>
           {" "}{t("terms_and")}{" "}
-          <button type="button" onClick={() => setLegalModal("privacy")} className="text-[#00505a] underline hover:text-[#003d3d]">{t("terms_privacy_link")}</button>
+          <button type="button" onClick={() => setLegalModal("privacy")} className="text-[#0c9468] underline hover:text-[#0a7a56]">{t("terms_privacy_link")}</button>
         </p>
       </form>
 
@@ -1115,7 +1115,7 @@ function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () 
       <div className="relative flex w-full max-w-2xl max-h-[85vh] flex-col rounded-xl bg-white shadow-2xl">
         {/* 头部 */}
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-bold text-[#00505a]">{tLegal(`${type}.title`)}</h2>
+          <h2 className="text-lg font-bold text-[#0c9468]">{tLegal(`${type}.title`)}</h2>
           <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-gray-100">
             <X className="h-5 w-5 text-gray-500" />
           </button>

@@ -128,7 +128,7 @@ export default function ForgotPasswordPage() {
         </div>
         <Link
           href="/login"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56]"
         >
           {t("go_login")}
         </Link>
@@ -192,7 +192,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> {t("submitting")}</>
@@ -300,7 +300,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> {t("resetting")}</>

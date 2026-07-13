@@ -101,7 +101,7 @@ function OrderList({
           <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
           <a
             href="/mall"
-            className="inline-flex items-center gap-2 rounded-full bg-teal-800 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
           >
             {t("emptyBrowse")}
           </a>

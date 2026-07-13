@@ -68,7 +68,7 @@ export default function HelpCenterPage() {
     <PublicLayout>
       {/* 主体 */}
       <div className="mx-auto max-w-mall px-6 pt-1.5 pb-6">
-        <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-6 py-7 mb-6">
+        <div className="rounded-2xl bg-gradient-to-r from-[#0c9468] to-[#0a7a56] px-6 py-7 mb-6">
           <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
             {t("pageTitle")}
           </h1>
@@ -116,7 +116,7 @@ export default function HelpCenterPage() {
           })}
 
           {/* 联系客服 */}
-          <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
+          <div className="rounded-xl bg-gradient-to-br from-[#0c9468] to-[#0a7a56] p-4 text-center">
             <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
             <ContactPopover>
               <button
@@ -150,7 +150,7 @@ export default function HelpCenterPage() {
             </nav>
 
             {/* 联系客服 */}
-            <div className="rounded-xl bg-gradient-to-br from-[#00505a] to-[#003d45] p-4 text-center">
+            <div className="rounded-xl bg-gradient-to-br from-[#0c9468] to-[#0a7a56] p-4 text-center">
               <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
               <ContactPopover>
                 <button

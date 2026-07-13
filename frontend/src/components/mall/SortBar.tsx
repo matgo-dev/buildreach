@@ -25,7 +25,7 @@ export function SortBar({ sort, total, onSortChange, hasActiveFilters, onClearAl
         {/* 默认排序：最新上架 */}
         <button
           onClick={() => onSortChange("newest")}
-          className="h-8 rounded-md px-3 text-[13px] font-semibold bg-teal-900 text-white shadow-sm"
+          className="h-8 rounded-md px-3 text-[13px] font-semibold bg-teal-700 text-white shadow-sm"
         >
           {t("sortNewest")}
         </button>

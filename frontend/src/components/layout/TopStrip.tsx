@@ -14,7 +14,7 @@ export function TopStrip() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="bg-teal-950 text-[#cfe6e6] text-[13px]">
+    <div className="bg-teal-700 text-white/85 text-[13px]">
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}
@@ -26,7 +26,7 @@ export function TopStrip() {
             <span className="sm:hidden">PVoC / CoC</span>
           </span>
           <Link href="/help-center" className="hidden sm:inline hover:text-white transition-colors">{t("helpCenter")}</Link>
-          <span className="text-teal-700">|</span>
+          <span className="text-white/40">|</span>
           {user ? (
             <UserDropdown />
           ) : (
@@ -34,7 +34,7 @@ export function TopStrip() {
               <Link href="/login" className="hover:text-white transition-colors">
                 {t("headerLogin")}
               </Link>
-              <span className="text-teal-700">|</span>
+              <span className="text-white/40">|</span>
               <Link href="/register" className="hover:text-white transition-colors truncate max-w-[120px] sm:max-w-none">
                 {t("headerRegister")}
               </Link>

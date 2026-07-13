@@ -286,14 +286,14 @@ export default function ProductSearchModal({
                 }}
                 placeholder={t("searchPlaceholder")}
                 autoFocus
-                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
               />
             </div>
             <button
               type="button"
               onClick={handleSearch}
               disabled={searching || !keyword.trim()}
-              className="rounded-lg bg-[#00505a] px-4 text-sm font-medium text-white transition-colors hover:bg-[#003f46] disabled:bg-gray-200 disabled:text-gray-400"
+              className="rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0a7a56] disabled:bg-gray-200 disabled:text-gray-400"
             >
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("searchProduct")}
             </button>
@@ -304,7 +304,7 @@ export default function ProductSearchModal({
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {searching && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-[#00505a]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
             </div>
           )}
 
@@ -331,7 +331,7 @@ export default function ProductSearchModal({
                       simpleAdded
                         ? "border-gray-100 bg-gray-50 opacity-60"
                         : isExpanded
-                          ? "border-[#00505a] bg-[#00505a]/5 shadow-sm"
+                          ? "border-[#0c9468] bg-[#0c9468]/5 shadow-sm"
                           : "border-gray-200 hover:shadow-sm"
                     }`}
                   >
@@ -377,7 +377,7 @@ export default function ProductSearchModal({
                             {t("alreadyAdded")}
                           </span>
                         ) : variant ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-[#00505a]/30 px-3 py-1 text-xs font-medium text-[#00505a]">
+                          <span className="inline-flex items-center gap-1 rounded-md border border-[#0c9468]/30 px-3 py-1 text-xs font-medium text-[#0c9468]">
                             {t("selectSpec")}
                             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                           </span>
@@ -385,7 +385,7 @@ export default function ProductSearchModal({
                           <button
                             type="button"
                             onClick={() => emit(p, [], p.unit || "PCS")}
-                            className="inline-flex items-center gap-1 rounded-md bg-[#00505a] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#003f46]"
+                            className="inline-flex items-center gap-1 rounded-md bg-[#0c9468] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#0a7a56]"
                           >
                             <Plus className="h-3.5 w-3.5" />
                             {t("addProduct")}
@@ -399,7 +399,7 @@ export default function ProductSearchModal({
                       <div className="border-t border-gray-100 bg-white px-4 py-3">
                         {data?.loading ? (
                           <div className="flex items-center justify-center py-4">
-                            <Loader2 className="h-5 w-5 animate-spin text-[#00505a]" />
+                            <Loader2 className="h-5 w-5 animate-spin text-[#0c9468]" />
                           </div>
                         ) : data && data.axes.length > 0 ? (
                           <div className="space-y-3">
@@ -417,9 +417,9 @@ export default function ProductSearchModal({
                                       onClick={() => available && pickAxis(p.id, axis.key, v.value)}
                                       className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition-colors ${
                                         active
-                                          ? "border-[#00505a] bg-[#00505a]/10 font-medium text-[#00505a]"
+                                          ? "border-[#0c9468] bg-[#0c9468]/10 font-medium text-[#0c9468]"
                                           : available
-                                            ? "border-gray-200 text-gray-600 hover:border-[#00505a]/40"
+                                            ? "border-gray-200 text-gray-600 hover:border-[#0c9468]/40"
                                             : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
                                       }`}
                                     >
@@ -444,7 +444,7 @@ export default function ProductSearchModal({
                                 className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
                                   !canAddPicked
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-[#00505a] text-white hover:bg-[#003f46]"
+                                    : "bg-[#0c9468] text-white hover:bg-[#0a7a56]"
                                 }`}
                               >
                                 {!pickedExists && <Plus className="h-3.5 w-3.5" />}
@@ -474,7 +474,7 @@ export default function ProductSearchModal({
                                   className={`inline-flex items-center gap-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
                                     fallbackDisabled
                                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                      : "bg-[#00505a] text-white hover:bg-[#003f46]"
+                                      : "bg-[#0c9468] text-white hover:bg-[#0a7a56]"
                                   }`}
                                 >
                                   {fallbackExists ? t("alreadyAdded") : t("addProduct")}
@@ -511,7 +511,7 @@ export default function ProductSearchModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-[#00505a] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#003f46]"
+            className="rounded-lg bg-[#0c9468] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a7a56]"
           >
             {t("doneSelection")}
           </button>

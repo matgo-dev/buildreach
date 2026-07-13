@@ -175,7 +175,7 @@ export function ContactPopover({
             }}
           >
             <div className="w-[260px] rounded-2xl bg-white shadow-lg border border-line overflow-hidden">
-              <div className="bg-teal-800 px-3 py-2 flex items-center justify-between">
+              <div className="bg-teal-700 px-3 py-2 flex items-center justify-between">
                 <p className="text-white text-[13px] font-bold">{t("consultantTitle")}</p>
                 <button onClick={close} className="text-white/60 hover:text-white transition-colors">
                   <X className="h-3.5 w-3.5" />

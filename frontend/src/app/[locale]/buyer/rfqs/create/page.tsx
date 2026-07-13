@@ -164,13 +164,13 @@ function CertificationTagInput({
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded bg-[#00505a]/10 px-2 py-0.5 text-xs font-medium text-[#00505a]"
+            className="inline-flex items-center gap-1 rounded bg-[#0c9468]/10 px-2 py-0.5 text-xs font-medium text-[#0c9468]"
           >
             {tag}
             <button
               type="button"
               onClick={() => handleRemove(tag)}
-              className="text-[#00505a]/50 hover:text-[#00505a]"
+              className="text-[#0c9468]/50 hover:text-[#0c9468]"
             >
               ×
             </button>
@@ -673,7 +673,7 @@ function RfqCreateContent() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
       </div>
     );
   }
@@ -721,7 +721,7 @@ function RfqCreateContent() {
               onChange={(e) => updateDraft("remark", e.target.value)}
               rows={4}
               placeholder={t("descriptionPlaceholder")}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
           </div>
           <AttachmentUploader
@@ -777,7 +777,7 @@ function RfqCreateContent() {
                             if (!isNaN(v) && v > 0) handleCartQuantityChange(item.item_id, v);
                           }}
                           min={1}
-                          className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                          className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
                         />
                         <span className="text-xs text-gray-500">
                           {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
@@ -818,7 +818,7 @@ function RfqCreateContent() {
                           if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
                         }}
                         min={1}
-                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
                       />
                       <span className="text-xs text-gray-500">
                         {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
@@ -844,7 +844,7 @@ function RfqCreateContent() {
                     <button
                       type="button"
                       onClick={() => setShowSearch(true)}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0c9468] transition-colors hover:text-[#0a7a56]"
                     >
                       <Plus className="h-4 w-4" />
                       {t("addProduct")}
@@ -870,7 +870,7 @@ function RfqCreateContent() {
               value={draft.requested_delivery_place}
               onChange={(e) => updateDraft("requested_delivery_place", e.target.value)}
               placeholder={t("deliveryPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
           </div>
           <div>
@@ -881,7 +881,7 @@ function RfqCreateContent() {
               <button
                 type="button"
                 onClick={openDatePicker}
-                className="flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 px-3 text-left text-sm outline-none transition-colors focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                className="flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 px-3 text-left text-sm outline-none transition-colors focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
               >
                 <span className={draft.expected_delivery_date ? "text-gray-800" : "text-gray-400"}>
                   {draft.expected_delivery_date || "YYYY-MM-DD"}
@@ -908,7 +908,7 @@ function RfqCreateContent() {
             <select
               value={draft.target_currency}
               onChange={(e) => updateDraft("target_currency", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -925,7 +925,7 @@ function RfqCreateContent() {
               value={draft.destination_port}
               onChange={(e) => updateDraft("destination_port", e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
             <datalist id="destination-port-options">
               <option value="Dar es Salaam Port" />
@@ -944,7 +944,7 @@ function RfqCreateContent() {
               value={draft.preferred_trade_term}
               onChange={(e) => updateDraft("preferred_trade_term", e.target.value)}
               placeholder={t("preferredTradeTermPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
             <datalist id="trade-term-options">
               <option value="FOB" />
@@ -970,7 +970,7 @@ function RfqCreateContent() {
               type="text"
               value={draft.contact_name}
               onChange={(e) => updateDraft("contact_name", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
           </div>
           <div>
@@ -981,7 +981,7 @@ function RfqCreateContent() {
               type="text"
               value={draft.contact_phone}
               onChange={(e) => updateDraft("contact_phone", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
           </div>
           <div>
@@ -992,7 +992,7 @@ function RfqCreateContent() {
               type="email"
               value={draft.contact_email}
               onChange={(e) => updateDraft("contact_email", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
             />
           </div>
         </div>
@@ -1026,7 +1026,7 @@ function RfqCreateContent() {
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
             savingDraft || submitting || !canSubmit
               ? "border-gray-200 text-gray-400 cursor-not-allowed"
-              : "border-[#00505a] text-[#00505a] hover:bg-[#00505a]/5"
+              : "border-[#0c9468] text-[#0c9468] hover:bg-[#0c9468]/5"
           }`}
         >
           {savingDraft && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -1039,7 +1039,7 @@ function RfqCreateContent() {
           className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
             submitting || savingDraft || !canSubmit
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-[#00505a] text-white hover:bg-[#003f46]"
+              : "bg-[#0c9468] text-white hover:bg-[#0a7a56]"
           }`}
         >
           {submitting ? (
