@@ -1,4 +1,4 @@
-"""央企专区图片+分类更新脚本:读取九云 matches.json / XFS offer 目录树。
+"""央企专区图片+分类更新脚本:读取数据包 matches.json / XFS offer 目录树。
 
 推荐的交付目录:
 
@@ -27,7 +27,7 @@ matches.json 为数组,每条至少包含:
       }
     }
 
-也兼容九云当前目录树(小陶拿数结构):
+也兼容另一种 offer 目录树结构:
 
     run_YYYYMMDD_HHMMSS/
       categories/L1-.../L2-.../L3-.../L4-.../offers/<offer_id>/offer.json
@@ -102,6 +102,7 @@ ZSOE_SOURCE = "ZSOE"
 UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
 MASTER_FINAL = _REPO_ROOT / "data" / "zone_import" / "prepared" / "master_final.json"
 LEDGER_PATH = _REPO_ROOT / "data" / "zone_import" / "soe_image_refresh_ledger.csv"
+DECISIONS_PATH = _REPO_ROOT / "data" / "zone_import" / "soe_refresh_decisions.json"
 THUMB_SIZE = (300, 300)
 THUMB_WEBP_QUALITY = 80
 MIN_COVER_SIDE = 600  # 最佳主图 min(宽,高) 低于此 → 判低清、hold 不替换
@@ -218,6 +219,10 @@ def load_matches_json(source_dir: Path) -> list[MatchIn]:
         if not isinstance(images, dict):
             raise ValueError(f"matches.json 第 {i} 项 images 必须是对象")
         matched_category_path = item.get("matched_category_path") or []
+        if isinstance(matched_category_path, str):
+            # 数据包 v7 把路径写成 "A / B / C" 字符串;按 " / "(带空格)拆,
+            # 不能用裸 "/"——类目名本身含 /(如 铜/铝端子、DC/DC转换器),裸拆会拆坏。
+            matched_category_path = [s.strip() for s in matched_category_path.split(" / ") if s.strip()]
         rows.append(MatchIn(
             material_name=material_name,
             material_category_code=(str(item.get("material_category_code")).strip() if item.get("material_category_code") else None),
@@ -325,19 +330,46 @@ async def _zone_products_named(db: AsyncSession, zone_code: str) -> dict[str, st
     return {code: (name or "") for code, name in rows}
 
 
-def resolve_spu_code(row: MatchIn, material_index: dict[str, list[dict]]) -> tuple[str | None, str | None]:
+@dataclasses.dataclass(frozen=True)
+class Decisions:
+    name_overrides: dict[str, str]  # _hard(数据包材料名) -> 我方商品名
+    drops: set[str]                 # _hard(材料名)
+    l1_aliases: dict[str, str]      # XFS 一级名 -> 我方一级名
+    detail_cover_fallback: set[str]  # _hard(材料名):主图低清时允许详情图提为封面
+
+
+def load_decisions(path: Path = DECISIONS_PATH) -> Decisions:
+    """读人工决策台账(名字覆盖/弃用/一级别名/低清救回)。缺文件则空决策,行为不变。"""
+    if not path.exists():
+        return Decisions({}, set(), {}, set())
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    overrides = {_hard(k): str(v) for k, v in (raw.get("name_overrides") or {}).items() if not k.startswith("_")}
+    drops = {_hard(x) for x in ((raw.get("drops") or {}).get("list") or [])}
+    aliases = {str(k): str(v) for k, v in (raw.get("l1_aliases") or {}).items() if not k.startswith("_")}
+    detail_cover = {_hard(x) for x in ((raw.get("detail_cover_fallback") or {}).get("list") or [])}
+    return Decisions(overrides, drops, aliases, detail_cover)
+
+
+def resolve_spu_code(
+    row: MatchIn, material_index: dict[str, list[dict]], name_overrides: dict[str, str] | None = None
+) -> tuple[str | None, str | None]:
     if row.spu_code:
         return row.spu_code, None
 
-    if row.material_category_code:
-        return zsoe_spu_code(row.material_category_code, row.material_name), None
-
-    candidates = material_index.get(_hard(row.material_name), [])
+    # 名字优先:按材料名匹配专区商品。material_category_code 只在材料名重名时用来消歧,
+    # 不作硬约束——数据包可能把大类填错(如"区域报警器"填 13 应 12),但只要商品名对得上就该回挂。
+    # 名字覆盖:数据包把一个 SPU 按规格拆成多条时,覆盖到我方实际商品名(如 金刚石切割片(有豁口)->金刚石切割片)。
+    lookup_name = (name_overrides or {}).get(_hard(row.material_name), row.material_name)
+    candidates = material_index.get(_hard(lookup_name), [])
     if len(candidates) == 1:
         return candidates[0]["spu_code"], None
     if len(candidates) > 1:
+        if row.material_category_code:
+            matched = [c for c in candidates if c["cat_code"] == row.material_category_code]
+            if len(matched) == 1:
+                return matched[0]["spu_code"], None
         detail = ", ".join(f"{c['cat_code']}/{c['cat_name']}/{c['name']}" for c in candidates)
-        return None, f"材料名重名,需提供 material_category_code 或 spu_code:{row.material_name} -> {detail}"
+        return None, f"材料名重名,需 material_category_code 消歧:{row.material_name} -> {detail}"
     return None, f"材料名不在央企材料表:{row.material_name}"
 
 
@@ -378,6 +410,13 @@ def _next_child_code(parent_code: str, child_codes: list[str]) -> str:
     if len(code) > 16:
         raise RuntimeError(f"生成 code 超长({len(code)}): {code}")
     return code
+
+
+def _apply_l1_alias(path: list[str], l1_aliases: dict[str, str]) -> list[str]:
+    """把路径一级(L1)按别名重定向到我方一级(如 办公 -> 办公用品),其下逐级不变。"""
+    if not path or not l1_aliases or path[0] not in l1_aliases:
+        return path
+    return [l1_aliases[path[0]], *path[1:]]
 
 
 def _resolve_path(path: list[str], ts: CategoryState) -> tuple[Category | None, int]:
@@ -490,19 +529,35 @@ def _image_min_side(path: Path) -> int:
         return 0
 
 
-def _rank_images(row: MatchIn, images: list[ImageIn]) -> tuple[list[ImageIn], int]:
+def _rank_images(row: MatchIn, images: list[ImageIn], allow_detail_cover: bool = False) -> tuple[list[ImageIn], int]:
     """主图(MAIN/GALLERY)按 min(宽,高) 降序,最清当封面;detail 保持原序。
 
-    返回 (排好序的图列表, 最佳主图 min-side)。
+    allow_detail_cover=True(低清救回白名单):主图全低清时,把全部图里最清的那张
+    (可含详情图)提为封面,其余主图仍作 GALLERY、其余详情图仍作 DETAIL。
+
+    返回 (排好序的图列表, 封面 min-side)。
     """
     gallery = [im for im in images if im.kind in (ImageType.MAIN, ImageType.GALLERY)]
     detail = [im for im in images if im.kind == ImageType.DETAIL]
+
+    if allow_detail_cover:
+        cover_side, cover_im = max(
+            ((_image_min_side(_src_path(row, im)), im) for im in images),
+            key=lambda x: x[0], default=(0, None),
+        )
+        ranked: list[ImageIn] = []
+        if cover_im is not None:
+            ranked.append(dataclasses.replace(cover_im, kind=ImageType.MAIN))
+        ranked.extend(dataclasses.replace(im, kind=ImageType.GALLERY) for im in gallery if im is not cover_im)
+        ranked.extend(im for im in detail if im is not cover_im)
+        return ranked, cover_side
+
     scored = sorted(
         ((_image_min_side(_src_path(row, im)), im) for im in gallery),
         key=lambda x: -x[0],
     )
     best = scored[0][0] if scored else 0
-    ranked: list[ImageIn] = []
+    ranked = []
     for i, (_ms, im) in enumerate(scored):
         kind = ImageType.MAIN if i == 0 else ImageType.GALLERY
         ranked.append(dataclasses.replace(im, kind=kind))
@@ -588,6 +643,7 @@ async def run_import(
     rows = load_input_rows(source_dir)
     stats["input_rows"] = len(rows)
     material_index = load_material_index()
+    decisions = load_decisions()
     zone_codes = await _zone_product_codes(db, zone_code)
     stats["zone_products"] = len(zone_codes)
     ts = await load_category_state(db)
@@ -604,7 +660,10 @@ async def run_import(
             unresolved.append(f"{row.offer_id}: 缺少 material_name/product_name_zh")
             stats["rows_unresolved"] += 1
             continue
-        spu_code, reason = resolve_spu_code(row, material_index)
+        if _hard(row.material_name) in decisions.drops:
+            stats["rows_dropped"] += 1
+            continue
+        spu_code, reason = resolve_spu_code(row, material_index, decisions.name_overrides)
         if reason:
             unresolved.append(f"{row.offer_id}: {reason}")
             stats["rows_unresolved"] += 1
@@ -651,7 +710,8 @@ async def run_import(
             continue
         processed.add(spu_code)
 
-        ranked, best_main = _rank_images(row, images)
+        allow_detail_cover = _hard(row.material_name) in decisions.detail_cover_fallback
+        ranked, best_main = _rank_images(row, images, allow_detail_cover)
 
         # 低清 hold:最佳主图 < 门槛 → 整条不替换,记台账待复核
         if best_main < min_cover_side:
@@ -667,7 +727,8 @@ async def run_import(
             continue
 
         old_code = product.category_code
-        new_code, created, cat_status = await apply_category(db, product, row.matched_category_path, ts, dry_run, stats)
+        aliased_path = _apply_l1_alias(row.matched_category_path, decisions.l1_aliases)
+        new_code, created, cat_status = await apply_category(db, product, aliased_path, ts, dry_run, stats)
 
         if not dry_run:
             await db.execute(
@@ -768,6 +829,7 @@ def _print_import(source_dir: Path, zone_code: str, dry_run: bool, min_cover_sid
     print(f"无有效图片行:             {s.get('rows_no_valid_image', 0)}")
     print(f"低清 hold(不替换):        {s.get('rows_low_res_held', 0)}")
     print(f"重复 SPU 跳过:            {s.get('rows_duplicate_spu_skipped', 0)}")
+    print(f"决策弃用(drops):          {s.get('rows_dropped', 0)}")
     print(f"商品更新:                 {s.get('products_updated', 0)}")
     print(f"图片:                     MAIN {s.get('images_main', 0)} / GALLERY {s.get('images_gallery', 0)} / DETAIL {s.get('images_detail', 0)} = {s.get('images_total', 0)}")
     print(f"缩略图(仅主图):           生成 {s.get('thumbs_generated', 0)} / 失败 {s.get('thumbs_failed', 0)}")
@@ -857,7 +919,7 @@ async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source-dir", type=Path, help="九云图片 run 目录(--report 时可省)")
+    parser.add_argument("--source-dir", type=Path, help="图片数据包 run 目录(--report 时可省)")
     parser.add_argument("--zone-code", default=ZONE_CODE)
     parser.add_argument("--min-cover-side", type=int, default=MIN_COVER_SIDE, help="最佳主图 min(宽,高) 低于此判低清并 hold")
     parser.add_argument(
