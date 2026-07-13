@@ -334,7 +334,7 @@ function TrustSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   ];
 
   return (
-    <section className="bg-[#0D4D4D]">
+    <section className="bg-[#0c9468]">
       <div className="mx-auto max-w-5xl px-6 py-12">
         <h2 className="text-xl md:text-2xl font-bold text-white mb-8 text-center">
           {t("trustTitle")}

@@ -212,7 +212,7 @@ function LoginContent() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitting ? (
             <>
@@ -250,7 +250,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
         </div>
       }
     >

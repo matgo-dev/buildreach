@@ -259,8 +259,8 @@ export default function ProductSearchModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 flex h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+      <div className="mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
         {/* 标题 */}
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <h3 className="text-base font-semibold text-gray-800">{t("searchProduct")}</h3>
