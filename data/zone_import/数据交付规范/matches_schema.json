@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "央企专区 图片+分类回挂 交付契约 (matches.json)",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "offer_id",
+      "material_name",
+      "material_category_code",
+      "matched_category_path",
+      "images"
+    ],
+    "properties": {
+      "offer_id": { "type": "string", "minLength": 1 },
+      "offer_url": { "type": "string" },
+      "material_name": {
+        "type": "string",
+        "minLength": 1,
+        "description": "央企材料名。回挂就靠它按名字匹配我方商品,必须与我方材料表用词一致。"
+      },
+      "material_name_en": { "type": "string" },
+      "material_category_code": {
+        "type": "string",
+        "enum": ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17"],
+        "description": "央企17大类编码,仅用于材料名重名时消歧。"
+      },
+      "material_category_name": { "type": "string" },
+      "listing_title": { "type": "string" },
+      "matched_category_path": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 },
+        "minItems": 1,
+        "description": "必须是【数组】,逐级类目名。禁止用 'A / B / C' 字符串——我方类目名本身含 '/'。每一级的名字必须能在我方类目白名单里逐级命中,匹配不到就整条留空数组[]并在 note 标'待定',不要硬套 XFS 自己的分类。"
+      },
+      "matched_leaf_code": {
+        "type": "string",
+        "description": "可选但强烈建议:直接给白名单里的叶子 code(如 '13.003.003.001'),比路径更稳,给了就不用逐级解析。"
+      },
+      "images": {
+        "type": "object",
+        "required": ["main"],
+        "properties": {
+          "main":    { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "gallery": { "type": "array", "items": { "type": "string" } },
+          "detail":  { "type": "array", "items": { "type": "string" } }
+        },
+        "description": "路径相对交付目录。main 至少一张,最佳主图 min(宽,高) 必须 ≥ 600px,否则该条会被判低清不换图。"
+      },
+      "semantic_score": { "type": ["number", "null"] },
+      "match_method": { "type": "string" },
+      "source": { "type": "string" },
+      "operator": { "type": "string" },
+      "note": { "type": "string" }
+    },
+    "additionalProperties": true
+  }
+}
