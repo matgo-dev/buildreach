@@ -69,7 +69,24 @@ def test_load_offer_tree_uses_product_name_as_material_name(tmp_path: Path):
     assert rows[0].images[0] == ImageIn(kind="MAIN", rel_path="images/main_01.jpg", source_url="https://oss.example/main.jpg")
 
 
-def test_resolve_spu_code_from_category_and_name():
+def test_resolve_spu_code_matches_single_material_by_name():
+    row = type("Row", (), {
+        "spu_code": None,
+        "material_category_code": "02",
+        "material_name": "水泥",
+    })()
+    material_index = {
+        "水泥": [{"cat_code": "02", "cat_name": "水泥类", "name": "水泥",
+                 "spu_code": zsoe_spu_code("02", "水泥")}],
+    }
+
+    got, reason = resolve_spu_code(row, material_index)
+
+    assert reason is None
+    assert got == zsoe_spu_code("02", "水泥")
+
+
+def test_resolve_spu_code_refuses_material_absent_from_table():
     row = type("Row", (), {
         "spu_code": None,
         "material_category_code": "02",
@@ -78,8 +95,8 @@ def test_resolve_spu_code_from_category_and_name():
 
     got, reason = resolve_spu_code(row, {})
 
-    assert reason is None
-    assert got == zsoe_spu_code("02", "水泥")
+    assert got is None
+    assert "不在央企材料表" in reason
 
 
 def test_resolve_spu_code_refuses_ambiguous_name_without_category():
