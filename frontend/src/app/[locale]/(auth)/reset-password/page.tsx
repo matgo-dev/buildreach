@@ -83,7 +83,7 @@ function ResetPasswordContent() {
         </div>
         <Link
           href="/login"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c9468] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56]"
         >
           {t("go_login")}
         </Link>
@@ -127,7 +127,7 @@ function ResetPasswordContent() {
                 "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
                 (pwdErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-[#0D4D4D] focus:ring-[#0D4D4D]/15")
+                  : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
               }
             />
             <button
@@ -146,7 +146,7 @@ function ResetPasswordContent() {
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitting ? (
             <>
@@ -184,7 +184,7 @@ export default function ResetPasswordPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
         </div>
       }
     >

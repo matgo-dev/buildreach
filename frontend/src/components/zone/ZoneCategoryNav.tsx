@@ -33,7 +33,7 @@ export function ZoneCategoryNav({ categories, activeCode, allLabel, onSelect }: 
           onClick={() => onSelect(c.code)}
           className={`h-8 w-full whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
             activeCode === c.code
-              ? "bg-teal-800 text-white"
+              ? "bg-teal-700 text-white"
               : "bg-gray-100 text-gray-600 hover:bg-teal-50 hover:text-teal-800"
           }`}
         >

@@ -20,13 +20,13 @@ export function LetterIcon({ letter, active = false, size = 30, className = "" }
   return (
     <span
       className={`grid place-items-center rounded-[7px] text-xs font-black shrink-0 transition-colors ${
-        active ? "bg-teal-800 text-white" : "text-white"
+        active ? "bg-teal-700 text-white" : "text-white"
       } ${className}`}
       style={{
         width: size,
         height: size,
         ...(active ? {} : {
-          background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
+          background: "linear-gradient(135deg, #10b981, #0c9468, #0a7a56)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,63,70,.18)",
         }),
       }}

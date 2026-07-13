@@ -193,7 +193,7 @@ function RfqEditContent() {
   const [certInput, setCertInput] = useState("");
 
   if (loading) {
-    return <div className="flex min-h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#00505a]" /></div>;
+    return <div className="flex min-h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" /></div>;
   }
 
   return (
@@ -250,7 +250,7 @@ function RfqEditContent() {
                     <div className="inline-flex items-center gap-1.5">
                       <input type="number" value={item.quantity}
                         onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) handleQtyChange(idx, v); }}
-                        min={1} className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+                        min={1} className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
                       <span className="text-xs text-gray-500">{tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
                     </div>
                     )}
@@ -265,7 +265,7 @@ function RfqEditContent() {
               })}
               <tr className="border-t border-gray-100">
                 <td colSpan={4} className="px-5 py-3">
-                  <button type="button" onClick={() => setShowSearch(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[#00505a] transition-colors hover:text-[#003f46]">
+                  <button type="button" onClick={() => setShowSearch(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0c9468] transition-colors hover:text-[#0a7a56]">
                     <Plus className="h-4 w-4" />{t("addProduct")}
                   </button>
                 </td>
@@ -282,18 +282,18 @@ function RfqEditContent() {
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryPlace")}</label>
             <input type="text" value={deliveryPlace} onChange={(e) => setDeliveryPlace(e.target.value)} placeholder={t("deliveryPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("deliveryDate")}</label>
             <input type="date" lang={locale} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} min={todayStr}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("currency")}</label>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20">
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20">
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
@@ -301,7 +301,7 @@ function RfqEditContent() {
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("destinationPort")}</label>
             <input type="text" list="destination-port-options" value={destinationPort} onChange={(e) => setDestinationPort(e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
             <datalist id="destination-port-options">
               <option value="Dar es Salaam Port" />
               <option value="Mombasa Port" />
@@ -313,7 +313,7 @@ function RfqEditContent() {
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("preferredTradeTerm")}</label>
             <input type="text" list="trade-term-options" value={preferredTradeTerm} onChange={(e) => setPreferredTradeTerm(e.target.value)}
               placeholder={t("preferredTradeTermPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
             <datalist id="trade-term-options">
               <option value="FOB" />
               <option value="CFR" />
@@ -333,17 +333,17 @@ function RfqEditContent() {
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("contactName")}</label>
             <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("contactPhone")}</label>
             <input type="text" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("contactEmail")}</label>
             <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
           </div>
         </div>
       </div>
@@ -356,9 +356,9 @@ function RfqEditContent() {
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("certifications")}</label>
             <div className="flex flex-wrap gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
               {certifications.map((tag) => (
-                <span key={tag} className="inline-flex items-center gap-1 rounded bg-[#00505a]/10 px-2 py-0.5 text-xs font-medium text-[#00505a]">
+                <span key={tag} className="inline-flex items-center gap-1 rounded bg-[#0c9468]/10 px-2 py-0.5 text-xs font-medium text-[#0c9468]">
                   {tag}
-                  <button type="button" onClick={() => setCertifications((prev) => prev.filter((v) => v !== tag))} className="text-[#00505a]/50 hover:text-[#00505a]">x</button>
+                  <button type="button" onClick={() => setCertifications((prev) => prev.filter((v) => v !== tag))} className="text-[#0c9468]/50 hover:text-[#0c9468]">x</button>
                 </span>
               ))}
               <input type="text" value={certInput} onChange={(e) => setCertInput(e.target.value)}
@@ -377,7 +377,7 @@ function RfqEditContent() {
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">{t("remark")}</label>
             <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20" />
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20" />
           </div>
           <AttachmentUploader
             attachments={attachments}
@@ -394,7 +394,7 @@ function RfqEditContent() {
         </button>
         <button type="button" disabled={saving || submitting || !canSubmit} onClick={handleSave}
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
-            saving || submitting || !canSubmit ? "border-gray-200 text-gray-400 cursor-not-allowed" : "border-[#00505a] text-[#00505a] hover:bg-[#00505a]/5"
+            saving || submitting || !canSubmit ? "border-gray-200 text-gray-400 cursor-not-allowed" : "border-[#0c9468] text-[#0c9468] hover:bg-[#0c9468]/5"
           }`}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           {!saving && <Save className="h-4 w-4" />}
@@ -402,7 +402,7 @@ function RfqEditContent() {
         </button>
         <button type="button" disabled={submitting || saving || !canSubmit} onClick={handleSubmitDraft}
           className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
-            submitting || saving || !canSubmit ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-[#00505a] text-white hover:bg-[#003f46]"
+            submitting || saving || !canSubmit ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-[#0c9468] text-white hover:bg-[#0a7a56]"
           }`}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {t("submitDraft")}

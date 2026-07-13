@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-auto bg-gradient-to-br from-[#0a2e2e] via-[#0D4D4D] to-[#1a6b6b] p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-auto bg-gradient-to-br from-[#083d2b] via-[#0c9468] to-[#12a56f] p-4">
       <div className="relative z-10 w-full max-w-md">
         {/* 品牌区 */}
         <div className="mb-8 text-center">
@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         {/* 表单卡片 */}
-        <div className="rounded-2xl border-t-4 border-[#0D4D4D] bg-white p-5 sm:p-8 shadow-xl">
+        <div className="rounded-2xl border-t-4 border-[#0c9468] bg-white p-5 sm:p-8 shadow-xl">
           {children}
         </div>
       </div>

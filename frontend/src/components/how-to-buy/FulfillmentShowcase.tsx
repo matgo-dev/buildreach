@@ -43,7 +43,7 @@ function HeroSection({ t }: { t: ReturnType<typeof useTranslations> }) {
       <section
         className="relative overflow-hidden rounded-2xl"
         style={{
-          background: "linear-gradient(135deg, #00505a 0%, #003a40 100%)",
+          background: "linear-gradient(135deg, #0c9468 0%, #0a7a56 100%)",
         }}
       >
         {/* 动画光晕 */}
@@ -334,7 +334,7 @@ function TrustSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   ];
 
   return (
-    <section className="bg-[#0D4D4D]">
+    <section className="bg-[#0c9468]">
       <div className="mx-auto max-w-5xl px-6 py-12">
         <h2 className="text-xl md:text-2xl font-bold text-white mb-8 text-center">
           {t("trustTitle")}

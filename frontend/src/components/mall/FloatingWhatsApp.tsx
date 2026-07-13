@@ -39,7 +39,7 @@ export function FloatingWhatsApp() {
         {open && (
           <div className="w-[260px] rounded-2xl bg-white shadow-mall-lg border border-line overflow-hidden">
             {/* 头部 */}
-            <div className="bg-teal-800 px-3 py-2 flex items-center justify-between">
+            <div className="bg-teal-700 px-3 py-2 flex items-center justify-between">
               <p className="text-white text-[13px] font-bold">{t("consultantTitle")}</p>
               <button
                 onClick={() => setOpen(false)}
@@ -121,7 +121,7 @@ export function FloatingWhatsApp() {
           onClick={() => setOpen((v) => !v)}
           className={`group flex items-center gap-2 rounded-full pl-3.5 pr-4 py-2.5 shadow-lg transition-all duration-200 ${
             open
-              ? "bg-teal-800 hover:bg-teal-900"
+              ? "bg-teal-700 hover:bg-teal-800"
               : "bg-teal-700 hover:bg-teal-800 hover:shadow-xl hover:scale-105"
           }`}
         >

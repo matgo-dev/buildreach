@@ -262,7 +262,7 @@ function AddProductModal({ onClose, onAdd }: AddProductModalProps) {
   }, [selectedProduct, selectedVariants, quantity, productUnit, productMoq, onAdd, onClose, toast, t]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="mx-4 w-full max-w-lg rounded-xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}>
         {/* 标题 */}

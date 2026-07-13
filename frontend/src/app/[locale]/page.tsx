@@ -53,7 +53,7 @@ function BottomCta() {
 
   return (
     <div className="rounded-xl p-10 text-center text-white" style={{
-      background: "linear-gradient(120deg, #003f46, #00505a 60%, #006773)",
+      background: "linear-gradient(120deg, #0a7a56, #0c9468 60%, #10b981)",
     }}>
       {user ? (
         <>

@@ -271,7 +271,7 @@ function AddItemModal({ existingKeys, onClose, onAdd }: AddItemModalProps) {
   }, [variantSelection, expandedQty, expandedRemark, existingKeys, onAdd, productVariantMap, toast, t]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
         className="mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}

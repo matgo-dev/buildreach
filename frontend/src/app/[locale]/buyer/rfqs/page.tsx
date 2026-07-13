@@ -134,8 +134,8 @@ function RfqListContent() {
     const btns: React.ReactNode[] = [];
 
     // 买方前台按钮样式：小型圆角 pill 按钮
-    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a] bg-[#00505a] px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d] active:bg-[#002b2b]";
-    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#00505a]/40 px-3 py-1 text-xs font-medium text-[#00505a] shadow-sm transition-colors hover:bg-[#00505a]/5 active:bg-[#00505a]/10";
+    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468] bg-[#0c9468] px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56] active:bg-[#086046]";
+    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468]/40 px-3 py-1 text-xs font-medium text-[#0c9468] shadow-sm transition-colors hover:bg-[#0c9468]/5 active:bg-[#0c9468]/10";
     const btnDanger = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100";
     const btnWarn = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:bg-amber-100";
 
@@ -261,7 +261,7 @@ function RfqListContent() {
               type="button"
               onClick={() => { setMineOnly(false); setPage(1); }}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                !mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
+                !mineOnly ? "bg-[#0c9468] text-white" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
               {t("filterAll")}
@@ -270,7 +270,7 @@ function RfqListContent() {
               type="button"
               onClick={() => { setMineOnly(true); setPage(1); }}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                mineOnly ? "bg-[#00505a] text-white" : "text-gray-600 hover:bg-gray-50"
+                mineOnly ? "bg-[#0c9468] text-white" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
               {t("filterMine")}
@@ -281,7 +281,7 @@ function RfqListContent() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#00505a]"
+            className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#0c9468]"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -303,7 +303,7 @@ function RfqListContent() {
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/rfqs/create`)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#00505a] bg-[#00505a] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
             >
               <Plus className="h-3.5 w-3.5" />
               {t("createRfq")}
@@ -322,7 +322,7 @@ function RfqListContent() {
 
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-[#00505a]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
           </div>
         ) : !data || data.items.length === 0 ? (
           <div className="flex min-h-[400px] flex-col items-center justify-center">
@@ -332,7 +332,7 @@ function RfqListContent() {
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/buyer/cart`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#00505a] bg-[#00505a] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
               >
                 <ShoppingCart className="h-4 w-4" />
                 {t("goToCart")}
@@ -374,7 +374,7 @@ function RfqListContent() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-medium text-[#00505a]">{rfq.rfq_no}</span>
+                      <span className="text-xs font-medium text-[#0c9468]">{rfq.rfq_no}</span>
                       <p className="mt-0.5 line-clamp-2 text-sm text-gray-700">{summary}</p>
                     </div>
                   </div>

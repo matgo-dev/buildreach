@@ -53,7 +53,7 @@ type Role = "BUYER" | "SUPPLIER" | "";
 const INPUT_BASE =
   "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK_BUYER =
-  "border-gray-200 focus:border-[#0D4D4D] focus:ring-[#0D4D4D]/15";
+  "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15";
 const INPUT_ERR =
   "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 
@@ -166,18 +166,18 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => handleSwitchRole("BUYER")}
-              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#0D4D4D] hover:bg-[#0D4D4D]/5"
+              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#0c9468] hover:bg-[#0c9468]/5"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 transition-colors group-hover:bg-[#0D4D4D]/10">
-                <ShoppingCart className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#0D4D4D]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 transition-colors group-hover:bg-[#0c9468]/10">
+                <ShoppingCart className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#0c9468]" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#0D4D4D]">
+                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#0c9468]">
                   {t("roleBuyer")}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-400">{t("roleBuyerHint")}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0D4D4D]" />
+              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0c9468]" />
             </button>
             <button
               type="button"
@@ -262,7 +262,7 @@ function SupplierWizard({
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-[#0D4D4D]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
       </div>
     );
   }
@@ -744,7 +744,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                 type="button"
                 onClick={handleSendCode}
                 disabled={cooldown > 0 || codeSending}
-                className="shrink-0 rounded-lg border border-[#0D4D4D] px-3 text-sm font-medium text-[#0D4D4D] transition-all hover:bg-[#0D4D4D]/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                className="shrink-0 rounded-lg border border-[#0c9468] px-3 text-sm font-medium text-[#0c9468] transition-all hover:bg-[#0c9468]/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
               >
                 {codeSending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -883,13 +883,13 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                         className={
                           "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
                           (selected
-                            ? "border-[#0D4D4D] bg-[#0D4D4D]/5 text-[#0D4D4D] font-medium"
+                            ? "border-[#0c9468] bg-[#0c9468]/5 text-[#0c9468] font-medium"
                             : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
                         }
                       >
                         <div className={
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                          (selected ? "border-[#0D4D4D] bg-[#0D4D4D] text-white" : "border-gray-300")
+                          (selected ? "border-[#0c9468] bg-[#0c9468] text-white" : "border-gray-300")
                         }>
                           {selected && <Check className="h-3 w-3" />}
                         </div>
@@ -985,7 +985,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                     <button
                       type="button"
                       onClick={() => sfInputRef.current?.click()}
-                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0c9468] hover:text-[#0c9468]"
                     >
                       <ImagePlus className="h-5 w-5" />
                       <span className="text-[10px]">{t("upload")}</span>
@@ -1028,7 +1028,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                   <button
                     type="button"
                     onClick={() => licInputRef.current?.click()}
-                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0D4D4D] hover:text-[#0D4D4D]"
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0c9468] hover:text-[#0c9468]"
                   >
                     <ImagePlus className="h-5 w-5" />
                     <span className="text-[10px]">{t("upload")}</span>
@@ -1052,7 +1052,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         <button
           type="submit"
           disabled={loading || authCfgLoading}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D4D4D] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a3d3d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
             <>
@@ -1067,9 +1067,9 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 服务条款 */}
         <p className="text-center text-xs text-gray-400">
           {t("terms_prefix")}{" "}
-          <button type="button" onClick={() => setLegalModal("terms")} className="text-[#00505a] underline hover:text-[#003d3d]">{t("terms_link")}</button>
+          <button type="button" onClick={() => setLegalModal("terms")} className="text-[#0c9468] underline hover:text-[#0a7a56]">{t("terms_link")}</button>
           {" "}{t("terms_and")}{" "}
-          <button type="button" onClick={() => setLegalModal("privacy")} className="text-[#00505a] underline hover:text-[#003d3d]">{t("terms_privacy_link")}</button>
+          <button type="button" onClick={() => setLegalModal("privacy")} className="text-[#0c9468] underline hover:text-[#0a7a56]">{t("terms_privacy_link")}</button>
         </p>
       </form>
 
@@ -1115,7 +1115,7 @@ function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () 
       <div className="relative flex w-full max-w-2xl max-h-[85vh] flex-col rounded-xl bg-white shadow-2xl">
         {/* 头部 */}
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-bold text-[#00505a]">{tLegal(`${type}.title`)}</h2>
+          <h2 className="text-lg font-bold text-[#0c9468]">{tLegal(`${type}.title`)}</h2>
           <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-gray-100">
             <X className="h-5 w-5 text-gray-500" />
           </button>

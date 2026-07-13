@@ -59,7 +59,7 @@ export function PriceTiers({ tiers, unit, quantity }: PriceTiersProps) {
                 {rangeText}
                 {isActive && " \u2713"}
               </span>
-              <span className={isActive ? "text-green-700" : "text-[#00505a] font-semibold"}>
+              <span className={isActive ? "text-green-700" : "text-[#0c9468] font-semibold"}>
                 {formatCurrency(tier.unit_price, tier.currency, locale, {
                   maximumFractionDigits: 2,
                 })}{" "}

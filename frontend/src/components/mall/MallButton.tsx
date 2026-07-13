@@ -9,7 +9,7 @@ const STYLES: Record<Variant, { className: string; style: React.CSSProperties }>
   teal: {
     className: "text-white font-extrabold",
     style: {
-      background: "linear-gradient(135deg, #07808b, #00505a, #003f46)",
+      background: "linear-gradient(135deg, #10b981, #0c9468, #0a7a56)",
       boxShadow: "0 6px 16px rgba(0,63,70,.22)",
     },
   },

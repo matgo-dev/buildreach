@@ -163,7 +163,7 @@ function CartContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
       </div>
     );
   }
@@ -186,7 +186,7 @@ function CartContent() {
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/mall`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#00505a] bg-[#00505a] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#003d3d]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
               >
                 {t("goToMall")}
                 <ArrowRight className="h-4 w-4" />
@@ -211,7 +211,7 @@ function CartContent() {
             checked={allChecked}
             onChange={handleToggleAll}
             disabled={purchasableItems.length === 0}
-            className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+            className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468]"
           />
           <span className="flex-1 font-medium">{t("productInfo")}</span>
           <span className="w-28 font-medium">{tRfq("skuSpec")}</span>
@@ -248,11 +248,11 @@ function CartContent() {
                   checked={checked}
                   disabled={unavailable}
                   onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a] disabled:opacity-40"
+                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468] disabled:opacity-40"
                 />
 
                 {/* 商品图片 — 可点击跳转详情 */}
-                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#00505a] transition-colors">
+                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#0c9468] transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -280,7 +280,7 @@ function CartContent() {
                 {/* 商品详情 */}
                 <div className="min-w-0 flex-1">
                   {/* 商品名 — 可点击跳转详情 */}
-                  <a href={detailHref} className="text-sm font-semibold text-[#00505a] hover:underline line-clamp-2">
+                  <a href={detailHref} className="text-sm font-semibold text-[#0c9468] hover:underline line-clamp-2">
                     {item.product_name ?? "—"}
                   </a>
                   {/* 短描述 */}
@@ -355,7 +355,7 @@ function CartContent() {
                             .then((cart) => { mutate(cart, false); syncFromCart(cart); })
                             .catch(() => { e.target.value = String(item.quantity); });
                         }}
-                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-[#00505a] focus:ring-1 focus:ring-[#00505a]/20"
+                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
                       />
                       {item.unit && (
                         <span className="text-[11px] text-gray-400 sm:block sm:mt-0.5">{item.unit}</span>
@@ -398,7 +398,7 @@ function CartContent() {
                 checked={allChecked}
                 onChange={handleToggleAll}
                 disabled={purchasableItems.length === 0}
-                className="h-4 w-4 rounded border-gray-300 text-[#00505a] focus:ring-[#00505a]"
+                className="h-4 w-4 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468]"
               />
               <span className="text-xs sm:text-sm text-gray-700">{tCommon("selectAll")}</span>
             </label>

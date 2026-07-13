@@ -150,7 +150,7 @@ function ZoneProductDetailContent() {
     return (
       <PublicLayout>
         <div className="flex min-h-[400px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
         </div>
       </PublicLayout>
     );
@@ -164,7 +164,7 @@ function ZoneProductDetailContent() {
           <h2 className="text-lg font-semibold text-gray-700">{tMall("detail.notFound")}</h2>
           <button
             onClick={() => router.push(`/${locale}/zone/${zoneCode}`)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00505a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0c9468] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a7a56]"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("backToZone")}
@@ -214,10 +214,10 @@ function ZoneProductDetailContent() {
             )}
 
             {(product.selling_points || product.description) && (
-              <div className="mt-3 rounded-lg border border-[#00505a]/10 bg-[#00505a]/[0.03] px-4 py-3">
+              <div className="mt-3 rounded-lg border border-[#0c9468]/10 bg-[#0c9468]/[0.03] px-4 py-3">
                 {product.selling_points && (
                   <div className="text-sm leading-relaxed text-gray-800">
-                    <span className="mr-1.5 text-xs font-semibold text-[#00505a]">✦ {tMall("detail.sellingPoints")}</span>
+                    <span className="mr-1.5 text-xs font-semibold text-[#0c9468]">✦ {tMall("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
@@ -269,7 +269,7 @@ function ZoneProductDetailContent() {
               <button
                 onClick={handleAddToInquiry}
                 disabled={adding || needsSelection}
-                className="inline-flex items-center gap-2 rounded-full bg-[#00505a] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0a3d3d] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-full bg-[#0c9468] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0a7a56] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("addToInquiry")}

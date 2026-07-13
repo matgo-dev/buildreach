@@ -31,7 +31,7 @@ const AGENT_META: Record<string, AgentMeta> = {
     titleKey: "containerTitle",
     subtitleKey: "containerSubtitle",
     featureKeys: ["containerTag1", "containerTag2", "containerTag3"],
-    btnGradient: "linear-gradient(120deg, #003f46, #006773)",
+    btnGradient: "linear-gradient(120deg, #0a7a56, #10b981)",
     tagBg: "bg-teal-50", tagText: "text-teal-800", tagBorder: "border-teal-200",
   },
   compliance: {
@@ -45,7 +45,7 @@ const AGENT_META: Record<string, AgentMeta> = {
     titleKey: "procurementTitle",
     subtitleKey: "procurementSubtitle",
     featureKeys: ["procurementTag1", "procurementTag2", "procurementTag3"],
-    btnGradient: "linear-gradient(120deg, #003f46, #006773)",
+    btnGradient: "linear-gradient(120deg, #0a7a56, #10b981)",
     tagBg: "bg-teal-50", tagText: "text-teal-800", tagBorder: "border-teal-200",
   },
   finder: {
@@ -66,7 +66,7 @@ export function AiAssistantPage() {
   return (
     <div>
       {/* Hero — 一行大字 + 一行小字 */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#00505a] to-[#003a40] px-4 sm:px-8 mb-6 py-5 sm:py-6 text-center">
+      <div className="rounded-2xl bg-gradient-to-r from-[#0c9468] to-[#0a7a56] px-4 sm:px-8 mb-6 py-5 sm:py-6 text-center">
         <h1 className="text-xl sm:text-2xl font-bold text-white">
           {t("heroTitle")}
         </h1>
@@ -179,7 +179,7 @@ function FeatureCard({
       <button
         onClick={onStart}
         className="mt-auto w-full rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
-        style={{ background: "linear-gradient(120deg, #003f46, #006773)" }}
+        style={{ background: "linear-gradient(120deg, #0a7a56, #10b981)" }}
       >
         {t(startKey)}
       </button>
@@ -304,7 +304,7 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
         {/* 顶栏 */}
         <div
           className="flex items-center gap-3 px-4 sm:px-5 py-3.5 text-white"
-          style={{ background: "linear-gradient(120deg, #003f46, #00505a 60%, #006773)" }}
+          style={{ background: "linear-gradient(120deg, #0a7a56, #0c9468 60%, #10b981)" }}
         >
           <button
             onClick={onClose}
@@ -390,7 +390,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="flex justify-end">
         <div
           className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-sm leading-relaxed text-white"
-          style={{ background: "linear-gradient(120deg, #003f46, #006773)" }}
+          style={{ background: "linear-gradient(120deg, #0a7a56, #10b981)" }}
         >
           {message.content}
         </div>
@@ -473,7 +473,7 @@ function ChatInputBar({
               ? "text-white shadow-sm hover:opacity-90"
               : "bg-slate-200 text-slate-400")
           }
-          style={canSend ? { background: "linear-gradient(120deg, #003f46, #006773)" } : undefined}
+          style={canSend ? { background: "linear-gradient(120deg, #0a7a56, #10b981)" } : undefined}
         >
           <ArrowUp className="h-4 w-4" />
         </button>

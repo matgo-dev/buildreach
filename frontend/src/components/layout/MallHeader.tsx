@@ -95,42 +95,31 @@ export function MallHeader() {
 
   return (
     <header
-      className="sticky top-0 z-[80] border-b-2 border-gold"
+      className="sticky top-0 z-[80] border-b border-line bg-white"
       style={{
-        background: "linear-gradient(180deg, #00505a, #003f46)",
-        boxShadow: "0 12px 30px rgba(0,63,70,.22)",
+        boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 10px 24px rgba(16,36,65,.05)",
       }}
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">
         {/* 上层：品牌 + 购物车/语言 */}
         <div className="flex items-center justify-between min-h-[56px] md:min-h-[96px] md:grid md:grid-cols-[auto_minmax(400px,1fr)_auto] md:gap-5">
-        {/* 左:品牌 */}
+        {/* 左:品牌整锁 Logo(浅底版) */}
         <Link
           href="/"
-          className="flex items-center gap-2 sm:gap-3.5 group"
+          className="flex items-center group"
           aria-label={BRAND.name}
         >
-          {/* Logo mark */}
           <img
-            src={BRAND.logoMark}
+            src={BRAND.logoLockup}
             alt={BRAND.name}
-            className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 rounded-xl object-cover"
+            className="h-8 sm:h-11 w-auto shrink-0"
           />
-          <span className="shrink-0">
-            <strong className="block text-[15px] sm:text-[17px] leading-tight font-black text-white whitespace-nowrap">
-              Material Go <span className="text-gold">{BRAND.nameZh}</span>
-            </strong>
-          </span>
         </Link>
 
         {/* 中:搜索框 — PC 上显示在这一行 */}
         <form onSubmit={handleSearch} className="relative min-w-0 hidden md:block">
           <div
-            className="flex rounded-[10px] overflow-hidden"
-            style={{
-              border: "2px solid #e3a615",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            }}
+            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-teal-600/25 shadow-[0_1px_2px_rgba(16,36,65,.05)] transition-colors focus-within:border-teal-600/60 focus-within:ring-2 focus-within:ring-teal-600/15"
           >
             <input
               type="search"
@@ -143,7 +132,7 @@ export function MallHeader() {
             />
             <button
               type="submit"
-              className="w-[60px] bg-gold hover:bg-gold-deep text-white grid place-items-center transition-colors"
+              className="w-[60px] bg-teal-600 hover:bg-teal-700 text-white grid place-items-center transition-colors"
               aria-label="Search"
             >
               <Search className="h-5 w-5" strokeWidth={2.4} />
@@ -164,14 +153,14 @@ export function MallHeader() {
           {!isStaff && (
           <Link
             href={user ? "/buyer/cart" : "/login"}
-            className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
+            className="flex items-center px-3 py-2 rounded-lg text-ink-2 hover:bg-slate-100 hover:text-teal-700 transition-colors"
             title={t("headerRfqCart")}
           >
             <div className="relative" data-cart-icon>
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
               <span
-                className="absolute -right-2.5 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full text-[11px] font-black text-white border-2 border-teal-900"
+                className="absolute -right-2.5 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full text-[11px] font-black text-white border-2 border-white"
                 style={{ background: "#e3a615" }}
               >
                 {cartCount}
@@ -184,7 +173,7 @@ export function MallHeader() {
           {/* 帮助中心 */}
           <Link
             href="/help-center"
-            className="flex items-center px-3 py-2 rounded-lg text-white hover:bg-white/[0.08] transition-colors"
+            className="flex items-center px-3 py-2 rounded-lg text-ink-2 hover:bg-slate-100 hover:text-teal-700 transition-colors"
             title={t("helpCenter")}
           >
             <HelpCircle className="h-5 w-5" />
@@ -198,11 +187,7 @@ export function MallHeader() {
         {/* 移动端搜索框 — 独占一行 */}
         <form onSubmit={handleSearch} className="relative md:hidden pb-3">
           <div
-            className="flex rounded-[10px] overflow-hidden"
-            style={{
-              border: "2px solid #e3a615",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            }}
+            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-teal-600/25 shadow-[0_1px_2px_rgba(16,36,65,.05)] transition-colors focus-within:border-teal-600/60 focus-within:ring-2 focus-within:ring-teal-600/15"
           >
             <input
               type="search"
@@ -215,7 +200,7 @@ export function MallHeader() {
             />
             <button
               type="submit"
-              className="w-[50px] bg-gold hover:bg-gold-deep text-white grid place-items-center transition-colors"
+              className="w-[50px] bg-teal-600 hover:bg-teal-700 text-white grid place-items-center transition-colors"
               aria-label="Search"
             >
               <Search className="h-4.5 w-4.5" strokeWidth={2.4} />
@@ -289,7 +274,7 @@ function UserMenu() {
           <div className="border-b border-slate-100 bg-gradient-to-br from-teal-50 to-white px-4 py-3">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #07808b, #00505a)" }}>
+                style={{ background: "linear-gradient(135deg, #10b981, #0c9468)" }}>
                 {initial}
               </span>
               <div className="min-w-0">
@@ -391,7 +376,7 @@ function HeaderLocaleSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:bg-slate-100 hover:text-teal-700"
       >
         <Globe className="h-4 w-4" />
         {current.short}

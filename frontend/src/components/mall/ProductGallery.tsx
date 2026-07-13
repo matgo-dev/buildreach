@@ -129,7 +129,7 @@ export function ProductGallery({ images, skuImages, isFeatured }: ProductGallery
               onMouseEnter={() => setActiveIndex(idx)}
               className={`relative h-14 w-14 shrink-0 rounded-md border-2 overflow-hidden transition-colors ${
                 idx === activeIndex
-                  ? "border-[#00505a]"
+                  ? "border-[#0c9468]"
                   : "border-gray-200 hover:border-gray-400"
               }`}
             >

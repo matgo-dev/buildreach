@@ -125,7 +125,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`relative rounded-md border-2 transition-colors ${
                   isSelected
-                    ? "border-[#00505a] ring-1 ring-[#00505a]/30"
+                    ? "border-[#0c9468] ring-1 ring-[#0c9468]/30"
                     : "border-transparent hover:border-gray-300"
                 } ${canSelect ? "cursor-pointer" : "cursor-default"}`}
               >
@@ -152,7 +152,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
                   isSelected
-                    ? "border-[#00505a] bg-[#e6f3f3] text-[#00505a] font-medium"
+                    ? "border-[#0c9468] bg-[#e6f7ef] text-[#0c9468] font-medium"
                     : "border-gray-200 bg-white text-gray-600"
                 } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
               >
@@ -483,7 +483,7 @@ function ProductDetailContent() {
     return (
       <PublicLayout>
         <div className="flex min-h-[400px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00505a]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
         </div>
       </PublicLayout>
     );
@@ -498,7 +498,7 @@ function ProductDetailContent() {
           <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
           <button
             onClick={() => router.push(`/${locale}/mall`)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#00505a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a3d3d]"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0c9468] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a7a56]"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("detail.backToList")}
@@ -557,10 +557,10 @@ function ProductDetailContent() {
 
             {/* 商品描述/卖点 — 醒目展示 */}
             {(product.selling_points || product.description) && (
-              <div className="mt-3 rounded-lg border border-[#00505a]/10 bg-[#00505a]/[0.03] px-4 py-3">
+              <div className="mt-3 rounded-lg border border-[#0c9468]/10 bg-[#0c9468]/[0.03] px-4 py-3">
                 {product.selling_points && (
                   <div className="text-sm leading-relaxed text-gray-800">
-                    <span className="mr-1.5 text-xs font-semibold text-[#00505a]">✦ {t("detail.sellingPoints")}</span>
+                    <span className="mr-1.5 text-xs font-semibold text-[#0c9468]">✦ {t("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
@@ -611,7 +611,7 @@ function ProductDetailContent() {
                 type="button"
                 disabled={addingToCart}
                 onClick={handleAddToCart}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#00505a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#003d45] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0c9468] px-6 py-3 text-sm font-semibold text-white hover:bg-[#0a7a56] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("detail.addToInquiry")}
@@ -639,7 +639,7 @@ function ProductDetailContent() {
               onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "border-b-2 border-[#00505a] text-[#00505a]"
+                  ? "border-b-2 border-[#0c9468] text-[#0c9468]"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >

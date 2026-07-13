@@ -56,8 +56,8 @@ export function CategoryFloorSection({
             backgroundSize: "108% 108%",
           }}
         >
-          {/* 半透明遮罩保证文字可读 */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/15" />
+          {/* 半透明遮罩保证文字可读 —— 祖母绿色调统一各楼层卡片(呼应品牌绿) */}
+          <div className="absolute inset-0 bg-gradient-to-b from-teal-950/80 via-teal-900/55 to-teal-900/25" />
 
           {/* 文字叠在遮罩上 */}
           <div className="relative z-10 p-5 flex-1 flex flex-col">
