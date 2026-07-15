@@ -336,18 +336,20 @@ class Decisions:
     drops: set[str]                 # _hard(材料名)
     l1_aliases: dict[str, str]      # XFS 一级名 -> 我方一级名
     detail_cover_fallback: set[str]  # _hard(材料名):主图低清时允许详情图提为封面
+    force_replace: set[str]          # _hard(材料名):低清也照换,不 hold(人工确认过就要这张图)
 
 
 def load_decisions(path: Path = DECISIONS_PATH) -> Decisions:
-    """读人工决策台账(名字覆盖/弃用/一级别名/低清救回)。缺文件则空决策,行为不变。"""
+    """读人工决策台账(名字覆盖/弃用/一级别名/低清救回/强制替换)。缺文件则空决策,行为不变。"""
     if not path.exists():
-        return Decisions({}, set(), {}, set())
+        return Decisions({}, set(), {}, set(), set())
     raw = json.loads(path.read_text(encoding="utf-8"))
     overrides = {_hard(k): str(v) for k, v in (raw.get("name_overrides") or {}).items() if not k.startswith("_")}
     drops = {_hard(x) for x in ((raw.get("drops") or {}).get("list") or [])}
     aliases = {str(k): str(v) for k, v in (raw.get("l1_aliases") or {}).items() if not k.startswith("_")}
     detail_cover = {_hard(x) for x in ((raw.get("detail_cover_fallback") or {}).get("list") or [])}
-    return Decisions(overrides, drops, aliases, detail_cover)
+    force_replace = {_hard(x) for x in ((raw.get("force_replace") or {}).get("list") or [])}
+    return Decisions(overrides, drops, aliases, detail_cover, force_replace)
 
 
 def resolve_spu_code(
@@ -565,6 +567,11 @@ def _rank_images(row: MatchIn, images: list[ImageIn], allow_detail_cover: bool =
     return ranked, best
 
 
+def _should_hold_low_res(best_main: int, min_cover_side: int, force_replace: bool) -> bool:
+    """低清 hold 判定:最佳主图 min 边 < 门槛就 hold;但 force_replace 白名单一律照换。"""
+    return best_main < min_cover_side and not force_replace
+
+
 def _thumb_is_fresh(original_path: Path, thumb_path: Path) -> bool:
     try:
         return (
@@ -637,7 +644,8 @@ def _upsert_ledger(ledger_path: Path, new_rows: list[dict]) -> None:
 # ----------------------------- 主流程 -----------------------------
 
 async def run_import(
-    db: AsyncSession, source_dir: Path, zone_code: str, dry_run: bool, min_cover_side: int, ledger_path: Path
+    db: AsyncSession, source_dir: Path, zone_code: str, dry_run: bool, min_cover_side: int, ledger_path: Path,
+    freeze_category: bool = False,
 ) -> dict:
     stats: collections.Counter = collections.Counter()
     rows = load_input_rows(source_dir)
@@ -714,7 +722,9 @@ async def run_import(
         ranked, best_main = _rank_images(row, images, allow_detail_cover)
 
         # 低清 hold:最佳主图 < 门槛 → 整条不替换,记台账待复核
-        if best_main < min_cover_side:
+        # force_replace 白名单例外:人工确认过就要这张图,低清也照换。
+        force_replace = _hard(row.material_name) in decisions.force_replace
+        if _should_hold_low_res(best_main, min_cover_side, force_replace):
             low_res.append(f"{spu_code} {row.material_name} best={best_main}px offer={row.offer_id}")
             stats["rows_low_res_held"] += 1
             ledger_rows.append({
@@ -727,8 +737,14 @@ async def run_import(
             continue
 
         old_code = product.category_code
-        aliased_path = _apply_l1_alias(row.matched_category_path, decisions.l1_aliases)
-        new_code, created, cat_status = await apply_category(db, product, aliased_path, ts, dry_run, stats)
+        if freeze_category:
+            # 只更图不动分类:保留数据包里的 matched_category_path(留给后续分类订正轮),
+            # 但这一轮一律不写 category_code。
+            new_code, created, cat_status = old_code, [], "frozen"
+            stats["rows_category_frozen"] += 1
+        else:
+            aliased_path = _apply_l1_alias(row.matched_category_path, decisions.l1_aliases)
+            new_code, created, cat_status = await apply_category(db, product, aliased_path, ts, dry_run, stats)
 
         if not dry_run:
             await db.execute(
@@ -835,6 +851,8 @@ def _print_import(source_dir: Path, zone_code: str, dry_run: bool, min_cover_sid
     print(f"缩略图(仅主图):           生成 {s.get('thumbs_generated', 0)} / 失败 {s.get('thumbs_failed', 0)}")
     print("-" * 72)
     print("分类(以 XFS 为准):")
+    if s.get('rows_category_frozen'):
+        print(f"  冻结·只更图不动分类:     {s.get('rows_category_frozen', 0)}(--freeze-category)")
     print(f"  改动:                   {s.get('cat_changed', 0)}(其中新建叶子 {s.get('cat_leaf_created', 0)} 个)")
     print(f"  未变:                   {s.get('cat_unchanged', 0)}")
     print(f"  L1 缺失·不动分类:       {s.get('cat_no_L1', 0)}(待人工决定是否扩目录)")
@@ -879,7 +897,8 @@ def _print_report(zone_code: str, ledger_path: Path, rep: dict) -> None:
     print(f"\n台账文件:                 {ledger_path}")
 
 
-async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover_side: int, ledger_path: Path) -> None:
+async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover_side: int, ledger_path: Path,
+                   freeze_category: bool = False) -> None:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.core.config import settings
@@ -908,7 +927,7 @@ async def _execute(mode: str, source_dir: Path | None, zone_code: str, min_cover
             _print_report(zone_code, ledger_path, rep)
         else:
             assert source_dir is not None
-            result = await run_import(db, source_dir, zone_code, dry_run, min_cover_side, ledger_path)
+            result = await run_import(db, source_dir, zone_code, dry_run, min_cover_side, ledger_path, freeze_category)
             if dry_run:
                 await db.rollback()
             else:
@@ -926,6 +945,10 @@ def main() -> None:
         "--ledger-path", type=Path, default=None,
         help="台账 CSV 路径(默认取 env ZONE_SOE_LEDGER_PATH,再默认仓库 data/zone_import/;生产用宿主机持久路径)",
     )
+    parser.add_argument(
+        "--freeze-category", action="store_true",
+        help="只更图不动分类:保留数据包 matched_category_path(留给后续订正),这轮一律不写 category_code",
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--dry-run", action="store_true")
     group.add_argument("--commit", action="store_true")
@@ -936,7 +959,7 @@ def main() -> None:
     if mode != "report" and args.source_dir is None:
         parser.error("--dry-run/--commit 需要 --source-dir")
     ledger_path = _resolve_ledger_path(args.ledger_path)
-    asyncio.run(_execute(mode, args.source_dir, args.zone_code, args.min_cover_side, ledger_path))
+    asyncio.run(_execute(mode, args.source_dir, args.zone_code, args.min_cover_side, ledger_path, args.freeze_category))
 
 
 if __name__ == "__main__":
