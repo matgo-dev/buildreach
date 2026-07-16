@@ -19,11 +19,16 @@ export function MallFooter() {
         <div className="mx-auto max-w-mall px-3 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pt-8 pb-8">
           {/* 品牌列 */}
           <div className="md:col-span-1">
-            <img
-              src={BRAND.logoLockupDark}
-              alt={BRAND.name}
-              className="h-8 w-auto mb-3"
-            />
+            <div className="flex items-center gap-1 mb-2.5">
+              <img
+                src={BRAND.logoLockupDark}
+                alt={BRAND.name}
+                className="h-8 w-auto -my-1.5 shrink-0"
+              />
+              <span className="text-white text-sm font-bold whitespace-nowrap">
+                Material Go 筑达
+              </span>
+            </div>
             <p className="text-[13px] leading-relaxed text-[#d6eded]">
               {t("footerDescription")}
             </p>
