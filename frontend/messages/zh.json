@@ -1241,6 +1241,7 @@
     "auditLogs": "审计日志",
     "permissionMatrix": "权限矩阵全景",
     "zoneGrants": "专区授权",
+    "bannerManagement": "轮播图",
     "buyerApiDebug": "BUYER API 调试",
     "supplierApiDebug": "SUPPLIER API 调试",
     "operatorApiDebug": "OPERATOR API 调试",

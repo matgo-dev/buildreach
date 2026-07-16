@@ -1241,6 +1241,7 @@
     "auditLogs": "Kumbukumbu za Ukaguzi",
     "permissionMatrix": "Mfumo wa Ruhusa",
     "zoneGrants": "Ufikiaji wa Kanda",
+    "bannerManagement": "Mabango",
     "buyerApiDebug": "Utatuzi wa API ya Mnunuzi",
     "supplierApiDebug": "Utatuzi wa API ya Msambazaji",
     "operatorApiDebug": "Utatuzi wa API ya Opereta",

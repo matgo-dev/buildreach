@@ -1241,6 +1241,7 @@
     "auditLogs": "Audit Logs",
     "permissionMatrix": "Permission Matrix",
     "zoneGrants": "Zone Access",
+    "bannerManagement": "Banners",
     "buyerApiDebug": "Buyer API Debug",
     "supplierApiDebug": "Supplier API Debug",
     "operatorApiDebug": "Operator API Debug",
