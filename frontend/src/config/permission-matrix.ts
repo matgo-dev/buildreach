@@ -63,6 +63,9 @@ export const Permissions = {
   SYSTEM_AUDIT: "system:audit",
 
   ZONE_MANAGE: "zone:manage",
+
+  BANNER_READ: "banner:read",
+  BANNER_WRITE: "banner:write",
 } as const;
 
 export type PermissionCode = (typeof Permissions)[keyof typeof Permissions];

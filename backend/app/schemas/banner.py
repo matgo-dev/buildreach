@@ -26,7 +26,8 @@ class BannerDetailOut(BaseModel):
     title_zh: str | None = None
     title_en: str | None = None
     title_sw: str | None = None
-    image_url: str
+    image_url: str  # 相对 key(banners/xxx.jpg),可回传给创建/更新
+    image_full_url: str | None = None  # 拼好前缀的完整路径,仅供预览
     link_url: str | None = None
     sort_order: int = 0
     is_active: bool = True

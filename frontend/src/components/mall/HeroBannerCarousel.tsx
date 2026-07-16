@@ -2,37 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { bannersApi } from "@/lib/api/banners";
+import { imageUrl } from "@/lib/env";
 
 const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
 
 /**
- * 轮播图配置 — 静态资源，不依赖后端 API。
- * 播放顺序 = 数组顺序（要调整位置就直接移动条目）。
- * 后续可升级为 DB 配置：后端已有带 sort_order 的横幅接口
- * (frontend/src/lib/api/banners.ts，position="home_carousel")，
- * 届时改成拉取 API 并按 sort_order 排序即可替换这里的静态数组。
+ * 首页轮播 — 动态从后端读取(GET /api/v1/banners，position="home_carousel")。
+ * 播放顺序 = 后端按 sort_order 排序;运营在后台增删改 / 排序 / 上下架。
+ * 存量图由 backend/scripts/seed_banners.py 一次性 seed 进库。
  */
-const SLIDES: { src: string; alt: string; link: string | null }[] = [
-  {
-    src: "/banners/hero-main.jpg",
-    alt: "Matgo - Source China Building Materials for East Africa",
-    link: "/mall",
-  },
-  { src: "/banners/factory-aerial-view.jpg", alt: "Factory Aerial View", link: null },
-  { src: "/banners/factory-workshop-collage.jpg", alt: "Factory Workshop Collage", link: null },
-  { src: "/banners/factory-coating-workshop.jpg", alt: "Factory Coating Workshop", link: null },
-  { src: "/banners/factory-crate-packing.jpg", alt: "Factory Crate Packing", link: null },
-  { src: "/banners/factory-decorative-panels.jpg", alt: "Factory Decorative Panels", link: null },
-  { src: "/banners/factory-industrial-furnace.jpg", alt: "Factory Industrial Furnace", link: null },
-  { src: "/banners/factory-mesh-rolls.jpg", alt: "Factory Mesh Rolls", link: null },
-  { src: "/banners/factory-packaging-robot.jpg", alt: "Factory Packaging Robot", link: null },
-  { src: "/banners/factory-palletizing-robot.jpg", alt: "Factory Palletizing Robot", link: null },
-  { src: "/banners/factory-production-line.jpg", alt: "Factory Production Line", link: null },
-  { src: "/banners/factory-steel-coils.jpg", alt: "Factory Steel Coils", link: null },
-  { src: "/banners/factory-steel-products.jpg", alt: "Factory Steel Products", link: null },
-];
+interface Slide {
+  src: string;
+  alt: string;
+  link: string | null;
+}
 
 /** 判断 slide 是否在当前可见窗口内（当前 ± 1），用于按需挂载 DOM */
 function isNearby(index: number, current: number, total: number): boolean {
@@ -43,17 +28,40 @@ function isNearby(index: number, current: number, total: number): boolean {
 }
 
 export function HeroBannerCarousel() {
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
-  const count = SLIDES.length;
+  const count = slides.length;
+
+  useEffect(() => {
+    let alive = true;
+    bannersApi
+      .list("home_carousel")
+      .then((rows) => {
+        if (!alive) return;
+        setSlides(
+          rows.map((r) => ({
+            src: imageUrl(r.image_url),
+            alt: r.title || "",
+            link: r.link_url,
+          })),
+        );
+      })
+      .catch(() => {
+        /* 静默失败:轮播不显示,不阻塞首页 */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const goTo = useCallback(
-    (idx: number) => setCurrent(((idx % count) + count) % count),
+    (idx: number) => setCurrent(count ? ((idx % count) + count) % count : 0),
     [count],
   );
-  const next = useCallback(() => goTo(current + 1), [current, goTo]);
-  const prev = useCallback(() => goTo(current - 1), [current, goTo]);
+  const next = useCallback(() => setCurrent((c) => (count ? (c + 1) % count : 0)), [count]);
+  const prev = useCallback(() => setCurrent((c) => (count ? (c - 1 + count) % count : 0)), [count]);
 
   useEffect(() => {
     if (count <= 1 || isPaused) return;
@@ -61,26 +69,27 @@ export function HeroBannerCarousel() {
     return () => clearInterval(timerRef.current);
   }, [count, isPaused, next]);
 
+  // 加载中 / 无数据:保留占位背景,不塌陷布局
+  if (count === 0) {
+    return <div className="w-full h-full rounded-xl bg-gray-100" />;
+  }
+
   return (
     <div
       className="relative w-full h-full rounded-xl overflow-hidden group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {SLIDES.map((slide, i) => {
-        const nearby = isNearby(i, current, count);
+      {slides.map((slide, i) => {
         // 只渲染当前 ± 1 张，其余不挂载 DOM
-        if (!nearby) return null;
+        if (!isNearby(i, current, count)) return null;
 
         const img = (
-          <Image
+          <img
             src={slide.src}
             alt={slide.alt}
-            fill
-            sizes="(max-width: 768px) 100vw, 800px"
-            className="object-cover"
-            // 首张 priority 预加载，其余 lazy
-            priority={i === 0}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading={i === 0 ? "eager" : "lazy"}
             draggable={false}
           />
         );
@@ -92,7 +101,9 @@ export function HeroBannerCarousel() {
             }`}
           >
             {slide.link ? (
-              <Link href={slide.link} className="block w-full h-full">{img}</Link>
+              <Link href={slide.link} className="block w-full h-full">
+                {img}
+              </Link>
             ) : (
               img
             )}
@@ -123,7 +134,7 @@ export function HeroBannerCarousel() {
       {/* 圆点指示器 */}
       {count > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => goTo(i)}
