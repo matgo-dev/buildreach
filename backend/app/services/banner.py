@@ -51,7 +51,7 @@ async def list_all(
     results = []
     for r in rows:
         out = BannerDetailOut.model_validate(r)
-        out.image_url = _full_image_url(out.image_url)
+        out.image_full_url = _full_image_url(out.image_url)
         results.append(out)
     return results
 
@@ -62,7 +62,7 @@ async def create(db: AsyncSession, payload: BannerCreate) -> BannerDetailOut:
     await db.flush()
     await db.refresh(obj)
     out = BannerDetailOut.model_validate(obj)
-    out.image_url = _full_image_url(out.image_url)
+    out.image_full_url = _full_image_url(out.image_url)
     return out
 
 
@@ -78,7 +78,7 @@ async def update(
     await db.flush()
     await db.refresh(obj)
     out = BannerDetailOut.model_validate(obj)
-    out.image_url = _full_image_url(out.image_url)
+    out.image_full_url = _full_image_url(out.image_url)
     return out
 
 

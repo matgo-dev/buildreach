@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 TARGET_SIZE = (800, 800)
+# 横幅/楼层等大图:全宽展示,800 会糊,用更大上界(等比缩小,不放大)
+BANNER_TARGET_SIZE = (1920, 1920)
 JPEG_QUALITY = 85
 UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
 PRIVATE_UPLOAD_BASE_DIR = Path(__file__).resolve().parent.parent.parent / "private_uploads"
@@ -246,6 +248,7 @@ def _prepare_image_from_path(
     source_path: Path,
     filename: str,
     square: bool = False,
+    target_size: tuple[int, int] = TARGET_SIZE,
 ) -> tuple[bytes, int, int]:
     """校验并处理上传图片文件,返回 (jpeg_bytes, width, height)。"""
     ext = os.path.splitext(filename)[1].lower()
@@ -257,7 +260,7 @@ def _prepare_image_from_path(
     img = _open_verified_image(lambda: source_path)
     if img.width < 200 or img.height < 200:
         raise ImageTooSmallError()
-    img.thumbnail(TARGET_SIZE, Image.LANCZOS)
+    img.thumbnail(target_size, Image.LANCZOS)
     if square:
         max_side = max(img.width, img.height)
         bg = Image.new("RGB", (max_side, max_side), (255, 255, 255))
@@ -297,8 +300,11 @@ def _save_uploaded_image_path_to_base(
     base_dir: Path,
     subdir: str,
     square: bool = False,
+    target_size: tuple[int, int] = TARGET_SIZE,
 ) -> tuple[str, int, int, int]:
-    file_bytes, width, height = _prepare_image_from_path(source_path, filename, square)
+    file_bytes, width, height = _prepare_image_from_path(
+        source_path, filename, square, target_size=target_size,
+    )
 
     dest_dir = _safe_upload_dir(base_dir, subdir)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -333,6 +339,7 @@ def save_uploaded_image_from_path(
     filename: str,
     subdir: str,
     square: bool = False,
+    target_size: tuple[int, int] = TARGET_SIZE,
 ) -> tuple[str, int, int, int]:
     """处理并保存公开上传图片文件,返回 (relative_key, width, height, file_size)。"""
     return _save_uploaded_image_path_to_base(
@@ -341,6 +348,7 @@ def save_uploaded_image_from_path(
         UPLOAD_BASE_DIR,
         subdir,
         square=square,
+        target_size=target_size,
     )
 
 

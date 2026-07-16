@@ -22,6 +22,7 @@ class AuditResourceType(str, Enum):
     ATTACHMENT = "attachment"
     INGEST_RUN = "ingest_run"
     ZONE_GRANT = "zone_grant"
+    BANNER = "banner"
 
 
 class AuditAction(str, Enum):

@@ -91,6 +91,7 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("PUT", "/api/v1/admin/users/{user_id}"),
     # operator — 运营 banner 管理
     ("POST", "/api/v1/operator/banners"),
+    ("POST", "/api/v1/operator/banners/upload"),
     ("PUT", "/api/v1/operator/banners/{banner_id}"),
     ("DELETE", "/api/v1/operator/banners/{banner_id}"),
     # operator — 专区授权管理(授权/撤销买家组织,安全相关,写审计)
