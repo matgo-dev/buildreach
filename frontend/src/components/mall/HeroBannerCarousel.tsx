@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import useSWR from "swr";
 import { bannersApi } from "@/lib/api/banners";
 import { imageUrl } from "@/lib/env";
 
@@ -28,33 +29,26 @@ function isNearby(index: number, current: number, total: number): boolean {
 }
 
 export function HeroBannerCarousel() {
-  const [slides, setSlides] = useState<Slide[]>([]);
+  // 与首页其他区块一致用 SWR:缓存 + 去重,二次访问首页不再重新拉取闪烁。
+  // 失败时 data 为 undefined → slides 空 → 占位,不阻塞首页。
+  const { data: rows } = useSWR(
+    "home-banner-carousel",
+    () => bannersApi.list("home_carousel"),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+  const slides: Slide[] = useMemo(
+    () =>
+      (rows ?? []).map((r) => ({
+        src: imageUrl(r.image_url),
+        alt: r.title || "",
+        link: r.link_url,
+      })),
+    [rows],
+  );
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const count = slides.length;
-
-  useEffect(() => {
-    let alive = true;
-    bannersApi
-      .list("home_carousel")
-      .then((rows) => {
-        if (!alive) return;
-        setSlides(
-          rows.map((r) => ({
-            src: imageUrl(r.image_url),
-            alt: r.title || "",
-            link: r.link_url,
-          })),
-        );
-      })
-      .catch(() => {
-        /* 静默失败:轮播不显示,不阻塞首页 */
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const goTo = useCallback(
     (idx: number) => setCurrent(count ? ((idx % count) + count) % count : 0),

@@ -9,8 +9,18 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 from httpx import AsyncClient
+
+from app.services._buyer_utils import UPLOAD_BASE_DIR
+
+
+def _cleanup_uploaded(image_key: str) -> None:
+    """删掉上传测试产生的图 + 缩略图,避免 uploads/banners 堆积。"""
+    p = Path(UPLOAD_BASE_DIR) / image_key
+    p.unlink(missing_ok=True)
+    p.with_name(p.stem + "_thumb.webp").unlink(missing_ok=True)
 
 
 async def _login(client: AsyncClient, identifier: str) -> dict[str, str]:
@@ -55,6 +65,7 @@ async def test_upload_returns_relative_key(client: AsyncClient):
     assert not data["image_url"].startswith("/static")
     assert not data["image_url"].startswith("uploads/")
     assert data["full_url"] == f"/static/{data['image_url']}"
+    _cleanup_uploaded(data["image_url"])
 
 
 async def test_crud_roundtrip_and_url_shape(client: AsyncClient):
