@@ -850,6 +850,37 @@ async def test_zone_products_list_and_category_filter(client: AsyncClient, db_se
 
 
 @pytest.mark.asyncio
+async def test_zone_products_list_ordered_by_published_at_not_sort_order(client: AsyncClient, db_session):
+    """专区商品列表排序与公开列表(list_products_public)统一：按 published_at 倒序、NULL 排最后，
+    不再用 ZoneProduct.sort_order —— 故意把 sort_order 反着设，验证列表顺序仍跟 published_at 走。
+    """
+    from datetime import datetime, timedelta, timezone
+
+    zone, zcat = await _make_zone_with_category(db_session, zone_code="ZONE-T11-ORDER")
+    older, _ = await _make_variant_product_in_zone(db_session, zone, zcat, spu_code="T11-ORDER-OLD")
+    newer, _ = await _make_variant_product_in_zone(db_session, zone, zcat, spu_code="T11-ORDER-NEW")
+    unpublished, _ = await _make_variant_product_in_zone(db_session, zone, zcat, spu_code="T11-ORDER-NULL")
+
+    now = datetime.now(timezone.utc)
+    older.published_at = now - timedelta(days=1)
+    newer.published_at = now
+    unpublished.published_at = None
+
+    # sort_order 与期望顺序相反：older=0(本应排最前)、newer=1、unpublished=2。
+    await db_session.execute(update(ZoneProduct).where(ZoneProduct.spu_id == older.id).values(sort_order=0))
+    await db_session.execute(update(ZoneProduct).where(ZoneProduct.spu_id == newer.id).values(sort_order=1))
+    await db_session.execute(update(ZoneProduct).where(ZoneProduct.spu_id == unpublished.id).values(sort_order=2))
+    await db_session.commit()
+
+    headers = await _grant_zone_to_default_buyer(client, db_session, zone)
+    r = await client.get(f"/api/v1/zones/{zone.code}/products", headers=headers)
+    assert r.status_code == 200, r.text
+    ids = [item["id"] for item in r.json()["data"]["items"]]
+
+    assert ids == [newer.id, older.id, unpublished.id]
+
+
+@pytest.mark.asyncio
 async def test_zone_products_sku_count_excludes_inactive_and_deleted(client: AsyncClient, db_session):
     """规格数只算 ACTIVE 且未软删的 SKU,与 resolve_purchase_target 口径一致。
 

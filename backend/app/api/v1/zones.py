@@ -250,7 +250,9 @@ async def list_zone_products(
         select(Product)
         .join(ZoneProduct, ZoneProduct.spu_id == Product.id)
         .where(*base_filters)
-        .order_by(ZoneProduct.sort_order, ZoneProduct.id)
+        # 与公开列表(list_products_public)排序口径统一：按上架时间倒序，
+        # 未上架/published_at 被清空的排最后。
+        .order_by(Product.published_at.desc().nulls_last(), Product.id.desc())
         .offset((page - 1) * size)
         .limit(size)
     )
