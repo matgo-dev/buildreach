@@ -141,6 +141,7 @@ services:
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
     volumes:
       - ${BANNER_DIR:-./data/banners}:/app/public/banners
+      - ${FLOOR_DIR:-./data/floors}:/app/public/images/floors
     # 对外暴露(过渡期保留,正式上线后可删,只走 Nginx)
     ports:
       - "${FRONTEND_HOST_PORT:-3001}:3000"
