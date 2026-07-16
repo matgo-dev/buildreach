@@ -2234,3 +2234,69 @@ async def test_home_floor_safety_products_all_from_fire(client, db_session):
     assert any(c["name_zh"] != "消防器材" for c in safety["categories"]), (
         "左侧导航应仍含劳保安防原品类"
     )
+
+
+@pytest.mark.asyncio
+async def test_home_floor_skips_imageless_product_even_if_newer(client, db_session):
+    """楼层选品必须有封面图：同一分类桶里，无图商品即使 created_at 更新也不能顶替有图商品。"""
+    from datetime import datetime, timedelta, timezone
+    from app.db.models.product_image import ProductImage
+    from app.services.product import _resolve_category_path
+    from app.api.v1.products import _HOME_FLOOR_CACHE
+
+    fire = await _resolve_category_path(db_session, ["消防", "消防器材"])
+    assert fire is not None, "seed 缺少 消防/消防器材"
+    from sqlalchemy import select
+    from app.db.models.category import Category
+    fire_leaf = (await db_session.execute(
+        select(Category).where(
+            Category.code.like(f"{fire.code}.%"),
+            Category.is_leaf.is_(True),
+            Category.is_active.is_(True),
+        ).limit(1)
+    )).scalar_one_or_none()
+    assert fire_leaf is not None, "消防器材下无叶子类目"
+
+    headers = await _login_operator(client)
+
+    imaged_pid = await _create_test_product(client, headers, fire_leaf.code, "FIRE-IMG-001")
+    await _create_test_sku(client, headers, imaged_pid, "FIRE-IMG-001-SKU")
+    await _upload_test_image(client, headers, imaged_pid)
+    r = await client.patch(
+        f"/api/v1/operator/products/{imaged_pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+    assert r.status_code == 200, r.text
+
+    imageless_pid = await _create_test_product(client, headers, fire_leaf.code, "FIRE-NOIMG-001")
+    await _create_test_sku(client, headers, imageless_pid, "FIRE-NOIMG-001-SKU")
+    img_id = await _upload_test_image(client, headers, imageless_pid)
+    r = await client.patch(
+        f"/api/v1/operator/products/{imageless_pid}/status",
+        headers=headers, json={"status": "ACTIVE"},
+    )
+    assert r.status_code == 200, r.text
+
+    # 模拟"上架后图片被软删"（跟生产上 459 个未换图商品同款状态），并让它比有图商品更"新"，
+    # 验证不加图片过滤时它会靠 created_at 更晚赢下这个分类桶。
+    await db_session.execute(
+        ProductImage.__table__.update().where(ProductImage.id == img_id).values(
+            deleted_at=datetime.now(timezone.utc),
+        )
+    )
+    from app.db.models.product import Product
+    await db_session.execute(
+        Product.__table__.update().where(Product.id == imageless_pid).values(
+            created_at=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+    )
+    await db_session.commit()
+
+    _HOME_FLOOR_CACHE.clear()
+    r = await client.get("/api/v1/products/home-floors")
+    assert r.status_code == 200, r.text
+    safety = r.json()["data"]["floors"]["floor-safety"]
+
+    product_ids = {p["id"] for p in safety["products"]}
+    assert imaged_pid in product_ids, "有图商品应被选中"
+    assert imageless_pid not in product_ids, "无图商品即使更新也不应顶替有图商品"

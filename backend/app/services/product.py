@@ -802,6 +802,13 @@ async def sample_home_floor_products(
             WHERE products.status = :active_status
               AND products.deleted_at IS NULL
               AND products.visibility = 'PUBLIC'
+              -- 楼层代表商品必须有封面图，否则会选中无图商品占坑
+              AND EXISTS (
+                  SELECT 1 FROM product_images pi
+                  WHERE pi.product_id = products.id
+                    AND pi.deleted_at IS NULL
+                    AND pi.image_type != 'DETAIL'
+              )
         )
         SELECT product_id
         FROM ranked
