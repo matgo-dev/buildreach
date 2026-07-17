@@ -12,6 +12,8 @@ declare global {
   }
 }
 
+const DEFAULT_FLOOR_ASSET_VERSION = "20260717";
+
 /**
  * 获取 API 基础地址（浏览器访问后端的公网地址）。
  *
@@ -34,7 +36,7 @@ export function getFloorAssetVersion(): string {
     typeof window !== "undefined"
       ? window.__ENV?.FLOOR_ASSET_VERSION
       : process.env.FLOOR_ASSET_VERSION || process.env.NEXT_PUBLIC_FLOOR_ASSET_VERSION;
-  return version?.trim() ?? "";
+  return version?.trim() || DEFAULT_FLOOR_ASSET_VERSION;
 }
 
 function appendQueryParam(url: string, key: string, value: string): string {
