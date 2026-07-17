@@ -241,6 +241,9 @@ bash deploy/deploy-offline.sh
 ### Q: 换了服务器 IP 怎么办？
 `API_BASE_URL` 是运行时注入的，修改 `.env.production` 后重启前端容器即可：`docker compose --env-file .env.production restart frontend`
 
+### Q: 首页楼层背景图换了但页面还显示旧图？
+楼层图 URL 支持运行时版本号。替换 `uploads/floors/*.webp` 后，把 `.env.production` 里的 `FLOOR_ASSET_VERSION` 改成日期或批次号，再重启前端容器即可，不需要重新 build 镜像。
+
 ### Q: 翻译不生效？
 检查 `TRANSLATION_PROVIDER` 和对应的 API Key。在国内服务器上 Google Translate 不可用，需要用 `aliyun` 或 `mock`。
 

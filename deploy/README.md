@@ -154,11 +154,15 @@ bash deploy/deploy.sh
 | 名称 | 前端路径 | 后端地址 | 缓存 |
 |------|---------|---------|------|
 | api | /api/ | http://127.0.0.1:17857 | 禁用 |
+| floor-static | /static/floors/ | http://127.0.0.1:17857 | 10秒 |
 | static | /static/ | http://127.0.0.1:17857 | 7天 |
 | env-js | /__env.js | http://127.0.0.1:7857 | 禁用 |
 | healthz | /healthz | http://127.0.0.1:17857 | 禁用 |
 | next-static | /_next/static/ | http://127.0.0.1:7857 | 365天 |
 | root | / | http://127.0.0.1:7857 | 禁用 |
+
+> 如果在 1Panel 里选择直接内联返回 `/__env.js`,内容需要同步包含 `FLOOR_ASSET_VERSION`,例如:
+> `window.__ENV = { API_BASE_URL: "https://matgo.ai", FLOOR_ASSET_VERSION: "20260717" };`
 
 ### 4. 初始化品类数据（首次部署必做）
 

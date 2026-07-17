@@ -100,6 +100,7 @@ services:
       - backend
     environment:
       API_BASE_URL: ${API_BASE_URL}
+      FLOOR_ASSET_VERSION: ${FLOOR_ASSET_VERSION:-}
     volumes:
       - ${BANNER_DIR:-./data/banners}:/app/public/banners:ro
     ports:

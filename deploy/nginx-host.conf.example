@@ -40,6 +40,13 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
     gzip_vary on;
 
+    location /static/floors/ {
+        proxy_pass http://buildreach_backend;
+        expires 10s;
+        add_header Cache-Control "public, max-age=10";
+        access_log off;
+    }
+
     location /static/ {
         proxy_pass http://buildreach_backend;
         expires 7d;
@@ -75,6 +82,12 @@ server {
         proxy_pass http://buildreach_frontend;
         expires 365d;
         add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location = /__env.js {
+        proxy_pass http://buildreach_frontend;
+        add_header Cache-Control "no-cache";
         access_log off;
     }
 

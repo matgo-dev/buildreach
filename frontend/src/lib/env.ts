@@ -7,6 +7,7 @@ declare global {
   interface Window {
     __ENV?: {
       API_BASE_URL?: string;
+      FLOOR_ASSET_VERSION?: string;
     };
   }
 }
@@ -28,6 +29,20 @@ export function getApiBase(): string {
   return base;
 }
 
+export function getFloorAssetVersion(): string {
+  const version =
+    typeof window !== "undefined"
+      ? window.__ENV?.FLOOR_ASSET_VERSION
+      : process.env.FLOOR_ASSET_VERSION || process.env.NEXT_PUBLIC_FLOOR_ASSET_VERSION;
+  return version?.trim() ?? "";
+}
+
+function appendQueryParam(url: string, key: string, value: string): string {
+  if (!url || !value) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+}
+
 /**
  * 将后端返回的相对图片路径（/static/...）拼成完整 URL。
  *
@@ -37,4 +52,8 @@ export function imageUrl(path: string | null | undefined): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `${getApiBase()}${path}`;
+}
+
+export function floorImageUrl(path: string | null | undefined): string {
+  return appendQueryParam(imageUrl(path), "v", getFloorAssetVersion());
 }

@@ -5,7 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { Loader2, PackageOpen } from "lucide-react";
 
 import type { HomeFloorCategory, ProductPublic } from "@/lib/api/products";
-import { imageUrl } from "@/lib/env";
+import { floorImageUrl } from "@/lib/env";
 import { ProductCardCompact } from "./ProductCardCompact";
 import { MOCK_FLOOR_PRODUCTS } from "./floorMockData";
 
@@ -52,7 +52,7 @@ export function CategoryFloorSection({
         <div
           className="relative hidden w-[220px] shrink-0 self-stretch overflow-hidden rounded-xl bg-gray-700 bg-no-repeat md:flex md:flex-col"
           style={{
-            backgroundImage: `url(${imageUrl(config.bgImage)})`,
+            backgroundImage: `url(${floorImageUrl(config.bgImage)})`,
             backgroundPosition: "center center",
             backgroundSize: "108% 108%",
           }}

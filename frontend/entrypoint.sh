@@ -6,7 +6,8 @@ ENV_FILE="/app/public/__env.js"
 
 node -e "
   const env = {
-    API_BASE_URL: process.env.API_BASE_URL || ''
+    API_BASE_URL: process.env.API_BASE_URL || '',
+    FLOOR_ASSET_VERSION: process.env.FLOOR_ASSET_VERSION || ''
   };
   const js = 'window.__ENV = ' + JSON.stringify(env) + ';';
   require('fs').writeFileSync('${ENV_FILE}', js);
