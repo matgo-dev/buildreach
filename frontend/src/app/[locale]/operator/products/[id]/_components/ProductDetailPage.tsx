@@ -331,8 +331,8 @@ export default function ProductDetailPage() {
       } else {
         const newStatus = confirmModal.type === "publish" ? "ACTIVE" : "INACTIVE";
         await operatorProductsApi.updateStatus(product.id, { status: newStatus });
+        await mutate();
         toastSuccess(confirmModal.type === "publish" ? tList("toastPublished") : tList("toastUnpublished"));
-        router.push(`/${locale}/operator/products`);
       }
       setConfirmModal(null);
     } catch (err: unknown) {
