@@ -664,6 +664,8 @@ async def refresh(
     jti_raw = payload.get("jti")
     if sid_raw is None or jti_raw is None:
         # TODO(2026-07-29 后删除): 旧格式 refresh 兼容——现场建会话迁移,用户无感
+        # 复用登录路径清理(过期行+会话数上限),堵住旧 token 重放反复建行的增长口子
+        await session_service.cleanup_on_login(db, user_id=user.id)
         tokens = await session_service.issue_session_tokens(db, user)
         _set_refresh_cookie(response, tokens["refresh_token"])
         return success({
@@ -748,7 +750,10 @@ async def logout(
                 request=request,
             )  # write_audit 默认 commit,顺带提交 revoke
         except (JWTError, KeyError, TypeError, ValueError):
-            pass  # 坏 cookie:幂等登出,不暴露细节
+            # 仅吞"坏 cookie"类解析错误(幂等登出,不暴露细节)。
+            # DB 异常不在此列:revoke/audit 落库失败会正常抛 500 并回滚,
+            # 不会出现"响应成功但会话未吊销"的静默失败。
+            pass
 
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,

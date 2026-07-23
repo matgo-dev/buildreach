@@ -78,7 +78,6 @@ async def test_issue_session_tokens_creates_row_and_binds_sid_jti(db_session):
 @pytest.mark.asyncio
 async def test_rotate_success_then_replay_kills(db_session):
     """CAS 轮换成功换代;宽限外重放老 jti → KILLED 且行被删。"""
-    from unittest.mock import patch
     from app.db.models.auth_session import AuthSession
     from app.services import session_service
 
@@ -101,7 +100,7 @@ async def test_rotate_success_then_replay_kills(db_session):
     assert row.current_jti == jti1  # 幂等:未推进状态
 
     # 再转一代后,jti0 变成"更老的代" → KILL
-    status3, jti3 = await session_service.rotate_or_resolve(
+    status3, _ = await session_service.rotate_or_resolve(
         db_session, sid=sid, user_id=user.id, presented_jti=jti1)
     assert status3 == "ROTATED"
     status4, _ = await session_service.rotate_or_resolve(

@@ -54,6 +54,8 @@ def resolve_stale_refresh(
         and (now - rotated_at).total_seconds() < GRACE_WINDOW_SECONDS
     ):
         return "GRACE"
+    # 注:presented==current 走不到这里(CAS 会直接命中 ROTATED;过期则上面已 EXPIRED),
+    # 此兜底 KILL 只为防御性完整。current_jti 参数因此在本函数内未被比较,由调用方用于 GRACE 重发。
     return "KILL"
 
 
