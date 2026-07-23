@@ -44,6 +44,7 @@ class AuditAction(str, Enum):
     USER_DISABLE = "USER_DISABLE"       # ADMIN 停用账号
     USER_ENABLE = "USER_ENABLE"         # ADMIN 启用账号
     FORCE_LOGOUT = "FORCE_LOGOUT"     # 管理员强制下线(bump token_version)
+    REFRESH_REPLAY = "REFRESH_REPLAY"  # refresh token 重放检测(会话被杀)
     ROLE_ASSIGN = "ROLE_ASSIGN"
     ROLE_REVOKE = "ROLE_REVOKE"
     STATUS_CHANGE = "STATUS_CHANGE"

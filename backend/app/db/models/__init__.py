@@ -1,6 +1,7 @@
 """集中导入所有模型,供 Alembic autogenerate 识别。"""
 from app.db.models.attachment import Attachment, OwnerType
 from app.db.models.audit_log import AuditLog
+from app.db.models.auth_session import AuthSession
 from app.db.models.buyer_browse_preference import BuyerBrowsePreference
 from app.db.models.buyer_event import BuyerEvent
 from app.db.models.buyer_member import BuyerMember
@@ -74,6 +75,7 @@ __all__ = [
     "Attachment",
     "OwnerType",
     # auth / rbac / org
+    "AuthSession",
     "User",
     "Role",
     "Permission",

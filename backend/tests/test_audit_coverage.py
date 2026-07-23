@@ -18,6 +18,8 @@ from app.main import app
 AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     # auth — 登录/注册/登出/改密,全部写审计
     ("POST", "/api/v1/auth/login"),
+    # logout 仅在携带可解的 refresh cookie 时写审计;
+    # 无/坏 cookie 幂等返回 200 且不写(无可信身份可归因,设计内行为)
     ("POST", "/api/v1/auth/logout"),
     ("POST", "/api/v1/auth/register/buyer"),
     ("POST", "/api/v1/auth/register/supplier"),

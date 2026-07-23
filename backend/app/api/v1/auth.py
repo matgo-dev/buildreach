@@ -8,17 +8,19 @@ import os
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.exceptions import BusinessError, MultipleValidationError, NotAuthenticatedError, success
 from app.core.request_ip import get_client_ip
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
+from app.db.models.audit_log import AuditStatus
 from app.db.models.user import User, UserStatus
 from jose import JWTError
 from urllib.parse import urlparse
 from app.db.session import get_db
-from app.rbac.constants import Permissions
-from app.rbac.guards import block_if_must_change_password, require_permission
+from app.rbac.guards import block_if_must_change_password
 from app.schemas.auth import (
     BuyerRegisterIn,
     ChangePasswordIn,
@@ -29,7 +31,7 @@ from app.schemas.auth import (
     TokenOut,
 )
 from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, OrgUpdateIn, ProfileUpdateIn
-from app.services import auth_service, me_service, verification_service
+from app.services import auth_service, me_service, session_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
 
@@ -621,7 +623,7 @@ async def me(
     return success(data)
 
 
-@router.post("/refresh", summary="用 httpOnly cookie 中的 refresh token 换新 access(并轮转 refresh)")
+@router.post("/refresh", summary="用 httpOnly cookie 中的 refresh token 换新 access(CAS 轮换 + 重放检测)")
 async def refresh(
     request: Request,
     response: Response,
@@ -660,31 +662,99 @@ async def refresh(
     if int(payload.get("tv", -1)) != user.token_version:
         raise NotAuthenticatedError("Token revoked")
 
-    # 5. 签新 access + 新 refresh(refresh 轮转,降低盗用窗口)
-    new_access, expires_in = create_access_token(user.id, user.email, user.token_version)
-    new_refresh = create_refresh_token(user.id, user.email, user.token_version)
+    # 5. 会话账本轮换(设计 §4)
+    sid_raw = payload.get("sid")
+    jti_raw = payload.get("jti")
+    if sid_raw is None or jti_raw is None:
+        # TODO(2026-07-29 后删除): 旧格式 refresh 兼容——现场建会话迁移,用户无感
+        # 复用登录路径清理(过期行+会话数上限),堵住旧 token 重放反复建行的增长口子
+        await session_service.cleanup_on_login(db, user_id=user.id)
+        tokens = await session_service.issue_session_tokens(db, user)
+        _set_refresh_cookie(response, tokens["refresh_token"])
+        return success({
+            "access_token": tokens["access_token"],
+            "token_type": "Bearer",
+            "expires_in": tokens["expires_in"],
+        })
 
-    # 6. 新 refresh 写回 cookie
-    _set_refresh_cookie(response, new_refresh)
+    try:
+        sid = int(sid_raw)
+    except (TypeError, ValueError):
+        raise NotAuthenticatedError("Invalid token payload")
 
-    # 7. 返回新 access(refresh 静默,**不写 audit_logs** 避免噪音)
-    return success({
-        "access_token": new_access,
-        "token_type": "Bearer",
-        "expires_in": expires_in,
-    })
+    status_, effective_jti = await session_service.rotate_or_resolve(
+        db, sid=sid, user_id=user.id, presented_jti=str(jti_raw)
+    )
+
+    if status_ in ("ROTATED", "GRACE"):
+        # 6. 新 refresh 写回 cookie(GRACE 幂等重发 current,不推进状态)
+        new_access, expires_in = create_access_token(user.id, user.email, user.token_version)
+        new_refresh = create_refresh_token(
+            user.id, user.email, user.token_version, sid=sid, jti=effective_jti
+        )
+        _set_refresh_cookie(response, new_refresh)
+        # 7. 正常轮换不写 audit_logs,避免噪音
+        return success({
+            "access_token": new_access,
+            "token_type": "Bearer",
+            "expires_in": expires_in,
+        })
+
+    if status_ == "KILLED":
+        # 重放:罕见安全事件,值得记
+        await write_audit(
+            db,
+            resource_type=AuditResourceType.AUTH,
+            action=AuditAction.REFRESH_REPLAY,
+            status=AuditStatus.FAILED,
+            user_id=user.id,
+            user_email=user.email,
+            request=request,
+            error_message="refresh token replay detected, session revoked",
+        )
+    # KILLED / EXPIRED / MISSING 统一 401
+    raise NotAuthenticatedError("Invalid refresh token")
 
 
-@router.post("/logout", summary="登出(清 cookie + 写审计)")
+@router.post("/logout", summary="登出(按 refresh cookie 吊销本设备会话 + 清 cookie + 写审计)")
 async def logout(
     request: Request,
     response: Response,
-    current: CurrentUser = Depends(require_permission(Permissions.AUTH_LOGOUT)),
     db: AsyncSession = Depends(get_db),
 ):
-    await auth_service.logout(
-        db, user_id=current.id, user_email=current.email, request=request
-    )
+    """以 refresh cookie 为准吊销服务端会话(设计 §5)。
+
+    不依赖 access token:access 过期(15min)而 refresh 尚在时,
+    logout 必须仍能吊销服务端会话。CSRF 由 Origin 白名单 + SameSite 覆盖。
+    无/坏 cookie 时幂等:仅清 cookie 返回 200。
+    """
+    origin = request.headers.get("origin") or request.headers.get("referer")
+    if not _origin_allowed(origin, settings.CORS_ORIGINS):
+        raise NotAuthenticatedError("Invalid origin")
+
+    refresh_cookie = request.cookies.get(settings.REFRESH_COOKIE_NAME)
+    if refresh_cookie:
+        try:
+            payload = decode_token(refresh_cookie, expected_type="refresh")
+            user_id = int(payload["sub"])
+            sid_raw = payload.get("sid")
+            if sid_raw is not None:
+                # 删行即吊销;老格式 cookie 无 sid → 无行可删,只清 cookie
+                await session_service.revoke_session(
+                    db, sid=int(sid_raw), user_id=user_id
+                )
+            await auth_service.logout(
+                db,
+                user_id=user_id,
+                user_email=payload.get("email") or "",
+                request=request,
+            )  # write_audit 默认 commit,顺带提交 revoke
+        except (JWTError, KeyError, TypeError, ValueError):
+            # 仅吞"坏 cookie"类解析错误(幂等登出,不暴露细节)。
+            # DB 异常不在此列:revoke/audit 落库失败会正常抛 500 并回滚,
+            # 不会出现"响应成功但会话未吊销"的静默失败。
+            pass
+
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         path=settings.REFRESH_COOKIE_PATH,
@@ -869,9 +939,6 @@ async def update_language_preference(
     old_lang = user.language_preference
     user.language_preference = lang
 
-    from app.audit.constants import AuditAction, AuditResourceType
-    from app.audit.logger import write_audit
-    from app.db.models.audit_log import AuditStatus
     await write_audit(
         db,
         resource_type=AuditResourceType.USER,
@@ -1011,6 +1078,8 @@ async def reset_password(
     user.password_hash = hash_password(new_password)
     user.token_version = (user.token_version or 0) + 1
     user.must_change_password = False
+    # tv 已使旧 token 全失效;删行让会话表诚实(设计 §5)
+    await session_service.revoke_all_sessions(db, user_id=user.id)
     await db.commit()
 
     return success(None, message="密码重置成功，请使用新密码登录")
@@ -1039,6 +1108,8 @@ async def deactivate_account(
 
     user.status = UserStatus.DEACTIVATED
     user.token_version += 1
+    # tv 已使旧 token 全失效;删行让会话表诚实(设计 §5)
+    await session_service.revoke_all_sessions(db, user_id=user.id)
     await db.commit()
 
     return success({"message": "Account deactivated successfully"})

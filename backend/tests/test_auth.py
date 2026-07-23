@@ -90,6 +90,15 @@ async def test_forgot_password_uses_verification_code_and_consumes(
     await db_session.refresh(vc)
     assert vc.used is True
 
+    # 重置密码 tv bump 已使旧 token 全失效;会话表也应同步清空该用户所有行
+    from app.db.models.auth_session import AuthSession
+    from app.db.models.user import User
+    uid = (await db_session.execute(
+        select(User.id).where(User.email == email))).scalar_one()
+    rows = (await db_session.execute(
+        select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
+    assert rows == []
+
     old_login = await _login(client, email, "Aa123456789")
     assert old_login.status_code == 401
 

@@ -56,7 +56,15 @@ def create_access_token(user_id: int, email: str, token_version: int = 0) -> tup
     return token, expires_in
 
 
-def create_refresh_token(user_id: int, email: str, token_version: int = 0) -> str:
+def create_refresh_token(
+    user_id: int,
+    email: str,
+    token_version: int = 0,
+    *,
+    sid: int | None = None,
+    jti: str | None = None,
+) -> str:
+    """sid/jti 绑定会话账本行(auth_sessions);None 仅限旧格式兼容期与测试。"""
     exp = _now_utc() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": str(user_id),
@@ -66,6 +74,10 @@ def create_refresh_token(user_id: int, email: str, token_version: int = 0) -> st
         "iat": int(_now_utc().timestamp()),
         "exp": int(exp.timestamp()),
     }
+    if sid is not None:
+        payload["sid"] = sid
+    if jti is not None:
+        payload["jti"] = jti
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
