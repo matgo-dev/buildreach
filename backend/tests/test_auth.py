@@ -91,12 +91,21 @@ async def test_forgot_password_uses_verification_code_and_consumes(
     assert vc.used is True
 
     # 重置密码 tv bump 已使旧 token 全失效;会话表也应同步清空该用户所有行
+    from app.db.models.audit_log import AuditLog
     from app.db.models.auth_session import AuthSession
     from app.db.models.user import User
     uid = (await db_session.execute(
         select(User.id).where(User.email == email))).scalar_one()
     rows = (await db_session.execute(
         select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
+
+    # 重置密码是安全敏感操作,必须留审计痕迹(此前遗漏,曾是无痕操作)
+    audit_row = (await db_session.execute(
+        select(AuditLog).where(
+            AuditLog.action == "PASSWORD_RESET", AuditLog.user_id == uid,
+        )
+    )).scalar_one()
+    assert audit_row.user_email == email
     assert rows == []
 
     old_login = await _login(client, email, "Aa123456789")

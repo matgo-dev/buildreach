@@ -36,6 +36,7 @@ class AuditAction(str, Enum):
     LOGOUT = "LOGOUT"
     REGISTER = "REGISTER"
     PASSWORD_CHANGE = "PASSWORD_CHANGE"
+    PASSWORD_RESET = "PASSWORD_RESET"    # 忘记密码流程重置(未登录,验证码校验通过)
     # 自助资料变更(用户对自己账号的操作)
     PROFILE_UPDATE = "PROFILE_UPDATE"   # 改 name/phone 等低风险字段
     EMAIL_CHANGE = "EMAIL_CHANGE"       # 改登录邮箱

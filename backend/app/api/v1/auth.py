@@ -743,10 +743,12 @@ async def logout(
                 await session_service.revoke_session(
                     db, sid=int(sid_raw), user_id=user_id
                 )
+            # 审计用邮箱取当前 DB 值,而非 token 签发时内嵌的旧快照(可能已改邮箱)
+            user = await db.get(User, user_id)
             await auth_service.logout(
                 db,
                 user_id=user_id,
-                user_email=payload.get("email") or "",
+                user_email=user.email if user is not None else (payload.get("email") or ""),
                 request=request,
             )  # write_audit 默认 commit,顺带提交 revoke
         except (JWTError, KeyError, TypeError, ValueError):
@@ -758,6 +760,9 @@ async def logout(
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         path=settings.REFRESH_COOKIE_PATH,
+        httponly=True,
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
     )
     return success(None)
 
@@ -1080,6 +1085,15 @@ async def reset_password(
     user.must_change_password = False
     # tv 已使旧 token 全失效;删行让会话表诚实(设计 §5)
     await session_service.revoke_all_sessions(db, user_id=user.id)
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.AUTH,
+        action=AuditAction.PASSWORD_RESET,
+        user_id=user.id,
+        user_email=user.email,
+        request=request,
+        commit=False,
+    )
     await db.commit()
 
     return success(None, message="密码重置成功，请使用新密码登录")
