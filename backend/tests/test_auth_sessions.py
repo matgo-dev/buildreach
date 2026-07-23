@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import httpx
 import pytest
 from sqlalchemy import select
 
@@ -187,3 +188,93 @@ async def test_login_creates_session_row(client, db_session):
     )).scalar_one()
     assert payload["sid"] == row.id
     assert payload["jti"] == row.current_jti
+
+
+def _swap_refresh_cookie(client, value: str) -> None:
+    """替换 client 的 refresh cookie(模拟另一个设备/旧 tab 的 cookie)。
+
+    注:不显式传 domain——httpx 0.28 的 http.cookiejar 后端对无点号 host(测试用
+    "test")的 domain 匹配会失真(eff_request_host 追加 ".local" 参与比对),
+    显式传 domain="test" 反而匹配不上,cookie 发不出去。留空走隐式域名照样只
+    对本 client 生效,足够模拟"换一个 cookie"。
+    """
+    jar = httpx.Cookies()
+    jar.set(COOKIE_NAME, value, path=settings.REFRESH_COOKIE_PATH)
+    client.cookies = jar
+
+
+async def _refresh(client):
+    return await client.post("/api/v1/auth/refresh", headers={"Origin": ALLOWED_ORIGIN})
+
+
+@pytest.mark.asyncio
+async def test_refresh_rotates_and_old_jti_grace_then_replay_kills(client, db_session):
+    """轮换换代;宽限窗内旧 cookie 幂等重发且行不变;更老的代重放 → 杀会话。"""
+    from app.core.security import decode_token
+    from app.db.models.auth_session import AuthSession
+
+    login_r = await _login(client)
+    cookie_a = login_r.cookies.get(COOKIE_NAME)
+    sid = decode_token(cookie_a, expected_type="refresh")["sid"]
+
+    # 轮换:A → B
+    r1 = await _refresh(client)
+    assert r1.status_code == 200
+    cookie_b = r1.cookies.get(COOKIE_NAME)
+    jti_b = decode_token(cookie_b, expected_type="refresh")["jti"]
+
+    # 宽限:旧 cookie A 再来 → 200,拿到 jti == current(B),行不变
+    _swap_refresh_cookie(client, cookie_a)
+    r2 = await _refresh(client)
+    assert r2.status_code == 200
+    jti_grace = decode_token(r2.cookies.get(COOKIE_NAME), expected_type="refresh")["jti"]
+    assert jti_grace == jti_b
+    row = (await db_session.execute(
+        select(AuthSession).where(AuthSession.id == sid))).scalar_one()
+    assert row.current_jti == jti_b  # 幂等:未推进状态
+
+    # 再转一代:B → C,之后重放 A(更老的代)→ 401 且行被删
+    _swap_refresh_cookie(client, cookie_b)
+    r3 = await _refresh(client)
+    assert r3.status_code == 200
+    cookie_c = r3.cookies.get(COOKIE_NAME)
+
+    _swap_refresh_cookie(client, cookie_a)
+    r4 = await _refresh(client)
+    assert r4.status_code == 401
+    gone = (await db_session.execute(
+        select(AuthSession).where(AuthSession.id == sid))).scalar_one_or_none()
+    assert gone is None
+
+    # 会话已死:最新 cookie C 也 401
+    _swap_refresh_cookie(client, cookie_c)
+    r5 = await _refresh(client)
+    assert r5.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_refresh_old_format_token_migrates(client, db_session):
+    """旧格式(无 sid/jti)refresh:过 tv 校验后现场建会话行,签新格式。"""
+    from jose import jwt as jose_jwt
+    from datetime import datetime, timezone, timedelta as td
+    from app.core.security import decode_token
+    from app.db.models.auth_session import AuthSession
+    from app.db.models.user import User
+
+    uid = await _super_user_id(db_session)
+    tv = (await db_session.execute(
+        select(User.token_version).where(User.id == uid))).scalar_one()
+    now = datetime.now(timezone.utc)
+    old_token = jose_jwt.encode(
+        {"sub": str(uid), "email": SUPER_EMAIL, "type": "refresh", "tv": tv,
+         "iat": int(now.timestamp()), "exp": int((now + td(days=7)).timestamp())},
+        settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+    _swap_refresh_cookie(client, old_token)
+    r = await _refresh(client)
+    assert r.status_code == 200
+    new_payload = decode_token(r.cookies.get(COOKIE_NAME), expected_type="refresh")
+    assert "sid" in new_payload and "jti" in new_payload
+    row = (await db_session.execute(
+        select(AuthSession).where(AuthSession.id == new_payload["sid"]))).scalar_one()
+    assert row.current_jti == new_payload["jti"]

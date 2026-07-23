@@ -29,7 +29,7 @@ from app.schemas.auth import (
     TokenOut,
 )
 from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, OrgUpdateIn, ProfileUpdateIn
-from app.services import auth_service, me_service, verification_service
+from app.services import auth_service, me_service, session_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
 
@@ -621,7 +621,7 @@ async def me(
     return success(data)
 
 
-@router.post("/refresh", summary="用 httpOnly cookie 中的 refresh token 换新 access(并轮转 refresh)")
+@router.post("/refresh", summary="用 httpOnly cookie 中的 refresh token 换新 access(CAS 轮换 + 重放检测)")
 async def refresh(
     request: Request,
     response: Response,
@@ -660,19 +660,59 @@ async def refresh(
     if int(payload.get("tv", -1)) != user.token_version:
         raise NotAuthenticatedError("Token revoked")
 
-    # 5. 签新 access + 新 refresh(refresh 轮转,降低盗用窗口)
-    new_access, expires_in = create_access_token(user.id, user.email, user.token_version)
-    new_refresh = create_refresh_token(user.id, user.email, user.token_version)
+    # 5. 会话账本轮换(设计 §4)
+    sid_raw = payload.get("sid")
+    jti_raw = payload.get("jti")
+    if sid_raw is None or jti_raw is None:
+        # TODO(2026-07-29 后删除): 旧格式 refresh 兼容——现场建会话迁移,用户无感
+        tokens = await session_service.issue_session_tokens(db, user)
+        _set_refresh_cookie(response, tokens["refresh_token"])
+        return success({
+            "access_token": tokens["access_token"],
+            "token_type": "Bearer",
+            "expires_in": tokens["expires_in"],
+        })
 
-    # 6. 新 refresh 写回 cookie
-    _set_refresh_cookie(response, new_refresh)
+    try:
+        sid = int(sid_raw)
+    except (TypeError, ValueError):
+        raise NotAuthenticatedError("Invalid token payload")
 
-    # 7. 返回新 access(refresh 静默,**不写 audit_logs** 避免噪音)
-    return success({
-        "access_token": new_access,
-        "token_type": "Bearer",
-        "expires_in": expires_in,
-    })
+    status_, effective_jti = await session_service.rotate_or_resolve(
+        db, sid=sid, user_id=user.id, presented_jti=str(jti_raw)
+    )
+
+    if status_ in ("ROTATED", "GRACE"):
+        # 6. 新 refresh 写回 cookie(GRACE 幂等重发 current,不推进状态)
+        new_access, expires_in = create_access_token(user.id, user.email, user.token_version)
+        new_refresh = create_refresh_token(
+            user.id, user.email, user.token_version, sid=sid, jti=effective_jti
+        )
+        _set_refresh_cookie(response, new_refresh)
+        # 7. 正常轮换不写 audit_logs,避免噪音
+        return success({
+            "access_token": new_access,
+            "token_type": "Bearer",
+            "expires_in": expires_in,
+        })
+
+    if status_ == "KILLED":
+        # 重放:罕见安全事件,值得记
+        from app.audit.constants import AuditAction, AuditResourceType
+        from app.audit.logger import write_audit
+        from app.db.models.audit_log import AuditStatus
+        await write_audit(
+            db,
+            resource_type=AuditResourceType.AUTH,
+            action=AuditAction.REFRESH_REPLAY,
+            status=AuditStatus.FAILED,
+            user_id=user.id,
+            user_email=user.email,
+            request=request,
+            error_message="refresh token replay detected, session revoked",
+        )
+    # KILLED / EXPIRED / MISSING 统一 401
+    raise NotAuthenticatedError("Invalid refresh token")
 
 
 @router.post("/logout", summary="登出(清 cookie + 写审计)")
