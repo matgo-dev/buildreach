@@ -154,3 +154,36 @@ async def test_cleanup_on_login_purges_expired(db_session):
         select(AuthSession).where(AuthSession.user_id == user.id)
     )).scalars().all()
     assert left == []
+
+
+async def _login(client, *, email=SUPER_EMAIL, pwd=SUPER_PASS):
+    return await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": email, "password": pwd},
+        headers={"Origin": ALLOWED_ORIGIN},
+    )
+
+
+async def _super_user_id(db_session):
+    from app.db.models.user import User
+    return (await db_session.execute(
+        select(User.id).where(User.email == SUPER_EMAIL))).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_login_creates_session_row(client, db_session):
+    """登录落会话行;cookie 里的 sid/jti 与行一致;响应形状不变。"""
+    from app.core.security import decode_token
+    from app.db.models.auth_session import AuthSession
+
+    r = await _login(client)
+    assert r.status_code == 200
+    assert "refresh_token" not in r.json()["data"]  # 响应形状不变
+
+    payload = decode_token(r.cookies.get(COOKIE_NAME), expected_type="refresh")
+    uid = await _super_user_id(db_session)
+    row = (await db_session.execute(
+        select(AuthSession).where(AuthSession.user_id == uid)
+    )).scalar_one()
+    assert payload["sid"] == row.id
+    assert payload["jti"] == row.current_jti

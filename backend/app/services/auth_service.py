@@ -31,8 +31,6 @@ from app.core.exceptions import (
 from app.core.request_ip import get_client_ip
 from app.core.security import (
     PASSWORD_RULE_MESSAGE,
-    create_access_token,
-    create_refresh_token,
     hash_password,
     validate_password_strength,
     verify_password,
@@ -45,6 +43,7 @@ from app.db.models.supplier_member import SupplierMember
 from app.db.models.supplier_organization import SupplierOrganization
 from app.db.models.user import User, UserStatus
 from app.db.models.user_role import UserRole
+from app.services import session_service
 from app.services.rate_limit import login_rate_limiter
 from sqlalchemy.exc import IntegrityError
 
@@ -265,16 +264,9 @@ async def register_buyer(
     await db.commit()
     await db.refresh(user)
 
-    # 注册即自动登录:签发 token
-    access_token, expires_in = create_access_token(user.id, user.email, user.token_version)
-    refresh_token = create_refresh_token(user.id, user.email, user.token_version)
-
-    return user, {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "Bearer",
-        "expires_in": expires_in,
-    }
+    # 注册即自动登录:会话行落库后签 token
+    tokens = await session_service.issue_session_tokens(db, user)
+    return user, tokens
 
 
 async def register_supplier(
@@ -458,8 +450,8 @@ async def login(
 
     # 成功
     login_rate_limiter.reset(rate_key, ip)
-    access_token, expires_in = create_access_token(user.id, user.email, user.token_version)
-    refresh_token = create_refresh_token(user.id, user.email, user.token_version)
+    # 登录路径顺带清理:本用户过期行 + 会话数上限 + 时间门控全局批清(同事务)
+    await session_service.cleanup_on_login(db, user_id=user.id)
     await write_audit(
         db,
         resource_type=AuditResourceType.AUTH,
@@ -468,13 +460,10 @@ async def login(
         user_email=user.email,
         request=request,
         extra={"identifier_used": _classify_identifier(identifier)},
+        commit=False,
     )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "Bearer",
-        "expires_in": expires_in,
-    }
+    # issue_session_tokens 内部 commit:清理 + 审计 + 会话行一次落库,commit 后才签 token
+    return await session_service.issue_session_tokens(db, user)
 
 
 async def change_password(
@@ -507,6 +496,8 @@ async def change_password(
     user.must_change_password = False
     # 吊销旧 token，随后签发新 token（改密后自动续登，无需重新输入凭证）
     user.token_version += 1
+    # tv 已使全部旧 token 失效;删行让会话表诚实(设计 §5)
+    await session_service.revoke_all_sessions(db, user_id=user.id)
 
     await write_audit(
         db,
@@ -519,15 +510,8 @@ async def change_password(
     )
     await db.commit()
 
-    # 基于新 token_version 签发，当前会话无缝续登
-    access_token, expires_in = create_access_token(user.id, user.email, user.token_version)
-    refresh_token = create_refresh_token(user.id, user.email, user.token_version)
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "Bearer",
-        "expires_in": expires_in,
-    }
+    # 基于新 token_version 签发,当前会话无缝续登(新会话行)
+    return await session_service.issue_session_tokens(db, user)
 
 
 async def logout(
