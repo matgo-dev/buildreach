@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_permission
 from app.schemas.user import AdminUserCreateIn, AdminUserListOut, AdminUserOut, AdminUserUpdateIn
-from app.services import user_service
+from app.services import session_service, user_service
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
@@ -168,7 +168,6 @@ async def force_logout(
     if user is None:
         raise NotFoundError("User not found")
     user.token_version += 1
-    from app.services import session_service
     # tv 已使旧 token 全失效;删行让会话表诚实
     await session_service.revoke_all_sessions(db, user_id=user.id)
     await write_audit(

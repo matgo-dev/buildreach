@@ -8,11 +8,14 @@ import os
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit.constants import AuditAction, AuditResourceType
+from app.audit.logger import write_audit
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.exceptions import BusinessError, MultipleValidationError, NotAuthenticatedError, success
 from app.core.request_ip import get_client_ip
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
+from app.db.models.audit_log import AuditStatus
 from app.db.models.user import User, UserStatus
 from jose import JWTError
 from urllib.parse import urlparse
@@ -699,9 +702,6 @@ async def refresh(
 
     if status_ == "KILLED":
         # 重放:罕见安全事件,值得记
-        from app.audit.constants import AuditAction, AuditResourceType
-        from app.audit.logger import write_audit
-        from app.db.models.audit_log import AuditStatus
         await write_audit(
             db,
             resource_type=AuditResourceType.AUTH,
@@ -939,9 +939,6 @@ async def update_language_preference(
     old_lang = user.language_preference
     user.language_preference = lang
 
-    from app.audit.constants import AuditAction, AuditResourceType
-    from app.audit.logger import write_audit
-    from app.db.models.audit_log import AuditStatus
     await write_audit(
         db,
         resource_type=AuditResourceType.USER,
