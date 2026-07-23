@@ -16,6 +16,26 @@ export function MallFooter() {
   return (
     <>
       <footer className="bg-teal-900 text-[#d6eded] mt-2.5">
+        {/* 品类总览横带 — 装饰性:图内绿墙与页脚同色(#0e5038)自然衔接。
+            桌面裁成横带;手机放大聚焦一小块,避免商品挤成一团。 */}
+        <div className="relative w-full overflow-hidden bg-teal-900">
+          <div
+            aria-hidden
+            className="w-full h-[150px] sm:h-[220px] lg:h-[300px] bg-no-repeat [background-size:210%] [background-position:62%_46%] sm:[background-size:cover] sm:[background-position:center_52%]"
+            style={{ backgroundImage: "url('/footer/materials-band.webp')" }}
+          />
+          {/* 底部渐隐,融进页脚绿 */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-teal-900"
+          />
+          {/* 金色细线,呼应品牌 accent */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"
+          />
+        </div>
+
         <div className="mx-auto max-w-mall px-3 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pt-8 pb-8">
           {/* 品牌列 */}
           <div className="md:col-span-1">
