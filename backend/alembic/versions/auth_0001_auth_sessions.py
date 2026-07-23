@@ -3,7 +3,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "auth_0001_auth_sessions"
-down_revision = "zone_0004_zone_product_v2"
+down_revision = "evt_0001_guest_events"
 branch_labels = None
 depends_on = None
 
