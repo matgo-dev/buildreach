@@ -316,3 +316,78 @@ async def test_logout_without_cookie_is_idempotent(client):
     client.cookies = httpx.Cookies()
     r = await client.post("/api/v1/auth/logout", headers={"Origin": ALLOWED_ORIGIN})
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_deactivate_clears_all_sessions(client, db_session):
+    """注销账户:tv bump + 全部会话行清空。"""
+    from tests.conftest import register_buyer_tz
+    from app.db.models.auth_session import AuthSession
+    from app.db.models.user import User
+
+    result = await register_buyer_tz(client, phone="+255766000111")
+    access = result["response"].json()["data"]["access_token"]
+    uid = (await db_session.execute(
+        select(User.id).where(User.phone == "+255766000111"))).scalar_one()
+
+    r = await client.post(
+        "/api/v1/auth/deactivate",
+        json={"password": result["password"]},
+        headers={"Authorization": f"Bearer {access}"},
+    )
+    assert r.status_code == 200
+    rows = (await db_session.execute(
+        select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
+    assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_force_logout_clears_all_sessions(client, superadmin_headers, db_session):
+    """管理员强下:目标用户会话行清空 + 其 refresh 401。"""
+    from tests.conftest import register_buyer_tz
+    from app.db.models.auth_session import AuthSession
+    from app.db.models.user import User
+
+    result = await register_buyer_tz(client, phone="+255766000222")
+    buyer_refresh = client.cookies.get(COOKIE_NAME)
+    uid = (await db_session.execute(
+        select(User.id).where(User.phone == "+255766000222"))).scalar_one()
+
+    r = await client.post(
+        f"/api/v1/admin/users/{uid}/force-logout", headers=superadmin_headers
+    )
+    assert r.status_code == 200
+    rows = (await db_session.execute(
+        select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
+    assert rows == []
+
+    _swap_refresh_cookie(client, buyer_refresh)
+    assert (await _refresh(client)).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_change_password_clears_old_sessions_and_issues_new(client, db_session):
+    """改密:旧会话行全清,只留新签发的一行;旧 refresh 401。"""
+    from tests.conftest import register_buyer_tz
+    from app.db.models.auth_session import AuthSession
+    from app.db.models.user import User
+
+    result = await register_buyer_tz(client, phone="+255766000333")
+    old_refresh = client.cookies.get(COOKIE_NAME)
+    access = result["response"].json()["data"]["access_token"]
+    uid = (await db_session.execute(
+        select(User.id).where(User.phone == "+255766000333"))).scalar_one()
+
+    r = await client.post(
+        "/api/v1/auth/change-password",
+        json={"old_password": result["password"], "new_password": "newpass123"},
+        headers={"Authorization": f"Bearer {access}",
+                 "Origin": ALLOWED_ORIGIN},
+    )
+    assert r.status_code == 200
+    rows = (await db_session.execute(
+        select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
+    assert len(rows) == 1  # 只剩改密后新签的一行
+
+    _swap_refresh_cookie(client, old_refresh)
+    assert (await _refresh(client)).status_code == 401

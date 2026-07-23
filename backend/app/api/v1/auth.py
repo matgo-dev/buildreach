@@ -1076,6 +1076,8 @@ async def reset_password(
     user.password_hash = hash_password(new_password)
     user.token_version = (user.token_version or 0) + 1
     user.must_change_password = False
+    # tv 已使旧 token 全失效;删行让会话表诚实(设计 §5)
+    await session_service.revoke_all_sessions(db, user_id=user.id)
     await db.commit()
 
     return success(None, message="密码重置成功，请使用新密码登录")
@@ -1104,6 +1106,8 @@ async def deactivate_account(
 
     user.status = UserStatus.DEACTIVATED
     user.token_version += 1
+    # tv 已使旧 token 全失效;删行让会话表诚实(设计 §5)
+    await session_service.revoke_all_sessions(db, user_id=user.id)
     await db.commit()
 
     return success({"message": "Account deactivated successfully"})

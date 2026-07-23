@@ -168,6 +168,9 @@ async def force_logout(
     if user is None:
         raise NotFoundError("User not found")
     user.token_version += 1
+    from app.services import session_service
+    # tv 已使旧 token 全失效;删行让会话表诚实
+    await session_service.revoke_all_sessions(db, user_id=user.id)
     await write_audit(
         db,
         resource_type=AuditResourceType.USER,
