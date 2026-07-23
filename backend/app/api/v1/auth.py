@@ -17,8 +17,7 @@ from app.db.models.user import User, UserStatus
 from jose import JWTError
 from urllib.parse import urlparse
 from app.db.session import get_db
-from app.rbac.constants import Permissions
-from app.rbac.guards import block_if_must_change_password, require_permission
+from app.rbac.guards import block_if_must_change_password
 from app.schemas.auth import (
     BuyerRegisterIn,
     ChangePasswordIn,
@@ -715,16 +714,42 @@ async def refresh(
     raise NotAuthenticatedError("Invalid refresh token")
 
 
-@router.post("/logout", summary="登出(清 cookie + 写审计)")
+@router.post("/logout", summary="登出(按 refresh cookie 吊销本设备会话 + 清 cookie + 写审计)")
 async def logout(
     request: Request,
     response: Response,
-    current: CurrentUser = Depends(require_permission(Permissions.AUTH_LOGOUT)),
     db: AsyncSession = Depends(get_db),
 ):
-    await auth_service.logout(
-        db, user_id=current.id, user_email=current.email, request=request
-    )
+    """以 refresh cookie 为准吊销服务端会话(设计 §5)。
+
+    不依赖 access token:access 过期(15min)而 refresh 尚在时,
+    logout 必须仍能吊销服务端会话。CSRF 由 Origin 白名单 + SameSite 覆盖。
+    无/坏 cookie 时幂等:仅清 cookie 返回 200。
+    """
+    origin = request.headers.get("origin") or request.headers.get("referer")
+    if not _origin_allowed(origin, settings.CORS_ORIGINS):
+        raise NotAuthenticatedError("Invalid origin")
+
+    refresh_cookie = request.cookies.get(settings.REFRESH_COOKIE_NAME)
+    if refresh_cookie:
+        try:
+            payload = decode_token(refresh_cookie, expected_type="refresh")
+            user_id = int(payload["sub"])
+            sid_raw = payload.get("sid")
+            if sid_raw is not None:
+                # 删行即吊销;老格式 cookie 无 sid → 无行可删,只清 cookie
+                await session_service.revoke_session(
+                    db, sid=int(sid_raw), user_id=user_id
+                )
+            await auth_service.logout(
+                db,
+                user_id=user_id,
+                user_email=payload.get("email") or "",
+                request=request,
+            )  # write_audit 默认 commit,顺带提交 revoke
+        except (JWTError, KeyError, TypeError, ValueError):
+            pass  # 坏 cookie:幂等登出,不暴露细节
+
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         path=settings.REFRESH_COOKIE_PATH,

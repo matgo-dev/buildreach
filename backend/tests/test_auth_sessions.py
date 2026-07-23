@@ -278,3 +278,41 @@ async def test_refresh_old_format_token_migrates(client, db_session):
     row = (await db_session.execute(
         select(AuthSession).where(AuthSession.id == new_payload["sid"]))).scalar_one()
     assert row.current_jti == new_payload["jti"]
+
+
+@pytest.mark.asyncio
+async def test_logout_revokes_only_own_device(client, db_session):
+    """设备1 logout:自己的行被删、refresh 401;设备2 不受影响(多端刚需)。"""
+    from app.db.models.auth_session import AuthSession
+
+    r1 = await _login(client)
+    cookie_dev1 = r1.cookies.get(COOKIE_NAME)
+    r2 = await _login(client)
+    cookie_dev2 = r2.cookies.get(COOKIE_NAME)
+    uid = await _super_user_id(db_session)
+
+    # 设备1 登出(不带 Authorization:模拟 access 已过期)
+    _swap_refresh_cookie(client, cookie_dev1)
+    r = await client.post("/api/v1/auth/logout", headers={"Origin": ALLOWED_ORIGIN})
+    assert r.status_code == 200
+    set_cookie = r.headers.get("set-cookie", "")
+    assert f"{COOKIE_NAME}=" in set_cookie  # 清 cookie
+
+    rows = (await db_session.execute(
+        select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
+    assert len(rows) == 1  # 只剩设备2
+
+    # 设备1 的 refresh 已死
+    _swap_refresh_cookie(client, cookie_dev1)
+    assert (await _refresh(client)).status_code == 401
+    # 设备2 不受影响
+    _swap_refresh_cookie(client, cookie_dev2)
+    assert (await _refresh(client)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_logout_without_cookie_is_idempotent(client):
+    """无 cookie 的 logout:200 + 清 cookie,不报错。"""
+    client.cookies = httpx.Cookies()
+    r = await client.post("/api/v1/auth/logout", headers={"Origin": ALLOWED_ORIGIN})
+    assert r.status_code == 200
