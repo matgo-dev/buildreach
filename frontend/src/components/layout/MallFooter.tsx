@@ -15,28 +15,28 @@ export function MallFooter() {
 
   return (
     <>
-      <footer className="bg-teal-900 text-[#d6eded] mt-2.5">
-        {/* 品类总览横带 — 装饰性:图内绿墙与页脚同色(#0e5038)自然衔接。
-            桌面裁成横带;手机放大聚焦一小块,避免商品挤成一团。 */}
-        <div className="relative w-full overflow-hidden bg-teal-900">
+      <footer className="relative overflow-hidden bg-teal-900 text-[#d6eded] mt-2.5">
+        {/* 品类总览大图 — 按比例完整、清晰显示;下部渐隐到绿承托文字,文字上移压在图下部使整体更紧凑 */}
+        <div className="relative w-full">
           <div
             aria-hidden
-            className="w-full h-[150px] sm:h-[220px] lg:h-[300px] bg-no-repeat [background-size:210%] [background-position:62%_46%] sm:[background-size:cover] sm:[background-position:center_52%]"
-            style={{ backgroundImage: "url('/footer/materials-band.webp')" }}
+            className="w-full bg-cover bg-center bg-no-repeat"
+            style={{
+              aspectRatio: "1440 / 490",
+              backgroundImage: "url('/footer/materials-band.webp')",
+            }}
           />
-          {/* 底部渐隐,融进页脚绿 */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-teal-900"
-          />
-          {/* 金色细线,呼应品牌 accent */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to bottom, transparent 0%, transparent 70%, rgba(14,80,56,0.9) 85%, #0e5038 93%)",
+            }}
           />
         </div>
 
-        <div className="mx-auto max-w-mall px-3 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pt-8 pb-8">
+        <div className="relative -mt-[4vw] mx-auto max-w-mall px-3 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pb-8">
           {/* 品牌列 */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-1 mb-2.5">
@@ -116,7 +116,7 @@ export function MallFooter() {
         </div>
 
         {/* 底部版权 */}
-        <div className="border-t border-white/10 py-3.5 px-6 text-center text-[12px] text-[#b4d7d5]">
+        <div className="relative border-t border-white/10 py-3.5 px-6 text-center text-[12px] text-[#b4d7d5]">
           © {new Date().getFullYear()} Matgo. All rights reserved.
         </div>
       </footer>
