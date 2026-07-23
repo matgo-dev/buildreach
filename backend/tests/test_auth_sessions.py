@@ -296,6 +296,7 @@ async def test_logout_revokes_only_own_device(client, db_session):
     assert r.status_code == 200
     set_cookie = r.headers.get("set-cookie", "")
     assert f"{COOKIE_NAME}=" in set_cookie  # 清 cookie
+    assert "httponly" in set_cookie.lower()  # 删除时也要带上设置时的安全属性
 
     rows = (await db_session.execute(
         select(AuthSession).where(AuthSession.user_id == uid))).scalars().all()
@@ -315,6 +316,37 @@ async def test_logout_without_cookie_is_idempotent(client):
     client.cookies = httpx.Cookies()
     r = await client.post("/api/v1/auth/logout", headers={"Origin": ALLOWED_ORIGIN})
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_logout_audit_uses_current_email_not_stale_token_snapshot(client, db_session):
+    """改邮箱后再 logout:审计记录的 user_email 是改后的新邮箱,不是签发 refresh 时内嵌的旧快照。"""
+    from tests.conftest import register_buyer_tz
+    from app.db.models.audit_log import AuditLog
+    from app.db.models.user import User
+
+    result = await register_buyer_tz(client, phone="+255766000444")
+    old_email = result["email"]
+    access = result["response"].json()["data"]["access_token"]
+    uid = (await db_session.execute(
+        select(User.id).where(User.phone == "+255766000444"))).scalar_one()
+
+    new_email = f"new-{old_email}"
+    r = await client.post(
+        "/api/v1/auth/me/email",
+        json={"new_email": new_email, "current_password": result["password"]},
+        headers={"Authorization": f"Bearer {access}"},
+    )
+    assert r.status_code == 200, r.text
+
+    # 此时 client.cookies 里的 refresh cookie 仍是改邮箱前签发的,内嵌旧邮箱快照
+    r = await client.post("/api/v1/auth/logout", headers={"Origin": ALLOWED_ORIGIN})
+    assert r.status_code == 200
+
+    audit_row = (await db_session.execute(
+        select(AuditLog).where(AuditLog.action == "LOGOUT", AuditLog.user_id == uid)
+    )).scalar_one()
+    assert audit_row.user_email == new_email
 
 
 @pytest.mark.asyncio
