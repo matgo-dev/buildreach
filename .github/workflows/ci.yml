@@ -78,3 +78,47 @@ jobs:
           alembic upgrade head
           echo "✅ Migration test passed!"
           alembic current
+
+  frontend:
+    name: 前端构建 + 依赖审计
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 版本跟 frontend/package.json 的 packageManager 对齐,别在这写死第二份。
+      # 必须显式指路径:仓库根没有 package.json,而 defaults.working-directory
+      # 只作用于 run 步骤、不作用于 uses。
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.18"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # --frozen-lockfile: lockfile 与 package.json 不一致直接失败,
+      # 防止「本地能装、CI 装出另一套依赖」
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # next build 自带 tsc 类型检查 + eslint(next.config 没关这两项),
+      # 所以不再单独跑 tsc --noEmit
+      - name: Build
+        run: pnpm build
+
+      # 只审生产依赖:devDependencies 的洞不进公网产物。
+      # 门槛定在 high —— 前台是公网 C 端,2026-07 那次积压到 33 条
+      # (含 RSC 反序列化 DoS)就是因为没有任何机制会报警。
+      # 出现不可利用的告警时,走 package.json 的 pnpm.overrides 显式豁免
+      # (nanoid 那条就是这么处理的),而不是把门槛调松。
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high

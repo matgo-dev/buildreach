@@ -117,11 +117,16 @@ GitHub 仓库 → Settings → Secrets and variables → Actions：
 | `OVH_SSH_KEY` | SSH 私钥全文 |
 | `OVH_PUBLIC_ORIGIN` | https://matgo.ai（或当前实际地址） |
 
-**通用：**
+**阿里云 ACR 相关（ECS 镜像仓库）：**
 
 | Name | Value |
 |------|-------|
-| `GHCR_TOKEN` | GitHub PAT（服务器拉取 GHCR 私有镜像用） |
+| `ACR_USERNAME` | 阿里云容器镜像服务用户名 |
+| `ACR_PASSWORD` | 阿里云容器镜像服务密码 |
+
+> **不需要配 GHCR 的 PAT。** 服务器拉取 GHCR 私有镜像时，workflow 直接把本次运行自动签发的
+> `secrets.GITHUB_TOKEN` 作为 `GHCR_TOKEN` 环境变量传给 `deploy.sh`（见 `deploy.yml`）。
+> 该 token 随 job 结束即失效，不存在需要人工轮换的长期凭据。
 
 ### 2. 服务器准备（ECS 和 OVH 都要做）
 
