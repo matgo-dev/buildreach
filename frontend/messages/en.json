@@ -1478,6 +1478,13 @@
     "boundaryExcluded": "Not Included",
     "boundaryDesc": "Matgo provides full-chain service from Chinese factories to Dar es Salaam port, including supplier screening, group procurement, QC inspection, consolidation, customs declaration, ocean freight, and destination clearance. Inland transport (port to site) is arranged by the buyer or local logistics. The platform does not provide financial lending, insurance brokerage, or other financial services."
   },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "This page hit an unexpected error. Please try again; if it keeps happening, send us a screenshot of this page.",
+    "retry": "Try again",
+    "goHome": "Back to home",
+    "detailLabel": "Error details"
+  },
   "noPermission": {
     "title": "Access Denied",
     "subtitle": "You don't have permission to view this page",
