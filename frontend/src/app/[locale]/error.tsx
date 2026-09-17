@@ -7,7 +7,10 @@ import { routing } from "@/i18n/routing";
 
 // 文案内置而不走 next-intl:错误边界不能依赖出错的那棵树(provider 异常、
 // 或发版前打开的标签页里 messages 还没有这些 key),否则兜底页自己也会坏。
-const TEXT = {
+// 以 routing.locales 为键:新增语言而漏了这里会直接编译报错,而不是静默回落英文。
+type Locale = (typeof routing.locales)[number];
+
+const TEXT: Record<Locale, { title: string; description: string; retry: string; goHome: string; detailLabel: string }> = {
   zh: {
     title: "页面出错了",
     description: "页面遇到了意外错误。请刷新重试；如果仍然出现，请把此页面截图发给我们。",
@@ -31,9 +34,7 @@ const TEXT = {
     goHome: "Rudi mwanzo",
     detailLabel: "Maelezo ya hitilafu",
   },
-} as const;
-
-type Locale = keyof typeof TEXT;
+};
 
 const DETAIL_MAX_LENGTH = 300;
 
@@ -49,9 +50,7 @@ export default function LocaleError({
 }) {
   const params = useParams();
   const locale: Locale =
-    typeof params?.locale === "string" && params.locale in TEXT
-      ? (params.locale as Locale)
-      : routing.defaultLocale;
+    routing.locales.find((l) => l === params?.locale) ?? routing.defaultLocale;
   const text = TEXT[locale];
   // localePrefix: "as-needed" —— 默认语言不带前缀
   const homeHref = locale === routing.defaultLocale ? "/" : `/${locale}`;
@@ -61,10 +60,9 @@ export default function LocaleError({
   }, [error]);
 
   // 截断:message 可能夹带数据(如回显的响应体),页面上只留够定位的长度
-  const detail = [error.name, error.message]
-    .filter(Boolean)
-    .join(": ")
-    .slice(0, DETAIL_MAX_LENGTH);
+  const fullDetail = [error.name, error.message].filter(Boolean).join(": ");
+  const detail =
+    fullDetail.length > DETAIL_MAX_LENGTH ? `${fullDetail.slice(0, DETAIL_MAX_LENGTH)}…` : fullDetail;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-6">
