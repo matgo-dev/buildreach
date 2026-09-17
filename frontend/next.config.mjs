@@ -17,6 +17,10 @@ const nextConfig = {
   // 钉死 file-tracing 根为本项目目录:Next 15 会因机器上存在其它 lockfile
   // 把 workspace root 推断到别处,导致 standalone 产物 tracing 错位。
   outputFileTracingRoot: projectRoot,
+  // 全站商品图走后端 /static + 自生成缩略图,从不使用 next/image。
+  // 关掉优化器后 /_next/image 不再做任何图片解码(sharp/libheif),
+  // 这一类图片解析漏洞(如 GHSA-2xp9-vwfh-vxw4)的攻击面随之消失。
+  images: { unoptimized: true },
 };
 
 export default withNextIntl(nextConfig);
