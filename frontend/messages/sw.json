@@ -1478,13 +1478,6 @@
     "boundaryExcluded": "Haijajumuishwa",
     "boundaryDesc": "Matgo inatoa huduma kamili kutoka viwanda vya China hadi bandari ya Dar es Salaam, ikiwa ni pamoja na uchunguzi wa wasambazaji, ununuzi wa pamoja, ukaguzi wa ubora, ujumuishaji, tamko la forodha, usafirishaji wa baharini, na forodha ya marudio. Usafiri wa ndani (bandari hadi tovuti) unapangwa na mnunuzi au lojistiki ya ndani. Jukwaa halitoi mikopo ya kifedha, uwakala wa bima, au huduma nyingine za kifedha."
   },
-  "errorPage": {
-    "title": "Hitilafu imetokea",
-    "description": "Ukurasa huu umepata hitilafu isiyotarajiwa. Tafadhali jaribu tena; ikiendelea, tutumie picha ya skrini ya ukurasa huu.",
-    "retry": "Jaribu tena",
-    "goHome": "Rudi mwanzo",
-    "detailLabel": "Maelezo ya hitilafu"
-  },
   "noPermission": {
     "title": "Ufikiaji Umekataliwa",
     "subtitle": "Huna ruhusa ya kutazama ukurasa huu",
