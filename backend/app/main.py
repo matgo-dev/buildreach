@@ -16,6 +16,7 @@ from app.audit.middleware import RequestIDMiddleware
 from app.core.config import email_verification_misconfigured, settings
 from app.core.exceptions import BusinessError, success
 from app.core.message_keys import MessageKey
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.logging_config import setup_logging
 from app.db.session import AsyncSessionLocal
 from app.rbac.sync import sync_rbac
@@ -112,6 +113,7 @@ from app.core.locale import LocaleMiddleware
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LocaleMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ----- 异常处理:统一响应格式 -----
