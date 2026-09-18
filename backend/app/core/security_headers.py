@@ -29,6 +29,7 @@ class SecurityHeadersMiddleware:
 
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
+                message.setdefault("headers", [])  # ASGI 规范里 headers 可省略
                 headers = MutableHeaders(scope=message)
                 headers[NOSNIFF_HEADER[0]] = NOSNIFF_HEADER[1]
             await send(message)

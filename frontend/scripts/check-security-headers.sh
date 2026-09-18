@@ -9,10 +9,18 @@ cp -r public .next/standalone/ 2>/dev/null || true
 mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/
 
 PORT="${PORT:-3999}"
-PORT=$PORT HOSTNAME=127.0.0.1 node .next/standalone/server.js >/dev/null 2>&1 &
+# 端口已有人监听就直接失败:否则 node 起不来、curl 却打到别的进程,守门变成空转
+if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then
+  echo "FAIL 端口 $PORT 已被占用,不能确认测的是本次构建"; exit 1
+fi
+SERVER_LOG=$(mktemp)
+PORT=$PORT HOSTNAME=127.0.0.1 node .next/standalone/server.js >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
-trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+trap 'kill $SERVER_PID 2>/dev/null || true; rm -f "$SERVER_LOG"' EXIT
 for _ in $(seq 1 30); do curl -sf -o /dev/null "http://127.0.0.1:$PORT/zh/login" && break; sleep 1; done
+if ! kill -0 "$SERVER_PID" 2>/dev/null || ! curl -sf -o /dev/null "http://127.0.0.1:$PORT/zh/login"; then
+  echo "FAIL standalone 未就绪,服务端输出:"; cat "$SERVER_LOG"; exit 1
+fi
 
 EXPECTED=(
   "x-content-type-options: nosniff"
@@ -21,8 +29,9 @@ EXPECTED=(
   "referrer-policy: strict-origin-when-cross-origin"
   "permissions-policy: geolocation=(), camera=(), microphone=()"
 )
-# 200 页面 / 404 页面 / 根路径 307 重定向 / 静态资源,四类响应各取一条
-PATHS=(/zh/login /zh/does-not-exist / /icon.png)
+# 200 页面 / 404 页面 / 根路径 307 重定向 / public 静态资源 / 构建产物 chunk,五类响应各取一条
+CHUNK=$(cd .next/standalone/.next/static/chunks && ls *.js | head -1)
+PATHS=(/zh/login /zh/does-not-exist / /icon.png "/_next/static/chunks/$CHUNK")
 
 fail=0
 for p in "${PATHS[@]}"; do
