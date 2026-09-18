@@ -115,6 +115,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # 前端没有测试框架,安全响应头(next.config headers/poweredByHeader)
+      # 用起 standalone 后逐路径 curl 的方式守门,防止改 matcher/中间件时静默掉头
+      - name: Check security headers
+        run: scripts/check-security-headers.sh
+
       # 只审生产依赖:devDependencies 的洞不进公网产物。
       # 门槛定在 high —— 前台是公网 C 端,2026-07 那次积压到 33 条
       # (含 RSC 反序列化 DoS)就是因为没有任何机制会报警。

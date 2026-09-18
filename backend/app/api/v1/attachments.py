@@ -1,7 +1,7 @@
 """附件端点 — 上传 + 鉴权下载。
 
 上传:multipart/form-data, 流式读取,类型校验(允许族匹配),孤儿配额。
-下载:逐文件 scope,委托 owner 域;强制下载 Content-Disposition + nosniff。
+下载:逐文件 scope,委托 owner 域;强制下载 Content-Disposition(nosniff 由全局 SecurityHeadersMiddleware 统一加)。
 """
 from __future__ import annotations
 
@@ -117,7 +117,6 @@ async def download(
         media_type=att.content_type,
         headers={
             "Content-Disposition": disposition,
-            "X-Content-Type-Options": "nosniff",
             "Content-Length": str(att.size_bytes),
         },
     )
@@ -159,7 +158,6 @@ async def thumbnail(
                 stream,
                 media_type=att.thumbnail_content_type or "image/jpeg",
                 headers={
-                    "X-Content-Type-Options": "nosniff",
                     "Content-Length": str(att.thumbnail_size_bytes or 0),
                     "Cache-Control": "private, max-age=3600",
                 },
@@ -177,7 +175,6 @@ async def thumbnail(
         stream,
         media_type=att.content_type,
         headers={
-            "X-Content-Type-Options": "nosniff",
             "Content-Length": str(att.size_bytes),
             "Cache-Control": "private, max-age=3600",
         },
