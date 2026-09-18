@@ -27,10 +27,11 @@ PATHS=(/zh/login /zh/does-not-exist / /icon.png)
 fail=0
 for p in "${PATHS[@]}"; do
   hdrs=$(curl -sI "http://127.0.0.1:$PORT$p" | tr -d '\r' | tr 'A-Z' 'a-z')
+  path_ok=1
   for e in "${EXPECTED[@]}"; do
-    grep -qF "$(echo "$e" | tr 'A-Z' 'a-z')" <<<"$hdrs" || { echo "FAIL $p 缺 $e"; fail=1; }
+    grep -qF "$(echo "$e" | tr 'A-Z' 'a-z')" <<<"$hdrs" || { echo "FAIL $p 缺 $e"; path_ok=0; }
   done
-  grep -q "^x-powered-by:" <<<"$hdrs" && { echo "FAIL $p 仍有 X-Powered-By"; fail=1; }
-  echo "ok  $p"
+  grep -q "^x-powered-by:" <<<"$hdrs" && { echo "FAIL $p 仍有 X-Powered-By"; path_ok=0; }
+  [ $path_ok = 1 ] && echo "ok  $p" || fail=1
 done
 exit $fail
