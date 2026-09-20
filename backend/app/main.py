@@ -194,6 +194,10 @@ async def healthz():
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
+from app.core.mime import register_extra_mime_types  # noqa: E402
+
+register_extra_mime_types()  # .webp 缩略图否则会被当 text/plain 返回
+
 _uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
 _uploads_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_uploads_dir)), name="static")
