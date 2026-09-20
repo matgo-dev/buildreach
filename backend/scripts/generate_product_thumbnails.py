@@ -20,6 +20,9 @@
     # 只处理某个目录
     python scripts/generate_product_thumbnails.py --product-dir products/P-XFS-20740095
 
+    # 只补缩略图,不压缩/覆盖原图(存量原图已按业务挑过清晰度、含详情长图时用这个)
+    python scripts/generate_product_thumbnails.py --thumbs-only
+
 特性:
 - 幂等：缩略图已存在自动跳过
 - 断点续跑：中断后重跑安全
@@ -81,8 +84,8 @@ def _atomic_save(img: Image.Image, dest_path: Path, fmt: str, **save_kwargs) -> 
         raise
 
 
-def _process_one(img_path: Path, dry_run: bool) -> dict:
-    """处理单张图片，返回统计信息。"""
+def _process_one(img_path: Path, dry_run: bool, thumbs_only: bool = False) -> dict:
+    """处理单张图片，返回统计信息。thumbs_only=True 时不动原图,只补缺失/过期的缩略图。"""
     result = {
         "path": str(img_path),
         "compressed": False,
@@ -97,13 +100,14 @@ def _process_one(img_path: Path, dry_run: bool) -> dict:
         thumb_path = img_path.with_name(img_path.stem + "_thumb.webp")
         thumb_fresh = _thumb_is_fresh(img_path, thumb_path)
 
-        if thumb_fresh and ext not in {".jpg", ".jpeg"}:
+        if thumb_fresh and (thumbs_only or ext not in {".jpg", ".jpeg"}):
             result["thumb_skipped"] = True
             return result
 
         with Image.open(img_path) as opened:
             needs_compress = (
-                ext in {".jpg", ".jpeg"}
+                not thumbs_only
+                and ext in {".jpg", ".jpeg"}
                 and (opened.width > TARGET_SIZE[0] or opened.height > TARGET_SIZE[1])
             )
             needs_thumb = not thumb_fresh or needs_compress
@@ -165,6 +169,7 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=None, help=f"并发进程数（默认最多 {DEFAULT_MAX_WORKERS}）")
     parser.add_argument("--queue-size", type=int, default=None, help="最多排队任务数（默认 workers * 8）")
     parser.add_argument("--product-dir", type=str, default=None, help="只处理指定目录，如 products/P-XFS-123")
+    parser.add_argument("--thumbs-only", action="store_true", help="只补缩略图，不压缩/覆盖原图")
     args = parser.parse_args()
 
     images = _collect_images(UPLOADS_DIR, args.product_dir)
@@ -175,6 +180,8 @@ def main() -> None:
         return
 
     mode = "DRY-RUN" if args.dry_run else "EXECUTE"
+    if args.thumbs_only:
+        mode += " thumbs-only"
     print(f"[{mode}] 共 {total} 张图片待处理")
 
     start = time.monotonic()
@@ -188,7 +195,7 @@ def main() -> None:
     # 单进程模式（图片少或调试时）
     if total <= 50 or workers == 1:
         for i, img_path in enumerate(images, 1):
-            r = _process_one(img_path, args.dry_run)
+            r = _process_one(img_path, args.dry_run, args.thumbs_only)
             if r["error"]:
                 stats["errors"] += 1
                 print(f"[{i}/{total}] ERROR {r['path']}: {r['error']}", file=sys.stderr)
@@ -214,7 +221,7 @@ def main() -> None:
                         p = next(image_iter)
                     except StopIteration:
                         return
-                    pending.add(pool.submit(_process_one, p, args.dry_run))
+                    pending.add(pool.submit(_process_one, p, args.dry_run, args.thumbs_only))
 
             submit_until_full()
             while pending:
