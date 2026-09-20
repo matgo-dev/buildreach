@@ -159,6 +159,9 @@ data/xfs/output_xfs_20260623_023104/
 /banners/  ->  /opt/buildlink-offline/data/banners/
 ```
 
+该 location 由 OpenResty 直出磁盘文件、不经后端,需要在面板里给它单独加
+`X-Content-Type-Options: nosniff`(其余路径的安全头由 Next / 后端应用层发出,OpenResty 只保留 HSTS)。
+
 同时保留反代规则:
 
 ```text

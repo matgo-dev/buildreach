@@ -21,6 +21,28 @@ const nextConfig = {
   // 关掉优化器后 /_next/image 不再做任何图片解码(sharp/libheif),
   // 这一类图片解析漏洞(如 GHSA-2xp9-vwfh-vxw4)的攻击面随之消失。
   images: { unoptimized: true },
+  // OWASP 要求移除技术栈指纹头(X-Powered-By: Next.js)
+  poweredByHeader: false,
+  // 安全响应头:仅取 OWASP HTTP Headers Cheat Sheet / MDN 明确要求且对本站零风险的项。
+  // 完整 CSP(script-src 等)、CORP、HSTS(在反代 openresty 已设)另立项,不在此处。
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // 禁止 MIME 嗅探(MDN:所有网站必须设)
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // 禁止被任何页面 iframe 嵌入(全站无 <iframe> 用例);XFO 兼容旧浏览器,CSP 是现代标准,MDN 建议同设
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          // 跨站只发 origin,同站发完整 URL(OWASP 推荐值,也是现代浏览器默认)
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // 站内不使用定位/摄像头/麦克风,显式关闭(OWASP 原值)
+          { key: "Permissions-Policy", value: "geolocation=(), camera=(), microphone=()" },
+        ],
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

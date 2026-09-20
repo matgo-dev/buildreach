@@ -16,6 +16,7 @@ from app.audit.middleware import RequestIDMiddleware
 from app.core.config import email_verification_misconfigured, settings
 from app.core.exceptions import BusinessError, success
 from app.core.message_keys import MessageKey
+from app.core.security_headers import NOSNIFF_HEADER, SecurityHeadersMiddleware
 from app.core.logging_config import setup_logging
 from app.db.session import AsyncSessionLocal
 from app.rbac.sync import sync_rbac
@@ -94,7 +95,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 中间件顺序:CORS 在最外,Trace ID 在内层(响应头由内向外回写,均能加上)
+# 中间件顺序:add_middleware 是前插,后加的在外层。CORS 最先加所以最内,
+# SecurityHeaders 最后加所以最外(响应头由内向外回写,均能加上)
 # 注:带 credentials 时 allow_origins 必须是严格白名单,不能是 "*"(浏览器会拒)
 if "*" in settings.CORS_ORIGINS:
     raise RuntimeError(
@@ -112,6 +114,7 @@ from app.core.locale import LocaleMiddleware
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LocaleMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ----- 异常处理:统一响应格式 -----
@@ -174,6 +177,8 @@ async def unhandled_exc_handler(request: Request, exc: Exception) -> JSONRespons
             "data": None,
             "trace_id": get_trace_id(),
         },
+        # 500 信封由最外层 ServerErrorMiddleware 发出,SecurityHeadersMiddleware 包不到
+        headers=dict([NOSNIFF_HEADER]),
     )
 
 
