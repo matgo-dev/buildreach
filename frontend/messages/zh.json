@@ -60,7 +60,11 @@
       "go_login": "前往登录",
       "back_to_login": "返回登录",
       "error_generic": "发送失败，请稍后再试",
-      "error_network": "网络错误，请稍后再试"
+      "error_network": "网络错误，请稍后再试",
+      "err_email_not_registered": "该邮箱未注册，请检查是否输错，或前往注册",
+      "go_register": "去注册",
+      "err_account_disabled": "该账号已被停用，请联系客服",
+      "err_account_deactivated": "该账号已注销，无法找回密码"
     }
   },
   "error": {
@@ -221,7 +225,9 @@
     "err_image_size": "图片大小不能超过 5MB",
     "err_generic": "注册失败,请稍后重试",
     "err_phone_exists": "该手机号已注册",
-    "err_email_exists": "该邮箱已注册",
+    "err_email_exists": "该邮箱已注册,请直接登录或找回密码",
+    "email_exists_login": "去登录",
+    "email_exists_forgot": "忘记密码",
     "optional_section": "更多信息（选填）",
     "email_label": "邮箱",
     "email_placeholder": "请输入邮箱",
