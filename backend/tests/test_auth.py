@@ -187,16 +187,23 @@ async def test_buyer_register_weak_password(client):
 
 @pytest.mark.asyncio
 async def test_password_length_below_6_rejected(client):
-    """密码 < 6 位被拒(6-20 位仅字母和数字)。"""
+    """密码 < 6 位被拒。"""
     result = await register_buyer_tz(client, password="Aa12")  # 4 位
     r = result["response"]
     assert r.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_password_special_char_rejected(client):
-    """密码含特殊字符被拒(仅限字母和数字)。"""
+async def test_password_special_char_accepted(client):
+    """密码可含特殊符号(规则细节见 test_password_rule_unit)。"""
     result = await register_buyer_tz(client, password="Aa123456789!")
+    assert result["response"].status_code == 200, result["response"].text
+
+
+@pytest.mark.asyncio
+async def test_password_single_kind_rejected(client):
+    """纯数字等单一类别被拒。"""
+    result = await register_buyer_tz(client, password="12345678")
     assert result["response"].status_code == 409, result["response"].text
 
 
