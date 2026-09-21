@@ -11,12 +11,13 @@ from app.core.config import settings
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 全局密码规则:6-20 位,仅字母和数字(对齐阿里国际站)。
+# 全局密码规则:6-20 位(低注册门槛,业务定),字母/数字/符号至少两类。
+# 符号 = 可打印 ASCII 标点;不含空格(首尾空格易被复制粘贴带入导致登不上)。
 PASSWORD_MIN_LENGTH = 6
 PASSWORD_MAX_LENGTH = 20
 
 # 错误文案前后端逐字一致(frontend/src/lib/validators.ts 同步)
-PASSWORD_RULE_MESSAGE = "密码须 6-20 位,仅限字母和数字"
+PASSWORD_RULE_MESSAGE = "密码须 6-20 位,包含字母、数字、符号中至少两种"
 
 
 def hash_password(plain: str) -> str:
@@ -31,10 +32,17 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def validate_password_strength(plain: str) -> bool:
-    """6-20 位,仅字母和数字。"""
+    """6-20 位,仅可打印非空格 ASCII,字母/数字/符号至少两类。"""
     if not (PASSWORD_MIN_LENGTH <= len(plain) <= PASSWORD_MAX_LENGTH):
         return False
-    return plain.isalnum() and plain.isascii()
+    if not all("!" <= c <= "~" for c in plain):
+        return False
+    kinds = (
+        any(c.isalpha() for c in plain)
+        + any(c.isdigit() for c in plain)
+        + any(not c.isalnum() for c in plain)
+    )
+    return kinds >= 2
 
 
 def _now_utc() -> datetime:

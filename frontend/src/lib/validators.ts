@@ -15,12 +15,15 @@ export const SUPPLIER_PHONE_RE = /^[+0-9\s\-]{6,20}$/;
 export const USERNAME_RE = /^(?![0-9]+$)[A-Za-z0-9_\-]{3,50}$/;
 // 18 位大写字母 + 数字(国标 GB 32100-2015)
 export const USC_RE = /^[0-9A-Z]{18}$/;
-// 与后端 validate_password_strength 等价:6-20 位,仅字母和数字(对齐阿里国际站)
-export const PASSWORD_MIN_LENGTH = 6;
-export const PASSWORD_MAX_LENGTH = 20;
-export const PASSWORD_RE = /^[A-Za-z0-9]{6,20}$/;
+// 与后端 validate_password_strength 等价:6-20 位,仅可打印非空格 ASCII,字母/数字/符号至少两类
+const PASSWORD_CHARS_RE = /^[\x21-\x7E]{6,20}$/;
+function isPasswordValid(v: string): boolean {
+  if (!PASSWORD_CHARS_RE.test(v)) return false;
+  const kinds = [/[A-Za-z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) => re.test(v)).length;
+  return kinds >= 2;
+}
 // 错误文案与后端 PASSWORD_RULE_MESSAGE 逐字一致
-export const PASSWORD_RULE_MESSAGE = "密码须 6-20 位,仅限字母和数字";
+export const PASSWORD_RULE_MESSAGE = "密码须 6-20 位,包含字母、数字、符号中至少两种";
 
 export interface EmailMessages {
   required: string;
@@ -65,7 +68,7 @@ export function validateUsc(v: string): string | null {
 
 export function validatePassword(v: string): string | null {
   if (!v) return "请填写密码";
-  if (!PASSWORD_RE.test(v)) return PASSWORD_RULE_MESSAGE;
+  if (!isPasswordValid(v)) return PASSWORD_RULE_MESSAGE;
   return null;
 }
 

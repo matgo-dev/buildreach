@@ -9,6 +9,7 @@ import { adminUsersApi, type AdminUserOut, type AdminUserUpdateIn, type Internal
 import { Permissions } from "@/lib/permissions";
 import {
   validateEmail,
+  PASSWORD_RULE_MESSAGE,
   validatePassword,
   validateRequired,
   validateUsernameOptional,
@@ -505,7 +506,7 @@ function CreateModal({
             {fieldErr.password ? (
               <p className="mt-1 text-xs text-red-500">{fieldErr.password}</p>
             ) : (
-              <p className="mt-1 text-xs text-slate-400">11-50 位,需包含数字、大写字母、小写字母、特殊字符中至少 3 类</p>
+              <p className="mt-1 text-xs text-slate-400">{PASSWORD_RULE_MESSAGE}</p>
             )}
           </Field>
           <Field id="role" label="角色 *">
