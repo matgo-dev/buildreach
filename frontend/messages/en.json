@@ -60,7 +60,11 @@
       "go_login": "Go to Login",
       "back_to_login": "Back to login",
       "error_generic": "Failed to send, please try again later",
-      "error_network": "Network error, please try again later"
+      "error_network": "Network error, please try again later",
+      "err_email_not_registered": "This email is not registered. Check for typos, or sign up.",
+      "go_register": "Sign up",
+      "err_account_disabled": "This account has been disabled. Please contact support.",
+      "err_account_deactivated": "This account has been deactivated and cannot be recovered."
     }
   },
   "error": {
@@ -221,7 +225,9 @@
     "err_image_size": "Image size must be under 5MB",
     "err_generic": "Registration failed, please try again later",
     "err_phone_exists": "This phone number is already registered",
-    "err_email_exists": "This email is already registered",
+    "err_email_exists": "This email is already registered. Please log in or reset your password.",
+    "email_exists_login": "Log in",
+    "email_exists_forgot": "Forgot password",
     "optional_section": "More Info (Optional)",
     "email_label": "Email",
     "email_placeholder": "Enter your email",

@@ -360,6 +360,8 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
   // 验证码发送状态
   const [codeSending, setCodeSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  // 邮箱已被占用(发码预检或提交查重返回 40922) → 邮箱框下给「去登录 / 忘记密码」出口
+  const [emailTaken, setEmailTaken] = useState(false);
 
   // UI 状态
   const [showPassword, setShowPassword] = useState(false);
@@ -440,8 +442,12 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
       }, 1000);
     } catch (err) {
       if (err instanceof ApiError) {
-        // 40104: 冷却中(后端返回剩余秒数)
-        if (err.code === 40104) {
+        if (err.code === 40922) {
+          setErrors((e) => ({ ...e, email: t("err_email_exists") }));
+          setTouched((te) => ({ ...te, email: true }));
+          setEmailTaken(true);
+        } else if (err.code === 40104) {
+          // 40104: 冷却中(后端返回剩余秒数)
           const seconds = (err.data as { remaining_seconds?: number })?.remaining_seconds ?? 60;
           setErrors((e) => ({ ...e, verificationCode: t("err_cooldown", { seconds }) }));
           setTouched((te) => ({ ...te, verificationCode: true }));
@@ -668,6 +674,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
               setTouched((t) => ({ ...t, phone: true }));
               hasFieldMatch = true;
             } else if (fe.field === "email") {
+              if (fe.code === 40922) setEmailTaken(true);
               setErrors((e) => ({ ...e, email: msg }));
               setTouched((t) => ({ ...t, email: true }));
               hasFieldMatch = true;
@@ -733,7 +740,11 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             <input
               id="email" name="email" type="email"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((err) => ({ ...err, email: null })); }}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailTaken(false);
+                if (errors.email) setErrors((err) => ({ ...err, email: null }));
+              }}
               onBlur={() => touch("email")}
               placeholder={t("email_placeholder")}
               autoComplete="email"
@@ -757,6 +768,18 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             )}
           </div>
           {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
+          {emailTaken && errOf("email") && (
+            <p className="flex gap-3 text-xs">
+              <Link href="/login" className="font-semibold text-[#0c9468] hover:underline">
+                {t("email_exists_login")}
+              </Link>
+              {emailVerificationOn && (
+                <Link href="/forgot-password" className="font-semibold text-[#0c9468] hover:underline">
+                  {t("email_exists_forgot")}
+                </Link>
+              )}
+            </p>
+          )}
         </div>
 
         {/* 3. 验证码(仅在邮箱验证开启时显示) */}

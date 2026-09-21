@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 import os
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,14 @@ from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, get_current_user
-from app.core.exceptions import BusinessError, MultipleValidationError, NotAuthenticatedError, success
+from app.core.exceptions import (
+    AccountDeactivatedError,
+    AccountDisabledError,
+    BusinessError,
+    MultipleValidationError,
+    NotAuthenticatedError,
+    success,
+)
 from app.core.request_ip import get_client_ip
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.db.models.audit_log import AuditStatus
@@ -206,7 +214,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class SendCodeRequest(_BaseModel):
     email: str
-    purpose: str  # REGISTER / RESET_PASSWORD
+    # 只服务注册:找回密码走 /forgot-password(先查账号再发),此处放开等于替任意邮箱发信
+    purpose: Literal["REGISTER"]
 
 
 class SendCodeResponse(_BaseModel):
@@ -233,14 +242,17 @@ async def send_verification_code(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    # 买方注册邮箱验证关闭时,拒绝 REGISTER 发码(防御性:前端已隐藏该步骤)。
-    # RESET_PASSWORD 不受影响 —— 密码找回本质上必须发邮件。
-    if body.purpose == "REGISTER" and not settings.REQUIRE_EMAIL_VERIFICATION:
+    # 买方注册邮箱验证关闭时,拒绝发码(防御性:前端已隐藏该步骤)。
+    if not settings.REQUIRE_EMAIL_VERIFICATION:
         raise BusinessError(
             status.HTTP_400_BAD_REQUEST,
             40008,
             "Email verification is disabled",
         )
+    # 已占用邮箱不发码,与注册提交同口径(auth_service.register_buyer);
+    # 放在冷却/落库之前,已注册邮箱不留验证码行也不耗发信额度。
+    if await auth_service.email_exists(db, body.email.strip()):
+        raise MultipleValidationError([{"field": "email", "code": 40922, "message": "该邮箱已注册"}])
     ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:255]
     try:
@@ -969,7 +981,11 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     email: str = Form(...),
 ):
-    """发送重置密码验证码。响应不暴露邮箱是否存在。"""
+    """发送重置密码验证码。
+
+    明说邮箱未注册(不走防枚举措辞):注册提交本就明说"已注册",只藏这一边白牺牲体验;
+    IP 小时限频兜底批量探测。
+    """
     email = email.strip().lower()
     ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:255]
@@ -977,9 +993,13 @@ async def forgot_password(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    # 防枚举:不存在 / 非 ACTIVE 账号都返回同样文案,且不发邮件。
-    if user is None or user.status != UserStatus.ACTIVE:
-        return success(None, message="如果该邮箱已注册，验证码已发送")
+    if user is None:
+        raise MultipleValidationError([{"field": "email", "code": 40108, "message": "该邮箱未注册"}])
+    # 停用/注销账号仍占用邮箱,不能说"未注册"(否则去注册又被告知已注册),与登录同码
+    if user.status == UserStatus.DISABLED:
+        raise AccountDisabledError()
+    if user.status != UserStatus.ACTIVE:
+        raise AccountDeactivatedError()
 
     try:
         await verification_service.send_code(
@@ -993,7 +1013,7 @@ async def forgot_password(
     except ValueError as exc:
         msg = str(exc)
         if msg.startswith("COOLDOWN:"):
-            return success(None, message="如果该邮箱已注册，验证码已发送")
+            return success(None, message="验证码已发送")
         if msg == "IP_RATE_LIMIT":
             raise MultipleValidationError([{
                 "field": "email",
@@ -1008,7 +1028,7 @@ async def forgot_password(
             )
         raise
 
-    return success(None, message="如果该邮箱已注册，验证码已发送")
+    return success(None, message="验证码已发送")
 
 
 @router.post("/reset-password", summary="重置密码（验证码模式）")

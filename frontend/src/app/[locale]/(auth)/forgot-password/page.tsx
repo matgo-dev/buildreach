@@ -30,6 +30,8 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [emailErr, setEmailErr] = useState<string | null>(null);
+  // 40108 邮箱未注册 → 邮箱框下给「去注册」出口
+  const [emailNotRegistered, setEmailNotRegistered] = useState(false);
   const [code, setCode] = useState("");
   const [codeErr, setCodeErr] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -60,12 +62,18 @@ export default function ForgotPasswordPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => null);
-        // 邮箱不存在的错误显示在邮箱字段下方
-        const errMsg = json?.errors?.[0]?.message || json?.message || t("error_generic");
-        if (json?.errors?.[0]?.field === "email") {
-          setEmailErr(errMsg);
+        const fieldErr = json?.data?.errors?.[0];
+        if (json?.code === 40108) {
+          setEmailErr(t("err_email_not_registered"));
+          setEmailNotRegistered(true);
+        } else if (json?.code === 40005) {
+          setError(t("err_account_disabled"));
+        } else if (json?.code === 40305) {
+          setError(t("err_account_deactivated"));
+        } else if (fieldErr?.field === "email") {
+          setEmailErr(fieldErr.message || t("error_generic"));
         } else {
-          setError(errMsg);
+          setError(json?.message || t("error_generic"));
         }
       } else {
         setStep("code");
@@ -169,7 +177,11 @@ export default function ForgotPasswordPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr(null); }}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailNotRegistered(false);
+                  if (emailErr) setEmailErr(null);
+                }}
                 onBlur={() => {
                   if (email) setEmailErr(validateEmail(email, {
                     required: tc("err_email_required"),
@@ -187,6 +199,11 @@ export default function ForgotPasswordPage() {
                 }
               />
               {emailErr && <p className="text-xs text-red-500">{emailErr}</p>}
+              {emailErr && emailNotRegistered && (
+                <Link href="/register" className="text-xs font-semibold text-[#0c9468] hover:underline">
+                  {t("go_register")}
+                </Link>
+              )}
             </div>
 
             <button

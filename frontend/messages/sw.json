@@ -60,7 +60,11 @@
       "go_login": "Nenda Kuingia",
       "back_to_login": "Rudi kuingia",
       "error_generic": "Imeshindwa kutuma, jaribu tena baadaye",
-      "error_network": "Hitilafu ya mtandao, jaribu tena baadaye"
+      "error_network": "Hitilafu ya mtandao, jaribu tena baadaye",
+      "err_email_not_registered": "Barua pepe hii haijasajiliwa. Hakikisha umeiandika sahihi, au jisajili.",
+      "go_register": "Jisajili",
+      "err_account_disabled": "Akaunti hii imezimwa. Tafadhali wasiliana na huduma kwa wateja.",
+      "err_account_deactivated": "Akaunti hii imefutwa na haiwezi kurejeshwa."
     }
   },
   "error": {
@@ -221,7 +225,9 @@
     "err_image_size": "Ukubwa wa picha lazima uwe chini ya 5MB",
     "err_generic": "Usajili umeshindwa, tafadhali jaribu tena baadaye",
     "err_phone_exists": "Nambari hii ya simu tayari imesajiliwa",
-    "err_email_exists": "Barua pepe hii tayari imesajiliwa",
+    "err_email_exists": "Barua pepe hii tayari imesajiliwa. Tafadhali ingia au weka upya nenosiri.",
+    "email_exists_login": "Ingia",
+    "email_exists_forgot": "Umesahau nenosiri",
     "optional_section": "Taarifa Zaidi (Hiari)",
     "email_label": "Barua pepe",
     "email_placeholder": "Weka barua pepe yako",

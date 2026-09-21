@@ -62,7 +62,7 @@ async def _get_role(db: AsyncSession, code: str) -> Role:
     return role
 
 
-async def _email_exists(db: AsyncSession, email: str) -> bool:
+async def email_exists(db: AsyncSession, email: str) -> bool:
     """任何状态的账号都占用邮箱,禁止复用。"""
     row = await db.execute(
         select(User.id).where(User.email == email)
@@ -194,7 +194,7 @@ async def register_buyer(
             "code": 40921,
             "message": "该手机号已注册",
         })
-    if email and await _email_exists(db, email):
+    if email and await email_exists(db, email):
         errors.append({
             "field": "email",
             "code": 40922,
@@ -310,7 +310,7 @@ async def register_supplier(
             "code": BUSINESS_CODE_SUPPLIER_ALREADY_REGISTERED,
             "message": DUPLICATE_REGISTRATION_ERROR_MESSAGE,
         })
-    if await _email_exists(db, email):
+    if await email_exists(db, email):
         errors.append({
             "field": "email",
             "code": BUSINESS_CODE_EMAIL_ALREADY_REGISTERED,
