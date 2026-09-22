@@ -23,6 +23,17 @@ const nextConfig = {
   images: { unoptimized: true },
   // OWASP 要求移除技术栈指纹头(X-Powered-By: Next.js)
   poweredByHeader: false,
+  // 本地开发对着远端后端(如 ECS 预发)跑时,把 /api 与 /static 反代到该后端,
+  // 让浏览器端请求同源——与生产 nginx 的路由拓扑一致,后端 CORS 白名单无需为本地放宽。
+  // 仅当设置 API_PROXY_TARGET 时生效;生产镜像不设该变量,行为不变。
+  async rewrites() {
+    const target = process.env.API_PROXY_TARGET;
+    if (!target) return [];
+    return [
+      { source: "/api/:path*", destination: `${target}/api/:path*` },
+      { source: "/static/:path*", destination: `${target}/static/:path*` },
+    ];
+  },
   // 安全响应头:仅取 OWASP HTTP Headers Cheat Sheet / MDN 明确要求且对本站零风险的项。
   // 完整 CSP(script-src 等)、CORP、HSTS(在反代 openresty 已设)另立项,不在此处。
   async headers() {

@@ -8,13 +8,15 @@
 cd frontend
 pnpm install
 cp .env.local.example .env.local
-# 本地开发: NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# 本地起后端: 保持默认 http://localhost:17857
+# 不起后端: 按 .env.local.example 里的注释改成三行,对着远端后端(如 ECS 预发)跑
 # Docker 部署: API_BASE_URL 运行时注入（见 entrypoint.sh）
 
 pnpm dev   # http://localhost:3000
 ```
 
-> 后端必须先起在 8000 端口,否则 /auth/me 调用会失败。
+> 页面数据全部来自后端接口,`API_BASE_URL` 未配置会直接报错。
+> 对着远端后端跑时,`/api` 与 `/static` 由 next.config.mjs 的 rewrites 代理转发(仅 `API_PROXY_TARGET` 有值时生效)。
 
 ## 关键约定
 
