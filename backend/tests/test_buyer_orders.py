@@ -114,13 +114,49 @@ async def test_not_bound_when_fulfillment_returns_42501(client):
 
 
 @pytest.mark.asyncio
-async def test_no_org_for_user_without_membership(client, superadmin_headers):
+async def test_no_org_for_buyer_without_membership(client, db_session):
+    """BUYER 角色但 buyer_members 已无行(组织被清)→ NO_ORG,且不碰履约。"""
+    from sqlalchemy import delete
+    h, user_id, _ = await _buyer(client)
+    await db_session.execute(delete(BuyerMember).where(BuyerMember.user_id == user_id))
+    await db_session.commit()
     calls = []
     _install_fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
-    r = await client.get("/api/v1/buyer/orders", headers=superadmin_headers)
+    r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 200
     assert r.json()["data"] == {"binding": "NO_ORG"}
     assert calls == []  # 未解析出组织就不该碰履约
+
+
+@pytest.mark.asyncio
+async def test_non_buyer_role_is_403_even_with_membership(client, superadmin_headers, db_session):
+    """角色门在组织解析之前:管理员即便被挂进某组织的 buyer_members,也拿不到订单。"""
+    from sqlalchemy import select
+    from app.db.models.user import User
+    from app.core.config import settings
+    _, _, org_id = await _buyer(client)
+    admin_id = (await db_session.execute(
+        select(User.id).where(User.email == settings.SUPER_ADMIN_EMAIL)
+    )).scalar_one()
+    db_session.add(BuyerMember(user_id=admin_id, buyer_org_id=org_id, is_owner=False))
+    await db_session.commit()
+    calls = []
+    _install_fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    r = await client.get("/api/v1/buyer/orders", headers=superadmin_headers)
+    assert r.status_code == 403 and r.json()["code"] == 40003
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_must_change_password_blocked(client, db_session):
+    from app.db.models.user import User
+    h, user_id, _ = await _buyer(client)
+    user = await db_session.get(User, user_id)
+    user.must_change_password = True
+    await db_session.commit()
+    _install_fulfillment(lambda req: httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    r = await client.get("/api/v1/buyer/orders", headers=h)
+    assert r.status_code == 403 and r.json()["code"] == 40007
 
 
 @pytest.mark.asyncio

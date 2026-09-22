@@ -237,7 +237,7 @@ location /api/v1/internal/ {
 **③ 限流(反代层,应用层不做)**
 
 ```nginx
-# http {} 块
+# http 层(与 upstream 同级;nginx-host.conf.example 顶部已带)
 limit_req_zone $binary_remote_addr zone=buyer_orders:1m rate=30r/m;
 
 # server {} 块,放在 location /api/ 之前
@@ -246,6 +246,8 @@ location /api/v1/buyer/orders {
     proxy_pass http://buildreach_backend;
 }
 ```
+
+zone 声明与 `limit_req` 引用必须成对:少了前者 `nginx -t` 报 `zone "buyer_orders" is unknown`,整站配置都 reload 不了。
 
 > 面板改反代配置会重写站点文件,改完复查这两个 location 还在(HSTS 那次的教训)。
 

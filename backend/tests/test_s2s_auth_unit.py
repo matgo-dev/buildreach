@@ -178,3 +178,14 @@ def test_s2s_misconfigured_cases():
     assert s2s_misconfigured(_settings(FULFILLMENT_API_BASE_URL="https://f.example"))
     assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="short", FULFILLMENT_API_BASE_URL="https://f.example"))
     assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="s" * 32, FULFILLMENT_API_BASE_URL="f.example"))
+
+
+@pytest.mark.parametrize("url", ["https://", "http://", "ftp://f.example", "f.example", "https:///path", "//f.example"])
+def test_s2s_misconfigured_rejects_urls_without_scheme_or_host(url):
+    """只看前缀不够:"https://" 过前缀检查后运行时 httpx 抛 InvalidURL(非 HTTPError)会变 500。"""
+    assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="s" * 32, FULFILLMENT_API_BASE_URL=url))
+
+
+@pytest.mark.parametrize("url", ["https://f.example", "http://127.0.0.1:8000", "https://ops.example.com/"])
+def test_s2s_misconfigured_accepts_full_urls(url):
+    assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="s" * 32, FULFILLMENT_API_BASE_URL=url)) is None

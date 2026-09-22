@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Annotated, List
+from urllib.parse import urlsplit
 
 from pydantic import AfterValidator, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -207,8 +208,10 @@ def s2s_misconfigured(s: "Settings") -> str | None:
         return "S2S_SHARED_SECRET 与 FULFILLMENT_API_BASE_URL 必须同时配置或同时留空"
     if len(secret) < 32:
         return "S2S_SHARED_SECRET 长度必须 ≥ 32(openssl rand -hex 32)"
-    if not base.startswith(("http://", "https://")):
-        return "FULFILLMENT_API_BASE_URL 必须是 http(s):// 开头的完整地址"
+    parts = urlsplit(base)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        # 只看前缀不够:"https://" 能过前缀检查,运行时 httpx 抛 InvalidURL(不是 HTTPError)变 500
+        return "FULFILLMENT_API_BASE_URL 必须是 http(s)://主机[:端口] 形式的完整地址"
     return None
 
 

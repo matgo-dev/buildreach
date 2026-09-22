@@ -89,6 +89,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── shutdown ──
+    from app.services.fulfillment_client import default_client as _fulfillment_client
+    await _fulfillment_client.aclose()
     if _i18n_scheduler is not None:
         _i18n_scheduler.shutdown(wait=False)
         logger.info("i18n 调度扫描已停止")

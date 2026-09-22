@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { AlertCircle, Building2, Headset, Link2Off, RefreshCw } from "lucide-react";
+import { AlertCircle, Building2, Headset, Link2Off, Package, RefreshCw } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/formatters";
 import { formatDecimalString, type BindingState, type OrderStage } from "@/lib/api/buyerOrders";
@@ -100,6 +100,24 @@ export function StatePanel({
           {t("retry")}
         </button>
       )}
+    </div>
+  );
+}
+
+/** 空态:demo 与真实用户共用。 */
+export function EmptyOrdersState() {
+  const t = useTranslations("orderTracking");
+  return (
+    <div className="rounded-xl border border-line bg-white p-16 text-center">
+      <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-navy mb-2">{t("emptyTitle")}</h3>
+      <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
+      <Link
+        href="/mall"
+        className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+      >
+        {t("emptyBrowse")}
+      </Link>
     </div>
   );
 }

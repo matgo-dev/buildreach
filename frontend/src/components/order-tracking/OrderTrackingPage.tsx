@@ -27,6 +27,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { MOCK_ORDERS, type MockOrder, type Shipment, type Milestone, MILESTONE_KEYS } from "./mockOrders";
 import { BuyerOrders } from "./BuyerOrders";
+import { EmptyOrdersState } from "./buyerOrdersShared";
 
 
 // 节点图标映射
@@ -98,17 +99,7 @@ function OrderList({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-line bg-white p-16 text-center">
-          <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-navy mb-2">{t("emptyTitle")}</h3>
-          <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
-          <Link
-            href="/mall"
-            className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
-          >
-            {t("emptyBrowse")}
-          </Link>
-        </div>
+        <EmptyOrdersState />
       )}
     </div>
   );

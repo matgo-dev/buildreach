@@ -5,6 +5,9 @@
 - 每次调用现签一枚:iss/aud/sub/typ/iat/exp/jti,exp−iat ≤ 60s。
 - 接收方除 jose 的签名 / exp / aud / iss 校验外,自己再比较
   `0 < exp − iat ≤ 60` 与 `iat ≤ now + 30s`:否则签名方签一枚长效令牌就突破了所称的窗口。
+- 真实可接受窗口(按接收方时钟):iat 最多超前 30s、TTL 60s、exp 再容忍 30s 偏差,
+  三者叠加 = 一枚令牌最长 **120s** 内可被接受(契约按 60+30 写作 90s,漏算了未来 iat 那 30s)。
+  两向都是只读 GET,且 exp 容差是契约要求(两主机时钟偏差),不去掉,如实记录。
 - iss/aud 精确匹配是挡"同密钥反向重放"的唯一屏障。
 """
 from __future__ import annotations

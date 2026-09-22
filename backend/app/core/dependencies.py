@@ -84,6 +84,9 @@ async def _load_organization(
             select(BuyerMember, BuyerOrganization)
             .join(BuyerOrganization, BuyerOrganization.id == BuyerMember.buyer_org_id)
             .where(BuyerMember.user_id == user_id)
+            # 一人多组织时取 owner 优先、其次最早加入,结果确定;真正的多组织语义(拒绝或切换)
+            # 见 buyer_org_binding.resolve_buyer_org,订单等授权敏感路径用那个
+            .order_by(BuyerMember.is_owner.desc(), BuyerMember.id)
             .limit(1)
         )
         record = row.first()
@@ -99,6 +102,7 @@ async def _load_organization(
             select(SupplierMember, SupplierOrganization)
             .join(SupplierOrganization, SupplierOrganization.id == SupplierMember.supplier_org_id)
             .where(SupplierMember.user_id == user_id)
+            .order_by(SupplierMember.is_owner.desc(), SupplierMember.id)
             .limit(1)
         )
         record = row.first()

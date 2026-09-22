@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronRight, Package } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { ChevronRight } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import {
   getBuyerOrders,
@@ -13,7 +12,7 @@ import {
 } from "@/lib/api/buyerOrders";
 import Pagination from "@/components/ui/Pagination";
 import { BuyerOrderDetail } from "./BuyerOrderDetail";
-import { LoadingSkeleton, Money, PageHeader, StagePill, StatePanel, useDay } from "./buyerOrdersShared";
+import { EmptyOrdersState, LoadingSkeleton, Money, PageHeader, StagePill, StatePanel, useDay } from "./buyerOrdersShared";
 
 const PAGE_SIZE = 20;
 
@@ -28,14 +27,19 @@ export function BuyerOrders() {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<ListState>({ kind: "loading" });
   const [selectedNo, setSelectedNo] = useState<string | null>(null);
+  // 请求序号:快速翻页时晚到的旧响应不得覆盖新页
+  const seq = useRef(0);
 
   const load = useCallback(async () => {
+    const mine = ++seq.current;
     setState({ kind: "loading" });
     try {
       const res = await getBuyerOrders(page, PAGE_SIZE);
+      if (mine !== seq.current) return;
       if (res.kind === "binding") setState({ kind: "binding", binding: res.binding });
       else setState({ kind: "data", page: res.page });
     } catch (err) {
+      if (mine !== seq.current) return;
       // 503(履约不可达)与其它异常同一处理:提示稍后重试;401 已由 api 层刷新/清会话
       if (err instanceof ApiError && err.status === 401) return;
       setState({ kind: "unavailable" });
@@ -76,21 +80,7 @@ function OrderList({
   const { items, total, size } = page;
   const totalPages = Math.max(1, Math.ceil(total / size));
 
-  if (total === 0) {
-    return (
-      <div className="rounded-xl border border-line bg-white p-16 text-center">
-        <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-navy mb-2">{t("emptyTitle")}</h3>
-        <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
-        <Link
-          href="/mall"
-          className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
-        >
-          {t("emptyBrowse")}
-        </Link>
-      </div>
-    );
-  }
+  if (total === 0) return <EmptyOrdersState />;
 
   return (
     <>

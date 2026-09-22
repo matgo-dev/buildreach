@@ -10,10 +10,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_current_user
+from app.core.dependencies import CurrentUser
 from app.core.exceptions import FulfillmentUnavailableError, NotFoundError, success
 from app.core.locale import get_current_locale
 from app.db.session import get_db
+from app.rbac.guards import block_if_must_change_password, require_any_role
 from app.services.buyer_org_binding import resolve_buyer_org
 from app.services.fulfillment_client import (
     FulfillmentClient,
@@ -22,7 +23,13 @@ from app.services.fulfillment_client import (
     get_fulfillment_client,
 )
 
-router = APIRouter(prefix="/buyer/orders", tags=["buyer"])
+# 守卫与 cart.py 对齐:BUYER 角色 + 强制改密拦截。只有 buyer_members 行不等于买家身份
+# (运营/供应商账号也可能被挂进组织),角色门在前,组织解析在后。
+router = APIRouter(
+    prefix="/buyer/orders",
+    tags=["buyer"],
+    dependencies=[Depends(require_any_role("BUYER"))],
+)
 
 # 单号只在路径里出现,限制字符集防止把任意串拼进对履约的请求路径
 ORDER_NO_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
@@ -44,7 +51,7 @@ def _unwrap(result: PortalResult) -> dict:
 async def list_my_orders(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    current: CurrentUser = Depends(get_current_user),
+    current: CurrentUser = Depends(block_if_must_change_password),
     db: AsyncSession = Depends(get_db),
     client: FulfillmentClient = Depends(get_fulfillment_client),
 ):
@@ -63,7 +70,7 @@ async def list_my_orders(
 @router.get("/{no}", summary="我的订单详情(来自履约后台)")
 async def get_my_order(
     no: str = Path(..., pattern=ORDER_NO_PATTERN),
-    current: CurrentUser = Depends(get_current_user),
+    current: CurrentUser = Depends(block_if_must_change_password),
     db: AsyncSession = Depends(get_db),
     client: FulfillmentClient = Depends(get_fulfillment_client),
 ):
