@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.email import NormalizedEmailStr
 
 # 与 schemas/auth.py 中的 USERNAME_REGEX 保持一致
 USERNAME_REGEX = re.compile(r"^(?![0-9]+$)[A-Za-z0-9_\-]{3,50}$")
@@ -16,7 +18,7 @@ class ProfileUpdateIn(BaseModel):
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    email: EmailStr | None = Field(default=None)
+    email: NormalizedEmailStr | None = Field(default=None)
     phone: str | None = Field(default=None, max_length=30)
     phone_region: str | None = Field(default=None, max_length=2)
     username: str | None = Field(default=None, max_length=50)
@@ -46,7 +48,7 @@ class OrgUpdateIn(BaseModel):
 class ChangeEmailIn(BaseModel):
     """改登录邮箱(敏感:需要 current_password)。"""
 
-    new_email: EmailStr
+    new_email: NormalizedEmailStr
     current_password: str = Field(..., min_length=1)
 
 

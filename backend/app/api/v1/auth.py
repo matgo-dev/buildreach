@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 import os
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
 from app.core.config import settings
+from app.core.email import normalize_email
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.exceptions import (
     AccountDeactivatedError,
@@ -43,7 +44,7 @@ from app.services import auth_service, me_service, session_service, verification
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
 
-from pydantic import BaseModel as _BaseModel
+from pydantic import AfterValidator, BaseModel as _BaseModel
 
 from email_validator import validate_email as ev_validate, EmailNotValidError
 from sqlalchemy import and_, select
@@ -87,7 +88,9 @@ def _validate_supplier_register(raw: dict) -> tuple["SupplierRegisterIn | None",
 
     # 逐字段格式校验(仅在有值时校验)
     email = raw.get("email", "")
-    if email:
+    if isinstance(email, str) and email:
+        # 归一化回写 raw:后续查重与 schema 解析用同一口径
+        raw["email"] = email = normalize_email(email)
         try:
             ev_validate(email, check_deliverability=False)
         except EmailNotValidError:
@@ -213,7 +216,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ---- 验证码 Schemas ----
 
 class SendCodeRequest(_BaseModel):
-    email: str
+    email: Annotated[str, AfterValidator(normalize_email)]
     # 只服务注册:找回密码走 /forgot-password(先查账号再发),此处放开等于替任意邮箱发信
     purpose: Literal["REGISTER"]
 
@@ -224,7 +227,7 @@ class SendCodeResponse(_BaseModel):
 
 
 class VerifyCodeRequest(_BaseModel):
-    email: str
+    email: Annotated[str, AfterValidator(normalize_email)]
     code: str
     purpose: str
 
@@ -251,7 +254,7 @@ async def send_verification_code(
         )
     # 已占用邮箱不发码,与注册提交同口径(auth_service.register_buyer);
     # 放在冷却/落库之前,已注册邮箱不留验证码行也不耗发信额度。
-    if await auth_service.email_exists(db, body.email.strip()):
+    if await auth_service.email_exists(db, body.email):
         raise MultipleValidationError([{"field": "email", "code": 40922, "message": "该邮箱已注册"}])
     ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:255]
@@ -337,7 +340,7 @@ async def register_buyer(
     from email_validator import validate_email as ev_validate_email, EmailNotValidError as EvNotValidError
 
     # ── 1. 邮箱验证(受 REQUIRE_EMAIL_VERIFICATION 门控）──
-    email = email.strip()
+    email = normalize_email(email)
     if settings.REQUIRE_EMAIL_VERIFICATION:
         # 校验 verification_token（同时标记 verification_code 为已使用）
         if not verification_token:
@@ -346,7 +349,7 @@ async def register_buyer(
             verified_email = await verification_service.consume_verification_token(db, verification_token)
         except ValueError:
             raise MultipleValidationError([{"field": "verification_token", "code": 40106, "message": "Email verification token invalid or expired"}])
-        if verified_email != email:
+        if normalize_email(verified_email) != email:
             raise MultipleValidationError([{"field": "email", "code": 40107, "message": "Email does not match verification token"}])
     # flag=false: 跳过邮箱验证(即使前端误传 token 也忽略)
 
@@ -986,7 +989,7 @@ async def forgot_password(
     明说邮箱未注册(不走防枚举措辞):注册提交本就明说"已注册",只藏这一边白牺牲体验;
     IP 小时限频兜底批量探测。
     """
-    email = email.strip().lower()
+    email = normalize_email(email)
     ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:255]
 
@@ -1040,7 +1043,7 @@ async def reset_password(
     new_password: str = Form(...),
 ):
     """验证邮箱+验证码+设置新密码。"""
-    email = email.strip().lower()
+    email = normalize_email(email)
 
     # 校验密码强度
     if not validate_password_strength(new_password):

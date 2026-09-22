@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import List
+from typing import Annotated, List
 
-from pydantic import Field, computed_field
+from pydantic import AfterValidator, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.core.email import normalize_email
 
 
 class Settings(BaseSettings):
@@ -32,7 +34,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Super admin 种子(始终种入,生产唯一保留)
-    SUPER_ADMIN_EMAIL: str = "superadmin@platform.local"
+    # 归一化:库里邮箱只存小写(ck_users_email_normalized),env 写大写也不会让种子写库失败
+    SUPER_ADMIN_EMAIL: Annotated[str, AfterValidator(normalize_email)] = "superadmin@platform.local"
     SUPER_ADMIN_INITIAL_PASSWORD: str = "Aa123456789"
 
     # demo seed 开关:控制是否种入中建三局 BuyerOrg 与 admin/operator/buyer demo 账号

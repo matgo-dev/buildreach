@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Index, Integer, String, text
+from sqlalchemy import Boolean, CheckConstraint, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampUpdateMixin
@@ -19,6 +19,11 @@ class User(Base, TimestampUpdateMixin):
         Index("uq_users_email", "email", unique=True),
         Index("uq_users_username", "username", unique=True),
         Index("uq_users_phone", "phone", unique=True),
+        # 邮箱身份不区分大小写:只存归一化值(app.core.email.normalize_email),迁移 user_0001
+        CheckConstraint(
+            "email = btrim(email) AND email !~ '[ABCDEFGHIJKLMNOPQRSTUVWXYZ]'",
+            name="ck_users_email_normalized",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

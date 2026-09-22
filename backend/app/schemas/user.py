@@ -3,15 +3,16 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
+from app.core.email import NormalizedEmailStr
 from app.core.security import PASSWORD_RULE_MESSAGE, validate_password_strength
 
 
 class AdminUserCreateIn(BaseModel):
     """super admin 创建 ADMIN/OPERATOR 用户。"""
 
-    email: EmailStr
+    email: NormalizedEmailStr
     username: str | None = Field(default=None, max_length=50)
     name: str = Field(..., min_length=1, max_length=100)
     password: str
@@ -40,7 +41,7 @@ class AdminUserOut(BaseModel):
 class AdminUserUpdateIn(BaseModel):
     """Admin 编辑用户信息。"""
 
-    email: EmailStr | None = None
+    email: NormalizedEmailStr | None = None
     phone: str | None = Field(default=None, max_length=30)
     name: str | None = Field(default=None, min_length=1, max_length=100)
 
