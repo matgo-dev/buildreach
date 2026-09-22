@@ -124,6 +124,8 @@ vi .env.production
 | `BANNER_DIR` | `./data/banners` | 首页轮播图目录,默认不用改 |
 | `BACKEND_HOST_PORT` | `8001` | 后端端口 |
 | `FRONTEND_HOST_PORT` | `3001` | 前端端口 |
+| `S2S_SHARED_SECRET` | `openssl rand -hex 32`,与履约仓同值 | 前台互通密钥,见 3.7;不接履约时留空 |
+| `FULFILLMENT_API_BASE_URL` | `https://ops.example.com` | 履约后台公网入口,见 3.7;不接履约时留空 |
 
 > **⚠️ 三个 URL 必须匹配**：`API_BASE_URL`、`CORS_ORIGINS`、`IMAGE_BASE_URL` 必须基于同一个 HTTPS 域名入口。
 
@@ -203,6 +205,51 @@ bash deploy/init-data.sh --skip-categories --batch data/xfs/<批次目录>  # �
 | 健康检查 | `https://<域名>/healthz` |
 
 ---
+
+### 3.7 前台互通(「我的订单」接履约后台)
+
+设计契约:`docs/specs/2026-09-21-0214-前台客户订单可见性-设计契约.md`。两向调用走公网 HTTPS + 60s 短时签名令牌 + 反代 IP 白名单,三层缺一不可。
+
+**① env(两仓同时改,改完只重建 backend)**
+
+| 仓 | 变量 | 值 |
+|---|---|---|
+| matgo(本仓) | `S2S_SHARED_SECRET` | `openssl rand -hex 32` 生成一次,两仓同值 |
+| matgo(本仓) | `FULFILLMENT_API_BASE_URL` | 履约后台公网入口,如 `https://ops.example.com` |
+| 履约仓 | `S2S_SHARED_SECRET` | 同上 |
+| 履约仓 | `STOREFRONT_INTERNAL_BASE_URL` | 本站公网入口,如 `https://www.example.com` |
+
+只配一项后端拒绝启动;两项都空 = 互通关闭,前台「我的订单」显示"暂不可用"。
+
+**② 反代 IP 白名单(OpenResty / 1Panel 站点配置,放在 `location /api/` 之前)**
+
+```nginx
+# 只允许履约主机调本站内部路由;其余来源 403
+location /api/v1/internal/ {
+    allow <履约主机公网IP>;
+    deny all;
+    proxy_pass http://buildreach_backend;
+}
+```
+
+履约侧对称:`/api/v1/portal/*` 只放行本站主机 IP。
+
+**③ 限流(反代层,应用层不做)**
+
+```nginx
+# http {} 块
+limit_req_zone $binary_remote_addr zone=buyer_orders:1m rate=30r/m;
+
+# server {} 块,放在 location /api/ 之前
+location /api/v1/buyer/orders {
+    limit_req zone=buyer_orders burst=10 nodelay;
+    proxy_pass http://buildreach_backend;
+}
+```
+
+> 面板改反代配置会重写站点文件,改完复查这两个 location 还在(HSTS 那次的教训)。
+
+**验证**:登录一个已在履约绑定的买方账号,打开 `/order-tracking` 能看到订单;从非履约主机 `curl https://www.example.com/api/v1/internal/buyer-organizations?q=a` 应得 403。
 
 ## 四、后续更新
 

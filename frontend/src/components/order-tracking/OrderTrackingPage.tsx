@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { MOCK_ORDERS, type MockOrder, type Shipment, type Milestone, MILESTONE_KEYS } from "./mockOrders";
+import { BuyerOrders } from "./BuyerOrders";
 
 
 // 节点图标映射
@@ -43,16 +44,17 @@ const MILESTONE_ICONS: Record<string, React.ElementType> = {
   msDelivered: PackageCheck,
 };
 
-/** 订单追踪页 — demo 用户看 mock 数据，真实用户看空状态 */
+/** 订单追踪页 — demo 账号看 mock 数据(营销用途),真实用户接履约后台(经 BFF)。 */
 export function OrderTrackingPage() {
-  const t = useTranslations("orderTracking");
   const user = useAuthStore((s) => s.user);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
   const isDemo = user?.is_demo ?? false;
-  // TODO: 后续接真实 API 后，真实用户从后端拉订单数据
-  const orders = isDemo ? MOCK_ORDERS : [];
+  if (!isDemo) return <BuyerOrders />;
+  return <DemoOrderTracking />;
+}
 
+function DemoOrderTracking() {
+  const orders = MOCK_ORDERS;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedOrder = orders.find((o) => o.id === selectedId);
 
   if (selectedOrder) {

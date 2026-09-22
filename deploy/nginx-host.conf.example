@@ -60,6 +60,21 @@ server {
         access_log off;
     }
 
+    # ---- 前台互通(见 README-deploy.md 3.7)----
+    # 内部路由只放行履约主机;未接履约时可整段留着,deny all 同样安全。
+    location /api/v1/internal/ {
+        # allow <履约主机公网IP>;
+        deny all;
+        proxy_pass http://buildreach_backend;
+    }
+
+    # 「我的订单」BFF 按客户端 IP 限流(zone 在 http {} 块声明:
+    #   limit_req_zone $binary_remote_addr zone=buyer_orders:1m rate=30r/m;)
+    location /api/v1/buyer/orders {
+        limit_req zone=buyer_orders burst=10 nodelay;
+        proxy_pass http://buildreach_backend;
+    }
+
     location /api/ {
         proxy_pass http://buildreach_backend;
         proxy_read_timeout 120s;

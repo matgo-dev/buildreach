@@ -153,6 +153,12 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_MAX_ATTEMPTS: int = 5
     VERIFICATION_CODE_IP_HOURLY_LIMIT: int = 20
 
+    # ---- 前台互通(履约后台 ↔ matgo,契约 docs/specs/2026-09-21-0214)----
+    # 两向调用共用一把独立密钥(≥32 字符,禁复用 JWT_SECRET_KEY),HS256 签 60s 短时令牌。
+    # 两项要么都配(互通开启),要么都空(互通关闭,/buyer/orders 回 503);只配一项启动即失败。
+    S2S_SHARED_SECRET: str = ""
+    FULFILLMENT_API_BASE_URL: str = ""
+
     # 买方注册是否强制邮箱验证码。默认开启(安全默认);
     # 邮件中继(SMTP)未就绪时,可在生产 .env 显式设为 false 让注册先上线,
     # 待配好 SMTP 后删除该行即可恢复。仅作用于 REGISTER,不影响密码找回。
@@ -162,6 +168,12 @@ class Settings(BaseSettings):
     @property
     def CORS_ORIGINS(self) -> List[str]:
         return [s.strip() for s in self.CORS_ORIGINS_RAW.split(",") if s.strip()]
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def s2s_configured(self) -> bool:
+        """前台互通是否开启(密钥与履约地址齐备)。"""
+        return bool(self.S2S_SHARED_SECRET and self.FULFILLMENT_API_BASE_URL)
 
     @computed_field  # type: ignore[misc]
     @property
@@ -180,6 +192,24 @@ def email_verification_misconfigured(s: "Settings") -> bool:
         and not s.smtp_configured
         and not s.EMAIL_DEV_LOG_CODES
     )
+
+
+def s2s_misconfigured(s: "Settings") -> str | None:
+    """前台互通配置自洽性判定。返回错误说明,None 表示合法(全配或全空)。
+
+    半配置(只有密钥或只有地址)一定是漏配,不允许带病启动;
+    密钥过短意味着两仓 .env 没按约定生成,同样拒绝。
+    """
+    secret, base = s.S2S_SHARED_SECRET, s.FULFILLMENT_API_BASE_URL
+    if not secret and not base:
+        return None
+    if bool(secret) != bool(base):
+        return "S2S_SHARED_SECRET 与 FULFILLMENT_API_BASE_URL 必须同时配置或同时留空"
+    if len(secret) < 32:
+        return "S2S_SHARED_SECRET 长度必须 ≥ 32(openssl rand -hex 32)"
+    if not base.startswith(("http://", "https://")):
+        return "FULFILLMENT_API_BASE_URL 必须是 http(s):// 开头的完整地址"
+    return None
 
 
 @lru_cache

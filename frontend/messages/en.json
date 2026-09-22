@@ -161,6 +161,9 @@
       "item_mismatch": "Quote item does not belong to this RFQ or is duplicated",
       "lines_incomplete": "Quote does not cover all RFQ items",
       "line_no_price": "Non-skipped quote line must have a unit price"
+    },
+    "orders": {
+      "unavailable": "Order service is temporarily unavailable, please try again later"
     }
   },
   "buyerRegister": {
@@ -1553,7 +1556,37 @@
     "msDelivered": "Delivered",
     "emptyTitle": "No Orders Yet",
     "emptyDesc": "You don't have any orders yet. Browse our mall to get started.",
-    "emptyBrowse": "Browse Mall"
+    "emptyBrowse": "Browse Mall",
+    "stageConfirmed": "Confirmed · Preparing",
+    "stageLoaded": "Loaded",
+    "stageInTransit": "In Transit",
+    "stageArrived": "Arrived",
+    "stageCancelled": "Cancelled",
+    "msLoaded": "Loaded",
+    "msDeparted": "Departed",
+    "msTransshipment": "Transshipment",
+    "msArrived": "Arrived",
+    "lineCount": "{count} line items",
+    "totalAmount": "Order Total",
+    "colShippedQty": "Shipped / Total",
+    "shippedOfTotal": "{shipped} shipped / {qty} total",
+    "containerNo": "Container No.",
+    "route": "Route",
+    "noShipmentYet": "Not loaded yet. Container and voyage details will appear here once your goods are loaded.",
+    "cancelledNote": "This order has been cancelled.",
+    "orderNotFound": "Order not found",
+    "bindingNoOrgTitle": "Company details incomplete",
+    "bindingNoOrgDesc": "Orders belong to a company account. Please complete your company details to view order progress.",
+    "bindingNoOrgAction": "Complete company details",
+    "bindingAmbiguousTitle": "Account linked to multiple companies",
+    "bindingAmbiguousDesc": "To protect your data, orders cannot be shown yet. Please contact customer service to confirm your company.",
+    "bindingDisabledTitle": "Company account disabled",
+    "bindingDisabledDesc": "Your company account has been disabled. Please contact customer service.",
+    "bindingNotBoundTitle": "Account not linked to orders yet",
+    "bindingNotBoundDesc": "Please contact your sales representative to link this company account to your orders.",
+    "unavailableTitle": "Order service temporarily unavailable",
+    "unavailableDesc": "We couldn't load your orders. Please try again later.",
+    "retry": "Retry"
   },
   "helpCenter": {
     "pageTitle": "Purchasing Guide",

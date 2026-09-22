@@ -111,3 +111,6 @@ class MessageKey:
     QUOTE_ITEM_MISMATCH = "error.quote.item_mismatch"
     QUOTE_LINES_INCOMPLETE = "error.quote.lines_incomplete"
     QUOTE_LINE_NO_PRICE = "error.quote.line_no_price"
+
+    # orders — 前台「我的订单」BFF(履约互通)
+    ORDERS_UNAVAILABLE = "error.orders.unavailable"

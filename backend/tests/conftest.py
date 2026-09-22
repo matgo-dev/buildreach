@@ -31,6 +31,9 @@ os.environ.setdefault("SUPER_ADMIN_INITIAL_PASSWORD", "ChangeMe123")
 os.environ.setdefault("SEED_DEMO_ACCOUNTS", "true")
 os.environ.setdefault("ENABLE_DEBUG_API", "true")
 os.environ.setdefault("TRANSLATION_PROVIDER", "mock")
+# 前台互通:密钥 ≥32 字符;地址指向不存在的主机,真实出网由各测试用 MockTransport 覆盖
+os.environ.setdefault("S2S_SHARED_SECRET", "test-s2s-shared-secret-0123456789abcdef")
+os.environ.setdefault("FULFILLMENT_API_BASE_URL", "http://fulfillment.test")
 
 from typing import AsyncGenerator  # noqa: E402
 
