@@ -230,12 +230,27 @@ async def test_list_404_is_unavailable_not_not_found(client):
 
 
 @pytest.mark.asyncio
-async def test_unconfigured_integration_returns_503(client, monkeypatch):
-    from app.core.config import settings
+async def test_unconfigured_integration_returns_503(client):
+    """互通未配置 = lifespan 没建单例(测试不跑 lifespan,等价);不覆盖依赖直接打 → 503。"""
     h, _, _ = await _buyer(client)
-    monkeypatch.setattr(settings, "FULFILLMENT_API_BASE_URL", "")
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 503 and r.json()["code"] == 51001
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("data", [None, [], "x", 0])
+async def test_non_object_data_is_503(client, data):
+    """履约 {code:0,data:null} 之类不透传,否则前端在解构处崩。"""
+    h, _, _ = await _buyer(client)
+    _install_fulfillment(lambda req: httpx.Response(200, json=_envelope(data)))
+    r = await client.get("/api/v1/buyer/orders", headers=h)
+    assert r.status_code == 503 and r.json()["code"] == 51001
+
+
+@pytest.mark.asyncio
+async def test_internal_search_requires_two_chars(client):
+    r = await client.get("/api/v1/internal/buyer-organizations?q=a", headers=_fulfillment_headers())
+    assert r.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -253,14 +268,14 @@ def _fulfillment_headers() -> dict:
 
 @pytest.mark.asyncio
 async def test_internal_requires_token(client):
-    r = await client.get("/api/v1/internal/buyer-organizations?q=a")
+    r = await client.get("/api/v1/internal/buyer-organizations?q=ab")
     assert r.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_internal_rejects_wrong_aud_reverse_replay(client):
     token, _ = sign_s2s_token(iss=ISS_MATGO, aud=AUD_FULFILLMENT_PORTAL, sub="org:1")
-    r = await client.get("/api/v1/internal/buyer-organizations?q=a", headers={"Authorization": f"Bearer {token}"})
+    r = await client.get("/api/v1/internal/buyer-organizations?q=ab", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 401
 
 
@@ -275,7 +290,7 @@ async def test_internal_rejects_wrong_iss(client):
 async def test_internal_rejects_user_access_token(client):
     """前台登录 access token 不是 S2S 令牌(密钥/claims 都不同)。"""
     h, _, _ = await _buyer(client)
-    r = await client.get("/api/v1/internal/buyer-organizations?q=a", headers=h)
+    r = await client.get("/api/v1/internal/buyer-organizations?q=ab", headers=h)
     assert r.status_code == 401
 
 
@@ -305,7 +320,7 @@ async def test_internal_search_and_get(client):
 async def test_internal_search_escapes_like_wildcards_and_caps_limit(client):
     await _buyer(client, "Percent Co")
     h = _fulfillment_headers()
-    r = await client.get("/api/v1/internal/buyer-organizations?q=%25", headers=h)  # q="%"
+    r = await client.get("/api/v1/internal/buyer-organizations?q=%25%25", headers=h)  # q="%%"
     assert r.status_code == 200
     assert r.json()["data"] == []  # 通配符被转义成字面量,不匹配任何名字
     r = await client.get("/api/v1/internal/buyer-organizations?q=co&limit=50", headers=h)

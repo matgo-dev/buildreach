@@ -13,6 +13,12 @@
 # 如离线包不解压到 /opt/buildlink-offline,请同步调整 /banners/ 的 alias 路径。
 # ============================================================
 
+# 前置 CDN / 另一层反代(如 Cloudflare)时,下面的 allow / limit_req 看到的 $remote_addr 都是边缘 IP:
+# 白名单永远不命中(履约端全 403)、限流变成全站买家共用一个桶。必须先还原真实来源:
+#   set_real_ip_from <CDN/上游网段>;      # 只信任这些来源送来的头
+#   real_ip_header CF-Connecting-IP;      # Cloudflare;普通反代用 X-Forwarded-For + real_ip_recursive on
+# 没有前置层时不要配(否则任何人都能伪造来源 IP)。
+
 # 「我的订单」BFF 限流桶(limit_req_zone 只能在 http 层声明;本文件与 upstream 一样
 # 由 http 层 include,故放这里即可;若站点文件被面板放进 server{} 内,把这一行挪到 nginx.conf 的 http{})
 limit_req_zone $binary_remote_addr zone=buyer_orders:1m rate=30r/m;

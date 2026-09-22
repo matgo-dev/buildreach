@@ -208,6 +208,9 @@ def s2s_misconfigured(s: "Settings") -> str | None:
         return "S2S_SHARED_SECRET 与 FULFILLMENT_API_BASE_URL 必须同时配置或同时留空"
     if len(secret) < 32:
         return "S2S_SHARED_SECRET 长度必须 ≥ 32(openssl rand -hex 32)"
+    if secret == s.JWT_SECRET_KEY:
+        # 复用登录签名密钥 = 履约主机拿到本站登录密钥,两个信任域塌成一个
+        return "S2S_SHARED_SECRET 不得与 JWT_SECRET_KEY 相同"
     parts = urlsplit(base)
     if parts.scheme not in ("http", "https") or not parts.netloc:
         # 只看前缀不够:"https://" 能过前缀检查,运行时 httpx 抛 InvalidURL(不是 HTTPError)变 500

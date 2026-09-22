@@ -2,6 +2,7 @@
 
 契约 §5.1:履约做客户 ↔ 前台组织绑定时,按名搜索候选、保存前按 id 再查一次。
 只回 {id, name, code, status};不回成员、联系方式。
+名称包含匹配走 pg_trgm GIN 索引(迁移 portal_0001);q ≥ 2 字符与履约侧一致。
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ def _escape_like(raw: str) -> str:
 
 @router.get("/buyer-organizations", summary="按名称搜索前台买方组织(履约绑定用)")
 async def search_buyer_organizations(
-    q: str = Query(..., min_length=1, max_length=100),
+    q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=SEARCH_LIMIT_MAX),
     db: AsyncSession = Depends(get_db),
 ):

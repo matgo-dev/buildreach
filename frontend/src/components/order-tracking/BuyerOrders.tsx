@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
-import { ApiError } from "@/lib/api";
 import {
   getBuyerOrders,
   type BindingState,
@@ -38,10 +37,10 @@ export function BuyerOrders() {
       if (mine !== seq.current) return;
       if (res.kind === "binding") setState({ kind: "binding", binding: res.binding });
       else setState({ kind: "data", page: res.page });
-    } catch (err) {
+    } catch {
       if (mine !== seq.current) return;
-      // 503(履约不可达)与其它异常同一处理:提示稍后重试;401 已由 api 层刷新/清会话
-      if (err instanceof ApiError && err.status === 401) return;
+      // 503 / 形状不对 / 刷新后仍 401 一律落到"不可用 + 重试"面板,不停在骨架屏;
+      // 会话真失效时 api 层已清 store,RouteGuard 会卸载本页
       setState({ kind: "unavailable" });
     }
   }, [page]);
@@ -76,7 +75,6 @@ function OrderList({
   onSelect: (no: string) => void;
   onPageChange: (p: number) => void;
 }) {
-  const t = useTranslations("orderTracking");
   const { items, total, size } = page;
   const totalPages = Math.max(1, Math.ceil(total / size));
 

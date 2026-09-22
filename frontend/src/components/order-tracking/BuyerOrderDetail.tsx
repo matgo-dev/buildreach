@@ -5,12 +5,12 @@ import { useTranslations } from "next-intl";
 import { Anchor, ArrowLeft, Circle, Container, Package, Ship, Waypoints } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import {
+  formatDecimalString,
   getBuyerOrder,
   type BindingState,
   type PortalOrderDetail,
   type PortalShipment,
 } from "@/lib/api/buyerOrders";
-import { formatDecimalString } from "@/lib/api/buyerOrders";
 import { LoadingSkeleton, Money, StagePill, StatePanel, useDay, useDayTime } from "./buyerOrdersShared";
 
 type DetailState =
@@ -31,9 +31,8 @@ export function BuyerOrderDetail({ no, onBack }: { no: string; onBack: () => voi
       if (res.kind === "binding") setState({ kind: "binding", binding: res.binding });
       else setState({ kind: "data", order: res.order });
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) return;
       if (err instanceof ApiError && err.status === 404) setState({ kind: "not_found" });
-      else setState({ kind: "unavailable" });
+      else setState({ kind: "unavailable" }); // 含刷新后仍 401:不停在骨架屏
     }
   }, [no]);
 

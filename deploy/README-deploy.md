@@ -234,6 +234,13 @@ location /api/v1/internal/ {
 
 履约侧对称:`/api/v1/portal/*` 只放行本站主机 IP。
 
+> **前置 CDN / 另一层反代(Cloudflare 等)时先还原真实 IP**,否则 `allow` 看到的永远是边缘 IP(履约端全 403),下面的限流也会把全站买家算进同一个桶:
+> ```nginx
+> set_real_ip_from <CDN/上游网段>;
+> real_ip_header CF-Connecting-IP;   # Cloudflare;普通反代用 X-Forwarded-For + real_ip_recursive on
+> ```
+> 白名单里填的是履约主机的**真实**公网 IP。没有前置层时不要配 real_ip(任何人都能伪造来源)。
+
 **③ 限流(反代层,应用层不做)**
 
 ```nginx

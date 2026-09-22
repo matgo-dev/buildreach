@@ -14,6 +14,7 @@ from typing import Any, Literal
 import httpx
 
 from app.core.config import settings
+from app.core.exceptions import FulfillmentUnavailableError
 from app.core.s2s_auth import (
     AUD_FULFILLMENT_PORTAL,
     ISS_MATGO,
@@ -37,38 +38,22 @@ class PortalResult:
 
 
 class FulfillmentClient:
-    """进程级复用一个 httpx.AsyncClient(连接池 + TLS 会话复用),首次调用时懒建,
-    lifespan 关闭时 aclose()。transport 参数仅用于测试注入 httpx.MockTransport;生产留 None。
-    base_url 留 None 表示每次从 settings 读(单例用),测试传显式值。"""
+    """持有一个 httpx.AsyncClient(连接池 + TLS 会话复用)。生产由 lifespan 在启动时建一次
+    (init_default_client)、关闭时 aclose;transport 参数仅用于测试注入 httpx.MockTransport。"""
 
     def __init__(
         self,
-        base_url: str | None = None,
+        base_url: str,
         *,
         timeout: float = TIMEOUT_SECONDS,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        self._base_url_override = base_url
-        self._timeout = timeout
-        self._transport = transport
-        self._client: httpx.AsyncClient | None = None
-
-    def _base_url(self) -> str:
-        raw = self._base_url_override if self._base_url_override is not None else settings.FULFILLMENT_API_BASE_URL
-        return raw.rstrip("/")
-
-    def _get_client(self, base_url: str) -> httpx.AsyncClient:
-        # base_url 变化(仅测试 monkeypatch 场景)时重建;生产配置进程内不变
-        if self._client is None or str(self._client.base_url).rstrip("/") != base_url:
-            self._client = httpx.AsyncClient(
-                base_url=base_url, timeout=self._timeout, transport=self._transport
-            )
-        return self._client
+        self._client = httpx.AsyncClient(
+            base_url=base_url.rstrip("/"), timeout=timeout, transport=transport
+        )
 
     async def aclose(self) -> None:
-        if self._client is not None:
-            await self._client.aclose()
-            self._client = None
+        await self._client.aclose()
 
     async def list_orders(self, org_id: int, *, page: int, size: int, lang: str) -> PortalResult:
         return await self._get(
@@ -86,12 +71,11 @@ class FulfillmentClient:
     ) -> PortalResult:
         """not_found_is_result:只有详情端点的 404 才是"单号不存在"这个业务结果;
         列表端点不可能 404,若出现(如 base_url 配错)按不可用处理,不能让用户看到"订单不存在"。"""
-        base_url = self._base_url()
-        if not base_url or not settings.S2S_SHARED_SECRET:
+        if not settings.S2S_SHARED_SECRET:
             raise FulfillmentUnavailable("fulfillment integration not configured")
         token, jti = sign_s2s_token(iss=ISS_MATGO, aud=AUD_FULFILLMENT_PORTAL, sub=f"org:{org_id}")
         try:
-            resp = await self._get_client(base_url).get(
+            resp = await self._client.get(
                 path, params=params, headers={"Authorization": f"Bearer {token}"}
             )
         except (httpx.HTTPError, httpx.InvalidURL) as exc:  # InvalidURL 是 ValueError,不在 HTTPError 树下
@@ -105,8 +89,14 @@ class FulfillmentClient:
         biz_code = body.get("code") if isinstance(body, dict) else None
 
         if resp.status_code == 200 and biz_code == 0:
+            data = body.get("data")
+            # 两个端点的 data 都是对象;null / 数组 / 标量说明履约侧信封不对,按不可用处理,
+            # 不能原样透传让前端在解构处崩
+            if not isinstance(data, dict):
+                logger.warning("fulfillment data is not an object org=%s jti=%s path=%s", org_id, jti, path)
+                raise FulfillmentUnavailable("malformed data")
             logger.info("fulfillment call ok org=%s jti=%s path=%s", org_id, jti, path)
-            return PortalResult("OK", body.get("data"))
+            return PortalResult("OK", data)
         if resp.status_code == 404 and biz_code == FULFILLMENT_BIZ_NOT_BOUND:
             logger.info("fulfillment org not bound org=%s jti=%s", org_id, jti)
             return PortalResult("NOT_BOUND")
@@ -119,10 +109,26 @@ class FulfillmentClient:
         raise FulfillmentUnavailable(f"status={resp.status_code} code={biz_code}")
 
 
-# 进程级单例;lifespan shutdown 调 aclose()
-default_client = FulfillmentClient()
+# 进程级单例:lifespan 启动时按配置建(未配置则保持 None),关闭时 aclose。
+# 在事件循环里建,避免懒初始化;测试不跑 lifespan,靠 dependency_overrides 注入。
+_default_client: FulfillmentClient | None = None
+
+
+def init_default_client() -> None:
+    global _default_client
+    if settings.s2s_configured:
+        _default_client = FulfillmentClient(settings.FULFILLMENT_API_BASE_URL)
+
+
+async def close_default_client() -> None:
+    global _default_client
+    if _default_client is not None:
+        await _default_client.aclose()
+        _default_client = None
 
 
 def get_fulfillment_client() -> FulfillmentClient:
-    """FastAPI 依赖;测试用 app.dependency_overrides 注入 MockTransport 客户端。"""
-    return default_client
+    """FastAPI 依赖。互通未配置(单例为 None)→ 直接 503,不进路由。"""
+    if _default_client is None:
+        raise FulfillmentUnavailableError()
+    return _default_client

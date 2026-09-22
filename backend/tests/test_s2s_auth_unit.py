@@ -151,15 +151,15 @@ def test_verify_empty_sub_or_jti_rejected():
 
 # ── 组织解析判定(契约 §5.2 BLOCKER B3)─────────────────────
 
-@pytest.mark.parametrize("orgs, org_id, state", [
-    ([], None, "NO_ORG"),
-    ([(5, "ACTIVE")], 5, None),
-    ([(5, "DISABLED")], None, "ORG_DISABLED"),
-    ([(5, "ACTIVE"), (6, "ACTIVE")], None, "AMBIGUOUS_ORG"),
-    ([(5, "ACTIVE"), (6, "DISABLED")], None, "AMBIGUOUS_ORG"),
+@pytest.mark.parametrize("count, first, status, org_id, state", [
+    (0, None, None, None, "NO_ORG"),
+    (1, 5, "ACTIVE", 5, None),
+    (1, 5, "DISABLED", None, "ORG_DISABLED"),
+    (2, 5, "ACTIVE", None, "AMBIGUOUS_ORG"),      # 首选是 ACTIVE 也不替用户选
+    (2, 5, "DISABLED", None, "AMBIGUOUS_ORG"),
 ])
-def test_classify_memberships(orgs, org_id, state):
-    r = classify_memberships(orgs)
+def test_classify_memberships(count, first, status, org_id, state):
+    r = classify_memberships(count, first, status)
     assert (r.org_id, r.state) == (org_id, state)
 
 
@@ -178,6 +178,8 @@ def test_s2s_misconfigured_cases():
     assert s2s_misconfigured(_settings(FULFILLMENT_API_BASE_URL="https://f.example"))
     assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="short", FULFILLMENT_API_BASE_URL="https://f.example"))
     assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="s" * 32, FULFILLMENT_API_BASE_URL="f.example"))
+    # 复用登录密钥 = 两个信任域塌成一个
+    assert s2s_misconfigured(_settings(JWT_SECRET_KEY="j" * 40, S2S_SHARED_SECRET="j" * 40, FULFILLMENT_API_BASE_URL="https://f.example"))
 
 
 @pytest.mark.parametrize("url", ["https://", "http://", "ftp://f.example", "f.example", "https:///path", "//f.example"])

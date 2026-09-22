@@ -49,6 +49,8 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"前台互通配置错误:{s2s_problem}")
     if not settings.s2s_configured:
         logger.warning("前台互通未配置(S2S_SHARED_SECRET / FULFILLMENT_API_BASE_URL 为空),/buyer/orders 将回 503")
+    from app.services.fulfillment_client import close_default_client, init_default_client
+    init_default_client()
 
     async with AsyncSessionLocal() as db:
         await sync_rbac(db)
@@ -89,8 +91,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── shutdown ──
-    from app.services.fulfillment_client import default_client as _fulfillment_client
-    await _fulfillment_client.aclose()
+    await close_default_client()
     if _i18n_scheduler is not None:
         _i18n_scheduler.shutdown(wait=False)
         logger.info("i18n 调度扫描已停止")
