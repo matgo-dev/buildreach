@@ -17,6 +17,7 @@ from app.constants.country_registration import (
     EMAIL_ALREADY_REGISTERED_MESSAGE,
     PHONE_ALREADY_REGISTERED_MESSAGE,
 )
+from app.core.email import normalize_email
 from app.core.exceptions import (
     AccountDeactivatedError,
     AccountDisabledError,
@@ -115,7 +116,7 @@ async def _find_user_by_identifier(
     kind = _classify_identifier(ident)
     active_filter = User.status == UserStatus.ACTIVE
     if kind == "email":
-        row = await db.execute(select(User).where(User.email == ident, active_filter))
+        row = await db.execute(select(User).where(User.email == normalize_email(ident), active_filter))
     elif kind == "phone":
         try:
             e164 = normalize_phone_to_e164(ident, phone_region)
@@ -141,7 +142,7 @@ async def _is_deactivated_by_identifier(
     kind = _classify_identifier(ident)
     deactivated_filter = User.status == UserStatus.DEACTIVATED
     if kind == "email":
-        row = await db.execute(select(User.id).where(User.email == ident, deactivated_filter))
+        row = await db.execute(select(User.id).where(User.email == normalize_email(ident), deactivated_filter))
     elif kind == "phone":
         try:
             e164 = normalize_phone_to_e164(ident, phone_region)

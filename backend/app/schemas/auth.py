@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.core.email import NormalizedEmailStr
 from app.constants.country_registration import (
     COUNTRY_CODES,
     COUNTRY_META,
@@ -52,7 +53,7 @@ def _validate_phone_optional(v: str | None) -> str | None:
 
 
 class BuyerRegisterIn(BaseModel):
-    email: EmailStr
+    email: NormalizedEmailStr
     username: str | None = Field(default=None, max_length=50)
     name: str = Field(..., min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
@@ -94,7 +95,7 @@ class SupplierRegisterIn(BaseModel):
     # `extra='forbid'` 让多带 `username` 等未声明字段直接 422,确认入参契约
     model_config = {"extra": "forbid"}
 
-    email: EmailStr
+    email: NormalizedEmailStr
     name: str = Field(..., min_length=1, max_length=100)
     phone: str = Field(..., min_length=6, max_length=20)
     phone_region: str | None = Field(default=None, max_length=2)
