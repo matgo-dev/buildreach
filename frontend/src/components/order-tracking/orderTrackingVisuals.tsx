@@ -1,21 +1,12 @@
 "use client";
 
-/** 订单跟踪页的视觉组件:demo 与真实用户共用。hero 是品牌承诺文案;路线图与统计卡在真实视图由阶段驱动。 */
+/** 订单跟踪页的视觉组件:demo 与真实用户共用。hero 是品牌承诺文案;路线图与统计卡由阶段驱动。 */
 import { useTranslations } from "next-intl";
-import { Anchor, Factory, Ship, Truck, Warehouse } from "lucide-react";
+import { Anchor, Factory, Ship, Warehouse } from "lucide-react";
+import type { OrderStage } from "@/lib/api/buyerOrders";
+import { FULFILLMENT_NODES } from "./orderProgress";
 
-export type RouteStage = "CONFIRMED" | "LOADED" | "IN_TRANSIT" | "ARRIVED" | "CANCELLED";
-
-/** 阶段 → 整体进度百分比(纯展示映射,不是履约给的数据)。 */
-export const STAGE_PROGRESS: Record<RouteStage, number> = {
-  CONFIRMED: 20,
-  LOADED: 45,
-  IN_TRANSIT: 75,
-  ARRIVED: 100,
-  CANCELLED: 0,
-};
-
-/** 统计卡。传 onClick 即可点击下钻(真实视图),active 标当前筛选;demo 不传保持静态。 */
+/** 统计卡。传 onClick 即可点击下钻,active 标当前筛选。 */
 export function StatCard({
   icon: Icon,
   label,
@@ -63,18 +54,23 @@ export function StatCard({
    路线可视化（CSS 绘制，不依赖地图 SDK）
    ═══════════════════════════════════════════════════════ */
 
-/** 路线上的"当前节点"下标:demo 不传 stage 固定在海运;真实数据由阶段驱动。 */
-const ROUTE_CURRENT_INDEX: Record<RouteStage, number> = {
-  CONFIRMED: 1,   // 备货中:集货仓
+/** 路线上的"当前位置"下标,由订单 stage 驱动(契约 §5.3)。到港即全程完成,下标越过末节点。
+ *  履约无事实源的环节(本地配送等)不画永远灰着的节点(契约 §9)。 */
+const ROUTE_CURRENT_INDEX: Record<Exclude<OrderStage, "CANCELLED">, number> = {
+  CONFIRMED: 0,   // 备货中:货在工厂
+  RECEIVED: 1,    // 已入仓:集货仓
   LOADED: 2,      // 已装柜:出发港
+  CLEARED: 2,     // 已放行:仍在出发港
   IN_TRANSIT: 3,  // 海运
-  ARRIVED: 4,     // 到达 Dar es Salaam
-  CANCELLED: -1,  // 无进行中节点
+  ARRIVED: 5,     // 已到 Dar es Salaam:全部完成
 };
 
-export function RouteVisualization({ stage }: { stage?: RouteStage }) {
+export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
   const t = useTranslations("orderTracking");
-  const current = stage === undefined ? 3 : ROUTE_CURRENT_INDEX[stage];
+  // 不认识的 stage:不定位(全灰),不冒充已知阶段
+  const current = Object.prototype.hasOwnProperty.call(ROUTE_CURRENT_INDEX, stage)
+    ? ROUTE_CURRENT_INDEX[stage as keyof typeof ROUTE_CURRENT_INDEX]
+    : -1;
   const at = (i: number) => ({ done: i < current, current: i === current });
 
   const nodes = [
@@ -83,7 +79,6 @@ export function RouteVisualization({ stage }: { stage?: RouteStage }) {
     { label: t("routePort"), sublabel: "China Port", icon: Anchor, ...at(2) },
     { label: t("routeSea"), sublabel: "~25 days", icon: Ship, ...at(3) },
     { label: "Dar es Salaam", sublabel: "Tanzania Port", icon: Anchor, ...at(4) },
-    { label: t("routeDelivery"), sublabel: "Local", icon: Truck, ...at(5) },
   ];
 
   return (
@@ -181,7 +176,7 @@ export function FulfillmentHeroBanner() {
           <div className="mt-6 flex gap-8 flex-wrap">
             {[
               { value: "25-30", unit: t("heroDays"), label: t("heroTransitTime") },
-              { value: "11", unit: t("heroSteps"), label: t("heroMilestones") },
+              { value: String(FULFILLMENT_NODES.length), unit: t("heroSteps"), label: t("heroMilestones") },
               { value: "100%", unit: "", label: t("heroVisibility") },
             ].map((stat, i) => (
               <div key={i}>

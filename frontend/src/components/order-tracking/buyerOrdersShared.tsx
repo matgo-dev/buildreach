@@ -4,12 +4,14 @@ import { useLocale, useTranslations } from "next-intl";
 import { AlertCircle, Building2, Headset, Link2Off, Package, RefreshCw } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/formatters";
-import { formatDecimalString, type BindingState, type OrderStage } from "@/lib/api/buyerOrders";
+import { formatDecimalString, type BindingState, type CustomsStatus, type OrderStage } from "@/lib/api/buyerOrders";
 
 /** 订单级 / 柜级阶段 → i18n key + 徽标配色。API 只给 code,标签在 messages。 */
 const STAGE_META: Record<OrderStage, { key: string; cls: string }> = {
   CONFIRMED: { key: "stageConfirmed", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  RECEIVED: { key: "stageReceived", cls: "bg-orange-50 text-orange-700 border-orange-200" },
   LOADED: { key: "stageLoaded", cls: "bg-sky-50 text-sky-700 border-sky-200" },
+  CLEARED: { key: "stageCleared", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   IN_TRANSIT: { key: "stageInTransit", cls: "bg-blue-50 text-blue-700 border-blue-200" },
   ARRIVED: { key: "stageArrived", cls: "bg-green-50 text-green-700 border-green-200" },
   CANCELLED: { key: "stageCancelled", cls: "bg-slate-100 text-slate-500 border-slate-200" },
@@ -25,6 +27,28 @@ export function StagePill({ stage, size = "sm" }: { stage: OrderStage | string; 
   return (
     <span className={`inline-flex items-center rounded-full border font-medium ${pad} ${meta ? meta.cls : UNKNOWN_STAGE_CLS}`}>
       {meta ? t(meta.key) : stage}
+    </span>
+  );
+}
+
+/** 已知阶段的 i18n key;不认识的阶段 → null,由调用方显示原始码。 */
+export function stageLabelKey(stage: string): string | null {
+  return Object.prototype.hasOwnProperty.call(STAGE_META, stage) ? STAGE_META[stage as OrderStage].key : null;
+}
+
+/** 柜的报关状态徽标:未申报 / 申报中 / 已放行;不认识的值灰底显示原始码。 */
+const CUSTOMS_META: Record<CustomsStatus, { key: string; cls: string }> = {
+  NONE: { key: "customsNone", cls: "bg-slate-50 text-slate-600 border-slate-200" },
+  DECLARED: { key: "customsDeclared", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  RELEASED: { key: "customsReleased", cls: "bg-green-50 text-green-700 border-green-200" },
+};
+
+export function CustomsPill({ status }: { status: CustomsStatus | string }) {
+  const t = useTranslations("orderTracking");
+  const meta = Object.prototype.hasOwnProperty.call(CUSTOMS_META, status) ? CUSTOMS_META[status as CustomsStatus] : null;
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta ? meta.cls : UNKNOWN_STAGE_CLS}`}>
+      {meta ? t(meta.key) : status}
     </span>
   );
 }

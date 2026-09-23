@@ -1,222 +1,195 @@
 /**
- * 订单追踪 Mock 数据 — 地推 demo 用
+ * 订单追踪 Mock 数据 — demo 账号(地推营销)用。
  *
- * 模拟 3 笔订单：海运在途 / 已到港清关 / 已交付
+ * 形状与履约门户投影一致(契约 §4.2 v4),走真实用户同一套渲染,六节点按同一套事实点亮。
+ * 五单覆盖:已到港 / 双柜(一柜强制离港"报关待补":节点 4 灭 5 亮)/ 部分入仓且部分已装柜(节点 2 灭 3 亮)/
+ * 已入仓待装柜 / 已取消。
  */
+import type { OrdersSource, PortalOrderDetail, PortalOrderLine, PortalShipment } from "@/lib/api/buyerOrders";
 
-export type MilestoneStatus = "done" | "current" | "upcoming";
-
-export interface Milestone {
-  id: string;
-  labelKey: string;           // i18n key
-  status: MilestoneStatus;
-  date?: string;              // ISO date or null
-  detail?: string;            // 额外说明
-  docs?: { name: string; type: string }[];  // 关联单据
+function line(
+  sort_order: number,
+  name_snapshot: string,
+  spec_text_snapshot: string | null,
+  unit_code: string,
+  unit_label: string,
+  qty: string,
+  received_qty: string,
+  shipped_qty: string,
+  unit_price: string,
+  line_total: string,
+): PortalOrderLine {
+  return { name_snapshot, spec_text_snapshot, unit_code, unit_label, qty, received_qty, shipped_qty, unit_price, line_total, sort_order };
 }
 
-export interface Shipment {
-  id: string;
-  label: string;              // "包裹 1" / "Package 1"
-  carrier: string;
-  trackingNo: string;
-  containerType: string;      // "20GP" / "40HQ"
-  milestones: Milestone[];
+const NO_CUSTOMS = { customs_status: "NONE", declared_at: null, released_at: null } as const;
+
+function shipment(s: Partial<PortalShipment> & Pick<PortalShipment, "container_no" | "stage">): PortalShipment {
+  return {
+    container_type: "40HQ",
+    vessel_name: null,
+    voyage_no: null,
+    ...NO_CUSTOMS,
+    loaded_at: null,
+    etd: null,
+    atd: null,
+    eta: null,
+    port_of_loading: "Ningbo",
+    port_of_discharge: "Dar es Salaam",
+    milestones: [],
+    ...s,
+  };
 }
 
-export interface OrderItem {
-  name: string;
-  nameEn: string;
-  sku: string;
-  qty: number;
-  unit: string;
-  unitPrice: number;
-  currency: string;
-  image: string;
-  supplier: string;
-}
-
-export interface MockOrder {
-  id: string;
-  orderNo: string;
-  statusKey: string;          // i18n key for status badge
-  statusColor: string;        // tailwind color class
-  createdAt: string;
-  totalAmount: number;
-  currency: string;
-  eta: string;
-  buyerCompany: string;
-  currentMilestoneKey: string; // 当前节点 i18n key
-  progress: number;           // 0-100 进度百分比
-  shipments: Shipment[];
-  items: OrderItem[];
-  documents: { name: string; type: string; date: string }[];
-}
-
-// 统一的履约节点定义（中国→东非建材供应链）
-export const MILESTONE_KEYS = [
-  "msOrderConfirmed",      // 订单确认
-  "msSupplierPrep",        // 供应商备货
-  "msQualityInspection",   // 质检验货
-  "msWarehouseReceipt",    // 入仓集货
-  "msConsolidation",       // 拼柜装箱
-  "msCustomsExport",       // 出口报关
-  "msSeaFreight",          // 海运在途
-  "msPortArrival",         // 到达目的港
-  "msCustomsImport",       // 目的港清关
-  "msLocalDelivery",       // 本地配送
-  "msDelivered",           // 签收确认
-] as const;
-
-function buildMilestones(
-  currentIndex: number,
-  dates: (string | undefined)[],
-): Milestone[] {
-  return MILESTONE_KEYS.map((key, i) => ({
-    id: `ms-${i}`,
-    labelKey: key,
-    status: i < currentIndex ? "done" : i === currentIndex ? "current" : "upcoming",
-    date: dates[i],
-  }));
-}
-
-export const MOCK_ORDERS: MockOrder[] = [
-  // ── 订单 1：海运在途 ──
+const MOCK_ORDERS: PortalOrderDetail[] = [
+  // ── 已入仓,待装柜 ──
   {
-    id: "1",
-    orderNo: "BL-2026-00158",
-    statusKey: "statusInTransit",
-    statusColor: "bg-blue-100 text-blue-700 border-blue-200",
-    createdAt: "2026-05-20",
-    totalAmount: 18_750.00,
+    no: "SO2026090021",
+    created_at: "2026-09-08T03:20:00Z",
+    status: "CONFIRMED",
     currency: "USD",
-    eta: "2026-07-15",
-    buyerCompany: "Mkombozi Hardware Ltd.",
-    currentMilestoneKey: "msSeaFreight",
-    progress: 60,
+    total_amount: "11600.00",
+    stage: "RECEIVED",
+    line_count: 2,
+    lines: [
+      line(1, "Cast Aluminum Entry Door", "1200×2100mm · Bronze", "PCS", "pcs", "80", "80", "0", "85.00", "6800.00"),
+      line(2, "Wood Grain Floor Tile 600×600", "Matt · 1.44 m²/box", "SQM", "m²", "800", "800", "0", "6.00", "4800.00"),
+    ],
+    shipments: [],
+  },
+  // ── 部分入仓:行 1 已装柜并放行,行 2 仍在备货(节点 2 灭、柜的节点 3–4 亮) ──
+  {
+    no: "SO2026090015",
+    created_at: "2026-09-02T07:45:00Z",
+    status: "CONFIRMED",
+    currency: "USD",
+    total_amount: "11250.00",
+    stage: "CONFIRMED",
+    line_count: 2,
+    lines: [
+      line(1, "Steel Rebar HRB400 Φ12", "12m / pc", "M", "m", "5000", "5000", "5000", "0.85", "4250.00"),
+      line(2, "Stone Coated Metal Roof Tile", "1340×420mm · Red", "PCS", "pcs", "2000", "1200", "0", "3.50", "7000.00"),
+    ],
     shipments: [
-      {
-        id: "s1",
-        label: "Shipment 1",
-        carrier: "COSCO Shipping",
-        trackingNo: "COSU6285417",
-        containerType: "20GP",
-        milestones: buildMilestones(6, [
-          "2026-05-20", "2026-05-22", "2026-05-28", "2026-06-01",
-          "2026-06-05", "2026-06-08", "2026-06-10",
-          undefined, undefined, undefined, undefined,
-        ]),
-      },
-      {
-        id: "s2",
-        label: "Shipment 2",
-        carrier: "MSC",
-        trackingNo: "MSCU8374921",
-        containerType: "20GP",
-        milestones: buildMilestones(5, [
-          "2026-05-20", "2026-05-25", "2026-05-30", "2026-06-03",
-          "2026-06-07", "2026-06-12",
-          undefined, undefined, undefined, undefined, undefined,
-        ]),
-      },
-    ],
-    items: [
-      { name: "彩石金属瓦", nameEn: "Stone Coated Metal Roof Tile", sku: "ROF-SCM-01", qty: 2000, unit: "pcs", unitPrice: 3.50, currency: "USD", image: "/images/mock/roof-tile.jpg", supplier: "杭州优铸建材" },
-      { name: "螺纹钢筋 HRB400 Φ12", nameEn: "Steel Rebar HRB400 Φ12", sku: "STL-RBR-12", qty: 5000, unit: "m", unitPrice: 0.85, currency: "USD", image: "/images/mock/steel-rebar.jpg", supplier: "唐山建龙钢铁" },
-      { name: "黄铜止回阀 DN25", nameEn: "Brass Check Valve DN25", sku: "PLB-BCV-25", qty: 500, unit: "pcs", unitPrice: 4.20, currency: "USD", image: "/images/mock/brass-valve.jpg", supplier: "玉环阀门厂" },
-      { name: "LED 风扇吸顶灯", nameEn: "LED Ceiling Fan Light", sku: "ELC-CFL-01", qty: 300, unit: "pcs", unitPrice: 18.00, currency: "USD", image: "/images/mock/led-ceiling-light.jpg", supplier: "中山欧普照明" },
-      { name: "PTFE 密封垫片 DN150", nameEn: "PTFE Seal Gasket DN150", sku: "FST-GSK-150", qty: 1000, unit: "pcs", unitPrice: 1.20, currency: "USD", image: "/images/mock/seal-gasket.png", supplier: "温州密封件厂" },
-    ],
-    documents: [
-      { name: "Proforma Invoice", type: "PI", date: "2026-05-20" },
-      { name: "Packing List", type: "PL", date: "2026-06-05" },
-      { name: "Bill of Lading (S1)", type: "B/L", date: "2026-06-10" },
-      { name: "Certificate of Origin", type: "CO", date: "2026-06-08" },
-      { name: "Quality Inspection Report", type: "QC", date: "2026-05-28" },
+      shipment({
+        container_no: "MSKU7304512",
+        container_type: "20GP",
+        stage: "CLEARED",
+        vessel_name: "MAERSK KENSINGTON",
+        voyage_no: "438S",
+        customs_status: "RELEASED",
+        declared_at: "2026-09-18",
+        released_at: "2026-09-20",
+        loaded_at: "2026-09-17T06:30:00Z",
+        etd: "2026-09-26",
+        eta: "2026-10-24",
+      }),
     ],
   },
-
-  // ── 订单 2：到港清关中 ──
+  // ── 双柜:柜 1 货代先放行单据晚到,强制离港(节点 4 灭 5 亮);柜 2 已放行待离港 ──
   {
-    id: "2",
-    orderNo: "BL-2026-00142",
-    statusKey: "statusCustomsClearance",
-    statusColor: "bg-amber-100 text-amber-700 border-amber-200",
-    createdAt: "2026-04-28",
-    totalAmount: 32_400.00,
+    no: "SO2026080042",
+    created_at: "2026-08-12T02:10:00Z",
+    status: "CONFIRMED",
     currency: "USD",
-    eta: "2026-06-28",
-    buyerCompany: "Dar Building Solutions Co.",
-    currentMilestoneKey: "msCustomsImport",
-    progress: 82,
+    total_amount: "18750.00",
+    stage: "CLEARED",
+    line_count: 3,
+    lines: [
+      line(1, "Brass Check Valve DN25", null, "PCS", "pcs", "500", "500", "500", "4.20", "2100.00"),
+      line(2, "LED Ceiling Fan Light", "48\" · 3 blades", "PCS", "pcs", "300", "300", "300", "18.00", "5400.00"),
+      line(3, "Steel Rebar HRB400 Φ16", "12m / pc", "M", "m", "9000", "9000", "9000", "1.25", "11250.00"),
+    ],
     shipments: [
-      {
-        id: "s3",
-        label: "Shipment 1",
-        carrier: "Evergreen",
-        trackingNo: "EGLV2059831",
-        containerType: "40HQ",
-        milestones: buildMilestones(8, [
-          "2026-04-28", "2026-05-02", "2026-05-08", "2026-05-12",
-          "2026-05-15", "2026-05-18", "2026-05-20", "2026-06-18",
-          "2026-06-20", undefined, undefined,
-        ]),
-      },
-    ],
-    items: [
-      { name: "铸铝入户门", nameEn: "Cast Aluminum Entry Door", sku: "DOR-CAD-01", qty: 200, unit: "pcs", unitPrice: 85.00, currency: "USD", image: "/images/mock/entry-door.jpg", supplier: "佛山万嘉门业" },
-      { name: "木纹地板砖 600×600", nameEn: "Wood Grain Floor Tile 600×600", sku: "TIL-WGF-60", qty: 3000, unit: "sqm", unitPrice: 5.80, currency: "USD", image: "/images/mock/floor-tile.jpg", supplier: "佛山东鹏陶瓷" },
-      { name: "乔立垫片 M12", nameEn: "Flat Washer M12", sku: "FST-WSH-M12", qty: 10000, unit: "pcs", unitPrice: 0.03, currency: "USD", image: "/images/mock/washer.jpg", supplier: "温州标准件厂" },
-    ],
-    documents: [
-      { name: "Proforma Invoice", type: "PI", date: "2026-04-28" },
-      { name: "Commercial Invoice", type: "CI", date: "2026-05-18" },
-      { name: "Packing List", type: "PL", date: "2026-05-15" },
-      { name: "Bill of Lading", type: "B/L", date: "2026-05-20" },
-      { name: "Certificate of Origin", type: "CO", date: "2026-05-18" },
-      { name: "Quality Inspection Report", type: "QC", date: "2026-05-08" },
-      { name: "Fumigation Certificate", type: "FC", date: "2026-05-15" },
+      shipment({
+        container_no: "COSU6285417",
+        stage: "IN_TRANSIT",
+        vessel_name: "COSCO SHIPPING ARIES",
+        voyage_no: "052W",
+        customs_status: "DECLARED",
+        declared_at: "2026-09-03",
+        loaded_at: "2026-09-02T09:00:00Z",
+        etd: "2026-09-05",
+        atd: "2026-09-05",
+        eta: "2026-10-01",
+        milestones: [
+          { type: "DEPARTED", event_at: "2026-09-05", location: "Ningbo" },
+          { type: "TRANSSHIPMENT", event_at: "2026-09-16", location: "Colombo" },
+        ],
+      }),
+      shipment({
+        container_no: "MSCU8374921",
+        stage: "CLEARED",
+        vessel_name: "MSC ANNA",
+        voyage_no: "612E",
+        customs_status: "RELEASED",
+        declared_at: "2026-09-19",
+        released_at: "2026-09-21",
+        loaded_at: "2026-09-18T08:15:00Z",
+        etd: "2026-09-27",
+        eta: "2026-10-22",
+      }),
     ],
   },
-
-  // ── 订单 3：已交付 ──
+  // ── 已到港 ──
   {
-    id: "3",
-    orderNo: "BL-2026-00119",
-    statusKey: "statusDelivered",
-    statusColor: "bg-green-100 text-green-700 border-green-200",
-    createdAt: "2026-03-15",
-    totalAmount: 9_800.00,
+    no: "SO2026070031",
+    created_at: "2026-07-15T01:30:00Z",
+    status: "CONFIRMED",
     currency: "USD",
-    eta: "2026-05-20",
-    buyerCompany: "Kariakoo Supplies Tanzania",
-    currentMilestoneKey: "msDelivered",
-    progress: 100,
+    total_amount: "8850.00",
+    stage: "ARRIVED",
+    line_count: 3,
+    lines: [
+      line(1, "Cross Pickaxe Heavy Duty", null, "PCS", "pcs", "500", "500", "500", "6.50", "3250.00"),
+      line(2, "Fall Arrester 5m", null, "PCS", "pcs", "200", "200", "200", "12.00", "2400.00"),
+      line(3, "Titanium Spring Washer Set M4", null, "SET", "sets", "20000", "20000", "20000", "0.16", "3200.00"),
+    ],
     shipments: [
-      {
-        id: "s4",
-        label: "Shipment 1",
-        carrier: "COSCO Shipping",
-        trackingNo: "COSU5193748",
-        containerType: "20GP",
-        milestones: buildMilestones(11, [
-          "2026-03-15", "2026-03-18", "2026-03-22", "2026-03-25",
-          "2026-03-28", "2026-03-30", "2026-04-02", "2026-04-28",
-          "2026-05-02", "2026-05-10", "2026-05-15",
-        ]),
-      },
+      shipment({
+        container_no: "EGLV2059831",
+        stage: "ARRIVED",
+        vessel_name: "EVER GIVEN",
+        voyage_no: "1127-012W",
+        customs_status: "RELEASED",
+        declared_at: "2026-08-01",
+        released_at: "2026-08-03",
+        loaded_at: "2026-07-31T05:00:00Z",
+        port_of_loading: "Shanghai",
+        etd: "2026-08-05",
+        atd: "2026-08-05",
+        eta: "2026-09-02",
+        milestones: [
+          { type: "DEPARTED", event_at: "2026-08-05", location: "Shanghai" },
+          { type: "ARRIVED", event_at: "2026-09-03", location: "Dar es Salaam" },
+        ],
+      }),
     ],
-    items: [
-      { name: "十字镐 双扁大号", nameEn: "Cross Pickaxe Heavy Duty", sku: "TLS-PKX-01", qty: 500, unit: "pcs", unitPrice: 6.50, currency: "USD", image: "/images/mock/pickaxe.jpg", supplier: "河北富乐皇工具" },
-      { name: "防坠器 5米", nameEn: "Fall Arrester 5m", sku: "SAF-FAR-05", qty: 200, unit: "pcs", unitPrice: 12.00, currency: "USD", image: "/images/mock/fall-arrester.png", supplier: "京固安防" },
-      { name: "钛合金平弹垫组合 M4", nameEn: "Titanium Spring Washer Set M4", sku: "FST-TWS-M4", qty: 5000, unit: "pcs", unitPrice: 0.15, currency: "USD", image: "/images/mock/titanium-washer.png", supplier: "固万基紧固件" },
-    ],
-    documents: [
-      { name: "Proforma Invoice", type: "PI", date: "2026-03-15" },
-      { name: "Packing List", type: "PL", date: "2026-03-28" },
-      { name: "Bill of Lading", type: "B/L", date: "2026-04-02" },
-      { name: "Certificate of Origin", type: "CO", date: "2026-03-30" },
-      { name: "Delivery Receipt", type: "DR", date: "2026-05-15" },
-    ],
+  },
+  // ── 已取消 ──
+  {
+    no: "SO2026070012",
+    created_at: "2026-07-03T04:00:00Z",
+    status: "CANCELLED",
+    currency: "USD",
+    total_amount: "1200.00",
+    stage: "CANCELLED",
+    line_count: 1,
+    lines: [line(1, "PTFE Seal Gasket DN150", null, "PCS", "pcs", "1000", "0", "0", "1.20", "1200.00")],
+    shipments: [],
   },
 ];
+
+/** demo 数据源:与 BFF 同一接口,列表按下单时间倒序(同履约排序)。 */
+export const MOCK_ORDERS_SOURCE: OrdersSource = {
+  async list(page, size) {
+    const all = [...MOCK_ORDERS].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const items = all.slice((page - 1) * size, page * size).map(({ lines: _l, shipments: _s, ...item }) => item);
+    return { kind: "data", page: { items, total: all.length, page, size } };
+  },
+  async detail(no) {
+    const order = MOCK_ORDERS.find((o) => o.no === no);
+    if (!order) throw new Error("mock order not found");
+    return { kind: "data", order };
+  },
+};
