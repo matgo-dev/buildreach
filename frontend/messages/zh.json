@@ -1559,6 +1559,8 @@
     "customsReleased": "已放行",
     "declaredOn": "申报 {date}",
     "releasedOn": "放行 {date}",
+    "etdOn": "\u9884\u8ba1\u79bb\u6e2f {date}",
+    "etaOn": "\u9884\u8ba1\u5230\u6e2f {date}",
     "noShipmentYet": "尚未装柜发运,备货完成后这里会显示柜号与航程。",
     "cancelledNote": "该订单已取消。",
     "orderNotFound": "未找到该订单",
@@ -1577,6 +1579,7 @@
     "containerPending": "柜号待定",
     "statPreparing": "备货中",
     "statArrived": "已到港",
+    "statCancelled": "已取消",
     "filterEmpty": "本页没有该状态的订单"
   },
   "helpCenter": {

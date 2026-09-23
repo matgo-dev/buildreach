@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Anchor, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
+import { Anchor, Ban, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
 import {
   BFF_ORDERS_SOURCE,
   type BindingState,
@@ -22,7 +22,7 @@ import { stageProgress } from "./orderProgress";
 const PAGE_SIZE = 100;
 
 /** 统计卡四桶(契约 §5.3,单一源头):卡片计数与点击下钻都只从这里取阶段集合。
- *  "已取消"桶暂不出卡,只为保证每个 OrderStage 恰属一个桶;"全部"用履约回的 total。 */
+ *  每个 OrderStage 恰属一个桶,四桶之和 = "全部"(履约回的 total)。 */
 const STAGE_FILTERS = {
   PREPARING: ["CONFIRMED", "RECEIVED"],
   SHIPPING: ["LOADED", "CLEARED", "IN_TRANSIT"],
@@ -115,11 +115,13 @@ function OrderList({
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 五张卡:手机两列(末张独占一格),平板三列,桌面一行五张 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard icon={Package} label={t("statTotal")} value={String(total)} color="text-teal-700 bg-teal-50" onClick={() => setFilter("ALL")} active={filter === "ALL"} />
         <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("PREPARING"))} color="text-amber-700 bg-amber-50" onClick={() => toggle("PREPARING")} active={filter === "PREPARING"} />
         <StatCard icon={Ship} label={t("statShipping")} value={String(count("SHIPPING"))} color="text-blue-700 bg-blue-50" onClick={() => toggle("SHIPPING")} active={filter === "SHIPPING"} />
         <StatCard icon={CheckCircle2} label={t("statArrived")} value={String(count("ARRIVED"))} color="text-green-700 bg-green-50" onClick={() => toggle("ARRIVED")} active={filter === "ARRIVED"} />
+        <StatCard icon={Ban} label={t("statCancelled")} value={String(count("CANCELLED"))} color="text-slate-500 bg-slate-100" onClick={() => toggle("CANCELLED")} active={filter === "CANCELLED"} />
       </div>
 
       {visible.length === 0 && (

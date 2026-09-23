@@ -5,6 +5,7 @@ import { AlertCircle, Building2, Headset, Link2Off, Package, RefreshCw } from "l
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/formatters";
 import { formatDecimalString, type BindingState, type CustomsStatus, type OrderStage } from "@/lib/api/buyerOrders";
+import { lookup } from "./orderProgress";
 
 /** 订单级 / 柜级阶段 → i18n key + 徽标配色。API 只给 code,标签在 messages。 */
 const STAGE_META: Record<OrderStage, { key: string; cls: string }> = {
@@ -22,7 +23,7 @@ const UNKNOWN_STAGE_CLS = "bg-slate-100 text-slate-500 border-slate-200";
 
 export function StagePill({ stage, size = "sm" }: { stage: OrderStage | string; size?: "sm" | "md" }) {
   const t = useTranslations("orderTracking");
-  const meta = STAGE_META[stage as OrderStage];
+  const meta = lookup(STAGE_META, stage);
   const pad = size === "md" ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs";
   return (
     <span className={`inline-flex items-center rounded-full border font-medium ${pad} ${meta ? meta.cls : UNKNOWN_STAGE_CLS}`}>
@@ -33,7 +34,7 @@ export function StagePill({ stage, size = "sm" }: { stage: OrderStage | string; 
 
 /** 已知阶段的 i18n key;不认识的阶段 → null,由调用方显示原始码。 */
 export function stageLabelKey(stage: string): string | null {
-  return Object.prototype.hasOwnProperty.call(STAGE_META, stage) ? STAGE_META[stage as OrderStage].key : null;
+  return lookup(STAGE_META, stage)?.key ?? null;
 }
 
 /** 柜的报关状态徽标:未申报 / 申报中 / 已放行;不认识的值灰底显示原始码。 */
@@ -45,7 +46,7 @@ const CUSTOMS_META: Record<CustomsStatus, { key: string; cls: string }> = {
 
 export function CustomsPill({ status }: { status: CustomsStatus | string }) {
   const t = useTranslations("orderTracking");
-  const meta = Object.prototype.hasOwnProperty.call(CUSTOMS_META, status) ? CUSTOMS_META[status as CustomsStatus] : null;
+  const meta = lookup(CUSTOMS_META, status);
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta ? meta.cls : UNKNOWN_STAGE_CLS}`}>
       {meta ? t(meta.key) : status}

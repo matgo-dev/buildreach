@@ -1559,6 +1559,8 @@
     "customsReleased": "Released",
     "declaredOn": "Declared {date}",
     "releasedOn": "Released {date}",
+    "etdOn": "ETD {date}",
+    "etaOn": "ETA {date}",
     "noShipmentYet": "Not loaded yet. Container and voyage details will appear here once your goods are loaded.",
     "cancelledNote": "This order has been cancelled.",
     "orderNotFound": "Order not found",
@@ -1577,6 +1579,7 @@
     "containerPending": "Container TBD",
     "statPreparing": "Preparing",
     "statArrived": "Arrived",
+    "statCancelled": "Cancelled",
     "filterEmpty": "No orders in this status on this page"
   },
   "helpCenter": {

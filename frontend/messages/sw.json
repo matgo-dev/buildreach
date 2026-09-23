@@ -1559,6 +1559,8 @@
     "customsReleased": "Imeruhusiwa",
     "declaredOn": "Imetangazwa {date}",
     "releasedOn": "Imeruhusiwa {date}",
+    "etdOn": "ETD {date}",
+    "etaOn": "ETA {date}",
     "noShipmentYet": "Bado haijapakiwa. Maelezo ya kontena na safari yataonekana hapa baada ya bidhaa kupakiwa.",
     "cancelledNote": "Agizo hili limeghairiwa.",
     "orderNotFound": "Agizo halikupatikana",
@@ -1577,6 +1579,7 @@
     "containerPending": "Kontena bado",
     "statPreparing": "Inaandaliwa",
     "statArrived": "Imefika",
+    "statCancelled": "Imeghairiwa",
     "filterEmpty": "Hakuna maagizo yenye hali hii kwenye ukurasa huu"
   },
   "helpCenter": {

@@ -59,19 +59,28 @@ export function litNodes(
   ];
 }
 
-/** 订单 stage → 整体进度百分比(六档均分,纯展示映射)。CANCELLED 不画进度条,故不在表内。 */
-export const STAGE_PROGRESS: Record<Exclude<OrderStage, "CANCELLED">, number> = {
-  CONFIRMED: 0,
-  RECEIVED: 20,
-  LOADED: 40,
-  CLEARED: 60,
-  IN_TRANSIT: 80,
-  ARRIVED: 100,
+/** 只认表的自有属性:履约新增而前端不认识的 key(或 "constructor" 这类原型链名)→ null。 */
+export function lookup<K extends string, V>(table: Record<K, V>, key: string): V | null {
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key as K] : null;
+}
+
+/** 订单 stage → 展示位置(单一源头):进度百分比(六档均分)与路线图当前位置下标。
+ *  路线图到港即全程完成,下标越过末节点(5 个节点,下标 5 = 全部完成)。CANCELLED 不画,故不在表内。 */
+export const STAGE_VIEW: Record<Exclude<OrderStage, "CANCELLED">, { progress: number; routeIndex: number }> = {
+  CONFIRMED: { progress: 0, routeIndex: 0 },    // 备货中:货在工厂
+  RECEIVED: { progress: 20, routeIndex: 1 },    // 已入仓:集货仓
+  LOADED: { progress: 40, routeIndex: 2 },      // 已装柜:出发港
+  CLEARED: { progress: 60, routeIndex: 2 },     // 已放行:仍在出发港
+  IN_TRANSIT: { progress: 80, routeIndex: 3 },  // 海运
+  ARRIVED: { progress: 100, routeIndex: 5 },    // 已到 Dar es Salaam:全部完成
 };
 
 /** 取进度百分比;CANCELLED 或履约新增而前端不认识的 stage → null(不画进度条,不冒充已知阶段)。 */
 export function stageProgress(stage: string): number | null {
-  return Object.prototype.hasOwnProperty.call(STAGE_PROGRESS, stage)
-    ? STAGE_PROGRESS[stage as keyof typeof STAGE_PROGRESS]
-    : null;
+  return lookup(STAGE_VIEW, stage)?.progress ?? null;
+}
+
+/** 路线图当前位置下标;CANCELLED 或不认识的 stage → null(不定位)。 */
+export function stageRouteIndex(stage: string): number | null {
+  return lookup(STAGE_VIEW, stage)?.routeIndex ?? null;
 }

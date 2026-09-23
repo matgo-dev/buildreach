@@ -334,8 +334,9 @@ function NodeTimeline({
   const lit = litNodes(order, shipment);
   const at = (date: string | null | undefined, location?: string | null) =>
     date ? `${dayTime(date)}${location ? ` · ${location}` : ""}` : null;
-  const plan = (prefix: "ETD" | "ETA", date: string | null, location: string | null) =>
-    date ? `${prefix} ${day(date)}${location ? ` · ${location}` : ""}` : location;
+  // 未发生节点的计划行:无计划日期就不显示(裸港口名会被误读成已发生事件)
+  const plan = (key: "etdOn" | "etaOn", date: string | null, location: string | null) =>
+    date ? `${t(key, { date: day(date) })}${location ? ` · ${location}` : ""}` : null;
 
   const detailOf = (key: NodeKey, isLit: boolean): string | null => {
     switch (key) {
@@ -353,13 +354,13 @@ function NodeTimeline({
       case "msSeaFreight":
         // 离港以 atd 为准(契约:DEPARTED 取自 atd);未离港显示 ETD 计划
         if (!shipment) return null;
-        return isLit ? at(shipment.atd, shipment.port_of_loading) : plan("ETD", shipment.etd, shipment.port_of_loading);
+        return isLit ? at(shipment.atd, shipment.port_of_loading) : plan("etdOn", shipment.etd, shipment.port_of_loading);
       case "msPortArrival": {
         if (!shipment) return null;
         const arrived = shipment.milestones.find((m) => m.type === "ARRIVED");
         return arrived
           ? at(arrived.event_at, arrived.location ?? shipment.port_of_discharge)
-          : plan("ETA", shipment.eta, shipment.port_of_discharge);
+          : plan("etaOn", shipment.eta, shipment.port_of_discharge);
       }
     }
   };

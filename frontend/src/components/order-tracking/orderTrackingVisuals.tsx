@@ -4,7 +4,7 @@
 import { useTranslations } from "next-intl";
 import { Anchor, Factory, Ship, Warehouse } from "lucide-react";
 import type { OrderStage } from "@/lib/api/buyerOrders";
-import { FULFILLMENT_NODES } from "./orderProgress";
+import { FULFILLMENT_NODES, stageRouteIndex } from "./orderProgress";
 
 /** 统计卡。传 onClick 即可点击下钻,active 标当前筛选。 */
 export function StatCard({
@@ -54,23 +54,13 @@ export function StatCard({
    路线可视化（CSS 绘制，不依赖地图 SDK）
    ═══════════════════════════════════════════════════════ */
 
-/** 路线上的"当前位置"下标,由订单 stage 驱动(契约 §5.3)。到港即全程完成,下标越过末节点。
- *  履约无事实源的环节(本地配送等)不画永远灰着的节点(契约 §9)。 */
-const ROUTE_CURRENT_INDEX: Record<Exclude<OrderStage, "CANCELLED">, number> = {
-  CONFIRMED: 0,   // 备货中:货在工厂
-  RECEIVED: 1,    // 已入仓:集货仓
-  LOADED: 2,      // 已装柜:出发港
-  CLEARED: 2,     // 已放行:仍在出发港
-  IN_TRANSIT: 3,  // 海运
-  ARRIVED: 5,     // 已到 Dar es Salaam:全部完成
-};
+/* 路线上的"当前位置"由订单 stage 驱动(契约 §5.3),下标取自 orderProgress.STAGE_VIEW。
+   履约无事实源的环节(本地配送等)不画永远灰着的节点(契约 §9)。 */
 
 export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
   const t = useTranslations("orderTracking");
   // 不认识的 stage:不定位(全灰),不冒充已知阶段
-  const current = Object.prototype.hasOwnProperty.call(ROUTE_CURRENT_INDEX, stage)
-    ? ROUTE_CURRENT_INDEX[stage as keyof typeof ROUTE_CURRENT_INDEX]
-    : -1;
+  const current = stageRouteIndex(stage) ?? -1;
   const at = (i: number) => ({ done: i < current, current: i === current });
 
   const nodes = [
