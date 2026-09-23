@@ -16,6 +16,13 @@ import { FulfillmentHeroBanner, STAGE_PROGRESS, StatCard } from "./orderTracking
 
 const PAGE_SIZE = 20;
 
+type StageFilter = "ALL" | "PREPARING" | "TRANSIT" | "ARRIVED";
+const STAGE_FILTERS: Record<Exclude<StageFilter, "ALL">, PortalOrderListItem["stage"][]> = {
+  PREPARING: ["CONFIRMED"],
+  TRANSIT: ["LOADED", "IN_TRANSIT"],
+  ARRIVED: ["ARRIVED"],
+};
+
 const STAGE_KEY: Record<string, string> = {
   CONFIRMED: "Confirmed", LOADED: "Loaded", IN_TRANSIT: "InTransit", ARRIVED: "Arrived", CANCELLED: "Cancelled",
 };
@@ -83,22 +90,28 @@ function OrderList({
   const t = useTranslations("orderTracking");
   const { items, total, size } = page;
   const totalPages = Math.max(1, Math.ceil(total / size));
-  // 阶段计数取当前页(目前客户订单量 ≤ 一页;超一页时"全部"仍是真实 total)
+  // 统计卡点击下钻:当前只在已加载的这一页内筛(履约接口暂无 stage 过滤,契约 v4 登记服务端筛选与全量计数)
+  const [filter, setFilter] = useState<StageFilter>("ALL");
   const count = (...stages: PortalOrderListItem["stage"][]) => items.filter((o) => stages.includes(o.stage)).length;
+  const visible = filter === "ALL" ? items : items.filter((o) => STAGE_FILTERS[filter].includes(o.stage));
+  const toggle = (f: StageFilter) => setFilter((cur) => (cur === f ? "ALL" : f));
 
   if (total === 0) return <EmptyOrdersState />;
 
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Package} label={t("statTotal")} value={String(total)} color="text-teal-700 bg-teal-50" />
-        <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("CONFIRMED"))} color="text-amber-700 bg-amber-50" />
-        <StatCard icon={Ship} label={t("statInTransit")} value={String(count("LOADED", "IN_TRANSIT"))} color="text-blue-700 bg-blue-50" />
-        <StatCard icon={CheckCircle2} label={t("statArrived")} value={String(count("ARRIVED"))} color="text-green-700 bg-green-50" />
+        <StatCard icon={Package} label={t("statTotal")} value={String(total)} color="text-teal-700 bg-teal-50" onClick={() => setFilter("ALL")} active={filter === "ALL"} />
+        <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("CONFIRMED"))} color="text-amber-700 bg-amber-50" onClick={() => toggle("PREPARING")} active={filter === "PREPARING"} />
+        <StatCard icon={Ship} label={t("statInTransit")} value={String(count("LOADED", "IN_TRANSIT"))} color="text-blue-700 bg-blue-50" onClick={() => toggle("TRANSIT")} active={filter === "TRANSIT"} />
+        <StatCard icon={CheckCircle2} label={t("statArrived")} value={String(count("ARRIVED"))} color="text-green-700 bg-green-50" onClick={() => toggle("ARRIVED")} active={filter === "ARRIVED"} />
       </div>
 
+      {visible.length === 0 && (
+        <p className="rounded-xl border border-dashed border-line bg-white px-6 py-8 text-center text-sm text-muted">{t("filterEmpty")}</p>
+      )}
       <div className="space-y-4">
-        {items.map((order) => (
+        {visible.map((order) => (
           <OrderCard key={order.no} order={order} onClick={() => onSelect(order.no)} />
         ))}
       </div>

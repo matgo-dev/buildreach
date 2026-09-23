@@ -1591,7 +1591,8 @@
     "retry": "Retry",
     "containerPending": "Container TBD",
     "statPreparing": "Preparing",
-    "statArrived": "Arrived"
+    "statArrived": "Arrived",
+    "filterEmpty": "No orders in this status on this page"
   },
   "helpCenter": {
     "pageTitle": "Purchasing Guide",

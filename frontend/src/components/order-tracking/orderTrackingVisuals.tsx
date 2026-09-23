@@ -15,19 +15,24 @@ export const STAGE_PROGRESS: Record<RouteStage, number> = {
   CANCELLED: 0,
 };
 
+/** 统计卡。传 onClick 即可点击下钻(真实视图),active 标当前筛选;demo 不传保持静态。 */
 export function StatCard({
   icon: Icon,
   label,
   value,
   color,
+  onClick,
+  active = false,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   color: string;
+  onClick?: () => void;
+  active?: boolean;
 }) {
-  return (
-    <div className="rounded-xl border border-line bg-white p-4 flex items-center gap-3">
+  const inner = (
+    <>
       <div className={`rounded-lg p-2.5 ${color}`}>
         <Icon className="h-5 w-5" />
       </div>
@@ -35,7 +40,21 @@ export function StatCard({
         <p className="text-2xl font-bold text-navy">{value}</p>
         <p className="text-xs text-muted">{label}</p>
       </div>
-    </div>
+    </>
+  );
+  const base = "rounded-xl border bg-white p-4 flex items-center gap-3 text-left";
+  if (!onClick) return <div className={`${base} border-line`}>{inner}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`${base} w-full transition-colors ${
+        active ? "border-teal-600 ring-2 ring-teal-100" : "border-line hover:border-teal-300"
+      }`}
+    >
+      {inner}
+    </button>
   );
 }
 

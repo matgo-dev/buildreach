@@ -1591,7 +1591,8 @@
     "retry": "Jaribu tena",
     "containerPending": "Kontena bado",
     "statPreparing": "Inaandaliwa",
-    "statArrived": "Imefika"
+    "statArrived": "Imefika",
+    "filterEmpty": "Hakuna maagizo yenye hali hii kwenye ukurasa huu"
   },
   "helpCenter": {
     "pageTitle": "Mwongozo wa Ununuzi",

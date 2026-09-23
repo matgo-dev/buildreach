@@ -1591,7 +1591,8 @@
     "retry": "重试",
     "containerPending": "柜号待定",
     "statPreparing": "备货中",
-    "statArrived": "已到港"
+    "statArrived": "已到港",
+    "filterEmpty": "本页没有该状态的订单"
   },
   "helpCenter": {
     "pageTitle": "选购指南",
