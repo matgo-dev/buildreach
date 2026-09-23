@@ -2,31 +2,45 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Anchor, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
+import { Anchor, Ban, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
 import {
-  getBuyerOrders,
+  BFF_ORDERS_SOURCE,
   type BindingState,
   type OrderPage,
+  type OrderStage,
+  type OrdersSource,
   type PortalOrderListItem,
 } from "@/lib/api/buyerOrders";
 import Pagination from "@/components/ui/Pagination";
 import { BuyerOrderDetail } from "./BuyerOrderDetail";
-import { EmptyOrdersState, LoadingSkeleton, Money, StagePill, StatePanel, useDay } from "./buyerOrdersShared";
-import { FulfillmentHeroBanner, STAGE_PROGRESS, StatCard } from "./orderTrackingVisuals";
+import { EmptyOrdersState, LoadingSkeleton, Money, StagePill, StatePanel, stageLabelKey, useDay } from "./buyerOrdersShared";
+import { FulfillmentHeroBanner, StatCard } from "./orderTrackingVisuals";
+import { stageProgress } from "./orderProgress";
 
-// 一页拉满契约上限:客户一年几单,多年也在一页内,统计卡计数与下钻因此就是全量;超 100 单才翻页
+// 一页拉满契约上限:客户一年几单,多年也在一页内,统计卡计数与下钻因此就是全量;超 100 单才翻页。
+// 超 100 单后统计卡与下钻只覆盖当前页,那是把筛选与计数移到履约服务端的触发信号,不是在前端加第二页统计。
 const PAGE_SIZE = 100;
 
-type StageFilter = "ALL" | "PREPARING" | "TRANSIT" | "ARRIVED";
-const STAGE_FILTERS: Record<Exclude<StageFilter, "ALL">, PortalOrderListItem["stage"][]> = {
-  PREPARING: ["CONFIRMED"],
-  TRANSIT: ["LOADED", "IN_TRANSIT"],
+/** 统计卡四桶(契约 §5.3,单一源头):卡片计数与点击下钻都只从这里取阶段集合。
+ *  每个 OrderStage 恰属一个桶,四桶之和 = "全部"(履约回的 total)。 */
+const STAGE_FILTERS = {
+  PREPARING: ["CONFIRMED", "RECEIVED"],
+  SHIPPING: ["LOADED", "CLEARED", "IN_TRANSIT"],
   ARRIVED: ["ARRIVED"],
-};
+  CANCELLED: ["CANCELLED"],
+} as const satisfies Record<string, readonly OrderStage[]>;
 
-const STAGE_KEY: Record<string, string> = {
-  CONFIRMED: "Confirmed", LOADED: "Loaded", IN_TRANSIT: "InTransit", ARRIVED: "Arrived", CANCELLED: "Cancelled",
-};
+type Bucket = keyof typeof STAGE_FILTERS;
+type StageFilter = "ALL" | Bucket;
+
+// 编译期守:OrderStage 新增值而未归桶时,下一行类型报错
+type BucketedStage = (typeof STAGE_FILTERS)[Bucket][number];
+const _EVERY_STAGE_BUCKETED: [OrderStage] extends [BucketedStage] ? true : never = true;
+void _EVERY_STAGE_BUCKETED;
+
+function inBucket(bucket: Bucket, stage: string): boolean {
+  return (STAGE_FILTERS[bucket] as readonly string[]).includes(stage);
+}
 
 type ListState =
   | { kind: "loading" }
@@ -34,8 +48,8 @@ type ListState =
   | { kind: "unavailable" }
   | { kind: "data"; page: OrderPage };
 
-/** 真实用户的「我的订单」:列表 ⇄ 详情,数据实时来自履约后台(经 BFF)。 */
-export function BuyerOrders() {
+/** 「我的订单」:列表 ⇄ 详情。真实用户数据实时来自履约后台(经 BFF);demo 账号注入 mock 数据源。 */
+export function BuyerOrders({ source = BFF_ORDERS_SOURCE }: { source?: OrdersSource }) {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<ListState>({ kind: "loading" });
   const [selectedNo, setSelectedNo] = useState<string | null>(null);
@@ -46,7 +60,7 @@ export function BuyerOrders() {
     const mine = ++seq.current;
     setState({ kind: "loading" });
     try {
-      const res = await getBuyerOrders(page, PAGE_SIZE);
+      const res = await source.list(page, PAGE_SIZE);
       if (mine !== seq.current) return;
       if (res.kind === "binding") setState({ kind: "binding", binding: res.binding });
       else setState({ kind: "data", page: res.page });
@@ -56,14 +70,14 @@ export function BuyerOrders() {
       // 会话真失效时 api 层已清 store,RouteGuard 会卸载本页
       setState({ kind: "unavailable" });
     }
-  }, [page]);
+  }, [page, source]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   if (selectedNo) {
-    return <BuyerOrderDetail no={selectedNo} onBack={() => setSelectedNo(null)} />;
+    return <BuyerOrderDetail no={selectedNo} source={source} onBack={() => setSelectedNo(null)} />;
   }
 
   return (
@@ -93,19 +107,21 @@ function OrderList({
   const totalPages = Math.max(1, Math.ceil(total / size));
   // 统计卡点击下钻:在已加载的一页内筛;PAGE_SIZE=100 覆盖任何现实客户的全部订单(契约 §9 登记超限再做服务端)
   const [filter, setFilter] = useState<StageFilter>("ALL");
-  const count = (...stages: PortalOrderListItem["stage"][]) => items.filter((o) => stages.includes(o.stage)).length;
-  const visible = filter === "ALL" ? items : items.filter((o) => STAGE_FILTERS[filter].includes(o.stage));
+  const count = (bucket: Bucket) => items.filter((o) => inBucket(bucket, o.stage)).length;
+  const visible = filter === "ALL" ? items : items.filter((o) => inBucket(filter, o.stage));
   const toggle = (f: StageFilter) => setFilter((cur) => (cur === f ? "ALL" : f));
 
   if (total === 0) return <EmptyOrdersState />;
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 五张卡:手机两列(末张独占一格),平板三列,桌面一行五张 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard icon={Package} label={t("statTotal")} value={String(total)} color="text-teal-700 bg-teal-50" onClick={() => setFilter("ALL")} active={filter === "ALL"} />
-        <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("CONFIRMED"))} color="text-amber-700 bg-amber-50" onClick={() => toggle("PREPARING")} active={filter === "PREPARING"} />
-        <StatCard icon={Ship} label={t("statInTransit")} value={String(count("LOADED", "IN_TRANSIT"))} color="text-blue-700 bg-blue-50" onClick={() => toggle("TRANSIT")} active={filter === "TRANSIT"} />
+        <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("PREPARING"))} color="text-amber-700 bg-amber-50" onClick={() => toggle("PREPARING")} active={filter === "PREPARING"} />
+        <StatCard icon={Ship} label={t("statShipping")} value={String(count("SHIPPING"))} color="text-blue-700 bg-blue-50" onClick={() => toggle("SHIPPING")} active={filter === "SHIPPING"} />
         <StatCard icon={CheckCircle2} label={t("statArrived")} value={String(count("ARRIVED"))} color="text-green-700 bg-green-50" onClick={() => toggle("ARRIVED")} active={filter === "ARRIVED"} />
+        <StatCard icon={Ban} label={t("statCancelled")} value={String(count("CANCELLED"))} color="text-slate-500 bg-slate-100" onClick={() => toggle("CANCELLED")} active={filter === "CANCELLED"} />
       </div>
 
       {visible.length === 0 && (
@@ -127,6 +143,8 @@ function OrderList({
 function OrderCard({ order, onClick }: { order: PortalOrderListItem; onClick: () => void }) {
   const t = useTranslations("orderTracking");
   const day = useDay();
+  const progress = stageProgress(order.stage);
+  const labelKey = stageLabelKey(order.stage);
 
   return (
     <button
@@ -150,22 +168,24 @@ function OrderCard({ order, onClick }: { order: PortalOrderListItem; onClick: ()
             <Money amount={order.total_amount} currency={order.currency} />
           </div>
 
-          {/* 阶段进度条:按阶段映射的展示百分比 */}
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs text-muted mb-1.5">
-              <span className="flex items-center gap-1">
-                <Anchor className="h-3 w-3" />
-                {t(`stage${STAGE_KEY[order.stage] ?? "Confirmed"}`)}
-              </span>
-              <span>{STAGE_PROGRESS[order.stage] ?? 0}%</span>
+          {/* 阶段进度条:订单 stage 驱动的展示百分比;CANCELLED 与不认识的 stage 不画 */}
+          {progress !== null && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+                <span className="flex items-center gap-1">
+                  <Anchor className="h-3 w-3" />
+                  {labelKey ? t(labelKey) : order.stage}
+                </span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all"
-                style={{ width: `${STAGE_PROGRESS[order.stage] ?? 0}%` }}
-              />
-            </div>
-          </div>
+          )}
         </div>
         <ChevronRight className="h-5 w-5 text-muted group-hover:text-teal-700 shrink-0 mt-2 transition-colors" />
       </div>
