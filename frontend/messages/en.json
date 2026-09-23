@@ -1589,7 +1589,9 @@
     "unavailableTitle": "Order service temporarily unavailable",
     "unavailableDesc": "We couldn't load your orders. Please try again later.",
     "retry": "Retry",
-    "containerPending": "Container TBD"
+    "containerPending": "Container TBD",
+    "statPreparing": "Preparing",
+    "statArrived": "Arrived"
   },
   "helpCenter": {
     "pageTitle": "Purchasing Guide",

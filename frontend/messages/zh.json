@@ -1589,7 +1589,9 @@
     "unavailableTitle": "订单服务暂时不可用",
     "unavailableDesc": "获取订单信息失败,请稍后重试。",
     "retry": "重试",
-    "containerPending": "柜号待定"
+    "containerPending": "柜号待定",
+    "statPreparing": "备货中",
+    "statArrived": "已到港"
   },
   "helpCenter": {
     "pageTitle": "选购指南",

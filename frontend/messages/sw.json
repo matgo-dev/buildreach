@@ -1589,7 +1589,9 @@
     "unavailableTitle": "Huduma ya maagizo haipatikani kwa sasa",
     "unavailableDesc": "Hatukuweza kupakia maagizo yako. Tafadhali jaribu tena baadaye.",
     "retry": "Jaribu tena",
-    "containerPending": "Kontena bado"
+    "containerPending": "Kontena bado",
+    "statPreparing": "Inaandaliwa",
+    "statArrived": "Imefika"
   },
   "helpCenter": {
     "pageTitle": "Mwongozo wa Ununuzi",

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Anchor, ArrowLeft, Circle, Container, Package, Ship, Waypoints } from "lucide-react";
+import { Anchor, ArrowLeft, Circle, Container, MapPin, Package, Ship, Waypoints } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import {
   formatDecimalString,
@@ -12,6 +12,7 @@ import {
   type PortalShipment,
 } from "@/lib/api/buyerOrders";
 import { LoadingSkeleton, Money, StagePill, StatePanel, useDay, useDayTime } from "./buyerOrdersShared";
+import { RouteVisualization, STAGE_PROGRESS } from "./orderTrackingVisuals";
 
 type DetailState =
   | { kind: "loading" }
@@ -99,8 +100,18 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
               <Money amount={order.total_amount} currency={order.currency} className="text-xl font-bold text-navy" />
             </div>
           </div>
-          {order.stage === "CANCELLED" && (
+          {order.stage === "CANCELLED" ? (
             <p className="mt-3 text-sm text-slate-500">{t("cancelledNote")}</p>
+          ) : (
+            <div className="mt-4">
+              <div className="h-2.5 rounded-full bg-white/60 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-teal-600 to-teal-400 transition-all"
+                  style={{ width: `${STAGE_PROGRESS[order.stage] ?? 0}%` }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted">{t("overallProgress")}: {STAGE_PROGRESS[order.stage] ?? 0}%</p>
+            </div>
           )}
         </div>
       </div>
@@ -143,6 +154,21 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
           </>
         )}
       </div>
+
+      {/* 路线示意:按当前柜(无柜按订单)阶段驱动 */}
+      {order.stage !== "CANCELLED" && (
+        <div className="rounded-xl border border-line bg-white overflow-hidden">
+          <div className="px-6 py-4 border-b border-line">
+            <h3 className="text-lg font-semibold text-navy flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-teal-700" />
+              {t("routeMap")}
+            </h3>
+          </div>
+          <div className="p-6">
+            <RouteVisualization stage={activeShipment ? activeShipment.stage : order.stage} />
+          </div>
+        </div>
+      )}
 
       {/* 行明细 */}
       <div className="rounded-xl border border-line bg-white overflow-hidden">

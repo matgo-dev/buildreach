@@ -27,6 +27,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { MOCK_ORDERS, type MockOrder, type Shipment, type Milestone, MILESTONE_KEYS } from "./mockOrders";
 import { BuyerOrders } from "./BuyerOrders";
 import { EmptyOrdersState } from "./buyerOrdersShared";
+import { FulfillmentHeroBanner, RouteVisualization, StatCard } from "./orderTrackingVisuals";
 
 
 // 节点图标映射
@@ -100,30 +101,6 @@ function OrderList({
       ) : (
         <EmptyOrdersState />
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <div className="rounded-xl border border-line bg-white p-4 flex items-center gap-3">
-      <div className={`rounded-lg p-2.5 ${color}`}>
-        <Icon className="h-5 w-5" />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-navy">{value}</p>
-        <p className="text-xs text-muted">{label}</p>
-      </div>
     </div>
   );
 }
@@ -480,132 +457,3 @@ function ShipmentTimeline({ shipment }: { shipment: Shipment }) {
     </div>
   );
 }
-
-/* ═══════════════════════════════════════════════════════
-   路线可视化（CSS 绘制，不依赖地图 SDK）
-   ═══════════════════════════════════════════════════════ */
-
-function RouteVisualization() {
-  const t = useTranslations("orderTracking");
-
-  const nodes = [
-    { label: t("routeFactory"), sublabel: "China", icon: Factory, done: true },
-    { label: t("routeWarehouse"), sublabel: "Ningbo / Shanghai", icon: Warehouse, done: true },
-    { label: t("routePort"), sublabel: "China Port", icon: Anchor, done: true },
-    { label: t("routeSea"), sublabel: "~25 days", icon: Ship, done: false, current: true },
-    { label: "Dar es Salaam", sublabel: "Tanzania Port", icon: Anchor, done: false },
-    { label: t("routeDelivery"), sublabel: "Local", icon: Truck, done: false },
-  ];
-
-  return (
-    <div className="flex items-center justify-between gap-0 overflow-x-auto py-4">
-      {nodes.map((node, i) => {
-        const Icon = node.icon;
-        const isLast = i === nodes.length - 1;
-
-        return (
-          <div key={i} className="flex items-center flex-1 min-w-0">
-            {/* 节点 */}
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-full border-2 ${
-                  node.done
-                    ? "border-teal-500 bg-teal-500 text-white"
-                    : node.current
-                    ? "border-teal-500 bg-white text-teal-700 ring-4 ring-teal-100 animate-pulse"
-                    : "border-slate-200 bg-white text-slate-300"
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="text-center">
-                <p className={`text-xs font-medium ${node.done || node.current ? "text-navy" : "text-slate-400"}`}>
-                  {node.label}
-                </p>
-                <p className="text-[10px] text-muted">{node.sublabel}</p>
-              </div>
-            </div>
-
-            {/* 连线 */}
-            {!isLast && (
-              <div className="flex-1 mx-1 h-0.5 min-w-[20px]">
-                <div
-                  className={`h-full ${
-                    node.done ? "bg-teal-400" : "bg-slate-200"
-                  }`}
-                  style={node.current ? {
-                    background: "repeating-linear-gradient(90deg, #14b8a6 0, #14b8a6 6px, transparent 6px, transparent 12px)",
-                  } : undefined}
-                />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
-   Hero Banner — 海运物流插画 + 文案
-   ═══════════════════════════════════════════════════════ */
-
-function FulfillmentHeroBanner() {
-  const t = useTranslations("orderTracking");
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl min-h-[260px]">
-      {/* 真实港口照片背景 */}
-      <img
-        src="/images/fulfillment/hero-port.jpg"
-        alt="Container port"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      {/* 渐变遮罩 — 左侧深色保证文字可读，右侧半透明露出照片 */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "linear-gradient(to right, rgba(10,37,64,0.92) 0%, rgba(13,77,77,0.85) 45%, rgba(13,77,77,0.5) 70%, rgba(13,77,77,0.3) 100%)",
-        }}
-      />
-      {/* 底部暖金色边线 */}
-      <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(90deg, #e3a615, #D4A853, transparent)" }} />
-
-      <div className="relative flex items-center gap-8 px-8 py-10 md:py-12">
-        {/* 左侧文案 */}
-        <div className="flex-1 min-w-0 z-10">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-1 text-xs font-medium text-white/90">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
-              {t("heroBadge")}
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight drop-shadow-lg">
-            {t("heroTitle")}
-          </h1>
-          <p className="mt-2.5 text-sm md:text-base text-white/75 leading-relaxed max-w-lg drop-shadow">
-            {t("heroSubtitle")}
-          </p>
-
-          {/* 关键指标 */}
-          <div className="mt-6 flex gap-8 flex-wrap">
-            {[
-              { value: "25-30", unit: t("heroDays"), label: t("heroTransitTime") },
-              { value: "11", unit: t("heroSteps"), label: t("heroMilestones") },
-              { value: "100%", unit: "", label: t("heroVisibility") },
-            ].map((stat, i) => (
-              <div key={i}>
-                <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
-                  {stat.value}
-                  {stat.unit && <span className="text-sm font-medium text-amber-300 ml-1">{stat.unit}</span>}
-                </p>
-                <p className="text-[11px] text-white/60 mt-0.5">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-

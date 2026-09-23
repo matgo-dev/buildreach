@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronRight } from "lucide-react";
+import { Anchor, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
 import {
   getBuyerOrders,
   type BindingState,
@@ -11,9 +11,14 @@ import {
 } from "@/lib/api/buyerOrders";
 import Pagination from "@/components/ui/Pagination";
 import { BuyerOrderDetail } from "./BuyerOrderDetail";
-import { EmptyOrdersState, LoadingSkeleton, Money, PageHeader, StagePill, StatePanel, useDay } from "./buyerOrdersShared";
+import { EmptyOrdersState, LoadingSkeleton, Money, StagePill, StatePanel, useDay } from "./buyerOrdersShared";
+import { FulfillmentHeroBanner, STAGE_PROGRESS, StatCard } from "./orderTrackingVisuals";
 
 const PAGE_SIZE = 20;
+
+const STAGE_KEY: Record<string, string> = {
+  CONFIRMED: "Confirmed", LOADED: "Loaded", IN_TRANSIT: "InTransit", ARRIVED: "Arrived", CANCELLED: "Cancelled",
+};
 
 type ListState =
   | { kind: "loading" }
@@ -55,7 +60,7 @@ export function BuyerOrders() {
 
   return (
     <div className="space-y-6">
-      <PageHeader />
+      <FulfillmentHeroBanner />
       {state.kind === "loading" && <LoadingSkeleton />}
       {state.kind === "binding" && <StatePanel kind={state.binding} />}
       {state.kind === "unavailable" && <StatePanel kind="UNAVAILABLE" onRetry={load} />}
@@ -75,13 +80,23 @@ function OrderList({
   onSelect: (no: string) => void;
   onPageChange: (p: number) => void;
 }) {
+  const t = useTranslations("orderTracking");
   const { items, total, size } = page;
   const totalPages = Math.max(1, Math.ceil(total / size));
+  // 阶段计数取当前页(目前客户订单量 ≤ 一页;超一页时"全部"仍是真实 total)
+  const count = (...stages: PortalOrderListItem["stage"][]) => items.filter((o) => stages.includes(o.stage)).length;
 
   if (total === 0) return <EmptyOrdersState />;
 
   return (
     <>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard icon={Package} label={t("statTotal")} value={String(total)} color="text-teal-700 bg-teal-50" />
+        <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("CONFIRMED"))} color="text-amber-700 bg-amber-50" />
+        <StatCard icon={Ship} label={t("statInTransit")} value={String(count("LOADED", "IN_TRANSIT"))} color="text-blue-700 bg-blue-50" />
+        <StatCard icon={CheckCircle2} label={t("statArrived")} value={String(count("ARRIVED"))} color="text-green-700 bg-green-50" />
+      </div>
+
       <div className="space-y-4">
         {items.map((order) => (
           <OrderCard key={order.no} order={order} onClick={() => onSelect(order.no)} />
@@ -119,6 +134,23 @@ function OrderCard({ order, onClick }: { order: PortalOrderListItem; onClick: ()
           </div>
           <div className="mt-2 text-base font-semibold text-navy">
             <Money amount={order.total_amount} currency={order.currency} />
+          </div>
+
+          {/* 阶段进度条:按阶段映射的展示百分比 */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+              <span className="flex items-center gap-1">
+                <Anchor className="h-3 w-3" />
+                {t(`stage${STAGE_KEY[order.stage] ?? "Confirmed"}`)}
+              </span>
+              <span>{STAGE_PROGRESS[order.stage] ?? 0}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all"
+                style={{ width: `${STAGE_PROGRESS[order.stage] ?? 0}%` }}
+              />
+            </div>
           </div>
         </div>
         <ChevronRight className="h-5 w-5 text-muted group-hover:text-teal-700 shrink-0 mt-2 transition-colors" />
