@@ -133,8 +133,8 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
                         : "border-transparent text-muted hover:text-navy"
                     }`}
                   >
-                    <span className="font-mono">{s.container_no}</span>
-                    <span className="ml-2 text-xs text-muted">({s.container_type})</span>
+                    <span className="font-mono">{s.container_no ?? t("containerPending")}</span>
+                    {s.container_type && <span className="ml-2 text-xs text-muted">({s.container_type})</span>}
                   </button>
                 ))}
               </div>
@@ -260,8 +260,8 @@ function ShipmentTimeline({ shipment, muted }: { shipment: PortalShipment; muted
         <div className="flex items-center gap-2">
           <Container className="h-4 w-4 text-teal-700" />
           <span className="text-muted">{t("containerNo")}:</span>
-          <span className="font-mono font-medium text-navy">{shipment.container_no}</span>
-          <span className="text-xs text-muted">({shipment.container_type})</span>
+          <span className="font-mono font-medium text-navy">{shipment.container_no ?? t("containerPending")}</span>
+          {shipment.container_type && <span className="text-xs text-muted">({shipment.container_type})</span>}
         </div>
         <div className="flex items-center gap-2">
           <Anchor className="h-4 w-4 text-teal-700" />

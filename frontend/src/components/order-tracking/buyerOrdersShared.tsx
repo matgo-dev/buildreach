@@ -15,13 +15,16 @@ const STAGE_META: Record<OrderStage, { key: string; cls: string }> = {
   CANCELLED: { key: "stageCancelled", cls: "bg-slate-100 text-slate-500 border-slate-200" },
 };
 
-export function StagePill({ stage, size = "sm" }: { stage: OrderStage; size?: "sm" | "md" }) {
+/** 履约端新增了前端不认识的 stage 时:灰底显示原始码,不冒充任何已知阶段。 */
+const UNKNOWN_STAGE_CLS = "bg-slate-100 text-slate-500 border-slate-200";
+
+export function StagePill({ stage, size = "sm" }: { stage: OrderStage | string; size?: "sm" | "md" }) {
   const t = useTranslations("orderTracking");
-  const meta = STAGE_META[stage] ?? STAGE_META.CONFIRMED;
+  const meta = STAGE_META[stage as OrderStage];
   const pad = size === "md" ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs";
   return (
-    <span className={`inline-flex items-center rounded-full border font-medium ${pad} ${meta.cls}`}>
-      {t(meta.key)}
+    <span className={`inline-flex items-center rounded-full border font-medium ${pad} ${meta ? meta.cls : UNKNOWN_STAGE_CLS}`}>
+      {meta ? t(meta.key) : stage}
     </span>
   );
 }
@@ -36,16 +39,34 @@ export function Money({ amount, currency, className = "" }: { amount: string; cu
   );
 }
 
-/** 日期只显示到天;API 时间戳为 UTC,formatDate 会转本地时区。 */
-export function useDay() {
-  const locale = useLocale();
-  return (iso: string | null | undefined) =>
-    iso ? formatDate(iso, locale, { hour: undefined, minute: undefined }) : "—";
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 履约的 etd/atd/eta/里程碑是纯日期(YYYY-MM-DD),不能当 UTC 时刻转本地时区(会跨天);
+ *  loaded_at/created_at 是 UTC 时间戳,走 formatDate 转本地。 */
+function formatDateOnly(value: string, locale: string): string {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale, { year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date(y, m - 1, d));
 }
 
+/** 只显示到天。 */
+export function useDay() {
+  const locale = useLocale();
+  return (v: string | null | undefined) => {
+    if (!v) return "—";
+    if (DATE_ONLY.test(v)) return formatDateOnly(v, locale);
+    return formatDate(v, locale, { hour: undefined, minute: undefined });
+  };
+}
+
+/** 有时刻显示到分,纯日期只显示日。 */
 export function useDayTime() {
   const locale = useLocale();
-  return (iso: string | null | undefined) => (iso ? formatDate(iso, locale) : "—");
+  return (v: string | null | undefined) => {
+    if (!v) return "—";
+    if (DATE_ONLY.test(v)) return formatDateOnly(v, locale);
+    return formatDate(v, locale);
+  };
 }
 
 /** 页头(真实用户不展示营销 hero)。 */

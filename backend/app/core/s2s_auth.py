@@ -3,7 +3,7 @@
 契约 docs/specs/2026-09-21-0214 §3。要点:
 - 独立共享密钥 S2S_SHARED_SECRET,HS256 固定;禁用登录用的 decode_token(它不校 iss/aud)。
 - 每次调用现签一枚:iss/aud/sub/typ/iat/exp/jti,exp−iat ≤ 60s。
-- 接收方除 jose 的签名 / exp / aud / iss 校验外,自己再比较
+- 接收方除 jose 的签名 / aud / iss / 必需 claim 校验外,自己用同一个 now 校 exp(容 30s)并比较
   `0 < exp − iat ≤ 60` 与 `iat ≤ now + 30s`:否则签名方签一枚长效令牌就突破了所称的窗口。
 - 真实可接受窗口(按接收方时钟):iat 最多超前 30s、TTL 60s、exp 再容忍 30s 偏差,
   三者叠加 = 一枚令牌最长 **120s** 内可被接受(契约按 60+30 写作 90s,漏算了未来 iat 那 30s)。
@@ -95,7 +95,8 @@ def verify_s2s_token(
                 "require_jti": True,
                 "require_aud": True,
                 "require_iss": True,
-                "leeway": S2S_CLOCK_SKEW_SECONDS,
+                # exp 不交给 jose(它只认墙钟);下面用同一个 now 校,一个函数一个时钟
+                "verify_exp": False,
             },
         )
     except JWTError as exc:
@@ -112,6 +113,8 @@ def verify_s2s_token(
     if not (0 < ttl <= S2S_TTL_SECONDS):
         raise S2SError("Token lifetime out of bounds")
     current = int(time.time()) if now is None else now
+    if exp + S2S_CLOCK_SKEW_SECONDS < current:
+        raise S2SError("Token expired")
     if iat > current + S2S_CLOCK_SKEW_SECONDS:
         raise S2SError("Token issued in the future")
     sub = claims["sub"]

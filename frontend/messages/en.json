@@ -1586,7 +1586,8 @@
     "bindingNotBoundDesc": "Please contact your sales representative to link this company account to your orders.",
     "unavailableTitle": "Order service temporarily unavailable",
     "unavailableDesc": "We couldn't load your orders. Please try again later.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "containerPending": "Container TBD"
   },
   "helpCenter": {
     "pageTitle": "Purchasing Guide",

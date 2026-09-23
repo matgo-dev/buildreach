@@ -3,22 +3,17 @@
 契约 §5.2。浏览器任何时候不持有履约令牌、不知道履约地址。
 响应二选一:正常数据(履约 `data` 原样透传)或 `{"binding": <状态>}`:
   NO_ORG / AMBIGUOUS_ORG / ORG_DISABLED 由本仓组织解析得出;NOT_BOUND = 履约回 42501。
-履约超时 / 5xx / 其他 4xx → 503 + error.orders.unavailable。
+履约超时 / 5xx / 其他 4xx → 503 + error.orders.unavailable(由 fulfillment_client 直接抛)。
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Path, Query
 from app.core.dependencies import CurrentUser
-from app.core.exceptions import FulfillmentUnavailableError, NotFoundError, success
+from app.core.exceptions import NotFoundError, success
 from app.core.locale import get_current_locale
 from app.rbac.guards import block_if_must_change_password, require_any_role
 from app.services.buyer_org_binding import resolve_buyer_org
-from app.services.fulfillment_client import (
-    FulfillmentClient,
-    FulfillmentUnavailable,
-    PortalResult,
-    get_fulfillment_client,
-)
+from app.services.fulfillment_client import FulfillmentClient, PortalResult, get_fulfillment_client
 
 # 守卫与 cart.py 对齐:BUYER 角色 + 强制改密拦截。只有 buyer_members 行不等于买家身份
 # (运营/供应商账号也可能被挂进组织),角色门在前,组织解析在后。
@@ -54,12 +49,9 @@ async def list_my_orders(
     resolved = resolve_buyer_org(current)
     if resolved.state is not None:
         return _binding(resolved.state)
-    try:
-        result = await client.list_orders(
-            resolved.org_id, page=page, size=size, lang=get_current_locale()
-        )
-    except FulfillmentUnavailable:
-        raise FulfillmentUnavailableError()
+    result = await client.list_orders(
+        resolved.org_id, page=page, size=size, lang=get_current_locale()
+    )
     return _unwrap(result)
 
 
@@ -72,8 +64,5 @@ async def get_my_order(
     resolved = resolve_buyer_org(current)
     if resolved.state is not None:
         return _binding(resolved.state)
-    try:
-        result = await client.get_order(resolved.org_id, no, lang=get_current_locale())
-    except FulfillmentUnavailable:
-        raise FulfillmentUnavailableError()
+    result = await client.get_order(resolved.org_id, no, lang=get_current_locale())
     return _unwrap(result)

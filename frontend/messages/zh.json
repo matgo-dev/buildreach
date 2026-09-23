@@ -1586,7 +1586,8 @@
     "bindingNotBoundDesc": "请联系您的销售,将本公司账户与订单关联后即可在此查看进展。",
     "unavailableTitle": "订单服务暂时不可用",
     "unavailableDesc": "获取订单信息失败,请稍后重试。",
-    "retry": "重试"
+    "retry": "重试",
+    "containerPending": "柜号待定"
   },
   "helpCenter": {
     "pageTitle": "选购指南",

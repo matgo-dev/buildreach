@@ -41,11 +41,24 @@ async def _buyer(client, company: str = "Acme Ltd") -> tuple[dict, int, int]:
     return h, me["id"], me["organization"]["id"]
 
 
-def _install_fulfillment(handler):
-    """用 MockTransport 顶替履约后台;client fixture 结束时统一 clear overrides。"""
-    def _factory():
-        return FulfillmentClient("http://fulfillment.test", transport=httpx.MockTransport(handler))
-    app.dependency_overrides[get_fulfillment_client] = _factory
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture
+async def fulfillment():
+    """用 MockTransport 顶替履约后台:每测试建一个客户端,teardown aclose;
+    dependency_overrides 由 client fixture 统一 clear。"""
+    holder: list[FulfillmentClient] = []
+
+    def install(handler):
+        fc = FulfillmentClient("http://fulfillment.test", transport=httpx.MockTransport(handler))
+        holder.append(fc)
+        app.dependency_overrides[get_fulfillment_client] = lambda: fc
+        return fc
+
+    yield install
+    for fc in holder:
+        await fc.aclose()
 
 
 def _envelope(data, code=0):
@@ -55,7 +68,7 @@ def _envelope(data, code=0):
 # ── BFF:正常透传 + 令牌口径 ────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_list_orders_passes_through_and_signs_org_token(client):
+async def test_list_orders_passes_through_and_signs_org_token(client, fulfillment):
     h, _, org_id = await _buyer(client)
     seen: dict = {}
 
@@ -64,7 +77,7 @@ async def test_list_orders_passes_through_and_signs_org_token(client):
         seen["auth"] = request.headers.get("authorization", "")
         return httpx.Response(200, json=_envelope(_LIST_PAGE))
 
-    _install_fulfillment(handler)
+    fulfillment(handler)
     r = await client.get("/api/v1/buyer/orders?page=1&size=20", headers={**h, "Accept-Language": "en"})
     assert r.status_code == 200, r.text
     assert r.json()["data"] == _LIST_PAGE  # 原样透传,金额仍是 decimal string
@@ -79,7 +92,7 @@ async def test_list_orders_passes_through_and_signs_org_token(client):
 
 
 @pytest.mark.asyncio
-async def test_detail_passes_no_and_lang(client):
+async def test_detail_passes_no_and_lang(client, fulfillment):
     h, _, _ = await _buyer(client)
     seen: dict = {}
 
@@ -87,7 +100,7 @@ async def test_detail_passes_no_and_lang(client):
         seen["url"] = str(request.url)
         return httpx.Response(200, json=_envelope({"no": "SO-2026-0001", "lines": [], "shipments": []}))
 
-    _install_fulfillment(handler)
+    fulfillment(handler)
     r = await client.get("/api/v1/buyer/orders/SO-2026-0001", headers={**h, "Accept-Language": "sw"})
     assert r.status_code == 200, r.text
     assert r.json()["data"]["no"] == "SO-2026-0001"
@@ -95,9 +108,9 @@ async def test_detail_passes_no_and_lang(client):
 
 
 @pytest.mark.asyncio
-async def test_detail_rejects_malformed_order_no(client):
+async def test_detail_rejects_malformed_order_no(client, fulfillment):
     h, _, _ = await _buyer(client)
-    _install_fulfillment(lambda req: httpx.Response(200, json=_envelope({})))
+    fulfillment(lambda req: httpx.Response(200, json=_envelope({})))
     r = await client.get("/api/v1/buyer/orders/SO%401", headers=h)
     assert r.status_code == 422
 
@@ -105,23 +118,23 @@ async def test_detail_rejects_malformed_order_no(client):
 # ── BFF:四态 ──────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_not_bound_when_fulfillment_returns_42501(client):
+async def test_not_bound_when_fulfillment_returns_42501(client, fulfillment):
     h, _, _ = await _buyer(client)
-    _install_fulfillment(lambda req: httpx.Response(404, json=_envelope(None, 42501)))
+    fulfillment(lambda req: httpx.Response(404, json=_envelope(None, 42501)))
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 200
     assert r.json()["data"] == {"binding": "NOT_BOUND"}
 
 
 @pytest.mark.asyncio
-async def test_no_org_for_buyer_without_membership(client, db_session):
+async def test_no_org_for_buyer_without_membership(client, fulfillment, db_session):
     """BUYER 角色但 buyer_members 已无行(组织被清)→ NO_ORG,且不碰履约。"""
     from sqlalchemy import delete
     h, user_id, _ = await _buyer(client)
     await db_session.execute(delete(BuyerMember).where(BuyerMember.user_id == user_id))
     await db_session.commit()
     calls = []
-    _install_fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 200
     assert r.json()["data"] == {"binding": "NO_ORG"}
@@ -129,7 +142,7 @@ async def test_no_org_for_buyer_without_membership(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_non_buyer_role_is_403_even_with_membership(client, superadmin_headers, db_session):
+async def test_non_buyer_role_is_403_even_with_membership(client, fulfillment, superadmin_headers, db_session):
     """角色门在组织解析之前:管理员即便被挂进某组织的 buyer_members,也拿不到订单。"""
     from sqlalchemy import select
     from app.db.models.user import User
@@ -141,33 +154,33 @@ async def test_non_buyer_role_is_403_even_with_membership(client, superadmin_hea
     db_session.add(BuyerMember(user_id=admin_id, buyer_org_id=org_id, is_owner=False))
     await db_session.commit()
     calls = []
-    _install_fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
     r = await client.get("/api/v1/buyer/orders", headers=superadmin_headers)
     assert r.status_code == 403 and r.json()["code"] == 40003
     assert calls == []
 
 
 @pytest.mark.asyncio
-async def test_must_change_password_blocked(client, db_session):
+async def test_must_change_password_blocked(client, fulfillment, db_session):
     from app.db.models.user import User
     h, user_id, _ = await _buyer(client)
     user = await db_session.get(User, user_id)
     user.must_change_password = True
     await db_session.commit()
-    _install_fulfillment(lambda req: httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    fulfillment(lambda req: httpx.Response(200, json=_envelope(_LIST_PAGE)))
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 403 and r.json()["code"] == 40007
 
 
 @pytest.mark.asyncio
-async def test_ambiguous_org_when_user_in_two_orgs(client, db_session):
+async def test_ambiguous_org_when_user_in_two_orgs(client, fulfillment, db_session):
     h_a, user_a, _ = await _buyer(client, "Alpha Co")
     _, _, org_b = await _buyer(client, "Beta Co")
     db_session.add(BuyerMember(user_id=user_a, buyer_org_id=org_b, is_owner=False))
     await db_session.commit()
 
     calls = []
-    _install_fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    fulfillment(lambda req: calls.append(req) or httpx.Response(200, json=_envelope(_LIST_PAGE)))
     r = await client.get("/api/v1/buyer/orders", headers=h_a)
     assert r.status_code == 200
     assert r.json()["data"] == {"binding": "AMBIGUOUS_ORG"}
@@ -175,13 +188,13 @@ async def test_ambiguous_org_when_user_in_two_orgs(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_org_disabled(client, db_session):
+async def test_org_disabled(client, fulfillment, db_session):
     h, _, org_id = await _buyer(client)
     org = await db_session.get(BuyerOrganization, org_id)
     org.status = "DISABLED"
     await db_session.commit()
 
-    _install_fulfillment(lambda req: httpx.Response(200, json=_envelope(_LIST_PAGE)))
+    fulfillment(lambda req: httpx.Response(200, json=_envelope(_LIST_PAGE)))
     r = await client.get("/api/v1/buyer/orders/SO-1", headers=h)
     assert r.status_code == 200
     assert r.json()["data"] == {"binding": "ORG_DISABLED"}
@@ -191,7 +204,7 @@ async def test_org_disabled(client, db_session):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("failure", ["timeout", "http500", "http403", "garbage"])
-async def test_fulfillment_failures_map_to_503(client, failure):
+async def test_fulfillment_failures_map_to_503(client, fulfillment, failure):
     h, _, _ = await _buyer(client)
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -203,7 +216,7 @@ async def test_fulfillment_failures_map_to_503(client, failure):
             return httpx.Response(403, json=_envelope(None, 40003))
         return httpx.Response(200, content=b"<html>not json</html>")
 
-    _install_fulfillment(handler)
+    fulfillment(handler)
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 503, r.text
     body = r.json()
@@ -212,19 +225,47 @@ async def test_fulfillment_failures_map_to_503(client, failure):
 
 
 @pytest.mark.asyncio
-async def test_detail_not_found_is_404_not_503(client):
+async def test_detail_not_found_is_404_not_503(client, fulfillment):
     h, _, _ = await _buyer(client)
-    _install_fulfillment(lambda req: httpx.Response(404, json=_envelope(None, 40008)))
+    fulfillment(lambda req: httpx.Response(404, json=_envelope(None, 40008)))
     r = await client.get("/api/v1/buyer/orders/SO-NOPE", headers=h)
     assert r.status_code == 404
     assert r.json()["code"] == 40008
 
 
 @pytest.mark.asyncio
-async def test_list_404_is_unavailable_not_not_found(client):
+@pytest.mark.parametrize("code", [40000, 42502, None])
+async def test_detail_404_with_other_code_is_503(client, fulfillment, code):
+    """只有履约通用 NotFound(40008)才是"单号不存在";反代 JSON 404 / 别的业务码 → 不可用。"""
+    h, _, _ = await _buyer(client)
+    body = _envelope(None, code) if code is not None else {"detail": "Not Found"}
+    fulfillment(lambda req: httpx.Response(404, json=body))
+    r = await client.get("/api/v1/buyer/orders/SO-NOPE", headers=h)
+    assert r.status_code == 503 and r.json()["code"] == 51001
+
+
+@pytest.mark.asyncio
+async def test_total_timeout_budget(client, fulfillment, monkeypatch):
+    """asyncio.timeout 兜整个请求:传输拖过预算即 503,不受 httpx 分阶段超时叠加影响。"""
+    import asyncio
+    from app.services import fulfillment_client as fc_mod
+    monkeypatch.setattr(fc_mod, "TIMEOUT_SECONDS", 0.05)
+    h, _, _ = await _buyer(client)
+
+    async def slow(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.3)
+        return httpx.Response(200, json=_envelope(_LIST_PAGE))
+
+    fulfillment(slow)
+    r = await client.get("/api/v1/buyer/orders", headers=h)
+    assert r.status_code == 503 and r.json()["code"] == 51001
+
+
+@pytest.mark.asyncio
+async def test_list_404_is_unavailable_not_not_found(client, fulfillment):
     """列表端点不可能 404;出现即视为履约配置错/不可用,不能给用户"订单不存在"。"""
     h, _, _ = await _buyer(client)
-    _install_fulfillment(lambda req: httpx.Response(404, json=_envelope(None, 40000)))
+    fulfillment(lambda req: httpx.Response(404, json=_envelope(None, 40000)))
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 503 and r.json()["code"] == 51001
 
@@ -239,18 +280,26 @@ async def test_unconfigured_integration_returns_503(client):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("data", [None, [], "x", 0])
-async def test_non_object_data_is_503(client, data):
+async def test_non_object_data_is_503(client, fulfillment, data):
     """履约 {code:0,data:null} 之类不透传,否则前端在解构处崩。"""
     h, _, _ = await _buyer(client)
-    _install_fulfillment(lambda req: httpx.Response(200, json=_envelope(data)))
+    fulfillment(lambda req: httpx.Response(200, json=_envelope(data)))
     r = await client.get("/api/v1/buyer/orders", headers=h)
     assert r.status_code == 503 and r.json()["code"] == 51001
 
 
 @pytest.mark.asyncio
-async def test_internal_search_requires_two_chars(client):
-    r = await client.get("/api/v1/internal/buyer-organizations?q=a", headers=_fulfillment_headers())
-    assert r.status_code == 422
+@pytest.mark.parametrize("q", ["a", "%20a", "a%20", "%20%20"])
+async def test_internal_search_requires_two_chars_after_strip(client, q):
+    r = await client.get(f"/api/v1/internal/buyer-organizations?q={q}", headers=_fulfillment_headers())
+    assert r.status_code == 422, r.text
+
+
+@pytest.mark.asyncio
+async def test_internal_search_strips_surrounding_space(client):
+    _, _, org_id = await _buyer(client, "Zanzibar Steel")
+    r = await client.get("/api/v1/internal/buyer-organizations?q=%20zanzibar%20", headers=_fulfillment_headers())
+    assert r.status_code == 200 and [o["id"] for o in r.json()["data"]] == [org_id]
 
 
 @pytest.mark.asyncio

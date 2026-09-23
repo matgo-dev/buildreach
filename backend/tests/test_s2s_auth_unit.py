@@ -137,6 +137,15 @@ def test_verify_expired_beyond_leeway_rejected():
         _verify_internal(_encode(_claims(iat=now - 200, exp=now - 140)))
 
 
+def test_verify_exp_uses_the_same_clock_as_iat():
+    """exp 也按传入的 now 校(一个函数一个时钟):墙钟看仍有效的令牌,按未来 now 判已过期。"""
+    now = int(time.time())
+    token = _encode(_claims(iat=now, exp=now + 60))
+    assert _verify_internal(token, now=now + 89)          # exp + 30s 容差内
+    with pytest.raises(S2SError):
+        _verify_internal(token, now=now + 91)             # 超出容差
+
+
 def test_verify_without_secret_refuses(monkeypatch):
     token = _encode(_claims())
     monkeypatch.setattr(settings, "S2S_SHARED_SECRET", "")
@@ -182,7 +191,10 @@ def test_s2s_misconfigured_cases():
     assert s2s_misconfigured(_settings(JWT_SECRET_KEY="j" * 40, S2S_SHARED_SECRET="j" * 40, FULFILLMENT_API_BASE_URL="https://f.example"))
 
 
-@pytest.mark.parametrize("url", ["https://", "http://", "ftp://f.example", "f.example", "https:///path", "//f.example"])
+@pytest.mark.parametrize("url", [
+    "https://", "http://", "ftp://f.example", "f.example", "https:///path", "//f.example",
+    "https://f.example/api/v1", "https://f.example/api/v1/", "https://f.example/?x=1", "https://f.example/#a",
+])
 def test_s2s_misconfigured_rejects_urls_without_scheme_or_host(url):
     """只看前缀不够:"https://" 过前缀检查后运行时 httpx 抛 InvalidURL(非 HTTPError)会变 500。"""
     assert s2s_misconfigured(_settings(S2S_SHARED_SECRET="s" * 32, FULFILLMENT_API_BASE_URL=url))

@@ -1586,7 +1586,8 @@
     "bindingNotBoundDesc": "Tafadhali wasiliana na muuzaji wako ili kuunganisha akaunti hii ya kampuni na maagizo yako.",
     "unavailableTitle": "Huduma ya maagizo haipatikani kwa sasa",
     "unavailableDesc": "Hatukuweza kupakia maagizo yako. Tafadhali jaribu tena baadaye.",
-    "retry": "Jaribu tena"
+    "retry": "Jaribu tena",
+    "containerPending": "Kontena bado"
   },
   "helpCenter": {
     "pageTitle": "Mwongozo wa Ununuzi",

@@ -215,6 +215,9 @@ def s2s_misconfigured(s: "Settings") -> str | None:
     if parts.scheme not in ("http", "https") or not parts.netloc:
         # 只看前缀不够:"https://" 能过前缀检查,运行时 httpx 抛 InvalidURL(不是 HTTPError)变 500
         return "FULFILLMENT_API_BASE_URL 必须是 http(s)://主机[:端口] 形式的完整地址"
+    if parts.path.strip("/") or parts.query or parts.fragment:
+        # 客户端自己拼 /api/v1/portal/...;带路径(如 …/api/v1)能起来但运行时全 404/503
+        return "FULFILLMENT_API_BASE_URL 只写站点入口(不带 /api/v1 等路径、查询串)"
     return None
 
 

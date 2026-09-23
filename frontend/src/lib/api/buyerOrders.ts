@@ -34,16 +34,16 @@ export interface PortalOrderLine {
 
 export interface PortalMilestone {
   type: MilestoneType;
-  event_at: string;
+  event_at: string;              // YYYY-MM-DD(纯日期,履约侧 date)
   location: string | null;
 }
 
 export interface PortalShipment {
-  container_no: string;
-  container_type: string;
+  container_no: string | null;   // 履约侧可空(柜号未分配)
+  container_type: string | null;
   stage: ShipmentStage;
-  loaded_at: string | null;
-  etd: string | null;
+  loaded_at: string | null;      // UTC 时间戳
+  etd: string | null;            // 以下三项 YYYY-MM-DD
   atd: string | null;
   eta: string | null;
   port_of_loading: string | null;

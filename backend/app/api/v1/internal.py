@@ -2,12 +2,15 @@
 
 契约 §5.1:履约做客户 ↔ 前台组织绑定时,按名搜索候选、保存前按 id 再查一次。
 只回 {id, name, code, status};不回成员、联系方式。
-名称包含匹配走 pg_trgm GIN 索引(迁移 portal_0001);q ≥ 2 字符与履约侧一致。
+名称包含匹配(ILIKE);`buyer_organizations.name` 无索引,组织量级百级全表扫可接受,
+超万级再加 trigram 索引(契约 §5.1 / §9 登记)。q 去空白后 ≥ 2 字符,与履约侧一致。
 """
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +35,14 @@ class BuyerOrgBrief(BaseModel):
     status: str
 
 
+def _strip(v: object) -> object:
+    return v.strip() if isinstance(v, str) else v
+
+
+# 先去空白再校长度:否则 "?q=%20a" 能过 min_length=2,实际跑 1 字符搜索
+SearchQuery = Annotated[str, BeforeValidator(_strip), Query(min_length=2, max_length=100)]
+
+
 def _escape_like(raw: str) -> str:
     """把用户输入里的 LIKE 通配符转义成字面量(escape 字符用反斜杠)。"""
     return raw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -39,13 +50,11 @@ def _escape_like(raw: str) -> str:
 
 @router.get("/buyer-organizations", summary="按名称搜索前台买方组织(履约绑定用)")
 async def search_buyer_organizations(
-    q: str = Query(..., min_length=2, max_length=100),
+    q: SearchQuery,
     limit: int = Query(10, ge=1, le=SEARCH_LIMIT_MAX),
     db: AsyncSession = Depends(get_db),
 ):
-    needle = q.strip()
-    if not needle:
-        return success([])
+    needle = q
     rows = await db.execute(
         select(BuyerOrganization)
         .where(BuyerOrganization.name.ilike(f"%{_escape_like(needle)}%", escape="\\"))
