@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.audit.context import get_trace_id
 from app.audit.middleware import RequestIDMiddleware
-from app.core.config import email_verification_misconfigured, settings
+from app.core.config import email_verification_misconfigured, s2s_misconfigured, settings
 from app.core.exceptions import BusinessError, success
 from app.core.message_keys import MessageKey
 from app.core.security_headers import NOSNIFF_HEADER, SecurityHeadersMiddleware
@@ -42,6 +42,15 @@ async def lifespan(app: FastAPI):
             "请配置 SMTP,或在邮件中继就绪前将 REQUIRE_EMAIL_VERIFICATION 设为 false,"
             "或本地开发设 EMAIL_DEV_LOG_CODES=true。"
         )
+
+    # 前台互通:半配置 / 弱密钥 fail-fast;全空只提示(互通未开启是合法状态)。
+    s2s_problem = s2s_misconfigured(settings)
+    if s2s_problem:
+        raise RuntimeError(f"前台互通配置错误:{s2s_problem}")
+    if not settings.s2s_configured:
+        logger.warning("前台互通未配置(S2S_SHARED_SECRET / FULFILLMENT_API_BASE_URL 为空),/buyer/orders 将回 503")
+    from app.services.fulfillment_client import close_default_client, init_default_client
+    init_default_client()
 
     async with AsyncSessionLocal() as db:
         await sync_rbac(db)
@@ -82,6 +91,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── shutdown ──
+    await close_default_client()
     if _i18n_scheduler is not None:
         _i18n_scheduler.shutdown(wait=False)
         logger.info("i18n 调度扫描已停止")

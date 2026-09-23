@@ -49,6 +49,9 @@ class CurrentUser:
     roles: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
     organization: OrganizationInfo | None = None
+    # 该用户的买方组织成员关系条数。organization 取 owner 优先的第一条;>1 时各入口自决:
+    # 授权敏感路径(如订单)拒绝多组织(buyer_org_binding),浏览类入口暂沿用第一条(契约 §9 留白)。
+    buyer_org_count: int = 0
 
 
 async def _load_roles_and_permissions(
@@ -77,28 +80,32 @@ async def _load_roles_and_permissions(
 
 async def _load_organization(
     db: AsyncSession, user_id: int, role_codes: list[str]
-) -> OrganizationInfo | None:
-    """根据角色加载关联组织。BUYER → BuyerMember,SUPPLIER → SupplierMember,其他 None。"""
+) -> tuple[OrganizationInfo | None, int]:
+    """根据角色加载关联组织,返回 (组织, 买方成员关系条数)。
+
+    BUYER → 一次取全部 buyer_members(每用户个位数),owner 优先、其次最早加入,取第一条;
+    条数交给各入口决定多组织怎么办。SUPPLIER → SupplierMember 同序取一条。其他 (None, 0)。
+    """
     if "BUYER" in role_codes:
-        row = await db.execute(
+        rows = (await db.execute(
             select(BuyerMember, BuyerOrganization)
             .join(BuyerOrganization, BuyerOrganization.id == BuyerMember.buyer_org_id)
             .where(BuyerMember.user_id == user_id)
-            .limit(1)
-        )
-        record = row.first()
-        if record:
-            member, org = record
+            .order_by(BuyerMember.is_owner.desc(), BuyerMember.id)
+        )).all()
+        if rows:
+            member, org = rows[0]
             return OrganizationInfo(
                 type="BUYER_ORG", id=org.id, name=org.name,
                 is_owner=member.is_owner, status=org.status,
                 unified_social_credit_code=org.unified_social_credit_code,
-            )
+            ), len(rows)
     if "SUPPLIER" in role_codes:
         row = await db.execute(
             select(SupplierMember, SupplierOrganization)
             .join(SupplierOrganization, SupplierOrganization.id == SupplierMember.supplier_org_id)
             .where(SupplierMember.user_id == user_id)
+            .order_by(SupplierMember.is_owner.desc(), SupplierMember.id)
             .limit(1)
         )
         record = row.first()
@@ -107,8 +114,8 @@ async def _load_organization(
             return OrganizationInfo(
                 type="SUPPLIER_ORG", id=org.id, name=org.name,
                 is_owner=member.is_owner, status=org.status,
-            )
-    return None
+            ), 0
+    return None, 0
 
 
 async def get_current_user(
@@ -146,7 +153,7 @@ async def get_current_user(
         raise NotAuthenticatedError("Token revoked")
 
     role_codes, perm_codes = await _load_roles_and_permissions(db, user.id)
-    org = await _load_organization(db, user.id, role_codes)
+    org, buyer_org_count = await _load_organization(db, user.id, role_codes)
 
     return CurrentUser(
         id=user.id,
@@ -160,4 +167,5 @@ async def get_current_user(
         roles=role_codes,
         permissions=perm_codes,
         organization=org,
+        buyer_org_count=buyer_org_count,
     )

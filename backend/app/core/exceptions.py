@@ -17,6 +17,7 @@
   05 | 交易(购物车/询价/报价) | 40501–40504
   06–08 | 预留           | —
   09 | 注册冲突聚合     | 40901/40902/40903(前端冻结,沿用)
+  10 | 前台互通(履约 BFF) | 51001(服务端类:履约不可达)
 
 兜底码:
   40000 = 通用客户端兜底(裸 HTTPException 降级)
@@ -737,6 +738,18 @@ class RfqItemsOrRemarkRequiredError(BusinessError):
             status.HTTP_422_UNPROCESSABLE_ENTITY, 40529,
             "Either items or remark is required",
             message_key=MessageKey.RFQ_ITEMS_OR_REMARK_REQUIRED,
+        )
+
+
+# ── 前台互通 510xx(服务端类)──────────────────────────────
+
+
+class FulfillmentUnavailableError(BusinessError):
+    """51001 — 履约后台不可达 / 超时 / 返回非预期(BFF 对浏览器统一 503)。"""
+    def __init__(self, message: str = "Order service temporarily unavailable"):
+        super().__init__(
+            status.HTTP_503_SERVICE_UNAVAILABLE, 51001, message,
+            message_key=MessageKey.ORDERS_UNAVAILABLE,
         )
 
 

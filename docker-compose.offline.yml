@@ -90,6 +90,9 @@ services:
       EMAIL_DEV_LOG_CODES: ${EMAIL_DEV_LOG_CODES:-false}
       # 邮件中继(SMTP)未就绪前默认关闭;配好 SMTP 后设 true 恢复验证
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
+      # 前台互通(履约后台):要么都配,要么都空;只配一项后端拒绝启动
+      S2S_SHARED_SECRET: ${S2S_SHARED_SECRET:-}
+      FULFILLMENT_API_BASE_URL: ${FULFILLMENT_API_BASE_URL:-}
     volumes:
       - uploads:/app/uploads
       - private_uploads:/app/private_uploads

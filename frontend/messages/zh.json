@@ -161,6 +161,9 @@
       "item_mismatch": "报价行项不属于此询价单或存在重复",
       "lines_incomplete": "报价未覆盖全部询价行项",
       "line_no_price": "非跳过行必须填写单价"
+    },
+    "orders": {
+      "unavailable": "订单服务暂时不可用,请稍后重试"
     }
   },
   "buyerRegister": {
@@ -1278,7 +1281,8 @@
       "orgStatus": "组织状态",
       "currentPassword": "当前密码",
       "newPassword": "新密码",
-      "confirmPassword": "确认新密码"
+      "confirmPassword": "确认新密码",
+      "orgCode": "公司编号"
     },
     "actions": {
       "edit": "编辑",
@@ -1302,7 +1306,8 @@
     },
     "hints": {
       "phoneCanBeCleared": "留空可清除手机号",
-      "usernameCanBeCleared": "留空可清除用户名"
+      "usernameCanBeCleared": "留空可清除用户名",
+      "orgCode": "开通「我的订单」时,请把此编号告知您的销售"
     },
     "roles": {
       "BUYER": "买方",
@@ -1553,7 +1558,41 @@
     "msDelivered": "签收确认",
     "emptyTitle": "暂无订单",
     "emptyDesc": "您还没有任何订单，去商城看看吧",
-    "emptyBrowse": "浏览商城"
+    "emptyBrowse": "浏览商城",
+    "stageConfirmed": "已确认 · 备货中",
+    "stageLoaded": "已装柜",
+    "stageInTransit": "海运在途",
+    "stageArrived": "已到港",
+    "stageCancelled": "已取消",
+    "msLoaded": "装柜",
+    "msDeparted": "离港",
+    "msTransshipment": "中转",
+    "msArrived": "到港",
+    "lineCount": "{count} 行商品",
+    "totalAmount": "订单金额",
+    "colShippedQty": "已发 / 共",
+    "shippedOfTotal": "已发 {shipped} / 共 {qty}",
+    "containerNo": "柜号",
+    "route": "航线",
+    "noShipmentYet": "尚未装柜发运,备货完成后这里会显示柜号与航程。",
+    "cancelledNote": "该订单已取消。",
+    "orderNotFound": "未找到该订单",
+    "bindingNoOrgTitle": "尚未完善公司信息",
+    "bindingNoOrgDesc": "订单归属于公司账户。请先完善您的公司信息,再查看订单进展。",
+    "bindingNoOrgAction": "去完善公司信息",
+    "bindingAmbiguousTitle": "账号关联了多家公司",
+    "bindingAmbiguousDesc": "为保障数据安全,暂时无法展示订单。请联系客服为您确认所属公司。",
+    "bindingDisabledTitle": "公司账户已停用",
+    "bindingDisabledDesc": "您所在公司的账户已停用,请联系客服处理。",
+    "bindingNotBoundTitle": "账户尚未关联订单",
+    "bindingNotBoundDesc": "请联系您的销售,将本公司账户与订单关联后即可在此查看进展。",
+    "unavailableTitle": "订单服务暂时不可用",
+    "unavailableDesc": "获取订单信息失败,请稍后重试。",
+    "retry": "重试",
+    "containerPending": "柜号待定",
+    "statPreparing": "备货中",
+    "statArrived": "已到港",
+    "filterEmpty": "本页没有该状态的订单"
   },
   "helpCenter": {
     "pageTitle": "选购指南",

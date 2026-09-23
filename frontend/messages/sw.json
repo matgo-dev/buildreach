@@ -161,6 +161,9 @@
       "item_mismatch": "Kipande cha nukuu hakitakiwi kwenye RFQ hii au kimerudiwa",
       "lines_incomplete": "Nukuu haifuniki vipande vyote vya RFQ",
       "line_no_price": "Safu ya nukuu isiyopigwa lazima iwe na bei ya kitengo"
+    },
+    "orders": {
+      "unavailable": "Huduma ya maagizo haipatikani kwa sasa, tafadhali jaribu tena baadaye"
     }
   },
   "buyerRegister": {
@@ -1278,7 +1281,8 @@
       "orgStatus": "Hali",
       "currentPassword": "Nenosiri la Sasa",
       "newPassword": "Nenosiri Jipya",
-      "confirmPassword": "Thibitisha Nenosiri"
+      "confirmPassword": "Thibitisha Nenosiri",
+      "orgCode": "Nambari ya Kampuni"
     },
     "actions": {
       "edit": "Hariri",
@@ -1302,7 +1306,8 @@
     },
     "hints": {
       "phoneCanBeCleared": "Acha tupu kuondoa nambari ya simu",
-      "usernameCanBeCleared": "Acha tupu kuondoa jina la mtumiaji"
+      "usernameCanBeCleared": "Acha tupu kuondoa jina la mtumiaji",
+      "orgCode": "Mpe muuzaji wako nambari hii ili kuwezesha kufuatilia maagizo"
     },
     "roles": {
       "BUYER": "Mnunuzi",
@@ -1553,7 +1558,41 @@
     "msDelivered": "Imefikishwa",
     "emptyTitle": "Hakuna Maagizo Bado",
     "emptyDesc": "Bado huna maagizo yoyote. Vinjari duka letu kuanza.",
-    "emptyBrowse": "Vinjari Duka"
+    "emptyBrowse": "Vinjari Duka",
+    "stageConfirmed": "Imethibitishwa · Inaandaliwa",
+    "stageLoaded": "Imepakiwa",
+    "stageInTransit": "Njiani",
+    "stageArrived": "Imefika Bandarini",
+    "stageCancelled": "Imeghairiwa",
+    "msLoaded": "Imepakiwa",
+    "msDeparted": "Imeondoka",
+    "msTransshipment": "Kubadilisha Meli",
+    "msArrived": "Imefika",
+    "lineCount": "Bidhaa {count}",
+    "totalAmount": "Jumla ya Agizo",
+    "colShippedQty": "Imetumwa / Jumla",
+    "shippedOfTotal": "Imetumwa {shipped} / Jumla {qty}",
+    "containerNo": "Namba ya Kontena",
+    "route": "Njia",
+    "noShipmentYet": "Bado haijapakiwa. Maelezo ya kontena na safari yataonekana hapa baada ya bidhaa kupakiwa.",
+    "cancelledNote": "Agizo hili limeghairiwa.",
+    "orderNotFound": "Agizo halikupatikana",
+    "bindingNoOrgTitle": "Taarifa za kampuni hazijakamilika",
+    "bindingNoOrgDesc": "Maagizo ni ya akaunti ya kampuni. Tafadhali kamilisha taarifa za kampuni yako ili kuona maendeleo ya agizo.",
+    "bindingNoOrgAction": "Kamilisha taarifa za kampuni",
+    "bindingAmbiguousTitle": "Akaunti imeunganishwa na kampuni zaidi ya moja",
+    "bindingAmbiguousDesc": "Kwa usalama wa data, maagizo hayawezi kuonyeshwa kwa sasa. Tafadhali wasiliana na huduma kwa wateja kuthibitisha kampuni yako.",
+    "bindingDisabledTitle": "Akaunti ya kampuni imesimamishwa",
+    "bindingDisabledDesc": "Akaunti ya kampuni yako imesimamishwa. Tafadhali wasiliana na huduma kwa wateja.",
+    "bindingNotBoundTitle": "Akaunti bado haijaunganishwa na maagizo",
+    "bindingNotBoundDesc": "Tafadhali wasiliana na muuzaji wako ili kuunganisha akaunti hii ya kampuni na maagizo yako.",
+    "unavailableTitle": "Huduma ya maagizo haipatikani kwa sasa",
+    "unavailableDesc": "Hatukuweza kupakia maagizo yako. Tafadhali jaribu tena baadaye.",
+    "retry": "Jaribu tena",
+    "containerPending": "Kontena bado",
+    "statPreparing": "Inaandaliwa",
+    "statArrived": "Imefika",
+    "filterEmpty": "Hakuna maagizo yenye hali hii kwenye ukurasa huu"
   },
   "helpCenter": {
     "pageTitle": "Mwongozo wa Ununuzi",
