@@ -121,6 +121,8 @@ const DECIMAL_RE = /^(-?)(\d+)(?:\.(\d+))?$/;
  * 只做字符串比较,不经过 float——"10.000" 与 "10" 相等,"9.999999999999999999" < "10" 不会被舍入成相等。
  */
 export function compareDecimalStrings(a: string, b: string): -1 | 0 | 1 | null {
+  // 履约侧未上新字段时 received_qty 会是 undefined:按"事实未成立"处理,不让详情页崩。
+  if (typeof a !== "string" || typeof b !== "string") return null;
   const pa = DECIMAL_RE.exec(a.trim());
   const pb = DECIMAL_RE.exec(b.trim());
   if (!pa || !pb) return null;
