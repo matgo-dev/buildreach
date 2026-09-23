@@ -14,7 +14,8 @@ import { BuyerOrderDetail } from "./BuyerOrderDetail";
 import { EmptyOrdersState, LoadingSkeleton, Money, StagePill, StatePanel, useDay } from "./buyerOrdersShared";
 import { FulfillmentHeroBanner, STAGE_PROGRESS, StatCard } from "./orderTrackingVisuals";
 
-const PAGE_SIZE = 20;
+// 一页拉满契约上限:客户一年几单,多年也在一页内,统计卡计数与下钻因此就是全量;超 100 单才翻页
+const PAGE_SIZE = 100;
 
 type StageFilter = "ALL" | "PREPARING" | "TRANSIT" | "ARRIVED";
 const STAGE_FILTERS: Record<Exclude<StageFilter, "ALL">, PortalOrderListItem["stage"][]> = {
@@ -90,7 +91,7 @@ function OrderList({
   const t = useTranslations("orderTracking");
   const { items, total, size } = page;
   const totalPages = Math.max(1, Math.ceil(total / size));
-  // 统计卡点击下钻:当前只在已加载的这一页内筛(履约接口暂无 stage 过滤,契约 v4 登记服务端筛选与全量计数)
+  // 统计卡点击下钻:在已加载的一页内筛;PAGE_SIZE=100 覆盖任何现实客户的全部订单(契约 §9 登记超限再做服务端)
   const [filter, setFilter] = useState<StageFilter>("ALL");
   const count = (...stages: PortalOrderListItem["stage"][]) => items.filter((o) => stages.includes(o.stage)).length;
   const visible = filter === "ALL" ? items : items.filter((o) => STAGE_FILTERS[filter].includes(o.stage));
