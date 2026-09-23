@@ -1281,7 +1281,8 @@
       "orgStatus": "组织状态",
       "currentPassword": "当前密码",
       "newPassword": "新密码",
-      "confirmPassword": "确认新密码"
+      "confirmPassword": "确认新密码",
+      "orgCode": "公司编号"
     },
     "actions": {
       "edit": "编辑",
@@ -1305,7 +1306,8 @@
     },
     "hints": {
       "phoneCanBeCleared": "留空可清除手机号",
-      "usernameCanBeCleared": "留空可清除用户名"
+      "usernameCanBeCleared": "留空可清除用户名",
+      "orgCode": "开通「我的订单」时,请把此编号告知您的销售"
     },
     "roles": {
       "BUYER": "买方",

@@ -1281,7 +1281,8 @@
       "orgStatus": "Status",
       "currentPassword": "Current Password",
       "newPassword": "New Password",
-      "confirmPassword": "Confirm Password"
+      "confirmPassword": "Confirm Password",
+      "orgCode": "Company ID"
     },
     "actions": {
       "edit": "Edit",
@@ -1305,7 +1306,8 @@
     },
     "hints": {
       "phoneCanBeCleared": "Leave empty to remove phone number",
-      "usernameCanBeCleared": "Leave empty to remove username"
+      "usernameCanBeCleared": "Leave empty to remove username",
+      "orgCode": "Give this ID to your sales contact to enable order tracking"
     },
     "roles": {
       "BUYER": "Buyer",

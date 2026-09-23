@@ -1281,7 +1281,8 @@
       "orgStatus": "Hali",
       "currentPassword": "Nenosiri la Sasa",
       "newPassword": "Nenosiri Jipya",
-      "confirmPassword": "Thibitisha Nenosiri"
+      "confirmPassword": "Thibitisha Nenosiri",
+      "orgCode": "Nambari ya Kampuni"
     },
     "actions": {
       "edit": "Hariri",
@@ -1305,7 +1306,8 @@
     },
     "hints": {
       "phoneCanBeCleared": "Acha tupu kuondoa nambari ya simu",
-      "usernameCanBeCleared": "Acha tupu kuondoa jina la mtumiaji"
+      "usernameCanBeCleared": "Acha tupu kuondoa jina la mtumiaji",
+      "orgCode": "Mpe muuzaji wako nambari hii ili kuwezesha kufuatilia maagizo"
     },
     "roles": {
       "BUYER": "Mnunuzi",

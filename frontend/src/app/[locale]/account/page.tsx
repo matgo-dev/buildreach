@@ -389,6 +389,18 @@ function Inner() {
                     )}
                   </>
                 )}
+                {/* 公司编号:开通「我的订单」时客户把它告诉销售,履约侧按编号绑定,不按公司名(名字不唯一且可自改) */}
+                {user.organization!.type === "BUYER_ORG" && (
+                  <FieldRow
+                    label={t("fields.orgCode")}
+                    value={
+                      <>
+                        <span className="font-mono font-semibold text-slate-900">#{user.organization!.id}</span>
+                        <span className="ml-3 text-xs text-slate-500 whitespace-normal">{t("hints.orgCode")}</span>
+                      </>
+                    }
+                  />
+                )}
                 <FieldRow
                   label={t("fields.orgType")}
                   value={t(`orgTypes.${user.organization!.type}`)}
