@@ -1,7 +1,8 @@
 """「我的订单」BFF + 内部组织路由 集成测试(契约 §8 matgo 部分)。
 
 覆盖接线:登录门 → 确定性组织解析四态 → 对履约签令牌与透传 → 履约异常映射 503;
-内部端点无令牌 / 错 aud / 错 iss → 401,正确令牌可搜索、按 id 取。
+内部端点无令牌 / 错 aud / 错 iss → 401,正确令牌可搜索、按 id 取;
+互通未配置(开关关)→ 列表空页、详情 404。
 履约后台用 httpx.MockTransport 假扮,断言发出的令牌能按 matgo→履约口径验签。
 """
 from __future__ import annotations
@@ -271,11 +272,25 @@ async def test_list_404_is_unavailable_not_not_found(client, fulfillment):
 
 
 @pytest.mark.asyncio
-async def test_unconfigured_integration_returns_503(client):
-    """互通未配置 = lifespan 没建单例(测试不跑 lifespan,等价);不覆盖依赖直接打 → 503。"""
+async def test_switch_off_returns_empty_list_and_404_detail(client):
+    """互通未配置 = 开关关闭(测试不跑 lifespan,单例为 None,等价)→ 列表空页、详情 404,不报 503。"""
     h, _, _ = await _buyer(client)
+    r = await client.get("/api/v1/buyer/orders?page=2&size=50", headers=h)
+    assert r.status_code == 200
+    assert r.json()["data"] == {"items": [], "total": 0, "page": 2, "size": 50}
+    r = await client.get("/api/v1/buyer/orders/SO2026090005", headers=h)
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_switch_off_skips_org_resolution(client, db_session):
+    """开关关闭时不解析组织:无组织买家也是空页,而非 NO_ORG 绑定提示。"""
+    from sqlalchemy import delete
+    h, user_id, _ = await _buyer(client)
+    await db_session.execute(delete(BuyerMember).where(BuyerMember.user_id == user_id))
+    await db_session.commit()
     r = await client.get("/api/v1/buyer/orders", headers=h)
-    assert r.status_code == 503 and r.json()["code"] == 51001
+    assert r.status_code == 200 and r.json()["data"]["total"] == 0
 
 
 @pytest.mark.asyncio

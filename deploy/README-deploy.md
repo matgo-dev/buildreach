@@ -124,7 +124,7 @@ vi .env.production
 | `BANNER_DIR` | `./data/banners` | 首页轮播图目录,默认不用改 |
 | `BACKEND_HOST_PORT` | `8001` | 后端端口 |
 | `FRONTEND_HOST_PORT` | `3001` | 前端端口 |
-| `S2S_SHARED_SECRET` | `openssl rand -hex 32`,与履约仓同值 | 前台互通密钥,见 3.7;不接履约时留空 |
+| `S2S_SHARED_SECRET` | `openssl rand -hex 32`,与履约仓同值 | 前台互通密钥,见 3.7;不接履约时留空(两项全空 = 「我的订单」开关关闭,真实买家看空态) |
 | `FULFILLMENT_API_BASE_URL` | `https://ops.example.com` | 履约后台公网入口,见 3.7;不接履约时留空 |
 
 > **⚠️ 三个 URL 必须匹配**：`API_BASE_URL`、`CORS_ORIGINS`、`IMAGE_BASE_URL` 必须基于同一个 HTTPS 域名入口。

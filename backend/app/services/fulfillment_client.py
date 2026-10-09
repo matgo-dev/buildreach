@@ -129,8 +129,6 @@ async def close_default_client() -> None:
         _default_client = None
 
 
-def get_fulfillment_client() -> FulfillmentClient:
-    """FastAPI 依赖。互通未配置(单例为 None)→ 直接 503,不进路由。"""
-    if _default_client is None:
-        raise FulfillmentUnavailableError()
+def get_fulfillment_client() -> FulfillmentClient | None:
+    """FastAPI 依赖。互通未配置(单例为 None)= 开关关闭,由路由决定怎么回(不报错)。"""
     return _default_client
