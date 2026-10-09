@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
     if s2s_problem:
         raise RuntimeError(f"前台互通配置错误:{s2s_problem}")
     if not settings.s2s_configured:
-        logger.warning("前台互通未配置(S2S_SHARED_SECRET / FULFILLMENT_API_BASE_URL 为空),/buyer/orders 将回 503")
+        logger.warning("前台互通未配置(S2S_SHARED_SECRET / FULFILLMENT_API_BASE_URL 为空),「我的订单」开关关闭:真实买家看空态(demo 账号仍走 mock)")
     from app.services.fulfillment_client import close_default_client, init_default_client
     init_default_client()
 

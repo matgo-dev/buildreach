@@ -4,6 +4,9 @@
 响应二选一:正常数据(履约 `data` 原样透传)或 `{"binding": <状态>}`:
   NO_ORG / AMBIGUOUS_ORG / ORG_DISABLED 由本仓组织解析得出;NOT_BOUND = 履约回 42501。
 履约超时 / 5xx / 其他 4xx → 503 + error.orders.unavailable(由 fulfillment_client 直接抛)。
+
+开关:S2S 两项 env 全空 = 互通关闭(履约后台未上线)。此时不解析组织、不调履约,
+列表回空页、详情 404 —— 买家看到「暂无订单」而非报错;demo 账号走前端 mock 不受影响。
 """
 from __future__ import annotations
 
@@ -44,8 +47,10 @@ async def list_my_orders(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     current: CurrentUser = Depends(block_if_must_change_password),
-    client: FulfillmentClient = Depends(get_fulfillment_client),
+    client: FulfillmentClient | None = Depends(get_fulfillment_client),
 ):
+    if client is None:
+        return success({"items": [], "total": 0, "page": page, "size": size})
     resolved = resolve_buyer_org(current)
     if resolved.state is not None:
         return _binding(resolved.state)
@@ -59,8 +64,10 @@ async def list_my_orders(
 async def get_my_order(
     no: str = Path(..., pattern=ORDER_NO_PATTERN),
     current: CurrentUser = Depends(block_if_must_change_password),
-    client: FulfillmentClient = Depends(get_fulfillment_client),
+    client: FulfillmentClient | None = Depends(get_fulfillment_client),
 ):
+    if client is None:
+        raise NotFoundError("Order not found")
     resolved = resolve_buyer_org(current)
     if resolved.state is not None:
         return _binding(resolved.state)

@@ -156,7 +156,7 @@ class Settings(BaseSettings):
 
     # ---- 前台互通(履约后台 ↔ matgo,契约 docs/specs/2026-09-21-0214)----
     # 两向调用共用一把独立密钥(≥32 字符,禁复用 JWT_SECRET_KEY),HS256 签 60s 短时令牌。
-    # 两项要么都配(互通开启),要么都空(互通关闭,/buyer/orders 回 503);只配一项启动即失败。
+    # 两项要么都配(互通开启),要么都空(互通关闭,/buyer/orders 列表回空页、详情 404);只配一项启动即失败。
     S2S_SHARED_SECRET: str = ""
     FULFILLMENT_API_BASE_URL: str = ""
 
