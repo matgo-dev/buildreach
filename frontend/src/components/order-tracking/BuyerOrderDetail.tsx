@@ -103,7 +103,7 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
       <div className="rounded-xl border border-line bg-white overflow-hidden">
         <div
           className="px-6 py-5"
-          style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0f9ff 100%)" }}
+          style={{ background: "linear-gradient(135deg, #e2edcd 0%, #eef4e6 55%, #eef7dc 100%)" }}
         >
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
@@ -123,7 +123,7 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
               <Money amount={order.total_amount} currency={order.currency} className="text-xl font-bold text-navy" />
             </div>
           </div>
-          {cancelled && <p className="mt-3 text-sm text-slate-500">{t("cancelledNote")}</p>}
+          {cancelled && <p className="mt-3 text-sm text-muted">{t("cancelledNote")}</p>}
           {progress !== null && (
             <div className="mt-4">
               <div className="h-2.5 rounded-full bg-white/60 overflow-hidden">
@@ -415,7 +415,7 @@ function NodeTimeline({
                 )}
               </div>
               <div className="flex-1 pt-1.5 min-w-0">
-                <span className={`text-sm font-semibold ${row.lit ? "text-navy" : "text-slate-400"}`}>
+                <span className={`text-sm font-semibold ${row.lit ? "text-navy" : "text-muted"}`}>
                   {t(row.labelKey)}
                 </span>
                 {row.detail && <p className="mt-0.5 text-xs text-muted">{row.detail}</p>}

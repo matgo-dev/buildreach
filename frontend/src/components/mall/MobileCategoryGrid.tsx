@@ -31,7 +31,7 @@ export function MobileCategoryGrid() {
       {/* 标题栏 */}
       <div className="flex items-center gap-1.5 px-1 mb-2">
         <LayoutGrid className="w-4 h-4 text-teal-700" />
-        <span className="text-sm font-bold text-gray-800">{t("allCategories")}</span>
+        <span className="text-sm font-bold text-ink">{t("allCategories")}</span>
       </div>
 
       {/* 标签网格 — 展开时固定高度可滚动 */}
@@ -41,7 +41,7 @@ export function MobileCategoryGrid() {
             <button
               key={cat.code}
               onClick={() => router.push(`/${locale}/mall?cat=${cat.code}`)}
-              className="py-2 px-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-700 text-center leading-snug min-h-[40px] flex items-center justify-center overflow-hidden break-words transition-colors active:bg-teal-50 active:text-teal-800 active:border-teal-200"
+              className="py-2 px-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-ink text-center leading-snug min-h-[40px] flex items-center justify-center overflow-hidden break-words transition-colors active:bg-teal-50 active:text-teal-800 active:border-teal-200"
             >
               {cat.name}
             </button>

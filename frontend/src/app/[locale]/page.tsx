@@ -3,7 +3,7 @@ import { MessageCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { MallButton } from "@/components/mall/MallButton";
+import { MallButton, MALL_BTN_OUTLINE } from "@/components/mall/MallButton";
 import { CategorySidebar } from "@/components/mall/CategorySidebar";
 import { RightSidebar } from "@/components/mall/RightSidebar";
 import { HeroBannerCarousel } from "@/components/mall/HeroBannerCarousel";
@@ -52,20 +52,16 @@ function BottomCta() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="rounded-xl p-10 text-center text-white" style={{
-      background: "linear-gradient(120deg, #0a7a56, #0c9468 60%, #10b981)",
-    }}>
+    <div className="rounded-xl mall-surface p-10 text-center">
       {user ? (
         <>
-          <h2 className="text-xl font-black mb-2">{t("ctaLoggedInTitle")}</h2>
-          <p className="text-white/50 text-sm mb-5">{t("ctaLoggedInDesc")}</p>
+          <h2 className="text-xl font-black text-teal-900 mb-2">{t("ctaLoggedInTitle")}</h2>
+          <p className="text-ink-2 text-sm mb-5">{t("ctaLoggedInDesc")}</p>
           <div className="flex justify-center gap-3 flex-wrap">
-            <MallButton variant="gold" href="/mall">{t("ctaBrowseMall")}</MallButton>
+            <MallButton variant="teal" href="/mall">{t("ctaBrowseMall")}</MallButton>
             <MallButton variant="outline" href="/order-tracking">{t("ctaTrackOrder")}</MallButton>
             <ContactPopover>
-              <button
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
-              >
+              <button className={`inline-flex h-10 items-center gap-1.5 rounded-lg px-5 text-sm transition-colors ${MALL_BTN_OUTLINE}`}>
                 <MessageCircle className="h-4 w-4" />
                 {t("ctaContactUs")}
               </button>
@@ -74,10 +70,10 @@ function BottomCta() {
         </>
       ) : (
         <>
-          <h2 className="text-xl font-black mb-2">{t("ctaTitle")}</h2>
-          <p className="text-white/50 text-sm mb-5">{t("ctaDesc")}</p>
+          <h2 className="text-xl font-black text-teal-900 mb-2">{t("ctaTitle")}</h2>
+          <p className="text-ink-2 text-sm mb-5">{t("ctaDesc")}</p>
           <div className="flex justify-center gap-3">
-            <MallButton variant="gold" href="/register">{t("ctaRegister")}</MallButton>
+            <MallButton variant="teal" href="/register">{t("ctaRegister")}</MallButton>
             <MallButton variant="outline" href="/how-to-buy">{t("ctaLearnMore")}</MallButton>
           </div>
         </>

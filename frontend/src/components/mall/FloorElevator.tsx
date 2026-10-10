@@ -112,8 +112,8 @@ export function FloorElevator({ floors }: { floors: FloorItem[] }) {
               onClick={() => scrollTo(floor.id)}
               className={`block w-full px-1.5 py-2.5 text-[12px] leading-tight text-center border-b border-gray-100 last:border-b-0 transition-colors ${
                 isActive
-                  ? "bg-teal-700 text-white font-bold"
-                  : "text-gray-600 hover:bg-teal-50 hover:text-teal-800"
+                  ? "bg-lime text-teal-900 font-bold"
+                  : "text-ink-2 hover:bg-teal-50 hover:text-teal-900"
               }`}
             >
               {t(floor.nameKey)}
@@ -122,7 +122,7 @@ export function FloorElevator({ floors }: { floors: FloorItem[] }) {
         })}
         <button
           onClick={scrollToTop}
-          className="block w-full px-1.5 py-2 text-center text-[10px] text-gray-400 hover:text-teal-800 hover:bg-teal-50 transition-colors border-t border-gray-100"
+          className="block w-full px-1.5 py-2 text-center text-[10px] text-muted hover:text-teal-800 hover:bg-teal-50 transition-colors border-t border-gray-100"
         >
           <ArrowUp className="w-3 h-3 mx-auto mb-0.5" />
           {t("floorBackToTop")}

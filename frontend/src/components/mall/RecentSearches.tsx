@@ -61,13 +61,13 @@ export function RecentSearches({ visible, onSelect, onClose }: Props) {
     >
       {/* 标题行 */}
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-sm font-medium text-ink">
           {t("recentSearches")}
         </span>
         <button
           type="button"
           onClick={handleClear}
-          className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-red-500"
+          className="flex items-center gap-1 text-xs text-muted transition-colors hover:text-red-500"
           title={t("clearSearchHistory")}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -84,7 +84,7 @@ export function RecentSearches({ visible, onSelect, onClose }: Props) {
               e.preventDefault(); // 阻止 blur 先于 click 触发
               onSelect(kw);
             }}
-            className="block w-full px-4 py-2 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-teal-700"
+            className="block w-full px-4 py-2 text-left text-sm text-ink-2 transition-colors hover:bg-gray-50 hover:text-teal-700"
           >
             {kw}
           </button>

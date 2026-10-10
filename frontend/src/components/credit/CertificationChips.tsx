@@ -29,7 +29,7 @@ function _statusVisual(status: CertificationOut["status"], expiresAt: string | n
     return {
       icon: ShieldAlert,
       bg: "bg-slate-100",
-      text: "text-slate-400",
+      text: "text-muted",
       border: "border-slate-200",
       label: "过期",
     };
@@ -50,7 +50,7 @@ export function CertificationChips({
 }) {
   if (certifications.length === 0) {
     return (
-      <div className="text-sm text-slate-400">暂无证书数据</div>
+      <div className="text-sm text-muted">暂无证书数据</div>
     );
   }
 
@@ -66,7 +66,7 @@ export function CertificationChips({
         .filter((t) => grouped[t])
         .map((t) => (
           <div key={t}>
-            <div className="mb-1.5 text-xs font-medium tracking-wide text-slate-600">
+            <div className="mb-1.5 text-xs font-medium tracking-wide text-ink-2">
               {TYPE_META[t].label}
             </div>
             <div className="flex flex-wrap gap-2">

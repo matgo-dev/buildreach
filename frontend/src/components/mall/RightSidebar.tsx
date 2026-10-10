@@ -30,7 +30,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
           <MallCard padding="p-0" className="overflow-hidden">
             {!expanded ? (
               /* 收起态 — 轻量入口 */
-              <div className="p-2.5">
+              <div className="bg-teal-100 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Headphones className="w-4 h-4 text-teal-700" />
                   <h3 className="text-navy text-[15px] font-black">{t("customerSupport")}</h3>
@@ -39,11 +39,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                 <p className="text-muted text-[12px] font-bold mb-2.5">{t("consultantResponseHint")}</p>
                 <button
                   onClick={() => setExpanded(true)}
-                  className="w-full h-9 rounded-lg text-[13px] font-bold text-white transition-all hover:-translate-y-px inline-flex items-center justify-center gap-1.5"
-                  style={{
-                    background: "linear-gradient(135deg, #2bd86e, #1aa851)",
-                    boxShadow: "0 6px 16px rgba(37,211,102,.35)",
-                  }}
+                  className="w-full h-9 rounded-lg bg-lime text-[13px] font-bold text-teal-900 shadow-[0_6px_16px_rgba(151,200,23,.45)] transition-all hover:-translate-y-px hover:bg-lime-soft inline-flex items-center justify-center gap-1.5"
                 >
                   {t("consultantCta")}
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -144,7 +140,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
           >
             <button
               onClick={() => setShowQr(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-3 right-3 text-muted hover:text-ink-2 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -159,11 +155,11 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                 className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
               />
               {contact.wechatId && (
-                <p className="mt-3 text-sm text-gray-500">
-                  {t("wechatIdLabel")}: <span className="font-mono text-gray-700">{contact.wechatId}</span>
+                <p className="mt-3 text-sm text-muted">
+                  {t("wechatIdLabel")}: <span className="font-mono text-ink">{contact.wechatId}</span>
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-400">{t("wechatScanHint")}</p>
+              <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
             </div>
           </div>
         </div>,

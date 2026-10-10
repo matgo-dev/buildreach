@@ -93,7 +93,7 @@ export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
                 <Icon className="h-5 w-5" />
               </div>
               <div className="text-center">
-                <p className={`text-xs font-medium ${node.done || node.current ? "text-navy" : "text-slate-400"}`}>
+                <p className={`text-xs font-medium ${node.done || node.current ? "text-navy" : "text-muted"}`}>
                   {node.label}
                 </p>
                 <p className="text-[10px] text-muted">{node.sublabel}</p>
@@ -108,7 +108,7 @@ export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
                     node.done ? "bg-teal-400" : "bg-slate-200"
                   }`}
                   style={node.current ? {
-                    background: "repeating-linear-gradient(90deg, #14b8a6 0, #14b8a6 6px, transparent 6px, transparent 12px)",
+                    background: "repeating-linear-gradient(90deg, #32bdc9 0, #32bdc9 6px, transparent 6px, transparent 12px)",
                   } : undefined}
                 />
               </div>
@@ -132,33 +132,28 @@ export function FulfillmentHeroBanner() {
     <div className="relative overflow-hidden rounded-2xl min-h-[260px]">
       {/* 真实港口照片背景 */}
       <img
-        src="/images/fulfillment/hero-port.jpg"
+        src="/images/fulfillment/hero-port-day.jpg"
         alt="Container port"
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover object-[center_70%]"
       />
-      {/* 渐变遮罩 — 左侧深色保证文字可读，右侧半透明露出照片 */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "linear-gradient(to right, rgba(10,37,64,0.92) 0%, rgba(13,77,77,0.85) 45%, rgba(13,77,77,0.5) 70%, rgba(13,77,77,0.3) 100%)",
-        }}
-      />
-      {/* 底部暖金色边线 */}
-      <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(90deg, #e3a615, #D4A853, transparent)" }} />
+      {/* 浅色遮罩 — 左侧雾白托住深绿字，右侧淡出露出港口（与其他内页浅色头部一致） */}
+      <div className="absolute inset-0 bg-gradient-to-r from-bg/95 via-teal-50/70 via-35% to-transparent to-60%" />
+      {/* 底部柠绿细线 */}
+      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-lime" />
 
       <div className="relative flex items-center gap-8 px-8 py-10 md:py-12">
         {/* 左侧文案 */}
         <div className="flex-1 min-w-0 z-10">
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-1 text-xs font-medium text-white/90">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-900/10 bg-white/70 backdrop-blur-sm px-3 py-1 text-xs font-medium text-teal-900">
+              <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse" />
               {t("heroBadge")}
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight drop-shadow-lg">
+          <h1 className="text-2xl md:text-3xl font-bold text-teal-900 leading-tight max-w-md break-keep">
             {t("heroTitle")}
           </h1>
-          <p className="mt-2.5 text-sm md:text-base text-white/75 leading-relaxed max-w-lg drop-shadow">
+          <p className="mt-2.5 text-sm md:text-base text-ink-2 leading-relaxed max-w-md">
             {t("heroSubtitle")}
           </p>
 
@@ -170,11 +165,11 @@ export function FulfillmentHeroBanner() {
               { value: "100%", unit: "", label: t("heroVisibility") },
             ].map((stat, i) => (
               <div key={i}>
-                <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
+                <p className="text-2xl md:text-3xl font-bold text-teal-900">
                   {stat.value}
-                  {stat.unit && <span className="text-sm font-medium text-amber-300 ml-1">{stat.unit}</span>}
+                  {stat.unit && <span className="text-sm font-medium text-teal-600 ml-1">{stat.unit}</span>}
                 </p>
-                <p className="text-[11px] text-white/60 mt-0.5">{stat.label}</p>
+                <p className="text-[11px] text-muted mt-0.5">{stat.label}</p>
               </div>
             ))}
           </div>

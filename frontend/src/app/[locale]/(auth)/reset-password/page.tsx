@@ -28,10 +28,10 @@ function ResetPasswordContent() {
     return (
       <div className="text-center space-y-4">
         <AlertCircle className="mx-auto h-10 w-10 text-red-400" />
-        <p className="text-sm text-gray-600">{t("invalid_link")}</p>
+        <p className="text-sm text-ink-2">{t("invalid_link")}</p>
         <Link
           href="/forgot-password"
-          className="inline-block text-sm font-semibold text-[#FF6B35] hover:text-[#e05a25]"
+          className="inline-block text-sm font-semibold text-sea hover:text-teal-900"
         >
           {t("request_again")}
         </Link>
@@ -79,11 +79,11 @@ function ResetPasswordContent() {
         <CheckCircle2 className="mx-auto h-12 w-12 text-[#10B981]" />
         <div>
           <h2 className="text-lg font-bold text-gray-900">{t("success_title")}</h2>
-          <p className="mt-2 text-sm text-gray-500">{t("success_desc")}</p>
+          <p className="mt-2 text-sm text-muted">{t("success_desc")}</p>
         </div>
         <Link
           href="/login"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c9468] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg mall-btn-primary px-8 text-sm font-semibold transition-all"
         >
           {t("go_login")}
         </Link>
@@ -95,7 +95,7 @@ function ResetPasswordContent() {
     <>
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-900">{t("title")}</h2>
-        <p className="mt-2 text-sm text-gray-500">{t("subtitle")}</p>
+        <p className="mt-2 text-sm text-muted">{t("subtitle")}</p>
       </div>
 
       {error && (
@@ -107,7 +107,7 @@ function ResetPasswordContent() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="password" className="text-sm font-semibold text-ink">
             {t("new_password")}
           </Label>
           <div className="relative">
@@ -124,29 +124,29 @@ function ResetPasswordContent() {
               }}
               autoComplete="new-password"
               className={
-                "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
+                "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
                 (pwdErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                  : "border-control focus:border-teal-700 focus:ring-teal-700/15")
               }
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           {pwdErr && <p className="text-xs text-red-500">{pwdErr}</p>}
-          <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint")}</p>
+          <p className="mt-1 text-[11px] text-muted">{t("pwd_hint")}</p>
         </div>
 
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitting ? (
             <>
@@ -162,14 +162,14 @@ function ResetPasswordContent() {
       <div className="mt-6 text-center">
         <Link
           href="/login"
-          className="text-sm font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]"
+          className="text-sm font-semibold text-sea transition-colors hover:text-teal-900"
         >
           {t("back_to_login")}
         </Link>
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-3">
-        <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
+        <Link href="/" className="text-xs text-muted transition-colors hover:text-ink-2">
           {tc("back_to_home")}
         </Link>
         <span className="text-xs text-gray-300">|</span>
@@ -184,7 +184,7 @@ export default function ResetPasswordPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
+          <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
         </div>
       }
     >

@@ -55,9 +55,9 @@ interface StepFormProps {
 }
 
 const INPUT_BASE =
-  "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
+  "h-11 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK =
-  "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15";
+  "border-control focus:border-sea focus:ring-sea/15";
 const INPUT_ERR = "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 
 function cls(err: string | null, extra = "") {
@@ -307,20 +307,20 @@ export function StepForm({
     <form onSubmit={onSubmit} className="space-y-5" noValidate>
       <div>
         <h2 className="text-xl font-bold text-gray-900">海外供应商入驻</h2>
-        <p className="mt-1 text-sm text-gray-500">请填写真实的自然人与企业组织信息</p>
+        <p className="mt-1 text-sm text-muted">请填写真实的自然人与企业组织信息</p>
       </div>
 
       {/* 当前国家与凭证规则提示(只读) */}
       <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
         <div className="text-sm">
-          <p className="text-gray-500">
-            注册地:<span className="font-semibold text-gray-800">{country.nameZh}</span> · {country.nameEn}
+          <p className="text-muted">
+            注册地:<span className="font-semibold text-ink">{country.nameZh}</span> · {country.nameEn}
           </p>
-          <p className="mt-0.5 text-xs text-gray-400">
+          <p className="mt-0.5 text-xs text-muted">
             凭证:{country.regNo.label} ({country.regNo.hint})
           </p>
         </div>
-        <span className="rounded bg-[#003366] px-2 py-1 text-xs font-bold tracking-wide text-white">
+        <span className="rounded bg-teal-700 px-2 py-1 text-xs font-bold tracking-wide text-white">
           {country.code}
         </span>
       </div>
@@ -333,7 +333,7 @@ export function StepForm({
       )}
 
       <div className="space-y-1.5">
-        <Label htmlFor="company_name" className="text-sm font-semibold text-gray-700">
+        <Label htmlFor="company_name" className="text-sm font-semibold text-ink">
           公司名称 *
         </Label>
         <input
@@ -347,11 +347,11 @@ export function StepForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="registration_no" className="flex items-center justify-between text-sm font-semibold text-gray-700">
+        <Label htmlFor="registration_no" className="flex items-center justify-between text-sm font-semibold text-ink">
           <span>
-            {country.regNo.label} <span className="font-normal text-gray-400">({country.regNo.hint})</span> *
+            {country.regNo.label} <span className="font-normal text-muted">({country.regNo.hint})</span> *
           </span>
-          <span className="rounded bg-[#003366]/10 px-1.5 py-0.5 font-mono text-xs font-bold text-[#003366]">
+          <span className="rounded bg-teal-700/10 px-1.5 py-0.5 font-mono text-xs font-bold text-teal-700">
             {country.code}
           </span>
         </Label>
@@ -367,7 +367,7 @@ export function StepForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="name" className="text-sm font-semibold text-ink">
             联系人 *
           </Label>
           <input
@@ -380,7 +380,7 @@ export function StepForm({
           {errOf("name") && <p className="text-xs text-red-500">{errOf("name")}</p>}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="phone" className="text-sm font-semibold text-ink">
             联系电话 *
           </Label>
           <input
@@ -395,7 +395,7 @@ export function StepForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+        <Label htmlFor="email" className="text-sm font-semibold text-ink">
           联系邮箱 *
         </Label>
         <input
@@ -411,8 +411,8 @@ export function StepForm({
 
       {/* 密码 */}
       <div className="space-y-1.5">
-        <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
-          输入密码 * <span className="font-normal text-gray-400">(11-50 位,需 3 类字符)</span>
+        <Label htmlFor="password" className="text-sm font-semibold text-ink">
+          输入密码 * <span className="font-normal text-muted">(11-50 位,需 3 类字符)</span>
         </Label>
         <div className="relative">
           <input
@@ -432,7 +432,7 @@ export function StepForm({
           <button
             type="button" tabIndex={-1}
             onClick={() => setShowPwd((s) => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2"
           >
             {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
@@ -441,7 +441,7 @@ export function StepForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
+        <Label htmlFor="confirmPassword" className="text-sm font-semibold text-ink">
           密码确认 *
         </Label>
         <div className="relative">
@@ -461,7 +461,7 @@ export function StepForm({
           <button
             type="button" tabIndex={-1}
             onClick={() => setShowConfirm((s) => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2"
           >
             {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
@@ -485,7 +485,7 @@ export function StepForm({
         <button
           type="button"
           onClick={onBack}
-          className="h-12 flex-1 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50"
+          className="h-12 flex-1 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-ink-2 transition-colors hover:bg-gray-50"
         >
           ← 返回上一步
         </button>
@@ -496,8 +496,8 @@ export function StepForm({
           className={
             "flex h-12 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition-all active:scale-[0.99] " +
             (isFormValid && !submitting
-              ? "bg-[#FF6B35] hover:bg-[#e05a25] text-white cursor-pointer"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed")
+              ? "mall-btn-primary cursor-pointer"
+              : "bg-gray-300 text-muted cursor-not-allowed")
           }
         >
           {submitting ? (

@@ -17,17 +17,8 @@ export const BRAND = {
   /** 中文副标题 */
   nameZhSub: "中国建材直采服务东非市场",
 
-  /** Logo 图片路径(小 mark,矢量 SVG) */
-  logoMark: "/logos/logo-mark.svg",
-
-  /** Logo 横版整锁(mark + 字标,浅底) */
-  logoLockup: "/logos/logo-lockup.svg",
-
-  /** Logo 横版整锁(深底反白) */
-  logoLockupDark: "/logos/logo-lockup-dark.svg",
-
-  /** Logo 横版图片路径 */
-  logoHorizontal: "/logos/logo-horizontal.png",
+  /** 砖标 + 字标组合（v2，intro 色系），页头/页脚/登录页用这个 */
+  logoLockup: "/logos/logo-lockup-v2.svg",
 
   /** Logo icon 路径(favicon / apple-touch-icon) */
   logoIcon: "/logos/matgo-icon.png",

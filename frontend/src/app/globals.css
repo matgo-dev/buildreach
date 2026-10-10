@@ -1,5 +1,16 @@
 @tailwind base;
 @tailwind components;
+
+/* 商城前台品牌：大块浅色面 + 主按钮，集中定义便于整体调色 */
+@layer components {
+  /* 大块用浅鼠尾草绿平涂(teal-100,取自 intro 实际页面),柠绿只作顶部细线强调 */
+  .mall-surface {
+    @apply border border-line border-t-[3px] border-t-lime bg-teal-100;
+  }
+  .mall-btn-primary {
+    @apply bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-mall-sm hover:from-teal-500 hover:to-teal-600;
+  }
+}
 @tailwind utilities;
 
 :root {

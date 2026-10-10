@@ -52,9 +52,9 @@ import { routing } from "@/i18n/routing";
 type Role = "BUYER" | "SUPPLIER" | "";
 
 const INPUT_BASE =
-  "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
+  "h-11 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK_BUYER =
-  "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15";
+  "border-control focus:border-teal-700 focus:ring-teal-700/15";
 const INPUT_ERR =
   "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 
@@ -156,7 +156,7 @@ export default function RegisterPage() {
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-900">{t("pageTitle")}</h2>
         {!role && (
-          <p className="mt-1 text-sm text-gray-400">{t("selectRole")}</p>
+          <p className="mt-1 text-sm text-muted">{t("selectRole")}</p>
         )}
       </div>
 
@@ -167,34 +167,34 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => handleSwitchRole("BUYER")}
-              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#0c9468] hover:bg-[#0c9468]/5"
+              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-teal-700 hover:bg-teal-700/5"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 transition-colors group-hover:bg-[#0c9468]/10">
-                <ShoppingCart className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#0c9468]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 transition-colors group-hover:bg-teal-700/10">
+                <ShoppingCart className="h-6 w-6 text-muted transition-colors group-hover:text-teal-700" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#0c9468]">
+                <p className="text-sm font-semibold text-ink transition-colors group-hover:text-teal-700">
                   {t("roleBuyer")}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">{t("roleBuyerHint")}</p>
+                <p className="mt-0.5 text-xs text-muted">{t("roleBuyerHint")}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0c9468]" />
+              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-teal-700" />
             </button>
             <button
               type="button"
               onClick={() => handleSwitchRole("SUPPLIER")}
-              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-[#FF6B35] hover:bg-[#FF6B35]/5"
+              className="group flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-teal-700 hover:bg-teal-700/5"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 transition-colors group-hover:bg-[#FF6B35]/10">
-                <Building2 className="h-6 w-6 text-gray-400 transition-colors group-hover:text-[#FF6B35]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 transition-colors group-hover:bg-teal-700/10">
+                <Building2 className="h-6 w-6 text-muted transition-colors group-hover:text-sea" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 transition-colors group-hover:text-[#FF6B35]">
+                <p className="text-sm font-semibold text-ink transition-colors group-hover:text-sea">
                   {t("roleSupplier")}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-400">{t("roleSupplierHint")}</p>
+                <p className="mt-0.5 text-xs text-muted">{t("roleSupplierHint")}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#FF6B35]" />
+              <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-sea" />
             </button>
           </div>
         </div>
@@ -222,16 +222,16 @@ export default function RegisterPage() {
       )}
 
       <div className="mt-5 text-center">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted">
           {t("hasAccount")}{" "}
-          <Link href="/login" className="font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]">
+          <Link href="/login" className="font-semibold text-sea transition-colors hover:text-teal-900">
             {t("goLogin")}
           </Link>
         </p>
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-3">
-        <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
+        <Link href="/" className="text-xs text-muted transition-colors hover:text-ink-2">
           {tc("back_to_home")}
         </Link>
         <span className="text-xs text-gray-300">|</span>
@@ -263,7 +263,7 @@ function SupplierWizard({
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -718,7 +718,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
         {/* 1. 姓名 */}
         <div className="space-y-1.5" id="field-name">
-          <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="name" className="text-sm font-semibold text-ink">
             {t("label_name")} <span className="text-red-500">*</span>
           </Label>
           <input
@@ -734,7 +734,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
         {/* 2. 邮箱 + 发送验证码按钮 */}
         <div className="space-y-1.5" id="field-email">
-          <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="email" className="text-sm font-semibold text-ink">
             {t("email_label")} <span className="text-red-500">*</span>
           </Label>
           <div className="flex gap-2">
@@ -756,7 +756,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                 type="button"
                 onClick={handleSendCode}
                 disabled={cooldown > 0 || codeSending}
-                className="shrink-0 rounded-lg border border-[#0c9468] px-3 text-sm font-medium text-[#0c9468] transition-all hover:bg-[#0c9468]/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                className="shrink-0 rounded-lg border border-teal-700 px-3 text-sm font-medium text-teal-700 transition-all hover:bg-teal-700/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
               >
                 {codeSending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -771,11 +771,11 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           {errOf("email") && <p className="text-xs text-red-500">{errOf("email")}</p>}
           {emailTaken && errOf("email") && (
             <p className="flex gap-3 text-xs">
-              <Link href="/login" className="font-semibold text-[#0c9468] hover:underline">
+              <Link href="/login" className="font-semibold text-teal-700 hover:underline">
                 {t("email_exists_login")}
               </Link>
               {emailVerificationOn && (
-                <Link href="/forgot-password" className="font-semibold text-[#0c9468] hover:underline">
+                <Link href="/forgot-password" className="font-semibold text-teal-700 hover:underline">
                   {t("email_exists_forgot")}
                 </Link>
               )}
@@ -786,7 +786,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* 3. 验证码(仅在邮箱验证开启时显示) */}
         {emailVerificationOn && (
           <div className="space-y-1.5" id="field-verificationCode">
-            <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="verificationCode" className="text-sm font-semibold text-ink">
               {t("verification_code_label")} <span className="text-red-500">*</span>
             </Label>
             <input
@@ -816,7 +816,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
         {/* 4. 密码 */}
         <div className="space-y-1.5" id="field-password">
-          <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="password" className="text-sm font-semibold text-ink">
             {t("label_password")} <span className="text-red-500">*</span>
           </Label>
           <div className="relative">
@@ -836,19 +836,19 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-ink-2"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           {errOf("password") && <p className="text-xs text-red-500">{errOf("password")}</p>}
-          <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint_simple")}</p>
+          <p className="mt-1 text-[11px] text-muted">{t("pwd_hint_simple")}</p>
         </div>
 
         {/* 5. 手机号（纯文本，无区号选择器）—— 与 WhatsApp 二选一 */}
         <div className="space-y-1.5" id="field-phone">
-          <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="phone" className="text-sm font-semibold text-ink">
             {t("phone_label")}
           </Label>
           <input
@@ -864,7 +864,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
         {/* 6. WhatsApp —— 与手机号二选一;红框由校验驱动,二选一提示统一显示一次(校验失败转红) */}
         <div className="space-y-1.5" id="field-whatsapp">
-          <Label htmlFor="whatsapp" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="whatsapp" className="text-sm font-semibold text-ink">
             {t("whatsapp_label")}
           </Label>
           <input
@@ -876,7 +876,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             autoComplete="tel"
             className={buyerInputCls(errOf("whatsapp"))}
           />
-          <p className={(errOf("phone") || errOf("whatsapp")) ? "text-xs text-red-500" : "mt-1 text-[11px] text-gray-400"}>
+          <p className={(errOf("phone") || errOf("whatsapp")) ? "text-xs text-red-500" : "mt-1 text-[11px] text-muted"}>
             {t("err_contact_required")}
           </p>
         </div>
@@ -884,11 +884,11 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         {/* ---- 经营品类（选填，不折叠）---- */}
         <div className="mt-2 border-t border-gray-200 pt-3">
           <div className="space-y-1.5" id="field-categories">
-            <Label className="text-sm font-semibold text-gray-700">
+            <Label className="text-sm font-semibold text-ink">
               {t("label_categories")}
             </Label>
             {catLoading ? (
-              <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+              <div className="flex items-center gap-2 py-2 text-sm text-muted">
                 <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_categories")}
               </div>
             ) : categories.length > 0 ? (
@@ -907,13 +907,13 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                         className={
                           "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
                           (selected
-                            ? "border-[#0c9468] bg-[#0c9468]/5 text-[#0c9468] font-medium"
-                            : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50")
+                            ? "border-teal-700 bg-teal-700/5 text-teal-700 font-medium"
+                            : "border-gray-200 text-ink-2 hover:border-gray-300 hover:bg-gray-50")
                         }
                       >
                         <div className={
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                          (selected ? "border-[#0c9468] bg-[#0c9468] text-white" : "border-gray-300")
+                          (selected ? "border-teal-700 bg-teal-700 text-white" : "border-gray-300")
                         }>
                           {selected && <Check className="h-3 w-3" />}
                         </div>
@@ -926,7 +926,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                   <button
                     type="button"
                     onClick={() => setCatExpanded((v) => !v)}
-                    className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                    className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 py-1.5 text-xs text-muted transition-colors hover:bg-gray-50 hover:text-ink"
                   >
                     {catExpanded ? (
                       <>{t("collapse_categories")} <ChevronUp className="h-3.5 w-3.5" /></>
@@ -945,7 +945,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
           <button
             type="button"
             onClick={() => setCompanySectionExpanded((v) => !v)}
-            className="flex w-full items-center justify-between px-4 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50"
+            className="flex w-full items-center justify-between px-4 py-3 text-sm text-muted transition-colors hover:bg-gray-50"
           >
             <span>{t("optional_section")}</span>
             {companySectionExpanded
@@ -957,7 +957,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             <div className="space-y-3 border-t border-gray-100 px-4 pb-4 pt-3">
               {/* 公司名称 */}
               <div className="space-y-1.5" id="field-companyName">
-                <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+                <Label htmlFor="companyName" className="text-sm font-semibold text-ink">
                   {t("label_company")}
                 </Label>
                 <input
@@ -971,7 +971,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
               {/* 地址 */}
               <div className="space-y-1.5" id="field-address">
-                <Label htmlFor="address" className="text-sm font-semibold text-gray-700">
+                <Label htmlFor="address" className="text-sm font-semibold text-ink">
                   {t("label_address")}
                 </Label>
                 <input
@@ -985,10 +985,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
               {/* 店面照片 */}
               <div className="space-y-1.5" id="field-storefrontImages">
-                <Label className="text-sm font-semibold text-gray-700">
+                <Label className="text-sm font-semibold text-ink">
                   {t("label_storefront")}
                 </Label>
-                <p className="text-xs text-gray-400">{t("storefront_hint")}</p>
+                <p className="text-xs text-muted">{t("storefront_hint")}</p>
                 <div className="flex flex-wrap gap-2">
                   {sfPreviews.map((url, idx) => (
                     <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
@@ -1009,7 +1009,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                     <button
                       type="button"
                       onClick={() => sfInputRef.current?.click()}
-                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0c9468] hover:text-[#0c9468]"
+                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-muted transition-colors hover:border-teal-700 hover:text-teal-700"
                     >
                       <ImagePlus className="h-5 w-5" />
                       <span className="text-[10px]">{t("upload")}</span>
@@ -1029,10 +1029,10 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 
               {/* 营业执照 */}
               <div className="space-y-1.5" id="field-licenseImages">
-                <Label className="text-sm font-semibold text-gray-700">
+                <Label className="text-sm font-semibold text-ink">
                   {t("label_license")}
                 </Label>
-                <p className="text-xs text-gray-400">{t("license_hint")}</p>
+                <p className="text-xs text-muted">{t("license_hint")}</p>
                 <div className="flex flex-wrap gap-2">
                   {licPreviews.map((url, idx) => (
                     <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
@@ -1052,7 +1052,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                   <button
                     type="button"
                     onClick={() => licInputRef.current?.click()}
-                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#0c9468] hover:text-[#0c9468]"
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-muted transition-colors hover:border-teal-700 hover:text-teal-700"
                   >
                     <ImagePlus className="h-5 w-5" />
                     <span className="text-[10px]">{t("upload")}</span>
@@ -1076,7 +1076,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         <button
           type="submit"
           disabled={loading || authCfgLoading}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-base font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
             <>
@@ -1089,11 +1089,11 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
         </button>
 
         {/* 服务条款 */}
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs text-muted">
           {t("terms_prefix")}{" "}
-          <button type="button" onClick={() => setLegalModal("terms")} className="text-[#0c9468] underline hover:text-[#0a7a56]">{t("terms_link")}</button>
+          <button type="button" onClick={() => setLegalModal("terms")} className="text-teal-700 underline hover:text-teal-600">{t("terms_link")}</button>
           {" "}{t("terms_and")}{" "}
-          <button type="button" onClick={() => setLegalModal("privacy")} className="text-[#0c9468] underline hover:text-[#0a7a56]">{t("terms_privacy_link")}</button>
+          <button type="button" onClick={() => setLegalModal("privacy")} className="text-teal-700 underline hover:text-teal-600">{t("terms_privacy_link")}</button>
         </p>
       </form>
 
@@ -1108,7 +1108,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
             <button
               type="button"
               onClick={() => setPreviewUrl(null)}
-              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg hover:bg-gray-100"
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-lg hover:bg-gray-100"
             >
               <X className="h-4 w-4" />
             </button>
@@ -1141,18 +1141,18 @@ function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () 
       <div className="relative flex w-full max-w-2xl max-h-[85vh] flex-col rounded-xl bg-white shadow-2xl">
         {/* 头部 */}
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-bold text-[#0c9468]">{tLegal(`${type}.title`)}</h2>
+          <h2 className="text-lg font-bold text-teal-700">{tLegal(`${type}.title`)}</h2>
           <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-gray-100">
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-5 w-5 text-muted" />
           </button>
         </div>
         {/* 可滚动内容 */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          <p className="text-xs text-gray-400">{tLegal(`${type}.lastUpdated`)}</p>
+          <p className="text-xs text-muted">{tLegal(`${type}.lastUpdated`)}</p>
           {sections.map((s, i) => (
             <section key={i}>
-              <h3 className="text-sm font-bold text-gray-800 mb-1.5">{`${i + 1}. ${s.title}`}</h3>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{s.content}</p>
+              <h3 className="text-sm font-bold text-ink mb-1.5">{`${i + 1}. ${s.title}`}</h3>
+              <p className="text-sm text-ink-2 leading-relaxed whitespace-pre-line">{s.content}</p>
             </section>
           ))}
         </div>
@@ -1161,7 +1161,7 @@ function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () 
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-lg bg-[#e3a615] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c99012]"
+            className="w-full rounded-lg mall-btn-primary py-2.5 text-sm font-bold transition-colors"
           >
             {t("legalReadDone")}
           </button>

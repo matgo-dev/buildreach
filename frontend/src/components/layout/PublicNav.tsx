@@ -24,9 +24,9 @@ export function PublicNav() {
 
   const linkClass = (active: boolean) =>
     "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 " +
-    (active ? "text-teal-900" : "text-gray-500 hover:bg-slate-50 hover:text-teal-900");
+    (active ? "text-teal-900" : "text-muted hover:bg-slate-50 hover:text-teal-900");
   const activeBar = (
-    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gold" />
+    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-lime" />
   );
 
   return (
@@ -42,7 +42,7 @@ export function PublicNav() {
             <span className="block text-center leading-tight">
               <span className="block">{t(item.labelKey)}</span>
               {locale === "zh" && item.labelEn && (
-                <span className="-mt-0.5 block text-[8px] font-normal text-gray-400">
+                <span className="-mt-0.5 block text-[8px] font-normal text-muted">
                   {item.labelEn}
                 </span>
               )}
@@ -60,7 +60,7 @@ export function PublicNav() {
             <span className="block text-center leading-tight">
               <span className="block">{label}</span>
               {locale === "zh" && z.name_en && (
-                <span className="-mt-0.5 block text-[8px] font-normal text-gray-400">
+                <span className="-mt-0.5 block text-[8px] font-normal text-muted">
                   {z.name_en}
                 </span>
               )}

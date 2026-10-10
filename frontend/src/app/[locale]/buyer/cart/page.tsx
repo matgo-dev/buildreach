@@ -163,7 +163,7 @@ function CartContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -181,19 +181,19 @@ function CartContent() {
         {items.length === 0 ? (
           <div className="flex min-h-[400px] flex-col items-center justify-center">
             <ShoppingCart className="mb-4 h-16 w-16 text-gray-200" />
-            <h2 className="text-lg font-semibold text-gray-600">{t("empty")}</h2>
+            <h2 className="text-lg font-semibold text-ink-2">{t("empty")}</h2>
             <div className="mt-4 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/mall`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
               >
                 {t("goToMall")}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <ContactPopover>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {t("inquireNow")}
@@ -205,13 +205,13 @@ function CartContent() {
           <>
 
         {/* 表头 — 移动端隐藏 */}
-        <div className="hidden sm:flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+        <div className="hidden sm:flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-muted">
           <input
             type="checkbox"
             checked={allChecked}
             onChange={handleToggleAll}
             disabled={purchasableItems.length === 0}
-            className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468]"
+            className="h-4 w-4 shrink-0 rounded border-gray-300 text-teal-700 focus:ring-teal-700"
           />
           <span className="flex-1 font-medium">{t("productInfo")}</span>
           <span className="w-28 font-medium">{tRfq("skuSpec")}</span>
@@ -237,7 +237,7 @@ function CartContent() {
               <div key={item.item_id}>
               <div
                 className={`flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition-colors ${
-                  unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-blue-50/30"
+                  unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-teal-50/60"
                 }`}
               >
                 {/* 移动端：勾选 + 图片 + 名称横排 */}
@@ -248,11 +248,11 @@ function CartContent() {
                   checked={checked}
                   disabled={unavailable}
                   onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468] disabled:opacity-40"
+                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-teal-700 focus:ring-teal-700 disabled:opacity-40"
                 />
 
                 {/* 商品图片 — 可点击跳转详情 */}
-                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#0c9468] transition-colors">
+                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-teal-700 transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -280,32 +280,32 @@ function CartContent() {
                 {/* 商品详情 */}
                 <div className="min-w-0 flex-1">
                   {/* 商品名 — 可点击跳转详情 */}
-                  <a href={detailHref} className="text-sm font-semibold text-[#0c9468] hover:underline line-clamp-2">
+                  <a href={detailHref} className="text-sm font-semibold text-teal-700 hover:underline line-clamp-2">
                     {item.product_name ?? "—"}
                   </a>
                   {/* 短描述 */}
                   {item.description && (
-                    <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{item.description}</p>
+                    <p className="mt-0.5 text-xs text-muted line-clamp-1">{item.description}</p>
                   )}
                   {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {item.moq != null && item.moq > 0 && (
-                      <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="inline-flex items-center rounded bg-teal-50 px-1.5 py-0.5 text-[11px] font-medium text-teal-900">
                         MOQ: {item.moq} {item.unit ?? ""}
                       </span>
                     )}
                     {item.brand && (
-                      <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700">
+                      <span className="inline-flex items-center rounded bg-teal-100 px-1.5 py-0.5 text-[11px] text-sea">
                         {item.brand}
                       </span>
                     )}
                     {item.origin && (
-                      <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+                      <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-muted">
                         📍 {item.origin}
                       </span>
                     )}
                     {leadTime && (
-                      <span className="inline-flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[11px] text-green-700">
+                      <span className="inline-flex items-center rounded bg-teal-50 px-1.5 py-0.5 text-[11px] text-ink-2">
                         🕐 {leadTime}
                       </span>
                     )}
@@ -328,7 +328,7 @@ function CartContent() {
                 <div className="flex items-center gap-3 sm:contents pl-7 sm:pl-0">
                 {/* 变体规格 — 只显示规格值(同 create 页口径),无则「无具体规格」 */}
                 <div className="sm:w-28 shrink-0 pt-1 text-xs">
-                  <span className={item.variant_display ? "text-gray-600" : "text-gray-400"}>
+                  <span className={item.variant_display ? "text-ink-2" : "text-muted"}>
                     {item.variant_display || tRfq("noSpec")}
                   </span>
                 </div>
@@ -355,14 +355,14 @@ function CartContent() {
                             .then((cart) => { mutate(cart, false); syncFromCart(cart); })
                             .catch(() => { e.target.value = String(item.quantity); });
                         }}
-                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+                        className="h-8 w-20 rounded border border-control text-center text-sm font-bold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                       />
                       {item.unit && (
-                        <span className="text-[11px] text-gray-400 sm:block sm:mt-0.5">{item.unit}</span>
+                        <span className="text-[11px] text-muted sm:block sm:mt-0.5">{item.unit}</span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-sm text-muted">—</span>
                   )}
                 </div>
 
@@ -371,7 +371,7 @@ function CartContent() {
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(item.item_id)}
-                    className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    className="rounded p-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-500"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -398,22 +398,22 @@ function CartContent() {
                 checked={allChecked}
                 onChange={handleToggleAll}
                 disabled={purchasableItems.length === 0}
-                className="h-4 w-4 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468]"
+                className="h-4 w-4 rounded border-gray-300 text-teal-700 focus:ring-teal-700"
               />
-              <span className="text-xs sm:text-sm text-gray-700">{tCommon("selectAll")}</span>
+              <span className="text-xs sm:text-sm text-ink">{tCommon("selectAll")}</span>
             </label>
 
             {/* 右：统计 + 提交 */}
             <div className="ml-auto flex items-center gap-2 sm:gap-4">
-              <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+              <span className="text-xs sm:text-sm text-muted whitespace-nowrap">
                 {t("selected", { count: checkedIds.size })}
-                <span className="text-gray-400"> / {items.length}</span>
+                <span className="text-muted"> / {items.length}</span>
               </span>
               <button
                 type="button"
                 disabled={checkedIds.size === 0}
                 onClick={handleSubmitInquiry}
-                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-[#e3a615] px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg mall-btn-primary px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-colors disabled:bg-none disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {t("submitInquiry")}
                 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

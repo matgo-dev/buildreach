@@ -121,16 +121,16 @@ export function FloatingWhatsApp() {
           onClick={() => setOpen((v) => !v)}
           className={`group flex items-center gap-2 rounded-full pl-3.5 pr-4 py-2.5 shadow-lg transition-all duration-200 ${
             open
-              ? "bg-teal-700 hover:bg-teal-800"
-              : "bg-teal-700 hover:bg-teal-800 hover:shadow-xl hover:scale-105"
+              ? "bg-lime hover:bg-lime-soft"
+              : "bg-lime hover:bg-lime-soft hover:shadow-xl hover:scale-105"
           }`}
         >
           {open ? (
-            <X className="h-4.5 w-4.5 text-white" />
+            <X className="h-4.5 w-4.5 text-teal-900" />
           ) : (
-            <Headphones className="h-5 w-5 text-white" />
+            <Headphones className="h-5 w-5 text-teal-900" />
           )}
-          <span className="text-[13px] font-bold text-white whitespace-nowrap">
+          <span className="text-[13px] font-bold text-teal-900 whitespace-nowrap">
             {open ? t("floatWaClose") : t("floatContactTab")}
           </span>
         </button>
@@ -148,7 +148,7 @@ export function FloatingWhatsApp() {
           >
             <button
               onClick={() => setShowQr(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-3 right-3 text-muted hover:text-ink-2 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -163,11 +163,11 @@ export function FloatingWhatsApp() {
                 className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
               />
               {contact.wechatId && (
-                <p className="mt-3 text-sm text-gray-500">
-                  {t("wechatIdLabel")}: <span className="font-mono text-gray-700">{contact.wechatId}</span>
+                <p className="mt-3 text-sm text-muted">
+                  {t("wechatIdLabel")}: <span className="font-mono text-ink">{contact.wechatId}</span>
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-400">{t("wechatScanHint")}</p>
+              <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
             </div>
           </div>
         </div>,

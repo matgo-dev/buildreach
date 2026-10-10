@@ -20,10 +20,6 @@ interface AgentMeta {
   titleKey: string;
   subtitleKey: string;
   featureKeys: string[];
-  btnGradient: string;
-  tagBg: string;
-  tagText: string;
-  tagBorder: string;
 }
 
 const AGENT_META: Record<string, AgentMeta> = {
@@ -31,29 +27,21 @@ const AGENT_META: Record<string, AgentMeta> = {
     titleKey: "containerTitle",
     subtitleKey: "containerSubtitle",
     featureKeys: ["containerTag1", "containerTag2", "containerTag3"],
-    btnGradient: "linear-gradient(120deg, #0a7a56, #10b981)",
-    tagBg: "bg-teal-50", tagText: "text-teal-800", tagBorder: "border-teal-200",
   },
   compliance: {
     titleKey: "complianceTitle",
     subtitleKey: "complianceSubtitle",
     featureKeys: ["complianceTag1", "complianceTag2", "complianceTag3"],
-    btnGradient: "linear-gradient(120deg, #c1850b, #e3a615)",
-    tagBg: "bg-[#fdf4dc]", tagText: "text-[#92680a]", tagBorder: "border-[#f0d97a]",
   },
   procurement: {
     titleKey: "procurementTitle",
     subtitleKey: "procurementSubtitle",
     featureKeys: ["procurementTag1", "procurementTag2", "procurementTag3"],
-    btnGradient: "linear-gradient(120deg, #0a7a56, #10b981)",
-    tagBg: "bg-teal-50", tagText: "text-teal-800", tagBorder: "border-teal-200",
   },
   finder: {
     titleKey: "finderTitle",
     subtitleKey: "finderSubtitle",
     featureKeys: ["finderTag1", "finderTag2", "finderTag3"],
-    btnGradient: "linear-gradient(120deg, #c1850b, #e3a615)",
-    tagBg: "bg-[#fdf4dc]", tagText: "text-[#92680a]", tagBorder: "border-[#f0d97a]",
   },
 };
 
@@ -66,11 +54,11 @@ export function AiAssistantPage() {
   return (
     <div>
       {/* Hero — 一行大字 + 一行小字 */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#0c9468] to-[#0a7a56] px-4 sm:px-8 mb-6 py-5 sm:py-6 text-center">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">
+      <div className="rounded-2xl mall-surface px-4 sm:px-8 mb-6 py-5 sm:py-6 text-center">
+        <h1 className="text-xl sm:text-2xl font-bold text-teal-900">
           {t("heroTitle")}
         </h1>
-        <p className="mt-1.5 text-[13px] sm:text-[14px] text-white/65 leading-relaxed">
+        <p className="mt-1.5 text-[13px] sm:text-[14px] text-ink-2 leading-relaxed">
           {t("heroDesc")}
         </p>
       </div>
@@ -108,7 +96,7 @@ export function AiAssistantPage() {
 
       {/* 底部说明 */}
       <div className="text-center pb-4 pt-8">
-        <p className="text-sm text-gray-400">{t("moreComingSoon")}</p>
+        <p className="text-sm text-muted">{t("moreComingSoon")}</p>
       </div>
 
       {/* 对话弹窗 */}
@@ -147,16 +135,15 @@ function FeatureCard({
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 p-5 sm:p-6 transition-all hover:shadow-lg"
-      style={{ background: "linear-gradient(120deg, #f0fbfb, #ecfdf5)" }}
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-teal-50 p-5 sm:p-6 transition-all hover:shadow-lg"
     >
-      <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-teal-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+      <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-lime px-2.5 py-1 text-[11px] font-bold text-teal-900">
         <Sparkles className="h-3 w-3" />
         {t("costCalcBadge")}
       </span>
 
       <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-md">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-800">
           {icon}
         </div>
         <div className="flex-1 min-w-0 pr-16">
@@ -178,8 +165,7 @@ function FeatureCard({
 
       <button
         onClick={onStart}
-        className="mt-auto w-full rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
-        style={{ background: "linear-gradient(120deg, #0a7a56, #10b981)" }}
+        className="mt-auto w-full rounded-xl mall-btn-primary px-6 py-3 text-sm font-bold transition-all"
       >
         {t(startKey)}
       </button>
@@ -198,11 +184,11 @@ function AgentCard({ agent, onStart }: { agent: AgentDef; onStart: () => void })
       style={{ boxShadow: "0 1px 4px rgba(16,36,65,.05)" }}
     >
       <div className="flex items-start justify-between">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${agent.color} text-xl`}>
-          {agent.icon}
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${agent.color}`}>
+          <agent.icon className="h-5 w-5 text-teal-800" strokeWidth={1.75} />
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full ${meta.tagBg} px-2 py-0.5 text-[11px] font-medium ${meta.tagText}`}>
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span className={`inline-flex items-center gap-1 rounded-full bg-lime/25 px-2 py-0.5 text-[11px] font-medium text-teal-900`}>
+          <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse" />
           {t("online")}
         </span>
       </div>
@@ -214,7 +200,7 @@ function AgentCard({ agent, onStart }: { agent: AgentDef; onStart: () => void })
         {meta.featureKeys.map((k) => (
           <span
             key={k}
-            className={`rounded-full border ${meta.tagBorder} ${meta.tagBg} px-2.5 py-1 text-xs ${meta.tagText}`}
+            className={`rounded-full border border-lime bg-lime/25 px-2.5 py-1 text-xs text-teal-900`}
           >
             {t(k)}
           </span>
@@ -223,8 +209,7 @@ function AgentCard({ agent, onStart }: { agent: AgentDef; onStart: () => void })
 
       <button
         onClick={onStart}
-        className="mt-4 w-full rounded-xl py-2.5 text-sm font-bold text-white transition-all hover:opacity-90"
-        style={{ background: meta.btnGradient }}
+        className="mt-4 w-full rounded-xl border-[1.5px] border-teal-700 bg-white py-2.5 text-sm font-bold text-teal-900 transition-colors hover:bg-teal-50"
       >
         {t("startChat")}
       </button>
@@ -304,7 +289,7 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
         {/* 顶栏 */}
         <div
           className="flex items-center gap-3 px-4 sm:px-5 py-3.5 text-white"
-          style={{ background: "linear-gradient(120deg, #0a7a56, #0c9468 60%, #10b981)" }}
+          style={{ background: "#073e32" }}
         >
           <button
             onClick={onClose}
@@ -312,8 +297,8 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-lg">
-            {agent.icon}
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+            <agent.icon className="h-4 w-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-bold truncate">{t(meta.titleKey)}</div>
@@ -341,11 +326,11 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm text-sm">
                 <Bot className="h-4 w-4 text-teal-700" />
               </div>
-              <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+              <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-ink shadow-sm">
                 {streamedContent ? (
                   <MarkdownLite text={streamedContent} />
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-slate-400">
+                  <span className="inline-flex items-center gap-1 text-muted">
                     <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
                     <span className="animate-bounce" style={{ animationDelay: "150ms" }}>·</span>
                     <span className="animate-bounce" style={{ animationDelay: "300ms" }}>·</span>
@@ -390,7 +375,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="flex justify-end">
         <div
           className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-sm leading-relaxed text-white"
-          style={{ background: "linear-gradient(120deg, #0a7a56, #10b981)" }}
+          style={{ background: "#103d33" }}
         >
           {message.content}
         </div>
@@ -404,7 +389,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         <Bot className="h-4 w-4 text-teal-700" />
       </div>
       <div className="flex max-w-[85%] flex-col items-start gap-1">
-        <div className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+        <div className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-ink shadow-sm">
           <MarkdownLite text={message.content} />
         </div>
         <CopyButton text={message.content} variant="ghost" />
@@ -444,8 +429,8 @@ function ChatInputBar({
         className={
           "relative flex items-end gap-2 rounded-2xl border bg-slate-50 transition-colors " +
           (canSend
-            ? "border-slate-300 focus-within:border-slate-400"
-            : "border-slate-200 focus-within:border-slate-300")
+            ? "border-control focus-within:border-teal-700"
+            : "border-control focus-within:border-teal-700")
         }
       >
         <textarea
@@ -461,7 +446,7 @@ function ChatInputBar({
           disabled={streaming}
           placeholder={streaming ? t("inputStreaming") : t("inputPlaceholder")}
           rows={1}
-          className="flex-1 resize-none bg-transparent px-4 py-3 text-sm leading-6 text-slate-800 placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
+          className="flex-1 resize-none bg-transparent px-4 py-3 text-sm leading-6 text-ink placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
         />
         <button
           type="button"
@@ -471,16 +456,16 @@ function ChatInputBar({
             "mb-2.5 mr-2.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all " +
             (canSend
               ? "text-white shadow-sm hover:opacity-90"
-              : "bg-slate-200 text-slate-400")
+              : "bg-slate-200 text-muted")
           }
-          style={canSend ? { background: "linear-gradient(120deg, #0a7a56, #10b981)" } : undefined}
+          style={canSend ? { background: "#103d33" } : undefined}
         >
           <ArrowUp className="h-4 w-4" />
         </button>
       </div>
       <div className="mt-1.5 flex items-center justify-between px-1">
-        <span className="text-[10px] text-slate-400">{t("inputHintSend")}</span>
-        <span className="text-[10px] text-slate-400">{t("poweredBy")}</span>
+        <span className="text-[10px] text-muted">{t("inputHintSend")}</span>
+        <span className="text-[10px] text-muted">{t("poweredBy")}</span>
       </div>
     </div>
   );

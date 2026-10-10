@@ -19,8 +19,8 @@ import {
   type PriceBasis,
 } from "./costCalculator";
 
-const HEADER_BG = "linear-gradient(120deg, #0a7a56, #0c9468 60%, #10b981)";
-const ACCENT_BG = "linear-gradient(120deg, #0a7a56, #10b981)";
+const HEADER_BG = "#073e32";
+const ACCENT_BG = "#103d33";
 
 const CITY_KEYS = Object.keys(LOCAL_TRANSPORT_TABLE);
 const BASES: PriceBasis[] = ["EXW", "FOB", "CIF"];
@@ -237,7 +237,7 @@ function FormView({
             value={form.product}
             onChange={(e) => onProductChange(e.target.value)}
             placeholder={t("ccProductPlaceholder")}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-teal-400 focus:outline-none"
+            className="w-full rounded-xl border border-control bg-white px-3 py-2.5 text-sm focus:border-teal-700 focus:outline-none"
           />
         </Field>
         {form.product.trim() &&
@@ -248,7 +248,7 @@ function FormView({
               {(detected.dutyPct * 100).toFixed(0)}%
             </div>
           ) : (
-            <div className="mt-1.5 text-xs text-slate-400">{t("ccNoMatch")}</div>
+            <div className="mt-1.5 text-xs text-muted">{t("ccNoMatch")}</div>
           ))}
       </div>
 
@@ -314,7 +314,7 @@ function FormView({
         {t(compareMode ? "ccCompareBtn" : "ccCalcBtn")}
       </button>
 
-      <p className="text-[11px] leading-relaxed text-slate-400">{t("ccDisclaimer")}</p>
+      <p className="text-[11px] leading-relaxed text-muted">{t("ccDisclaimer")}</p>
     </div>
   );
 }
@@ -373,7 +373,7 @@ function ResultView({
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+      <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm leading-relaxed text-ink shadow-sm">
         <MarkdownLite text={md} />
       </div>
 
@@ -617,7 +617,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-teal-400 focus:outline-none"
+      className="w-full rounded-xl border border-control bg-white px-3 py-2.5 text-sm focus:border-teal-700 focus:outline-none"
     >
       {children}
     </select>
@@ -634,7 +634,7 @@ function NumInput({
   suffix?: string;
 }) {
   return (
-    <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-teal-400">
+    <div className="flex items-center rounded-xl border border-control bg-white focus-within:border-teal-700">
       <input
         type="number"
         min="0"
@@ -642,7 +642,7 @@ function NumInput({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-xl bg-transparent px-3 py-2.5 text-sm focus:outline-none"
       />
-      {suffix && <span className="pr-3 text-xs text-slate-400">{suffix}</span>}
+      {suffix && <span className="pr-3 text-xs text-muted">{suffix}</span>}
     </div>
   );
 }

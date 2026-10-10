@@ -7,7 +7,7 @@ import { BRAND } from "@/config/brand";
 import { useContactInfo, useWhatsApp } from "@/hooks/useWhatsApp";
 import { WeChatIcon } from "@/components/icons/WeChatIcon";
 
-/** Mall 页脚 — 深青底色四列。参考 HTML footer */
+/** Mall 页脚 — 浅灰绿底四列,深绿标题正文(对齐 intro.matgo.ai 浅色页脚) */
 export function MallFooter() {
   const t = useTranslations("mall");
   const contact = useContactInfo();
@@ -16,28 +16,28 @@ export function MallFooter() {
 
   return (
     <>
-      <footer className="bg-teal-900 text-[#d6eded] mt-2.5">
+      <footer className="bg-teal-50 text-ink-2 border-t border-line mt-2.5">
         <div className="mx-auto max-w-mall px-3 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-7 pt-8 pb-8">
           {/* 品牌列 */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-1 mb-2.5">
               <img
-                src={BRAND.logoLockupDark}
+                src={BRAND.logoLockup}
                 alt={BRAND.name}
-                className="h-8 w-auto -my-1.5 shrink-0"
+                className="h-6 w-auto mr-1.5 shrink-0"
               />
-              <span className="text-white text-sm font-bold whitespace-nowrap">
+              <span className="text-teal-900 text-sm font-bold whitespace-nowrap">
                 Material Go 筑达
               </span>
             </div>
-            <p className="text-[13px] leading-relaxed text-[#d6eded]">
+            <p className="text-[13px] leading-relaxed text-ink-2">
               {t("footerDescription")}
             </p>
           </div>
 
           {/* 采购服务 */}
           <div>
-            <h4 className="text-white text-sm font-bold mb-2.5">{t("footerServices")}</h4>
+            <h4 className="text-teal-900 text-sm font-bold mb-2.5">{t("footerServices")}</h4>
             <div className="space-y-2 text-[13px]">
               <p>{t("footerProductSearch")}</p>
               <p>{t("footerQuoteRequest")}</p>
@@ -48,7 +48,7 @@ export function MallFooter() {
 
           {/* 合规支持 */}
           <div>
-            <h4 className="text-white text-sm font-bold mb-2.5">{t("footerCompliance")}</h4>
+            <h4 className="text-teal-900 text-sm font-bold mb-2.5">{t("footerCompliance")}</h4>
             <div className="space-y-2 text-[13px]">
               <p>PVoC / CoC</p>
               <p>TBS Standards</p>
@@ -59,7 +59,7 @@ export function MallFooter() {
 
           {/* 联系方式 */}
           <div>
-            <h4 className="text-white text-sm font-bold mb-2.5">{t("footerContact")}</h4>
+            <h4 className="text-teal-900 text-sm font-bold mb-2.5">{t("footerContact")}</h4>
             <div className="space-y-2 text-[13px]">
               {contact.whatsappNumber && (
                 <p className="flex items-center gap-1.5">
@@ -69,7 +69,7 @@ export function MallFooter() {
                       href={wa.buildLink()!}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-white hover:underline transition-colors"
+                      className="hover:text-teal-900 hover:underline transition-colors"
                     >
                       {contact.whatsappNumber}
                     </a>
@@ -84,7 +84,7 @@ export function MallFooter() {
                   {contact.wechatQrImage ? (
                     <button
                       onClick={() => setShowQr(true)}
-                      className="hover:text-white hover:underline transition-colors"
+                      className="hover:text-teal-900 hover:underline transition-colors"
                     >
                       {contact.wechatId}
                     </button>
@@ -94,7 +94,7 @@ export function MallFooter() {
                   {contact.wechatQrImage && (
                     <button
                       onClick={() => setShowQr(true)}
-                      className="ml-1.5 shrink-0 rounded border border-white/20 hover:border-white/50 transition-colors overflow-hidden"
+                      className="ml-1.5 shrink-0 rounded border border-line hover:border-teal-400 transition-colors overflow-hidden"
                       title={t("wechatScanQr")}
                     >
                       <img
@@ -111,7 +111,7 @@ export function MallFooter() {
                   <Mail className="w-3.5 h-3.5 shrink-0" />
                   <a
                     href={`mailto:${contact.email}`}
-                    className="hover:text-white hover:underline transition-colors"
+                    className="hover:text-teal-900 hover:underline transition-colors"
                   >
                     {contact.email}
                   </a>
@@ -122,7 +122,7 @@ export function MallFooter() {
         </div>
 
         {/* 底部版权 */}
-        <div className="border-t border-white/10 py-3.5 px-6 text-center text-[12px] text-[#b4d7d5]">
+        <div className="border-t border-line py-3.5 px-6 text-center text-[12px] text-muted">
           © {new Date().getFullYear()} MATMART COMPANY LIMITED. All rights reserved.
         </div>
       </footer>
@@ -139,7 +139,7 @@ export function MallFooter() {
           >
             <button
               onClick={() => setShowQr(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-3 right-3 text-muted hover:text-ink-2 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -154,11 +154,11 @@ export function MallFooter() {
                 className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
               />
               {contact.wechatId && (
-                <p className="mt-3 text-sm text-gray-500">
-                  {t("wechatIdLabel")}: <span className="font-mono text-gray-700">{contact.wechatId}</span>
+                <p className="mt-3 text-sm text-muted">
+                  {t("wechatIdLabel")}: <span className="font-mono text-ink">{contact.wechatId}</span>
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-400">{t("wechatScanHint")}</p>
+              <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
             </div>
           </div>
         </div>

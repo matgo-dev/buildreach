@@ -132,11 +132,11 @@ export default function ForgotPasswordPage() {
         <CheckCircle2 className="mx-auto h-12 w-12 text-[#10B981]" />
         <div>
           <h2 className="text-lg font-bold text-gray-900">{t("success_title")}</h2>
-          <p className="mt-2 text-sm text-gray-500">{t("success_desc")}</p>
+          <p className="mt-2 text-sm text-muted">{t("success_desc")}</p>
         </div>
         <Link
           href="/login"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c9468] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg mall-btn-primary px-8 text-sm font-semibold transition-all"
         >
           {t("go_login")}
         </Link>
@@ -148,7 +148,7 @@ export default function ForgotPasswordPage() {
   if (requireEmailVerification === false) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -157,7 +157,7 @@ export default function ForgotPasswordPage() {
     <>
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-900">{t("title")}</h2>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-muted">
           {step === "email" ? t("subtitle") : t("code_subtitle")}
         </p>
       </div>
@@ -192,15 +192,15 @@ export default function ForgotPasswordPage() {
                 placeholder="your@email.com"
                 autoComplete="email"
                 className={
-                  "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
+                  "h-11 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
                   (emailErr
                     ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                    : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                    : "border-control focus:border-teal-700 focus:ring-teal-700/15")
                 }
               />
               {emailErr && <p className="text-xs text-red-500">{emailErr}</p>}
               {emailErr && emailNotRegistered && (
-                <Link href="/register" className="text-xs font-semibold text-[#0c9468] hover:underline">
+                <Link href="/register" className="text-xs font-semibold text-teal-700 hover:underline">
                   {t("go_register")}
                 </Link>
               )}
@@ -209,7 +209,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> {t("submitting")}</>
@@ -222,20 +222,20 @@ export default function ForgotPasswordPage() {
           {/* 分割线 */}
           <div className="my-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-xs text-gray-400">{t("or")}</span>
+            <span className="text-xs text-muted">{t("or")}</span>
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
           {/* 联系客服 — 两渠道(WhatsApp + 微信),复用 ContactPopover,和全站客服入口一致 */}
           <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
               <MessageCircle className="h-4 w-4" />
               {t("method_whatsapp")}
             </div>
             <ContactPopover>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
+                className="inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
               >
                 <MessageCircle className="h-4 w-4" />
                 {tm("ctaContactUs")}
@@ -255,7 +255,7 @@ export default function ForgotPasswordPage() {
 
           {/* 验证码 */}
           <div className="space-y-1.5">
-            <Label htmlFor="code" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="code" className="text-sm font-semibold text-ink">
               {t("code_label")}
             </Label>
             <input
@@ -272,10 +272,10 @@ export default function ForgotPasswordPage() {
               maxLength={6}
               autoComplete="one-time-code"
               className={
-                "h-12 w-full rounded-lg border bg-white px-3 text-center text-lg font-bold tracking-[0.5em] text-gray-800 placeholder-gray-300 transition-all focus:outline-none focus:ring-2 " +
+                "h-12 w-full rounded-lg border bg-white px-3 text-center text-lg font-bold tracking-[0.5em] text-ink placeholder-gray-300 transition-all focus:outline-none focus:ring-2 " +
                 (codeErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                  : "border-control focus:border-teal-700 focus:ring-teal-700/15")
               }
             />
             {codeErr && <p className="text-xs text-red-500">{codeErr}</p>}
@@ -283,7 +283,7 @@ export default function ForgotPasswordPage() {
 
           {/* 新密码 */}
           <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="password" className="text-sm font-semibold text-ink">
               {t("new_password")}
             </Label>
             <div className="relative">
@@ -295,29 +295,29 @@ export default function ForgotPasswordPage() {
                 onBlur={() => { if (password) setPwdErr(validatePassword(password)); }}
                 autoComplete="new-password"
                 className={
-                  "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-gray-800 transition-all focus:outline-none focus:ring-2 " +
+                  "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-ink transition-all focus:outline-none focus:ring-2 " +
                   (pwdErr
                     ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                    : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                    : "border-control focus:border-teal-700 focus:ring-teal-700/15")
                 }
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2"
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {pwdErr && <p className="text-xs text-red-500">{pwdErr}</p>}
-            <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint")}</p>
+            <p className="mt-1 text-[11px] text-muted">{t("pwd_hint")}</p>
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> {t("resetting")}</>
@@ -327,12 +327,12 @@ export default function ForgotPasswordPage() {
           </button>
 
           {/* 重新发送 */}
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-muted">
             <span>{t("not_received")} </span>
             <button
               type="button"
               onClick={() => { setStep("email"); setError(null); setCode(""); }}
-              className="font-semibold text-[#FF6B35] hover:text-[#e05a25]"
+              className="font-semibold text-sea hover:text-teal-900"
             >
               {t("resend")}
             </button>
@@ -343,14 +343,14 @@ export default function ForgotPasswordPage() {
       <div className="mt-6 text-center">
         <Link
           href="/login"
-          className="text-sm font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]"
+          className="text-sm font-semibold text-sea transition-colors hover:text-teal-900"
         >
           {t("back_to_login")}
         </Link>
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-3">
-        <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
+        <Link href="/" className="text-xs text-muted transition-colors hover:text-ink-2">
           {tc("back_to_home")}
         </Link>
         <span className="text-xs text-gray-300">|</span>

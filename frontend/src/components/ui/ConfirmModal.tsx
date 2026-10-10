@@ -10,7 +10,7 @@ interface ConfirmModalProps {
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  variant?: "danger" | "primary" | "warning";
+  variant?: "danger" | "primary" | "warning" | "mall";
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -18,6 +18,7 @@ interface ConfirmModalProps {
 
 const VARIANT_STYLES: Record<string, string> = {
   primary: "bg-blue-600 hover:bg-blue-700",
+  mall: "mall-btn-primary",
   danger: "bg-red-600 hover:bg-red-700",
   warning: "bg-amber-600 hover:bg-amber-700",
 };

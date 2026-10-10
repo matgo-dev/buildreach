@@ -68,11 +68,11 @@ export default function LocaleError({
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <div className="w-full max-w-md text-center">
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100">
-          <AlertTriangle className="h-12 w-12 text-slate-400" strokeWidth={1.5} />
+          <AlertTriangle className="h-12 w-12 text-muted" strokeWidth={1.5} />
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-800">{text.title}</h1>
-        <p className="mt-3 text-sm text-slate-500">{text.description}</p>
+        <h1 className="text-2xl font-bold text-ink">{text.title}</h1>
+        <p className="mt-3 text-sm text-muted">{text.description}</p>
 
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           {/* 整页重载而非 reset():chunk 加载失败/发版后旧标签页,reset 只会重渲染到同一个错误 */}
@@ -86,7 +86,7 @@ export default function LocaleError({
           {/* 用原生 <a> 整页跳转:出错后客户端路由状态不可信 */}
           <a
             href={homeHref}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-ink shadow-sm transition hover:bg-slate-50"
           >
             <Home className="h-4 w-4" />
             {text.goHome}
@@ -95,8 +95,8 @@ export default function LocaleError({
 
         {/* translate="no":错误原文不能被浏览器翻译改写,否则截图无法检索 */}
         <div translate="no" className="notranslate mt-8 rounded-lg bg-slate-100 px-4 py-3 text-left">
-          <p className="text-[11px] font-medium text-slate-400">{text.detailLabel}</p>
-          <p className="mt-1 break-words font-mono text-xs text-slate-500">
+          <p className="text-[11px] font-medium text-muted">{text.detailLabel}</p>
+          <p className="mt-1 break-words font-mono text-xs text-muted">
             {detail}
             {error.digest ? ` (${error.digest})` : ""}
           </p>

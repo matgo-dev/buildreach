@@ -31,20 +31,20 @@ export function StepCountry({ selected, onSelect, onNext }: StepCountryProps) {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-gray-900">选择您的企业注册地</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted">
           请严格按照营业执照所在国家选择,这决定了后续的资质校验标准。
         </p>
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="country-select" className="text-sm font-semibold text-gray-700">
+        <label htmlFor="country-select" className="text-sm font-semibold text-ink">
           企业注册地 <span className="text-red-500">*</span>
         </label>
         <select
           id="country-select"
           value={selected}
           onChange={(e) => handleChange(e.target.value as CountryCode)}
-          className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 transition-all focus:border-[#003366] focus:outline-none focus:ring-2 focus:ring-[#003366]/15"
+          className="h-11 w-full rounded-lg border border-control bg-white px-3 text-sm text-ink transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
         >
           <option value="" disabled>
             请选择国家 / 地区
@@ -58,7 +58,7 @@ export function StepCountry({ selected, onSelect, onNext }: StepCountryProps) {
       </div>
 
       {country && (
-        <div className="rounded-lg border-l-4 border-[#003366] bg-[#003366]/5 px-4 py-3 text-sm text-[#003366]">
+        <div className="rounded-lg border-l-4 border-teal-700 bg-teal-700/5 px-4 py-3 text-sm text-teal-700">
           {countryHintTemplate(country)}
         </div>
       )}
@@ -67,7 +67,7 @@ export function StepCountry({ selected, onSelect, onNext }: StepCountryProps) {
         type="button"
         onClick={onNext}
         disabled={!selected}
-        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#FF6B35] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#e05a25] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-base font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
         下一步 <ChevronRight className="h-4 w-4" />
       </button>

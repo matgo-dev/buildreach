@@ -47,19 +47,19 @@ export function QuantityInput({ value, onChange, moq, unit }: QuantityInputProps
   return (
     <div>
       <div className="flex items-center gap-3">
-        <span className="text-xs font-semibold text-gray-600">
+        <span className="text-xs font-semibold text-ink-2">
           {t("detail.quantity")}
         </span>
         <div
           className={`flex items-center overflow-hidden rounded-md border-[1.5px] ${
-            isBelowMoq ? "border-red-400" : "border-gray-200"
+            isBelowMoq ? "border-red-400" : "border-control"
           }`}
         >
           <button
             type="button"
             onClick={handleDecrement}
             disabled={value <= moq}
-            className="flex h-9 w-8 items-center justify-center bg-gray-50 text-gray-500 transition-colors hover:bg-gray-200 disabled:opacity-30"
+            className="flex h-9 w-8 items-center justify-center bg-gray-50 text-muted transition-colors hover:bg-gray-200 disabled:opacity-30"
           >
             <Minus className="h-4 w-4" />
           </button>
@@ -74,12 +74,12 @@ export function QuantityInput({ value, onChange, moq, unit }: QuantityInputProps
           <button
             type="button"
             onClick={handleIncrement}
-            className="flex h-9 w-8 items-center justify-center bg-gray-50 text-gray-500 transition-colors hover:bg-gray-200"
+            className="flex h-9 w-8 items-center justify-center bg-gray-50 text-muted transition-colors hover:bg-gray-200"
           >
             <Plus className="h-4 w-4" />
           </button>
         </div>
-        <span className="text-[11px] text-gray-400">
+        <span className="text-[11px] text-muted">
           MOQ: {moq} {unitLabel} · Step: {moq}
         </span>
       </div>

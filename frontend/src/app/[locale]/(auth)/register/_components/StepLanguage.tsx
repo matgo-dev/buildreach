@@ -44,7 +44,7 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
       <div>
         <h2 className="text-xl font-bold text-gray-900">是否开启多语种适配?</h2>
         {/* [待评审] 文案对齐「只记录不翻译」口径 */}
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted">
           我们会记录您的语言偏好,用于后续多语种适配;本轮仅记录,不改变当前页面语言。
         </p>
       </div>
@@ -60,27 +60,27 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
               className={
                 "flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all " +
                 (active
-                  ? "border-[#FF6B35] bg-[#FF6B35]/5"
-                  : "border-gray-200 hover:border-[#003366] hover:bg-[#003366]/5")
+                  ? "border-teal-700 bg-teal-700/5"
+                  : "border-gray-200 hover:border-teal-700 hover:bg-teal-700/5")
               }
             >
               <div
                 className={
                   "flex h-10 w-10 items-center justify-center rounded-lg " +
-                  (active ? "bg-[#FF6B35]/15" : "bg-gray-50")
+                  (active ? "bg-teal-700/15" : "bg-gray-50")
                 }
               >
-                <Globe className={"h-5 w-5 " + (active ? "text-[#FF6B35]" : "text-[#003366]")} />
+                <Globe className={"h-5 w-5 " + (active ? "text-sea" : "text-teal-700")} />
               </div>
               <div className="flex-1">
                 <p
                   className={
-                    "text-sm font-semibold " + (active ? "text-[#FF6B35]" : "text-gray-800")
+                    "text-sm font-semibold " + (active ? "text-sea" : "text-ink")
                   }
                 >
                   {opt.title}
                 </p>
-                <p className="text-xs text-gray-400">{opt.subtitle}</p>
+                <p className="text-xs text-muted">{opt.subtitle}</p>
               </div>
             </button>
           );
@@ -91,7 +91,7 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
         <button
           type="button"
           onClick={onBack}
-          className="h-12 flex-1 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50"
+          className="h-12 flex-1 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-ink-2 transition-colors hover:bg-gray-50"
         >
           ← 返回上一步
         </button>
@@ -99,7 +99,7 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
           type="button"
           onClick={onNext}
           disabled={!selected}
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-[#FF6B35] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e05a25] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           下一步 <ChevronRight className="h-4 w-4" />
         </button>

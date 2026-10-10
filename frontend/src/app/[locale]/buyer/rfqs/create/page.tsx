@@ -159,18 +159,18 @@ function CertificationTagInput({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-ink">{label}</label>
       <div className="flex flex-wrap gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded bg-[#0c9468]/10 px-2 py-0.5 text-xs font-medium text-[#0c9468]"
+            className="inline-flex items-center gap-1 rounded bg-teal-700/10 px-2 py-0.5 text-xs font-medium text-teal-700"
           >
             {tag}
             <button
               type="button"
               onClick={() => handleRemove(tag)}
-              className="text-[#0c9468]/50 hover:text-[#0c9468]"
+              className="text-teal-700/50 hover:text-teal-700"
             >
               ×
             </button>
@@ -673,7 +673,7 @@ function RfqCreateContent() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -685,11 +685,11 @@ function RfqCreateContent() {
         <button
           type="button"
           onClick={() => isCartPath ? router.push(`/${locale}/buyer/cart`) : router.back()}
-          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          className="rounded-lg p-1.5 text-muted transition-colors hover:bg-gray-100 hover:text-ink-2"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-bold text-gray-800">
+        <h1 className="text-xl font-bold text-ink">
           {isCartPath ? t("backToCartEdit") : t("create")}
         </h1>
       </div>
@@ -713,7 +713,7 @@ function RfqCreateContent() {
 
       {/* 区块 0：需求描述 + 附件（主要输入） */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_description")}</h2>
+        <h2 className="mb-4 text-sm font-semibold text-ink">{t("section_description")}</h2>
         <div className="space-y-4">
           <div>
             <textarea
@@ -721,7 +721,7 @@ function RfqCreateContent() {
               onChange={(e) => updateDraft("remark", e.target.value)}
               rows={4}
               placeholder={t("descriptionPlaceholder")}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="w-full rounded-lg border border-control px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <AttachmentUploader
@@ -734,14 +734,14 @@ function RfqCreateContent() {
       {/* 区块 1：商品清单（可选） */}
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
-          <span className="text-xs text-gray-400">{t("optional")}</span>
+          <h2 className="text-sm font-semibold text-ink">{t("section_items")}</h2>
+          <span className="text-xs text-muted">{t("optional")}</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 text-left text-xs text-gray-500">
+              <tr className="bg-gray-50 text-left text-xs text-muted">
                 <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
                 <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
                 <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
@@ -752,18 +752,18 @@ function RfqCreateContent() {
               {/* 篮中商品 */}
               {cartItems.map((item) => (
                 <tr key={`cart-${item.item_id}`} className="border-t border-gray-100 even:bg-slate-50/50">
-                  <td className="px-5 py-3 font-medium text-gray-800">
+                  <td className="px-5 py-3 font-medium text-ink">
                     {item.product_name ?? "—"}
                   </td>
-                  <td className={`px-5 py-3 align-top text-xs ${hasSpec(item.variant_display) ? "text-gray-600" : "text-gray-400"}`}>
+                  <td className={`px-5 py-3 align-top text-xs ${hasSpec(item.variant_display) ? "text-ink-2" : "text-muted"}`}>
                     {hasSpec(item.variant_display) ? item.variant_display : t("noSpec")}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {isCartPath ? (
                       /* 篮子路径：只读显示数量 */
                       <div className="inline-flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-gray-800">{item.quantity}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-sm font-semibold text-ink">{item.quantity}</span>
+                        <span className="text-xs text-muted">
                           {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
                         </span>
                       </div>
@@ -777,9 +777,9 @@ function RfqCreateContent() {
                             if (!isNaN(v) && v > 0) handleCartQuantityChange(item.item_id, v);
                           }}
                           min={1}
-                          className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+                          className="h-8 w-20 rounded border border-control text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                         />
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted">
                           {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
                         </span>
                       </div>
@@ -790,7 +790,7 @@ function RfqCreateContent() {
                       <button
                         type="button"
                         onClick={() => handleRemoveCartItem(item.item_id)}
-                        className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        className="rounded p-1 text-muted transition-colors hover:bg-red-50 hover:text-red-500"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -802,10 +802,10 @@ function RfqCreateContent() {
               {/* 手动添加的商品 */}
               {manualItems.map((item, idx) => (
                 <tr key={`manual-${item.product_id}-${idx}`} className="border-t border-gray-100 even:bg-slate-50/50">
-                  <td className="px-5 py-3 font-medium text-gray-800">
+                  <td className="px-5 py-3 font-medium text-ink">
                     {item.product_name}
                   </td>
-                  <td className={`px-5 py-3 align-top text-xs ${hasSpec(item.variant_display) ? "text-gray-600" : "text-gray-400"}`}>
+                  <td className={`px-5 py-3 align-top text-xs ${hasSpec(item.variant_display) ? "text-ink-2" : "text-muted"}`}>
                     {hasSpec(item.variant_display) ? item.variant_display : t("noSpec")}
                   </td>
                   <td className="px-5 py-3 text-right">
@@ -818,9 +818,9 @@ function RfqCreateContent() {
                           if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
                         }}
                         min={1}
-                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+                        className="h-8 w-20 rounded border border-control text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                       />
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted">
                         {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
                       </span>
                     </div>
@@ -829,7 +829,7 @@ function RfqCreateContent() {
                     <button
                       type="button"
                       onClick={() => handleRemoveManualItem(idx)}
-                      className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                      className="rounded p-1 text-muted transition-colors hover:bg-red-50 hover:text-red-500"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -844,7 +844,7 @@ function RfqCreateContent() {
                     <button
                       type="button"
                       onClick={() => setShowSearch(true)}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0c9468] transition-colors hover:text-[#0a7a56]"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 transition-colors hover:text-teal-600"
                     >
                       <Plus className="h-4 w-4" />
                       {t("addProduct")}
@@ -859,10 +859,10 @@ function RfqCreateContent() {
 
       {/* 区块 2：交货信息 */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_delivery")}</h2>
+        <h2 className="mb-4 text-sm font-semibold text-ink">{t("section_delivery")}</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("deliveryPlace")}
             </label>
             <input
@@ -870,23 +870,23 @@ function RfqCreateContent() {
               value={draft.requested_delivery_place}
               onChange={(e) => updateDraft("requested_delivery_place", e.target.value)}
               placeholder={t("deliveryPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("deliveryDate")}
             </label>
             <div className="relative">
               <button
                 type="button"
                 onClick={openDatePicker}
-                className="flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 px-3 text-left text-sm outline-none transition-colors focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+                className="flex h-10 w-full items-center justify-between rounded-lg border border-control px-3 text-left text-sm outline-none transition-colors focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
               >
-                <span className={draft.expected_delivery_date ? "text-gray-800" : "text-gray-400"}>
+                <span className={draft.expected_delivery_date ? "text-ink" : "text-muted"}>
                   {draft.expected_delivery_date || "YYYY-MM-DD"}
                 </span>
-                <Calendar className="h-4 w-4 text-gray-500" />
+                <Calendar className="h-4 w-4 text-muted" />
               </button>
               <input
                 ref={dateInputRef}
@@ -902,13 +902,13 @@ function RfqCreateContent() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("currency")}
             </label>
             <select
               value={draft.target_currency}
               onChange={(e) => updateDraft("target_currency", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -916,7 +916,7 @@ function RfqCreateContent() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("destinationPort")}
             </label>
             <input
@@ -925,7 +925,7 @@ function RfqCreateContent() {
               value={draft.destination_port}
               onChange={(e) => updateDraft("destination_port", e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
             <datalist id="destination-port-options">
               <option value="Dar es Salaam Port" />
@@ -935,7 +935,7 @@ function RfqCreateContent() {
             </datalist>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("preferredTradeTerm")}
             </label>
             <input
@@ -944,7 +944,7 @@ function RfqCreateContent() {
               value={draft.preferred_trade_term}
               onChange={(e) => updateDraft("preferred_trade_term", e.target.value)}
               placeholder={t("preferredTradeTermPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
             <datalist id="trade-term-options">
               <option value="FOB" />
@@ -960,39 +960,39 @@ function RfqCreateContent() {
 
       {/* 区块 3：联系方式 */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_contact")}</h2>
+        <h2 className="mb-4 text-sm font-semibold text-ink">{t("section_contact")}</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("contactName")}
             </label>
             <input
               type="text"
               value={draft.contact_name}
               onChange={(e) => updateDraft("contact_name", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("contactPhone")}
             </label>
             <input
               type="text"
               value={draft.contact_phone}
               onChange={(e) => updateDraft("contact_phone", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink">
               {t("contactEmail")}
             </label>
             <input
               type="email"
               value={draft.contact_email}
               onChange={(e) => updateDraft("contact_email", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
         </div>
@@ -1000,7 +1000,7 @@ function RfqCreateContent() {
 
       {/* 区块 4：附加要求 */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("section_extra")}</h2>
+        <h2 className="mb-4 text-sm font-semibold text-ink">{t("section_extra")}</h2>
         <div className="space-y-4">
           <CertificationTagInput
             value={draft.certifications}
@@ -1015,7 +1015,7 @@ function RfqCreateContent() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-gray-50"
         >
           {t("backToCart")}
         </button>
@@ -1025,8 +1025,8 @@ function RfqCreateContent() {
           onClick={handleSaveDraft}
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
             savingDraft || submitting || !canSubmit
-              ? "border-gray-200 text-gray-400 cursor-not-allowed"
-              : "border-[#0c9468] text-[#0c9468] hover:bg-[#0c9468]/5"
+              ? "border-gray-200 text-muted cursor-not-allowed"
+              : "border-teal-700 text-teal-700 hover:bg-teal-700/5"
           }`}
         >
           {savingDraft && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -1038,8 +1038,8 @@ function RfqCreateContent() {
           onClick={handleSubmit}
           className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-colors ${
             submitting || savingDraft || !canSubmit
-              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-[#0c9468] text-white hover:bg-[#0a7a56]"
+              ? "bg-gray-200 text-muted cursor-not-allowed"
+              : "mall-btn-primary"
           }`}
         >
           {submitting ? (

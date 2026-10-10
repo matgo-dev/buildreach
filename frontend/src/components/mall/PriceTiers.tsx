@@ -36,7 +36,7 @@ export function PriceTiers({ tiers, unit, quantity }: PriceTiersProps) {
 
   return (
     <div className="mt-3">
-      <div className="mb-1.5 text-xs font-semibold text-gray-600">
+      <div className="mb-1.5 text-xs font-semibold text-ink-2">
         {t("detail.volumePricing")}
       </div>
       <div className="space-y-0.5">
@@ -55,11 +55,11 @@ export function PriceTiers({ tiers, unit, quantity }: PriceTiersProps) {
                   : "border-b border-gray-50"
               }`}
             >
-              <span className={`w-32 ${isActive ? "text-green-700" : "text-gray-500"}`}>
+              <span className={`w-32 ${isActive ? "text-green-700" : "text-muted"}`}>
                 {rangeText}
                 {isActive && " \u2713"}
               </span>
-              <span className={isActive ? "text-green-700" : "text-[#0c9468] font-semibold"}>
+              <span className={isActive ? "text-green-700" : "text-teal-700 font-semibold"}>
                 {formatCurrency(tier.unit_price, tier.currency, locale, {
                   maximumFractionDigits: 2,
                 })}{" "}

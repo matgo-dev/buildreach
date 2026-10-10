@@ -19,7 +19,7 @@ export function GradeBadge({
 }) {
   if (!grade) {
     return (
-      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs text-slate-400 bg-slate-100">
+      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs text-muted bg-slate-100">
         无评分
       </span>
     );
@@ -40,7 +40,7 @@ export function GradeBadge({
         {meta.label}
       </span>
       {showTagline && (
-        <span className="text-xs text-slate-500">{meta.tagline}</span>
+        <span className="text-xs text-muted">{meta.tagline}</span>
       )}
     </span>
   );

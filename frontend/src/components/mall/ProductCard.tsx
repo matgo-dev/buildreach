@@ -38,8 +38,8 @@ function flyToCart(startEl: HTMLElement) {
     width: 36px;
     height: 6px;
     border-radius: 3px;
-    background: linear-gradient(90deg, transparent 0%, #e3a615 40%, #f0c040 100%);
-    box-shadow: 0 0 8px rgba(227, 166, 21, 0.6), 0 0 16px rgba(227, 166, 21, 0.3);
+    background: linear-gradient(90deg, transparent 0%, #32bdc9 40%,#b9e46b 100%);
+    box-shadow: 0 0 8px rgba(185,228,107,0.6), 0 0 16px rgba(50,189,201,0.3);
     pointer-events: none;
     transform: rotate(${angle}deg);
     transform-origin: right center;
@@ -144,11 +144,11 @@ export function ProductCard({
   return (
     <Link
       href={detailHref}
-      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
+      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-mall-lg shadow-mall-sm"
     >
       {/* 图片区 — 撑满，窄边距 */}
       <div
-        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-[#edf2f5] p-2"
+        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-line p-2"
         style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
       >
         {product.main_image ? (
@@ -205,8 +205,7 @@ export function ProductCard({
           {product.certifications?.map((cert) => (
             <span
               key={cert}
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap"
-              style={{ color: "#15935f", background: "#e5f7ee" }}
+              className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-extrabold text-sea whitespace-nowrap"
             >
               {cert}
             </span>
@@ -227,9 +226,9 @@ export function ProductCard({
         {/* 底部操作 */}
         <div className="flex gap-2 pt-1">
           <MallButton
-            variant="teal"
+            variant="outline"
             size="md"
-            className="text-[13px] min-w-0 flex-1"
+            className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();

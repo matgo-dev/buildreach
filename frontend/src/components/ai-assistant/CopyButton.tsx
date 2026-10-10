@@ -38,7 +38,7 @@ export function CopyButton({
   const base = "inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition-colors ";
   const styles =
     variant === "ghost"
-      ? "px-1.5 py-1 " + (copied ? "text-teal-600" : "text-slate-400 hover:text-teal-700")
+      ? "px-1.5 py-1 " + (copied ? "text-teal-600" : "text-muted hover:text-teal-700")
       : "border px-2.5 py-1.5 " +
         (copied
           ? "border-teal-300 bg-teal-50 text-teal-700"

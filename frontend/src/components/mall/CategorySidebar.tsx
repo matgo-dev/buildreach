@@ -102,11 +102,11 @@ export function CategorySidebar({
             ? { maxHeight: "calc(100vh - 164px)" }
             : {}),
           boxShadow:
-            "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)",
+            "0 1px 2px rgba(18,59,50,.04), 0 2px 8px rgba(18,59,50,.04)",
         }}
       >
         {/* 头部 — 固定不滚动 */}
-        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-700 text-white shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-lime text-teal-900 shrink-0">
           <LayoutGrid className="w-4 h-4" />
           <span className="text-sm font-bold">{t("allCategoryNav")}</span>
         </div>
@@ -151,7 +151,7 @@ export function CategorySidebar({
                       className={`text-[13px] leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis block ${
                         isHovered || hasActiveChild
                           ? "text-teal-700 font-bold"
-                          : "text-gray-700"
+                          : "text-ink"
                       }`}
                     >
                       {row.map((cat, i) => (
@@ -256,7 +256,7 @@ export function CategorySidebar({
                           className={`shrink-0 text-sm font-medium leading-6 transition-colors whitespace-nowrap ${
                             activeCategoryCode === l2.code
                               ? "text-teal-900 font-bold"
-                              : "text-gray-600 hover:text-teal-900"
+                              : "text-ink-2 hover:text-teal-900"
                           }`}
                         >
                           {l2.name}
@@ -276,7 +276,7 @@ export function CategorySidebar({
                               className={`text-sm leading-6 transition-colors ${
                                 activeCategoryCode === l3.code
                                   ? "font-semibold text-teal-900"
-                                  : "text-gray-500 hover:text-teal-900"
+                                  : "text-muted hover:text-teal-900"
                               }`}
                             >
                               {l3.name}

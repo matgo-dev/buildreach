@@ -15,11 +15,11 @@ const STAGE_META: Record<OrderStage, { key: string; cls: string }> = {
   CLEARED: { key: "stageCleared", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   IN_TRANSIT: { key: "stageInTransit", cls: "bg-blue-50 text-blue-700 border-blue-200" },
   ARRIVED: { key: "stageArrived", cls: "bg-green-50 text-green-700 border-green-200" },
-  CANCELLED: { key: "stageCancelled", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  CANCELLED: { key: "stageCancelled", cls: "bg-slate-100 text-muted border-slate-200" },
 };
 
 /** 履约端新增了前端不认识的 stage 时:灰底显示原始码,不冒充任何已知阶段。 */
-const UNKNOWN_STAGE_CLS = "bg-slate-100 text-slate-500 border-slate-200";
+const UNKNOWN_STAGE_CLS = "bg-slate-100 text-muted border-slate-200";
 
 export function StagePill({ stage, size = "sm" }: { stage: OrderStage | string; size?: "sm" | "md" }) {
   const t = useTranslations("orderTracking");
@@ -39,7 +39,7 @@ export function stageLabelKey(stage: string): string | null {
 
 /** 柜的报关状态徽标:未申报 / 申报中 / 已放行;不认识的值灰底显示原始码。 */
 const CUSTOMS_META: Record<CustomsStatus, { key: string; cls: string }> = {
-  NONE: { key: "customsNone", cls: "bg-slate-50 text-slate-600 border-slate-200" },
+  NONE: { key: "customsNone", cls: "bg-slate-50 text-ink-2 border-slate-200" },
   DECLARED: { key: "customsDeclared", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   RELEASED: { key: "customsReleased", cls: "bg-green-50 text-green-700 border-green-200" },
 };
@@ -131,7 +131,7 @@ export function StatePanel({
       {kind === "NO_ORG" && (
         <Link
           href="/account"
-          className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+          className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-medium transition-colors"
         >
           {t("bindingNoOrgAction")}
         </Link>
@@ -140,7 +140,7 @@ export function StatePanel({
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+          className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-medium transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           {t("retry")}
@@ -160,7 +160,7 @@ export function EmptyOrdersState() {
       <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
       <Link
         href="/mall"
-        className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+        className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-medium transition-colors"
       >
         {t("emptyBrowse")}
       </Link>

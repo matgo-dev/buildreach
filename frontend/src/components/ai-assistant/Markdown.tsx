@@ -102,7 +102,7 @@ export function MdTable({ rows, locale }: { rows: string[]; locale: string }) {
           <thead>
             <tr className="bg-slate-100">
               {headerCells.map((c, i) => (
-                <th key={i} className="whitespace-nowrap px-3 py-1.5 text-left font-semibold text-slate-700">
+                <th key={i} className="whitespace-nowrap px-3 py-1.5 text-left font-semibold text-ink">
                   <InlineFormat text={c} locale={locale} />
                 </th>
               ))}
@@ -116,7 +116,7 @@ export function MdTable({ rows, locale }: { rows: string[]; locale: string }) {
             return (
               <tr key={ri} className="border-t border-slate-100">
                 {cells.map((c, ci) => (
-                  <td key={ci} className="whitespace-nowrap px-3 py-1.5 text-slate-600">
+                  <td key={ci} className="whitespace-nowrap px-3 py-1.5 text-ink-2">
                     <InlineFormat text={c} locale={locale} />
                   </td>
                 ))}

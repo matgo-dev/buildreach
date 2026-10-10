@@ -31,19 +31,19 @@ function NoPermissionContent() {
       <div className="w-full max-w-md text-center">
         {/* 大图标 */}
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100">
-          <ShieldOff className="h-12 w-12 text-slate-400" strokeWidth={1.5} />
+          <ShieldOff className="h-12 w-12 text-muted" strokeWidth={1.5} />
         </div>
 
         {/* 标题 */}
-        <h1 className="text-2xl font-bold text-slate-800">
+        <h1 className="text-2xl font-bold text-ink">
           {t("title")}
         </h1>
 
         {/* 说明 */}
-        <p className="mt-3 text-sm text-slate-500">
+        <p className="mt-3 text-sm text-muted">
           {t("description")}
         </p>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-muted">
           {hint}
         </p>
 
@@ -51,7 +51,7 @@ function NoPermissionContent() {
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button
             onClick={() => router.back()}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-ink shadow-sm transition hover:bg-slate-50"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("goBack")}
