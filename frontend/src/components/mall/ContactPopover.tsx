@@ -49,15 +49,17 @@ export function ContactPopover({
     const popH = popoverRef.current.offsetHeight;
     const popW = popoverRef.current.offsetWidth;
 
-    let top = rect.top + rect.height / 2 - popH / 2 + window.scrollY;
-    let left = rect.right + 8 + window.scrollX;
+    // 气泡是 position: fixed，坐标必须是视口坐标——不能叠加 scrollX/Y，
+    // 否则页面滚动后(如首页底部 CTA)气泡被算到视口外，表现为"点击没反应"。
+    let top = rect.top + rect.height / 2 - popH / 2;
+    let left = rect.right + 8;
 
     // 右侧溢出屏幕 → 改为左侧弹出
     if (left + popW > window.innerWidth - 16) {
-      left = rect.left - popW - 8 + window.scrollX;
+      left = rect.left - popW - 8;
     }
     // 上下溢出 → 钳制
-    top = Math.max(8 + window.scrollY, Math.min(top, window.innerHeight - popH - 8 + window.scrollY));
+    top = Math.max(8, Math.min(top, window.innerHeight - popH - 8));
 
     setPos({ top, left });
   }, [open, isMobile]);
@@ -75,6 +77,14 @@ export function ContactPopover({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
+  // 桌面气泡固定在视口，页面滚动后会与按钮脱节 → 滚动即关闭(移动端是底部抽屉，不受影响)
+  useEffect(() => {
+    if (!open || isMobile) return;
+    const onScroll = () => setOpen(false);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [open, isMobile]);
 
   const close = useCallback(() => setOpen(false), []);
 
