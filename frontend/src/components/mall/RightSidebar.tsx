@@ -39,7 +39,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                 <p className="text-muted text-[12px] font-bold mb-2.5">{t("consultantResponseHint")}</p>
                 <button
                   onClick={() => setExpanded(true)}
-                  className="w-full h-9 rounded-lg border-[1.5px] border-teal-700 bg-white text-[13px] font-bold text-teal-900 transition-colors hover:bg-teal-50 inline-flex items-center justify-center gap-1.5"
+                  className="w-full h-9 rounded-lg bg-lime text-[13px] font-bold text-teal-900 shadow-[0_6px_16px_rgba(151,200,23,.45)] transition-all hover:-translate-y-px hover:bg-lime-soft inline-flex items-center justify-center gap-1.5"
                 >
                   {t("consultantCta")}
                   <ChevronRight className="h-3.5 w-3.5" />

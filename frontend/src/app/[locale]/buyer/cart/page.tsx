@@ -290,7 +290,7 @@ function CartContent() {
                   {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {item.moq != null && item.moq > 0 && (
-                      <span className="inline-flex items-center rounded bg-lime/30 px-1.5 py-0.5 text-[11px] font-medium text-teal-900">
+                      <span className="inline-flex items-center rounded bg-teal-50 px-1.5 py-0.5 text-[11px] font-medium text-teal-900">
                         MOQ: {item.moq} {item.unit ?? ""}
                       </span>
                     )}

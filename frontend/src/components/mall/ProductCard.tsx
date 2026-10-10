@@ -228,7 +228,7 @@ export function ProductCard({
           <MallButton
             variant="outline"
             size="md"
-            className="text-[13px] min-w-0 flex-1"
+            className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();

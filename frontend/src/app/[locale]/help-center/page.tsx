@@ -120,7 +120,7 @@ export default function HelpCenterPage() {
             <p className="text-[12px] text-ink-2 mb-2">{t("contactHint")}</p>
             <ContactPopover>
               <button
-                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
+                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors mall-btn-primary"
               >
                 {t("contactUs")}
               </button>
@@ -154,7 +154,7 @@ export default function HelpCenterPage() {
               <p className="text-[12px] text-ink-2 mb-2">{t("contactHint")}</p>
               <ContactPopover>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors mall-btn-primary"
                 >
                   {t("contactUs")}
                 </button>
