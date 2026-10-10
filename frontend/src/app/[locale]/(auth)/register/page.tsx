@@ -44,6 +44,7 @@ import { useRegisterDraft } from "./_components/useRegisterDraft";
 import { useBeforeUnload } from "./_components/useBeforeUnload";
 import { useAuthStore } from "@/stores/authStore";
 import { useAuthConfig } from "@/hooks/usePublicConfig";
+import { useContactInfo } from "@/hooks/useWhatsApp";
 import { defaultDashboardOf } from "@/config/navigation";
 import { preferenceToLocale } from "@/i18n/locale-utils";
 import { routing } from "@/i18n/routing";
@@ -1127,10 +1128,12 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
 function LegalModal({ type, onClose }: { type: "terms" | "privacy"; onClose: () => void }) {
   const tLegal = useTranslations("legal");
   const t = useTranslations("buyerRegister");
+  const contact = useContactInfo();
+  const vars = { email: contact.email ?? "", phone: contact.whatsappNumber ?? "" };
   const sectionCount = type === "terms" ? 16 : 15;
   const sections = Array.from({ length: sectionCount }, (_, i) => ({
     title: tLegal(`${type}.s${i + 1}_title`),
-    content: tLegal(`${type}.s${i + 1}_content`),
+    content: tLegal(`${type}.s${i + 1}_content`, vars),
   }));
 
   return (

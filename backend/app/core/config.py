@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     WHATSAPP_DEFAULT_NUMBER: str = "+255 758 311 131"
 
     # 客服邮箱
-    CONTACT_EMAIL: str = "info@buildreach.co.tz"
+    CONTACT_EMAIL: str = "2026matmart@gmail.com"
 
     # 微信客服配置。未配置时前端隐藏 WeChat 入口。
     WECHAT_ID: str = ""

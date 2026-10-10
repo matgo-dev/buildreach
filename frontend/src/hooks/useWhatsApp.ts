@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/authStore";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 
@@ -54,10 +55,12 @@ export function useContactInfo() {
  *   未登录 + 商品页   → Hi, I'm interested in [商品名]
  *   已登录 + 非商品页 → Hi, I'm [用户名/公司名]
  *   已登录 + 商品页   → Hi, I'm [用户名/公司名], I'm interested in [商品名]
+ * 预填文案跟随当前界面语言(mall.waMsg*)。
  */
 export function useWhatsApp() {
   const contact = useContactInfo();
   const user = useAuthStore((s) => s.user);
+  const t = useTranslations("mall");
 
   const buildLink = useCallback(
     (ctx?: WhatsAppContext): string | null => {
@@ -70,11 +73,11 @@ export function useWhatsApp() {
       const userName = user?.name || user?.username;
       const orgName = user?.organization?.name;
       if (userName && orgName) {
-        parts.push(`I'm ${userName} from ${orgName}`);
+        parts.push(t("waMsgUserOrg", { name: userName, org: orgName }));
       } else if (userName) {
-        parts.push(`I'm ${userName}`);
+        parts.push(t("waMsgUser", { name: userName }));
       } else if (orgName) {
-        parts.push(`I'm from ${orgName}`);
+        parts.push(t("waMsgOrg", { org: orgName }));
       }
 
       // 商品信息
@@ -82,16 +85,16 @@ export function useWhatsApp() {
         const product = ctx.productCode
           ? `${ctx.productName} (${ctx.productCode})`
           : ctx.productName;
-        parts.push(`I'm interested in ${product}`);
+        parts.push(t("waMsgInterested", { product }));
       }
 
       if (parts.length === 0) return baseLink;
 
-      const text = `Hi, ${parts.join(", ")}`;
+      const text = t("waMsgGreeting", { body: parts.join(t("waMsgSep")) });
       const separator = baseLink.includes("?") ? "&" : "?";
       return `${baseLink}${separator}text=${encodeURIComponent(text)}`;
     },
-    [contact.whatsappLink, user],
+    [contact.whatsappLink, user, t],
   );
 
   return {
