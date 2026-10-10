@@ -37,7 +37,7 @@ function StepCard({
       <div className="flex">
         {/* 左侧色条 + 序号 */}
         <div
-          className="flex flex-col items-center justify-center w-[56px] flex-shrink-0 bg-teal-100 text-teal-900"
+          className="flex flex-col items-center justify-center w-[56px] flex-shrink-0 bg-lime-soft text-teal-900"
         >
           <span className="text-lg">{icon}</span>
           <span className="text-xs font-bold mt-0.5">{index + 1}</span>

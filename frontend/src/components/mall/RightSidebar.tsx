@@ -30,7 +30,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
           <MallCard padding="p-0" className="overflow-hidden">
             {!expanded ? (
               /* 收起态 — 轻量入口 */
-              <div className="bg-teal-100 p-2.5">
+              <div className="bg-lime-soft p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Headphones className="w-4 h-4 text-teal-700" />
                   <h3 className="text-navy text-[15px] font-black">{t("customerSupport")}</h3>

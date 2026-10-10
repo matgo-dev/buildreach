@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-auto bg-gradient-to-br from-teal-50 via-bg to-teal-100 p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-auto bg-gradient-to-br from-lime-soft/60 via-bg to-lime/50 p-4">
       <div className="relative z-10 w-full max-w-md">
         {/* 品牌区 */}
         <div className="mb-8 text-center">
