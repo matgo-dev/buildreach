@@ -68,11 +68,11 @@ export default function HelpCenterPage() {
     <PublicLayout>
       {/* 主体 */}
       <div className="mx-auto max-w-mall px-6 pt-1.5 pb-6">
-        <div className="rounded-2xl bg-gradient-to-r from-[#0c9468] to-[#0a7a56] px-6 py-7 mb-6">
-          <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
+        <div className="rounded-2xl mall-surface px-6 py-7 mb-6">
+          <h1 className="text-xl md:text-2xl font-bold text-teal-900 mb-2">
             {t("pageTitle")}
           </h1>
-          <p className="text-[13px] text-white/65 leading-relaxed max-w-2xl">
+          <p className="text-[13px] text-ink-2 leading-relaxed max-w-2xl">
             {t("pageDesc")}
           </p>
         </div>
@@ -116,11 +116,11 @@ export default function HelpCenterPage() {
           })}
 
           {/* 联系客服 */}
-          <div className="rounded-xl bg-gradient-to-br from-[#0c9468] to-[#0a7a56] p-4 text-center">
-            <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
+          <div className="rounded-xl mall-surface p-4 text-center">
+            <p className="text-[12px] text-ink-2 mb-2">{t("contactHint")}</p>
             <ContactPopover>
               <button
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
               >
                 {t("contactUs")}
               </button>
@@ -150,11 +150,11 @@ export default function HelpCenterPage() {
             </nav>
 
             {/* 联系客服 */}
-            <div className="rounded-xl bg-gradient-to-br from-[#0c9468] to-[#0a7a56] p-4 text-center">
-              <p className="text-[12px] text-white/80 mb-2">{t("contactHint")}</p>
+            <div className="rounded-xl mall-surface p-4 text-center">
+              <p className="text-[12px] text-ink-2 mb-2">{t("contactHint")}</p>
               <ContactPopover>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1fb855] transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
                 >
                   {t("contactUs")}
                 </button>

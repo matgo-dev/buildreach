@@ -28,7 +28,7 @@ export default function TermsPage() {
   return (
     <PublicLayout>
       <div className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="text-2xl font-black text-[#0c9468] mb-2">{t("terms.title")}</h1>
+        <h1 className="text-2xl font-black text-teal-700 mb-2">{t("terms.title")}</h1>
         <p className="text-sm text-gray-400 mb-8">{t("terms.lastUpdated")}</p>
         <div className="space-y-6">
           {sections.map((s, i) => (

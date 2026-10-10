@@ -31,12 +31,12 @@ import { routing } from "@/i18n/routing";
 /** 角色标签 labelKey 对应 mall.roleBuyer 等 */
 const ROLE_PILL: Record<RoleCode, { labelKey: string; cls: string }> = {
   BUYER:    { labelKey: "roleBuyer",    cls: "bg-teal-100 text-teal-900 border-teal-800/20" },
-  SUPPLIER: { labelKey: "roleSupplier", cls: "bg-gold-soft text-gold-deep border-gold/30" },
+  SUPPLIER: { labelKey: "roleSupplier", cls: "bg-amber-50 text-amber-800 border-amber-200" },
   OPERATOR: { labelKey: "roleOperator", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   ADMIN:    { labelKey: "roleAdmin",    cls: "bg-slate-100 text-slate-700 border-slate-200" },
 };
 
-/** Mall 专属 Header — 深青底色 + 大搜索框 + 暖金点缀。参考 HTML .mainbar */
+/** Mall 专属 Header — 白底 + 字标 Logo + 大搜索框(深绿搜索按钮),配色对齐 intro.matgo.ai */
 export function MallHeader() {
   const user = useAuthStore((s) => s.user);
   const cartCount = useCartStore((s) => s.count);
@@ -97,7 +97,7 @@ export function MallHeader() {
     <header
       className="sticky top-0 z-[80] border-b border-line bg-white"
       style={{
-        boxShadow: "0 1px 2px rgba(16,36,65,.05), 0 10px 24px rgba(16,36,65,.05)",
+        boxShadow: "0 1px 2px rgba(18,59,50,.04), 0 6px 20px rgba(18,59,50,.04)",
       }}
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">
@@ -112,14 +112,14 @@ export function MallHeader() {
           <img
             src={BRAND.logoLockup}
             alt={BRAND.name}
-            className="h-8 sm:h-11 w-auto shrink-0"
+            className="h-7 sm:h-9 w-auto shrink-0"
           />
         </Link>
 
         {/* 中:搜索框 — PC 上显示在这一行 */}
         <form onSubmit={handleSearch} className="relative min-w-0 hidden md:block">
           <div
-            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-teal-600/25 shadow-[0_1px_2px_rgba(16,36,65,.05)] transition-colors focus-within:border-teal-600/60 focus-within:ring-2 focus-within:ring-teal-600/15"
+            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-muted/60 transition-colors focus-within:border-sea focus-within:ring-2 focus-within:ring-sea/20"
           >
             <input
               type="search"
@@ -132,7 +132,7 @@ export function MallHeader() {
             />
             <button
               type="submit"
-              className="w-[60px] bg-teal-600 hover:bg-teal-700 text-white grid place-items-center transition-colors"
+              className="w-[60px] mall-btn-primary grid place-items-center transition-colors"
               aria-label="Search"
             >
               <Search className="h-5 w-5" strokeWidth={2.4} />
@@ -160,8 +160,7 @@ export function MallHeader() {
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
               <span
-                className="absolute -right-2.5 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full text-[11px] font-black text-white border-2 border-white"
-                style={{ background: "#e3a615" }}
+                className="absolute -right-2.5 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-lime text-[11px] font-black text-teal-900 border-2 border-white"
               >
                 {cartCount}
               </span>
@@ -187,7 +186,7 @@ export function MallHeader() {
         {/* 移动端搜索框 — 独占一行 */}
         <form onSubmit={handleSearch} className="relative md:hidden pb-3">
           <div
-            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-teal-600/25 shadow-[0_1px_2px_rgba(16,36,65,.05)] transition-colors focus-within:border-teal-600/60 focus-within:ring-2 focus-within:ring-teal-600/15"
+            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-muted/60 transition-colors focus-within:border-sea focus-within:ring-2 focus-within:ring-sea/20"
           >
             <input
               type="search"
@@ -200,7 +199,7 @@ export function MallHeader() {
             />
             <button
               type="submit"
-              className="w-[50px] bg-teal-600 hover:bg-teal-700 text-white grid place-items-center transition-colors"
+              className="w-[50px] mall-btn-primary grid place-items-center transition-colors"
               aria-label="Search"
             >
               <Search className="h-4.5 w-4.5" strokeWidth={2.4} />
@@ -273,8 +272,7 @@ function UserMenu() {
           {/* 用户信息 */}
           <div className="border-b border-slate-100 bg-gradient-to-br from-teal-50 to-white px-4 py-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #10b981, #0c9468)" }}>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white">
                 {initial}
               </span>
               <div className="min-w-0">

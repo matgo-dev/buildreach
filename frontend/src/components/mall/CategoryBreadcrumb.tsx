@@ -185,10 +185,10 @@ export function CategoryBreadcrumb({
         {/* 客服入口 — 仅列表页显示，详情页(有tail)不显示 */}
         {!tail && (
           <div className="ml-4 flex items-center gap-2 shrink-0">
-            <span className="text-[12px] text-amber-500 hidden sm:inline">{t("cantFindHint")}</span>
+            <span className="text-[12px] text-sea hidden sm:inline">{t("cantFindHint")}</span>
             <ContactPopover>
               <button
-                className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-1 text-[12px] font-medium text-white hover:bg-[#20bd5a] transition-colors h-[28px]"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium transition-colors h-[28px] border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 {t("contactService")}

@@ -15,11 +15,11 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
   return (
     <Link
       href={`/mall/products/${product.id}`}
-      className="group block rounded-lg border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-700 hover:shadow-mall-md shadow-mall-sm"
+      className="group block rounded-lg border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-mall-lg shadow-mall-sm"
     >
       {/* 图片区 */}
       <div
-        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-[#edf2f5] p-1"
+        className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-line p-1"
         style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
       >
         {product.main_image ? (

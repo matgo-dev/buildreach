@@ -150,7 +150,7 @@ function ZoneProductDetailContent() {
     return (
       <PublicLayout>
         <div className="flex min-h-[400px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
+          <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
         </div>
       </PublicLayout>
     );
@@ -164,7 +164,7 @@ function ZoneProductDetailContent() {
           <h2 className="text-lg font-semibold text-gray-700">{tMall("detail.notFound")}</h2>
           <button
             onClick={() => router.push(`/${locale}/zone/${zoneCode}`)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0c9468] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a7a56]"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full mall-btn-primary px-5 py-2 text-sm font-medium transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("backToZone")}
@@ -205,7 +205,7 @@ function ZoneProductDetailContent() {
                 {product.certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800"
+                    className="rounded bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-sea"
                   >
                     {cert}
                   </span>
@@ -214,10 +214,10 @@ function ZoneProductDetailContent() {
             )}
 
             {(product.selling_points || product.description) && (
-              <div className="mt-3 rounded-lg border border-[#0c9468]/10 bg-[#0c9468]/[0.03] px-4 py-3">
+              <div className="mt-3 rounded-lg border border-teal-700/10 bg-teal-700/[0.03] px-4 py-3">
                 {product.selling_points && (
                   <div className="text-sm leading-relaxed text-gray-800">
-                    <span className="mr-1.5 text-xs font-semibold text-[#0c9468]">✦ {tMall("detail.sellingPoints")}</span>
+                    <span className="mr-1.5 text-xs font-semibold text-teal-700">✦ {tMall("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
@@ -269,7 +269,7 @@ function ZoneProductDetailContent() {
               <button
                 onClick={handleAddToInquiry}
                 disabled={adding || needsSelection}
-                className="inline-flex items-center gap-2 rounded-full bg-[#0c9468] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0a7a56] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("addToInquiry")}

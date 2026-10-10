@@ -160,7 +160,7 @@ function LoginContent() {
                 (isPhone ? "rounded-r-lg rounded-l-none " : "rounded-lg ") +
                 (idErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15")
+                  : "border-gray-200 focus:border-sea focus:ring-sea/15")
               }
             />
           </div>
@@ -175,7 +175,7 @@ function LoginContent() {
             {forgotPasswordOn && (
               <Link
                 href="/forgot-password"
-                className="text-xs text-gray-400 transition-colors hover:text-[#FF6B35]"
+                className="text-xs text-gray-400 transition-colors hover:text-sea"
               >
                 {t("forgot_password")}
               </Link>
@@ -194,7 +194,7 @@ function LoginContent() {
                 "w-full h-12 px-4 pr-12 rounded-lg border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
                 (pwdErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15")
+                  : "border-gray-200 focus:border-sea focus:ring-sea/15")
               }
             />
             <button
@@ -212,7 +212,7 @@ function LoginContent() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-base font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitting ? (
             <>
@@ -228,7 +228,7 @@ function LoginContent() {
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-500">
           {t("no_account")}{" "}
-          <Link href="/register" className="font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]">
+          <Link href="/register" className="font-semibold text-sea transition-colors hover:text-teal-900">
             {t("register_now")}
           </Link>
         </p>
@@ -250,7 +250,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
+          <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
         </div>
       }
     >

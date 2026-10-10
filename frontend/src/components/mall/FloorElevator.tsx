@@ -112,8 +112,8 @@ export function FloorElevator({ floors }: { floors: FloorItem[] }) {
               onClick={() => scrollTo(floor.id)}
               className={`block w-full px-1.5 py-2.5 text-[12px] leading-tight text-center border-b border-gray-100 last:border-b-0 transition-colors ${
                 isActive
-                  ? "bg-teal-700 text-white font-bold"
-                  : "text-gray-600 hover:bg-teal-50 hover:text-teal-800"
+                  ? "bg-lime text-teal-900 font-bold"
+                  : "text-ink-2 hover:bg-teal-50 hover:text-teal-900"
               }`}
             >
               {t(floor.nameKey)}

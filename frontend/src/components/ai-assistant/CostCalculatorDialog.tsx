@@ -19,8 +19,8 @@ import {
   type PriceBasis,
 } from "./costCalculator";
 
-const HEADER_BG = "linear-gradient(120deg, #0a7a56, #0c9468 60%, #10b981)";
-const ACCENT_BG = "linear-gradient(120deg, #0a7a56, #10b981)";
+const HEADER_BG = "#073e32";
+const ACCENT_BG = "#103d33";
 
 const CITY_KEYS = Object.keys(LOCAL_TRANSPORT_TABLE);
 const BASES: PriceBasis[] = ["EXW", "FOB", "CIF"];

@@ -136,7 +136,7 @@ export default function ForgotPasswordPage() {
         </div>
         <Link
           href="/login"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c9468] px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg mall-btn-primary px-8 text-sm font-semibold transition-all"
         >
           {t("go_login")}
         </Link>
@@ -148,7 +148,7 @@ export default function ForgotPasswordPage() {
   if (requireEmailVerification === false) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -195,12 +195,12 @@ export default function ForgotPasswordPage() {
                   "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
                   (emailErr
                     ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                    : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                    : "border-gray-200 focus:border-teal-700 focus:ring-teal-700/15")
                 }
               />
               {emailErr && <p className="text-xs text-red-500">{emailErr}</p>}
               {emailErr && emailNotRegistered && (
-                <Link href="/register" className="text-xs font-semibold text-[#0c9468] hover:underline">
+                <Link href="/register" className="text-xs font-semibold text-teal-700 hover:underline">
                   {t("go_register")}
                 </Link>
               )}
@@ -209,7 +209,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> {t("submitting")}</>
@@ -235,7 +235,7 @@ export default function ForgotPasswordPage() {
             <ContactPopover>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#1fb855]"
+                className="inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
               >
                 <MessageCircle className="h-4 w-4" />
                 {tm("ctaContactUs")}
@@ -275,7 +275,7 @@ export default function ForgotPasswordPage() {
                 "h-12 w-full rounded-lg border bg-white px-3 text-center text-lg font-bold tracking-[0.5em] text-gray-800 placeholder-gray-300 transition-all focus:outline-none focus:ring-2 " +
                 (codeErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                  : "border-gray-200 focus:border-teal-700 focus:ring-teal-700/15")
               }
             />
             {codeErr && <p className="text-xs text-red-500">{codeErr}</p>}
@@ -298,7 +298,7 @@ export default function ForgotPasswordPage() {
                   "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-gray-800 transition-all focus:outline-none focus:ring-2 " +
                   (pwdErr
                     ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                    : "border-gray-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15")
+                    : "border-gray-200 focus:border-teal-700 focus:ring-teal-700/15")
                 }
               />
               <button
@@ -317,7 +317,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0c9468] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a7a56] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> {t("resetting")}</>
@@ -332,7 +332,7 @@ export default function ForgotPasswordPage() {
             <button
               type="button"
               onClick={() => { setStep("email"); setError(null); setCode(""); }}
-              className="font-semibold text-[#FF6B35] hover:text-[#e05a25]"
+              className="font-semibold text-sea hover:text-teal-900"
             >
               {t("resend")}
             </button>
@@ -343,7 +343,7 @@ export default function ForgotPasswordPage() {
       <div className="mt-6 text-center">
         <Link
           href="/login"
-          className="text-sm font-semibold text-[#FF6B35] transition-colors hover:text-[#e05a25]"
+          className="text-sm font-semibold text-sea transition-colors hover:text-teal-900"
         >
           {t("back_to_login")}
         </Link>

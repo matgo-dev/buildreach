@@ -108,7 +108,7 @@ export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
                     node.done ? "bg-teal-400" : "bg-slate-200"
                   }`}
                   style={node.current ? {
-                    background: "repeating-linear-gradient(90deg, #14b8a6 0, #14b8a6 6px, transparent 6px, transparent 12px)",
+                    background: "repeating-linear-gradient(90deg, #32bdc9 0, #32bdc9 6px, transparent 6px, transparent 12px)",
                   } : undefined}
                 />
               </div>
@@ -140,18 +140,18 @@ export function FulfillmentHeroBanner() {
       <div
         className="absolute inset-0"
         style={{
-          background: "linear-gradient(to right, rgba(10,37,64,0.92) 0%, rgba(13,77,77,0.85) 45%, rgba(13,77,77,0.5) 70%, rgba(13,77,77,0.3) 100%)",
+          background: "linear-gradient(to right, rgba(8,44,36,0.92) 0%, rgba(16,61,51,0.82) 45%, rgba(16,61,51,0.45) 70%, rgba(16,61,51,0.2) 100%)",
         }}
       />
       {/* 底部暖金色边线 */}
-      <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(90deg, #e3a615, #D4A853, transparent)" }} />
+      <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(90deg, #b9e46b, #32bdc9, transparent)" }} />
 
       <div className="relative flex items-center gap-8 px-8 py-10 md:py-12">
         {/* 左侧文案 */}
         <div className="flex-1 min-w-0 z-10">
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-1 text-xs font-medium text-white/90">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse" />
               {t("heroBadge")}
             </span>
           </div>
@@ -172,7 +172,7 @@ export function FulfillmentHeroBanner() {
               <div key={i}>
                 <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
                   {stat.value}
-                  {stat.unit && <span className="text-sm font-medium text-amber-300 ml-1">{stat.unit}</span>}
+                  {stat.unit && <span className="text-sm font-medium text-lime ml-1">{stat.unit}</span>}
                 </p>
                 <p className="text-[11px] text-white/60 mt-0.5">{stat.label}</p>
               </div>

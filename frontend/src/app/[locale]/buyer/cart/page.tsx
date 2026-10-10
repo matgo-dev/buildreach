@@ -163,7 +163,7 @@ function CartContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -186,14 +186,14 @@ function CartContent() {
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/mall`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
               >
                 {t("goToMall")}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <ContactPopover>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {t("inquireNow")}
@@ -211,7 +211,7 @@ function CartContent() {
             checked={allChecked}
             onChange={handleToggleAll}
             disabled={purchasableItems.length === 0}
-            className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468]"
+            className="h-4 w-4 shrink-0 rounded border-gray-300 text-teal-700 focus:ring-teal-700"
           />
           <span className="flex-1 font-medium">{t("productInfo")}</span>
           <span className="w-28 font-medium">{tRfq("skuSpec")}</span>
@@ -237,7 +237,7 @@ function CartContent() {
               <div key={item.item_id}>
               <div
                 className={`flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition-colors ${
-                  unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-blue-50/30"
+                  unavailable ? "opacity-50 bg-gray-50/50" : "hover:bg-teal-50/60"
                 }`}
               >
                 {/* 移动端：勾选 + 图片 + 名称横排 */}
@@ -248,11 +248,11 @@ function CartContent() {
                   checked={checked}
                   disabled={unavailable}
                   onChange={(e) => handleCheck(item.item_id, e.target.checked)}
-                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468] disabled:opacity-40"
+                  className="mt-3 h-4 w-4 shrink-0 rounded border-gray-300 text-teal-700 focus:ring-teal-700 disabled:opacity-40"
                 />
 
                 {/* 商品图片 — 可点击跳转详情 */}
-                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#0c9468] transition-colors">
+                <a href={detailHref} className="h-20 w-20 sm:h-[88px] sm:w-[88px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-teal-700 transition-colors">
                   {item.main_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -280,7 +280,7 @@ function CartContent() {
                 {/* 商品详情 */}
                 <div className="min-w-0 flex-1">
                   {/* 商品名 — 可点击跳转详情 */}
-                  <a href={detailHref} className="text-sm font-semibold text-[#0c9468] hover:underline line-clamp-2">
+                  <a href={detailHref} className="text-sm font-semibold text-teal-700 hover:underline line-clamp-2">
                     {item.product_name ?? "—"}
                   </a>
                   {/* 短描述 */}
@@ -290,12 +290,12 @@ function CartContent() {
                   {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {item.moq != null && item.moq > 0 && (
-                      <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="inline-flex items-center rounded bg-lime/30 px-1.5 py-0.5 text-[11px] font-medium text-teal-900">
                         MOQ: {item.moq} {item.unit ?? ""}
                       </span>
                     )}
                     {item.brand && (
-                      <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700">
+                      <span className="inline-flex items-center rounded bg-teal-100 px-1.5 py-0.5 text-[11px] text-sea">
                         {item.brand}
                       </span>
                     )}
@@ -305,7 +305,7 @@ function CartContent() {
                       </span>
                     )}
                     {leadTime && (
-                      <span className="inline-flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[11px] text-green-700">
+                      <span className="inline-flex items-center rounded bg-teal-50 px-1.5 py-0.5 text-[11px] text-ink-2">
                         🕐 {leadTime}
                       </span>
                     )}
@@ -355,7 +355,7 @@ function CartContent() {
                             .then((cart) => { mutate(cart, false); syncFromCart(cart); })
                             .catch(() => { e.target.value = String(item.quantity); });
                         }}
-                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                       />
                       {item.unit && (
                         <span className="text-[11px] text-gray-400 sm:block sm:mt-0.5">{item.unit}</span>
@@ -398,7 +398,7 @@ function CartContent() {
                 checked={allChecked}
                 onChange={handleToggleAll}
                 disabled={purchasableItems.length === 0}
-                className="h-4 w-4 rounded border-gray-300 text-[#0c9468] focus:ring-[#0c9468]"
+                className="h-4 w-4 rounded border-gray-300 text-teal-700 focus:ring-teal-700"
               />
               <span className="text-xs sm:text-sm text-gray-700">{tCommon("selectAll")}</span>
             </label>
@@ -413,7 +413,7 @@ function CartContent() {
                 type="button"
                 disabled={checkedIds.size === 0}
                 onClick={handleSubmitInquiry}
-                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-[#e3a615] px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white transition-colors hover:bg-[#c99012] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg mall-btn-primary px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-colors disabled:bg-none disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {t("submitInquiry")}
                 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

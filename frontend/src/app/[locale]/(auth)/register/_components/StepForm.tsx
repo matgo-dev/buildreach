@@ -57,7 +57,7 @@ interface StepFormProps {
 const INPUT_BASE =
   "h-11 w-full rounded-lg border bg-white px-3 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK =
-  "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15";
+  "border-gray-200 focus:border-sea focus:ring-sea/15";
 const INPUT_ERR = "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 
 function cls(err: string | null, extra = "") {
@@ -320,7 +320,7 @@ export function StepForm({
             凭证:{country.regNo.label} ({country.regNo.hint})
           </p>
         </div>
-        <span className="rounded bg-[#003366] px-2 py-1 text-xs font-bold tracking-wide text-white">
+        <span className="rounded bg-teal-700 px-2 py-1 text-xs font-bold tracking-wide text-white">
           {country.code}
         </span>
       </div>
@@ -351,7 +351,7 @@ export function StepForm({
           <span>
             {country.regNo.label} <span className="font-normal text-gray-400">({country.regNo.hint})</span> *
           </span>
-          <span className="rounded bg-[#003366]/10 px-1.5 py-0.5 font-mono text-xs font-bold text-[#003366]">
+          <span className="rounded bg-teal-700/10 px-1.5 py-0.5 font-mono text-xs font-bold text-teal-700">
             {country.code}
           </span>
         </Label>
@@ -496,7 +496,7 @@ export function StepForm({
           className={
             "flex h-12 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition-all active:scale-[0.99] " +
             (isFormValid && !submitting
-              ? "bg-[#FF6B35] hover:bg-[#e05a25] text-white cursor-pointer"
+              ? "mall-btn-primary cursor-pointer"
               : "bg-gray-300 text-gray-500 cursor-not-allowed")
           }
         >

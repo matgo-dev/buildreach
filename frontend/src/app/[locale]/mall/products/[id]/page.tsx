@@ -125,7 +125,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`relative rounded-md border-2 transition-colors ${
                   isSelected
-                    ? "border-[#0c9468] ring-1 ring-[#0c9468]/30"
+                    ? "border-teal-700 ring-1 ring-teal-700/30"
                     : "border-transparent hover:border-gray-300"
                 } ${canSelect ? "cursor-pointer" : "cursor-default"}`}
               >
@@ -152,7 +152,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
                   isSelected
-                    ? "border-[#0c9468] bg-[#e6f7ef] text-[#0c9468] font-medium"
+                    ? "border-teal-700 bg-teal-50 text-teal-700 font-medium"
                     : "border-gray-200 bg-white text-gray-600"
                 } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
               >
@@ -427,7 +427,7 @@ function ProductDetailContent() {
             const ex = er.left + er.width / 2, ey = er.top + er.height / 2;
             const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
             const m = document.createElement("div");
-            m.style.cssText = `position:fixed;z-index:99999;left:${sx}px;top:${sy}px;width:36px;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent 0%,#e3a615 40%,#f0c040 100%);box-shadow:0 0 8px rgba(227,166,21,0.6),0 0 16px rgba(227,166,21,0.3);pointer-events:none;transform:rotate(${angle}deg);transform-origin:right center;opacity:0;transition:left 1s cubic-bezier(0.25,0.1,0.25,1),top 1s cubic-bezier(0.25,0.1,0.25,1),opacity 0.3s ease,width 0.8s ease;`;
+            m.style.cssText = `position:fixed;z-index:99999;left:${sx}px;top:${sy}px;width:36px;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent 0%,#32bdc9 40%,#b9e46b 100%);box-shadow:0 0 8px rgba(185,228,107,0.6),0 0 16px rgba(50,189,201,0.3);pointer-events:none;transform:rotate(${angle}deg);transform-origin:right center;opacity:0;transition:left 1s cubic-bezier(0.25,0.1,0.25,1),top 1s cubic-bezier(0.25,0.1,0.25,1),opacity 0.3s ease,width 0.8s ease;`;
             document.body.appendChild(m);
             requestAnimationFrame(() => { m.style.opacity = "1"; requestAnimationFrame(() => { m.style.left = `${ex}px`; m.style.top = `${ey}px`; m.style.width = "12px"; setTimeout(() => { m.style.opacity = "0"; }, 600); }); });
             setTimeout(() => { m.remove(); target.style.transition = "transform 0.3s ease"; target.style.transform = "scale(1.3)"; setTimeout(() => { target.style.transform = "scale(1)"; }, 300); }, 1050);
@@ -483,7 +483,7 @@ function ProductDetailContent() {
     return (
       <PublicLayout>
         <div className="flex min-h-[400px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
+          <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
         </div>
       </PublicLayout>
     );
@@ -498,7 +498,7 @@ function ProductDetailContent() {
           <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
           <button
             onClick={() => router.push(`/${locale}/mall`)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0c9468] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a7a56]"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full mall-btn-primary px-5 py-2 text-sm font-medium transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("detail.backToList")}
@@ -547,7 +547,7 @@ function ProductDetailContent() {
                 {product.certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800"
+                    className="rounded bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-sea"
                   >
                     {cert}
                   </span>
@@ -557,10 +557,10 @@ function ProductDetailContent() {
 
             {/* 商品描述/卖点 — 醒目展示 */}
             {(product.selling_points || product.description) && (
-              <div className="mt-3 rounded-lg border border-[#0c9468]/10 bg-[#0c9468]/[0.03] px-4 py-3">
+              <div className="mt-3 rounded-lg border border-teal-700/10 bg-teal-700/[0.03] px-4 py-3">
                 {product.selling_points && (
                   <div className="text-sm leading-relaxed text-gray-800">
-                    <span className="mr-1.5 text-xs font-semibold text-[#0c9468]">✦ {t("detail.sellingPoints")}</span>
+                    <span className="mr-1.5 text-xs font-semibold text-teal-700">✦ {t("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
@@ -611,14 +611,14 @@ function ProductDetailContent() {
                 type="button"
                 disabled={addingToCart}
                 onClick={handleAddToCart}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0c9468] px-6 py-3 text-sm font-semibold text-white hover:bg-[#0a7a56] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 rounded-lg mall-btn-primary px-6 py-3 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("detail.addToInquiry")}
               </button>
               <ContactPopover context={{ productName: product.name, productCode: product.spu_code }}>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-6 py-3 text-sm font-semibold text-white hover:bg-[#20bd5a] transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-6 py-3 text-sm font-semibold transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {t("detail.contactPlatform")}
@@ -639,7 +639,7 @@ function ProductDetailContent() {
               onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "border-b-2 border-[#0c9468] text-[#0c9468]"
+                  ? "border-b-2 border-teal-700 text-teal-700"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >

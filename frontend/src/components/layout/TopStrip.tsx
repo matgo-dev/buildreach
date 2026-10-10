@@ -14,28 +14,28 @@ export function TopStrip() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="bg-teal-700 text-white/85 text-[13px]">
+    <div className="bg-teal-50 text-ink-2 text-[13px] border-b border-line">
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}
         </span>
         <div className="flex items-center gap-2 sm:gap-4 text-xs whitespace-nowrap overflow-visible">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp/20 px-2 sm:px-3 py-0.5 text-[#9af0bc] font-extrabold text-[11px] sm:text-xs shrink-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/50 px-2 sm:px-3 py-0.5 text-teal-900 font-extrabold text-[11px] sm:text-xs shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">PVoC / CoC Document Support</span>
             <span className="sm:hidden">PVoC / CoC</span>
           </span>
-          <Link href="/help-center" className="hidden sm:inline hover:text-white transition-colors">{t("helpCenter")}</Link>
-          <span className="text-white/40">|</span>
+          <Link href="/help-center" className="hidden sm:inline hover:text-teal-900 transition-colors">{t("helpCenter")}</Link>
+          <span className="text-line-strong">|</span>
           {user ? (
             <UserDropdown />
           ) : (
             <span className="inline-flex items-center gap-2 shrink-0">
-              <Link href="/login" className="hover:text-white transition-colors">
+              <Link href="/login" className="hover:text-teal-900 transition-colors">
                 {t("headerLogin")}
               </Link>
-              <span className="text-white/40">|</span>
-              <Link href="/register" className="hover:text-white transition-colors truncate max-w-[120px] sm:max-w-none">
+              <span className="text-line-strong">|</span>
+              <Link href="/register" className="hover:text-teal-900 transition-colors truncate max-w-[120px] sm:max-w-none">
                 {t("headerRegister")}
               </Link>
             </span>
@@ -75,7 +75,7 @@ function UserDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 hover:text-white transition-colors"
+        className="inline-flex items-center gap-1 hover:text-teal-900 transition-colors"
       >
         <User className="h-3.5 w-3.5" />
         <span>{user.username || user.email}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-// 3 步向导顶部步骤条。配色:已选/当前 深蓝 #003366,未到 灰。
+// 3 步向导顶部步骤条。配色:已选/当前 品牌深绿,未到 灰。
 // 圆圈可点击直跳,但只允许跳到已经达到过的 step(reachable 由外部判定)。
 
 interface StepIndicatorProps {
@@ -38,10 +38,10 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
                 className={
                   "flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-colors " +
                   (done || active
-                    ? "bg-[#003366] text-white"
+                    ? "bg-teal-700 text-white"
                     : "bg-gray-200 text-gray-500") +
                   (clickable
-                    ? " cursor-pointer hover:ring-2 hover:ring-[#003366]/30"
+                    ? " cursor-pointer hover:ring-2 hover:ring-teal-700/30"
                     : " cursor-default")
                 }
               >
@@ -50,7 +50,7 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
               <span
                 className={
                   "mt-1.5 text-xs " +
-                  (done || active ? "font-semibold text-[#003366]" : "text-gray-400")
+                  (done || active ? "font-semibold text-teal-700" : "text-gray-400")
                 }
               >
                 {s.label}
@@ -59,7 +59,7 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
             {idx < STEPS.length - 1 && (
               <div
                 className={
-                  "mx-2 h-0.5 flex-1 " + (done ? "bg-[#003366]" : "bg-gray-200")
+                  "mx-2 h-0.5 flex-1 " + (done ? "bg-teal-700" : "bg-gray-200")
                 }
               />
             )}

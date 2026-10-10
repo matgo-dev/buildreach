@@ -103,7 +103,7 @@ export function CompanyDetailView({
       {!hideBackLink && (
         <Link
           href="/credit"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-[#003366]"
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-teal-700"
         >
           <ArrowLeft className="h-4 w-4" />
           返回搜索
@@ -191,7 +191,7 @@ export function CompanyDetailView({
                     href={data.basic.website}
                     target="_blank"
                     rel="noreferrer"
-                    className="truncate text-[#003366] hover:underline"
+                    className="truncate text-teal-700 hover:underline"
                   >
                     {data.basic.website}
                   </a>

@@ -8,6 +8,8 @@ interface PaginationProps {
   total: number;
   totalItems?: number;
   onChange: (page: number) => void;
+  /** 商城前台用品牌深绿；默认蓝色给运营端 */
+  tone?: "default" | "mall";
 }
 
 /**
@@ -37,7 +39,7 @@ function buildPageNumbers(current: number, total: number): number[] {
   return result;
 }
 
-export default function Pagination({ current, total, totalItems, onChange }: PaginationProps) {
+export default function Pagination({ current, total, totalItems, onChange, tone = "default" }: PaginationProps) {
   const t = useTranslations("pagination");
   const pageNumbers = useMemo(() => buildPageNumbers(current, total), [current, total]);
 
@@ -75,7 +77,7 @@ export default function Pagination({ current, total, totalItems, onChange }: Pag
               onClick={() => onChange(p)}
               className={`min-w-[32px] rounded-lg px-2.5 py-1.5 font-medium ${
                 p === current
-                  ? "bg-blue-600 text-white"
+                  ? tone === "mall" ? "bg-teal-700 text-white" : "bg-blue-600 text-white"
                   : "border border-slate-200 hover:bg-slate-50"
               }`}
             >

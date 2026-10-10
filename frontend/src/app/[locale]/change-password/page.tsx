@@ -57,21 +57,21 @@ function Inner() {
   const matchOk = confirm.length > 0 && newPwd === confirm && !confirmErr;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#003366] to-[#0F4C81] p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-teal-50 via-bg to-teal-100 p-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center text-white">
-          <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
+        <div className="mb-8 text-center text-teal-900">
+          <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-lime text-teal-900">
             <KeyRound className="h-7 w-7" />
           </div>
           <h1 className="text-2xl font-bold">修改密码</h1>
-          <p className="mt-2 text-sm text-white/60">
+          <p className="mt-2 text-sm text-muted">
             {user?.must_change_password
               ? "首次登录需修改初始密码后才能继续"
               : `当前账号:${user?.email}`}
           </p>
         </div>
 
-        <div className="rounded-2xl border-t-4 border-[#FF6B35] bg-white p-8 shadow-xl">
+        <div className="rounded-2xl border border-line border-t-4 border-t-lime bg-white p-8 shadow-mall-lg">
           {error && (
             <div className="mb-5 flex items-center gap-2.5 rounded-lg border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -126,7 +126,7 @@ function Inner() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#003366] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#002244] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg mall-btn-primary text-base font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? (
                 <>
@@ -169,7 +169,7 @@ function PwdField({
     "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
   const tone = error
     ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-    : "border-gray-200 focus:border-[#FF6B35] focus:ring-[#FF6B35]/15";
+    : "border-gray-200 focus:border-sea focus:ring-sea/15";
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm font-semibold text-gray-700">

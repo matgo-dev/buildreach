@@ -79,9 +79,9 @@ function CreditInner() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="rounded-2xl bg-gradient-to-br from-[#003366] to-[#0F4C81] px-6 py-8 text-white shadow-sm">
-        <h1 className="text-2xl font-bold">信用评估 · 海外工程领域专业版企查查</h1>
-        <p className="mt-1 text-sm text-white/80">
+      <div className="rounded-2xl mall-surface px-6 py-8">
+        <h1 className="text-2xl font-bold text-teal-900">信用评估 · 海外工程领域专业版企查查</h1>
+        <p className="mt-1 text-sm text-ink-2">
           输入国别 + 关键词,查看企业的四维评分(基础工商 / 资质认证 / 财务健康 / 司法舆情)+ AI 综合评价。
         </p>
       </div>
@@ -95,7 +95,7 @@ function CreditInner() {
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[#003366] focus:outline-none"
+              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-700 focus:outline-none"
             >
               {COUNTRY_OPTIONS.map((c) => (
                 <option key={c.code || "ALL"} value={c.code}>
@@ -112,7 +112,7 @@ function CreditInner() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="企业名 / 英文名 / 注册号关键词"
-              className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-[#003366] focus:outline-none"
+              className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-teal-700 focus:outline-none"
             />
           </div>
         </div>
@@ -135,7 +135,7 @@ function CreditInner() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
-                  <h3 className="truncate text-sm font-semibold text-slate-900 group-hover:text-[#003366]">
+                  <h3 className="truncate text-sm font-semibold text-slate-900 group-hover:text-teal-700">
                     {c.name}
                   </h3>
                 </div>
@@ -187,7 +187,7 @@ function CreditInner() {
               >
                 <Link
                   href={`/credit/companies/${h.company_id}`}
-                  className="flex-1 truncate text-sm text-slate-700 hover:text-[#003366]"
+                  className="flex-1 truncate text-sm text-slate-700 hover:text-teal-700"
                 >
                   {h.company_name}
                   <span className="ml-2 text-[11px] text-slate-400">

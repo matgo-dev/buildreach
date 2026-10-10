@@ -10,18 +10,6 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { ContactPopover } from "@/components/mall/ContactPopover";
 import { FulfillmentShowcase } from "@/components/how-to-buy/FulfillmentShowcase";
 
-/* ---------- step 配色 ---------- */
-
-const STEP_COLORS = [
-  { bg: "bg-teal-50",    border: "border-teal-500",   text: "text-teal-700",    dot: "bg-teal-500" },
-  { bg: "bg-amber-50",   border: "border-amber-500",  text: "text-amber-700",   dot: "bg-amber-500" },
-  { bg: "bg-sky-50",     border: "border-sky-500",    text: "text-sky-700",     dot: "bg-sky-500" },
-  { bg: "bg-violet-50",  border: "border-violet-500", text: "text-violet-700",  dot: "bg-violet-500" },
-  { bg: "bg-orange-50",  border: "border-orange-500", text: "text-orange-700",  dot: "bg-orange-500" },
-  { bg: "bg-indigo-50",  border: "border-indigo-500", text: "text-indigo-700",  dot: "bg-indigo-500" },
-  { bg: "bg-emerald-50", border: "border-emerald-500",text: "text-emerald-700", dot: "bg-emerald-500" },
-] as const;
-
 const STEP_ICONS = ["🔍", "📝", "💰", "🛒", "🏭", "🚢", "✅"];
 
 const FAQ_COUNT = 6;
@@ -40,24 +28,23 @@ function StepCard({
   desc: string;
   detail: string;
 }) {
-  const c = STEP_COLORS[index];
   const icon = STEP_ICONS[index];
 
   return (
     <div
-      className={`rounded-xl border ${c.border} ${c.bg} overflow-hidden transition-shadow hover:shadow-md`}
+      className="rounded-xl border border-line bg-white overflow-hidden transition-shadow hover:shadow-mall-md"
     >
       <div className="flex">
         {/* 左侧色条 + 序号 */}
         <div
-          className={`flex flex-col items-center justify-center w-[56px] flex-shrink-0 ${c.dot} text-white`}
+          className="flex flex-col items-center justify-center w-[56px] flex-shrink-0 bg-teal-100 text-teal-900"
         >
           <span className="text-lg">{icon}</span>
           <span className="text-xs font-bold mt-0.5">{index + 1}</span>
         </div>
         {/* 右侧内容 */}
         <div className="flex-1 px-5 py-4">
-          <h3 className={`text-[15px] font-bold ${c.text} mb-1`}>{title}</h3>
+          <h3 className="text-[15px] font-bold text-teal-900 mb-1">{title}</h3>
           <p className="text-[13px] text-gray-600 leading-relaxed mb-1.5">
             {desc}
           </p>
@@ -122,8 +109,8 @@ function HowToBuyContent() {
                   isFirst ? "pl-4 pr-6 rounded-l-lg" : "pl-7 pr-6"
                 } ${isLast ? "rounded-r-lg" : ""} ${
                   isActive
-                    ? "bg-[#0c9468] text-white"
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                    ? "bg-lime text-teal-900 font-semibold"
+                    : "bg-teal-50 text-ink-2 hover:bg-teal-100 hover:text-teal-900"
                 }`}
                 style={{
                   clipPath: isLast
@@ -136,7 +123,7 @@ function HowToBuyContent() {
                 {!isFirst && (
                   <span
                     className={`absolute left-0 top-0 h-full w-3 ${
-                      isActive ? "text-gray-100" : "text-white"
+                      isActive ? "text-teal-50" : "text-white"
                     }`}
                     style={{
                       clipPath: "polygon(0 0, 100% 50%, 0 100%)",
@@ -158,14 +145,14 @@ function HowToBuyContent() {
       <>
       {/* ===== Hero — 紧凑全宽 ===== */}
       <div className="mx-auto max-w-mall px-6 pt-6">
-        <div className="rounded-2xl bg-gradient-to-r from-[#0c9468] to-[#0a7a56] px-6 py-7">
+        <div className="rounded-2xl mall-surface px-6 py-7">
           {/* 上：标题 + stats 同一行 */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-white mb-1.5">
+              <h1 className="text-xl md:text-2xl font-bold text-teal-900 mb-1.5">
                 {t("heroTitle")}
               </h1>
-              <p className="text-[13px] text-white/65 leading-relaxed max-w-lg">
+              <p className="text-[13px] text-ink-2 leading-relaxed max-w-lg">
                 {t("heroDesc")}
               </p>
             </div>
@@ -173,24 +160,24 @@ function HowToBuyContent() {
             <div className="grid grid-cols-3 gap-2 lg:flex lg:gap-3 lg:flex-shrink-0">
               <Link
                 href="/mall"
-                className="flex flex-col items-center rounded-lg bg-white/10 border border-white/15 px-2 py-2.5 lg:px-4 hover:bg-white/15 transition-colors cursor-pointer"
+                className="flex flex-col items-center rounded-lg bg-white border border-line px-2 py-2.5 lg:px-4 hover:border-teal-300 transition-colors cursor-pointer"
               >
-                <span className="text-lg lg:text-xl font-bold text-[#e3a615] leading-none">
+                <span className="text-lg lg:text-xl font-bold text-teal-700 leading-none">
                   {t("stat1Value")}
                 </span>
-                <span className="text-[10px] text-white/60 mt-1 whitespace-nowrap">
+                <span className="text-[10px] text-muted mt-1 whitespace-nowrap">
                   {t("stat1Label")}
                 </span>
               </Link>
               {[2, 3].map((i) => (
                 <div
                   key={i}
-                  className="flex flex-col items-center rounded-lg bg-white/10 border border-white/15 px-2 py-2.5 lg:px-4"
+                  className="flex flex-col items-center rounded-lg bg-white border border-line px-2 py-2.5 lg:px-4"
                 >
-                  <span className="text-lg lg:text-xl font-bold text-[#e3a615] leading-none">
+                  <span className="text-lg lg:text-xl font-bold text-teal-700 leading-none">
                     {t(`stat${i}Value`)}
                   </span>
-                  <span className="text-[10px] text-white/60 mt-1 whitespace-nowrap">
+                  <span className="text-[10px] text-muted mt-1 whitespace-nowrap">
                     {t(`stat${i}Label`)}
                   </span>
                 </div>
@@ -200,17 +187,17 @@ function HowToBuyContent() {
 
           {/* 中：7 步 mini pipeline — 移动端可横滚 */}
           <div className="overflow-x-auto -mx-3 px-3 mb-4">
-            <div className="flex items-center justify-center bg-white/[0.06] rounded-lg px-3 py-2 gap-0 min-w-max">
+            <div className="flex items-center justify-center bg-white border border-line rounded-lg px-3 py-2 gap-0 min-w-max">
               {phases.map((p, i) => (
                 <div key={i} className="flex items-center">
                   <div className="flex flex-col items-center px-2 lg:px-4">
                     <span className="text-base leading-none">{p.icon}</span>
-                    <span className="text-[10px] text-white/70 mt-0.5 whitespace-nowrap">
+                    <span className="text-[10px] text-ink-2 mt-0.5 whitespace-nowrap">
                       {t(p.labelKey)}
                     </span>
                   </div>
                   {i < phases.length - 1 && (
-                    <div className="w-3 lg:w-4 h-[1.5px] bg-white/25 flex-shrink-0" />
+                    <div className="w-3 lg:w-4 h-[1.5px] bg-line-strong flex-shrink-0" />
                   )}
                 </div>
               ))}
@@ -221,13 +208,13 @@ function HowToBuyContent() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/mall"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-5 py-2 text-[13px] font-semibold text-white hover:bg-white/20 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border-[1.5px] border-teal-700 bg-white px-5 py-2 text-[13px] font-semibold text-teal-700 hover:bg-teal-50 transition-colors"
             >
               {t("ctaBrowse")}
             </Link>
             <ContactPopover>
               <button
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-5 py-2 text-[13px] font-semibold text-white hover:bg-[#20bd5a] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-[13px] font-semibold transition-colors mall-btn-primary"
               >
                 <MessageCircle className="h-4 w-4" />
                 {t("ctaRfq")}
@@ -246,7 +233,7 @@ function HowToBuyContent() {
               {t("stepsTitle")}
             </h2>
             <div className="space-y-3">
-              {STEP_COLORS.map((_, i) => (
+              {STEP_ICONS.map((_, i) => (
                 <StepCard
                   key={i}
                   index={i}
@@ -309,13 +296,13 @@ function HowToBuyContent() {
             </div>
 
             {/* CTA */}
-            <div className="rounded-xl bg-gradient-to-br from-[#0c9468] to-[#0a7a56] p-4 text-center">
-              <p className="text-[13px] text-white/90 font-medium mb-2.5">
+            <div className="rounded-xl mall-surface p-4 text-center">
+              <p className="text-[13px] text-teal-900 font-medium mb-2.5">
                 {t("ctaCardText")}
               </p>
               <Link
                 href="/buyer/rfqs"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#e3a615] px-5 py-2 text-[13px] font-semibold text-white hover:bg-[#c99012] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg mall-btn-primary px-5 py-2 text-[13px] font-semibold transition-colors"
               >
                 {t("ctaCardBtn")} →
               </Link>

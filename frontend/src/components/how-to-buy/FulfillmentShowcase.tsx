@@ -40,41 +40,20 @@ const CERT_BADGES = ["PVoC", "CoC", "ISO 9001", "SGS", "TBS", "KEBS"];
 function HeroSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <div className="mx-auto max-w-mall px-6 pt-6">
-      <section
-        className="relative overflow-hidden rounded-2xl"
-        style={{
-          background: "linear-gradient(135deg, #0c9468 0%, #0a7a56 100%)",
-        }}
-      >
-        {/* 动画光晕 */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            background:
-              "radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 70%)",
-            animation: "pulse 4s ease-in-out infinite",
-          }}
-        />
-        <div className="relative mx-auto max-w-5xl px-6 py-7 text-center">
+      <section className="rounded-2xl mall-surface">
+        <div className="mx-auto max-w-5xl px-6 py-7 text-center">
           {/* 路线徽章 */}
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm text-white/90 mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="inline-flex items-center gap-2 rounded-full bg-white border border-line px-4 py-1.5 text-sm text-ink-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-lime animate-pulse" />
             {t("heroTag")}
           </span>
-          <h1 className="text-xl md:text-2xl font-bold text-white mb-1.5 leading-tight">
+          <h1 className="text-xl md:text-2xl font-bold text-teal-900 mb-1.5 leading-tight">
             {t("heroTitle")}
           </h1>
-          <p className="text-[13px] text-white/65 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-[13px] text-ink-2 max-w-2xl mx-auto leading-relaxed">
             {t("heroSub")}
           </p>
         </div>
-        {/* pulse 动画 keyframes */}
-        <style jsx>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 0.15; }
-            50% { opacity: 0.3; }
-          }
-        `}</style>
       </section>
     </div>
   );
@@ -92,7 +71,7 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
           </span>
           <span className="text-xs text-gray-400">P1 ~ P3</span>
           <span className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-0.5">
+          <span className="text-xs font-semibold text-sea bg-ocean/10 border border-ocean/30 rounded-full px-3 py-0.5">
             {t("phaseOffline")}
           </span>
           <span className="text-xs text-gray-400">1 ~ 6（FOB）</span>
@@ -112,10 +91,10 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
                       step.disabled
                         ? "bg-gray-200 text-gray-400"
                         : isHighlight
-                          ? "bg-amber-500 text-white ring-2 ring-amber-300"
+                          ? "bg-lime text-teal-900 ring-2 ring-lime/50"
                           : step.phase === "online"
-                            ? "bg-teal-600 text-white"
-                            : "bg-amber-600 text-white"
+                            ? "bg-teal-100 text-teal-900 ring-1 ring-teal-300"
+                            : "bg-ocean/15 text-sea ring-1 ring-ocean/40"
                     }`}
                   >
                     {step.id}
@@ -130,8 +109,8 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
                   <>
                     {step.id === "6" ? (
                       <div className="flex flex-col items-center mx-1 flex-shrink-0">
-                        <div className="w-px h-3 bg-amber-400" />
-                        <span className="text-[8px] font-bold text-amber-600 whitespace-nowrap">FOB</span>
+                        <div className="w-px h-3 bg-sea" />
+                        <span className="text-[8px] font-bold text-sea whitespace-nowrap">FOB</span>
                         <div className="w-px h-3 bg-gray-300" />
                       </div>
                     ) : (
@@ -173,14 +152,14 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                 {/* 中间节点 — 桌面端 */}
                 <div className="absolute left-1/2 -translate-x-1/2 top-6 hidden md:flex z-10">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-mall-sm ${
                       step.disabled
                         ? "bg-gray-200 text-gray-400"
                         : isHighlight
-                          ? "bg-amber-500 text-white ring-4 ring-amber-200"
+                          ? "bg-lime text-teal-900 ring-4 ring-lime/40"
                           : step.phase === "online"
-                            ? "bg-teal-600 text-white"
-                            : "bg-amber-600 text-white"
+                            ? "bg-teal-100 text-teal-900 ring-1 ring-teal-300"
+                            : "bg-ocean/15 text-sea ring-1 ring-ocean/40"
                     }`}
                   >
                     {step.id}
@@ -202,7 +181,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                         step.disabled
                           ? "border-gray-200 bg-gray-50 opacity-50"
                           : isHighlight
-                            ? "border-amber-300 bg-amber-50/50"
+                            ? "border-lime bg-lime/10"
                             : "border-gray-200 bg-white"
                       }`}
                     >
@@ -224,10 +203,10 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                               step.disabled
                                 ? "bg-gray-200 text-gray-400"
                                 : isHighlight
-                                  ? "bg-amber-500 text-white"
+                                  ? "bg-lime text-teal-900"
                                   : step.phase === "online"
-                                    ? "bg-teal-600 text-white"
-                                    : "bg-amber-600 text-white"
+                                    ? "bg-teal-100 text-teal-900 ring-1 ring-teal-300"
+                                    : "bg-ocean/15 text-sea ring-1 ring-ocean/40"
                             }`}
                           >
                             {step.id}
@@ -236,7 +215,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                             {t(`step_${step.id}_label`)}
                           </h3>
                           {isHighlight && (
-                            <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
+                            <span className="text-[10px] font-semibold text-teal-900 bg-lime/40 rounded-full px-2 py-0.5">
                               {t("consolidationTag")}
                             </span>
                           )}
@@ -294,7 +273,7 @@ function ConsolidationSection({ t }: { t: ReturnType<typeof useTranslations> }) 
 
           {/* 右：特点 */}
           <div>
-            <span className="inline-block text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-0.5 mb-3">
+            <span className="inline-block text-xs font-semibold text-sea bg-ocean/10 border border-ocean/30 rounded-full px-3 py-0.5 mb-3">
               {t("consolidationTag")}
             </span>
             <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6 leading-tight">
@@ -303,7 +282,7 @@ function ConsolidationSection({ t }: { t: ReturnType<typeof useTranslations> }) 
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-teal-100 text-teal-900 ring-1 ring-teal-300 text-xs font-bold flex items-center justify-center mt-0.5">
                     {i}
                   </span>
                   <div>
@@ -334,21 +313,21 @@ function TrustSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   ];
 
   return (
-    <section className="bg-[#0c9468]">
+    <section className="border-y border-line bg-gradient-to-r from-teal-100 via-teal-100 to-lime/30">
       <div className="mx-auto max-w-5xl px-6 py-12">
-        <h2 className="text-xl md:text-2xl font-bold text-white mb-8 text-center">
+        <h2 className="text-xl md:text-2xl font-bold text-teal-900 mb-8 text-center">
           {t("trustTitle")}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <div
               key={stat.valueKey}
-              className="rounded-xl bg-white/10 border border-white/15 p-5 text-center"
+              className="rounded-xl bg-white border border-line p-5 text-center"
             >
-              <div className="text-2xl md:text-3xl font-bold text-[#e3a615] mb-1">
+              <div className="text-2xl md:text-3xl font-bold text-teal-700 mb-1">
                 {t(stat.valueKey)}
               </div>
-              <div className="text-xs text-white/70">{t(stat.labelKey)}</div>
+              <div className="text-xs text-muted">{t(stat.labelKey)}</div>
             </div>
           ))}
         </div>
@@ -371,7 +350,7 @@ function CertificationsSection({ t }: { t: ReturnType<typeof useTranslations> })
             key={cert}
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-lime" />
             {cert}
           </span>
         ))}

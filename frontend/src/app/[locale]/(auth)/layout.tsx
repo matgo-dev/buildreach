@@ -8,19 +8,18 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-auto bg-gradient-to-br from-[#083d2b] via-[#0c9468] to-[#12a56f] p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-auto bg-gradient-to-br from-teal-50 via-bg to-teal-100 p-4">
       <div className="relative z-10 w-full max-w-md">
         {/* 品牌区 */}
         <div className="mb-8 text-center">
-          <div className="relative mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-lg backdrop-blur-sm overflow-hidden">
-            <img src={BRAND.logoMark} alt={BRAND.name} className="h-10 w-10 object-contain" />
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-white">{t("name")}</h1>
-          <p className="mt-2 text-sm text-white/60">{t("tagline")}</p>
+          <h1>
+            <img src={BRAND.logoLockup} alt={t("name")} className="mx-auto h-11 w-auto" />
+          </h1>
+          <p className="mt-3 text-sm text-muted">{t("tagline")}</p>
         </div>
 
         {/* 表单卡片 */}
-        <div className="rounded-2xl border-t-4 border-[#0c9468] bg-white p-5 sm:p-8 shadow-xl">
+        <div className="rounded-2xl border border-line border-t-4 border-t-lime bg-white p-5 sm:p-8 shadow-mall-lg">
           {children}
         </div>
       </div>

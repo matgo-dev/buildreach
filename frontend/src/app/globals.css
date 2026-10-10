@@ -1,5 +1,15 @@
 @tailwind base;
 @tailwind components;
+
+/* 商城前台品牌：大块浅色面 + 主按钮，集中定义便于整体调色 */
+@layer components {
+  .mall-surface {
+    @apply border border-line bg-gradient-to-r from-teal-100 via-teal-100 to-lime/30;
+  }
+  .mall-btn-primary {
+    @apply bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-mall-sm hover:from-teal-500 hover:to-teal-600;
+  }
+}
 @tailwind utilities;
 
 :root {

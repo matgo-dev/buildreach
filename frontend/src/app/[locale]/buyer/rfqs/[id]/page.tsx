@@ -177,7 +177,7 @@ function RfqDetailContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0c9468]" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
       </div>
     );
   }
@@ -190,7 +190,7 @@ function RfqDetailContent() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="mt-4 text-sm text-[#0c9468] hover:underline"
+          className="mt-4 text-sm text-teal-700 hover:underline"
         >
           {tCommon("back")}
         </button>
@@ -234,7 +234,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/rfqs/${rfqId}/edit`)}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#0c9468]/40 px-4 py-1.5 text-sm font-medium text-[#0c9468] shadow-sm transition-colors hover:bg-[#0c9468]/5 active:bg-[#0c9468]/10"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-teal-700/40 px-4 py-1.5 text-sm font-medium text-teal-700 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10"
             >
               <Pencil className="h-3.5 w-3.5" />
               {t("edit")}
@@ -244,7 +244,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setSubmitOpen(true)}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468] bg-[#0c9468] px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56] active:bg-[#086046]"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700 mall-btn-primary px-4 py-1.5 text-sm font-medium transition-colors"
             >
               {t("submitDraft")}
             </button>
@@ -261,7 +261,7 @@ function RfqDetailContent() {
               <button
                 type="button"
                 onClick={() => setAcceptOpen(true)}
-                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468] bg-[#0c9468] px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56] active:bg-[#086046]"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700 mall-btn-primary px-4 py-1.5 text-sm font-medium transition-colors"
               >
                 {tQ("accept")}
               </button>
@@ -373,7 +373,7 @@ function RfqDetailContent() {
                 {rfq.required_certifications.map((cert) => (
                   <span
                     key={cert}
-                    className="rounded bg-[#0c9468]/10 px-2 py-0.5 text-xs font-medium text-[#0c9468]"
+                    className="rounded bg-teal-700/10 px-2 py-0.5 text-xs font-medium text-teal-700"
                   >
                     {cert}
                   </span>
@@ -439,7 +439,7 @@ function RfqDetailContent() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0c9468] focus:ring-1 focus:ring-[#0c9468]/20"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                 placeholder={t("cancelReason")}
               />
             </div>
@@ -471,7 +471,7 @@ function RfqDetailContent() {
         open={submitOpen}
         title={t("submitDraft")}
         description={t("submitDraftConfirm")}
-        variant="primary"
+        variant="mall"
         loading={submitting}
         confirmLabel={t("submitDraft")}
         onConfirm={handleSubmitDraft}
@@ -483,7 +483,7 @@ function RfqDetailContent() {
         open={acceptOpen}
         title={tQ("confirmAcceptTitle")}
         description={tQ("confirmAccept")}
-        variant="primary"
+        variant="mall"
         loading={accepting}
         confirmLabel={tQ("accept")}
         onConfirm={handleAccept}
@@ -720,7 +720,7 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                         ) : (
                           <Link
                             href={`/mall/products/${item.product_id}`}
-                            className="text-sm font-medium text-gray-800 hover:text-[#0c9468] hover:underline"
+                            className="text-sm font-medium text-gray-800 hover:text-teal-700 hover:underline"
                           >
                             {item.product_name_snapshot ?? "—"}
                           </Link>
@@ -835,7 +835,7 @@ function QuoteCard({
               type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468]/40 px-3 py-1 text-xs font-medium text-[#0c9468] shadow-sm transition-colors hover:bg-[#0c9468]/5 active:bg-[#0c9468]/10 disabled:opacity-50"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700/40 px-3 py-1 text-xs font-medium text-teal-700 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10 disabled:opacity-50"
             >
               {downloading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -899,7 +899,7 @@ function QuoteCard({
         {quote.total_amount != null && (
           <div>
             <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
-            <p className="text-base font-bold text-[#0c9468]">
+            <p className="text-base font-bold text-teal-700">
               {formatCurrency(Number(quote.total_amount), currency, locale)}
             </p>
           </div>
@@ -984,7 +984,7 @@ function QuoteLineRow({
         {!isFee && qi.tiers.length > 0 && (
           <div className="mt-1">
             <button type="button" onClick={() => setShowTiers(!showTiers)}
-              className="text-[10px] font-medium text-[#0c9468] hover:underline">
+              className="text-[10px] font-medium text-teal-700 hover:underline">
               {tQ("tiers")} ({qi.tiers.length}) {showTiers ? "▲" : "▼"}
             </button>
             {showTiers && (
@@ -995,7 +995,7 @@ function QuoteLineRow({
                   return (
                     <div key={idx} className="text-[10px] text-gray-500">
                       <span className="inline-block w-16">{label}</span>
-                      <span className="font-semibold text-[#0c9468]">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
+                      <span className="font-semibold text-teal-700">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
                     </div>
                   );
                 })}

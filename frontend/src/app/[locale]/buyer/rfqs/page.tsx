@@ -75,10 +75,10 @@ function RfqListContent() {
     open: boolean;
     title: string;
     description: string;
-    variant: "primary" | "danger";
+    variant: "mall" | "danger";
     confirmLabel: string;
     action: (() => Promise<void>) | null;
-  }>({ open: false, title: "", description: "", variant: "primary", confirmLabel: "", action: null });
+  }>({ open: false, title: "", description: "", variant: "mall", confirmLabel: "", action: null });
   const [actionLoading, setActionLoading] = useState(false);
 
   const showError = useCallback((err: unknown) => {
@@ -105,7 +105,7 @@ function RfqListContent() {
   }, [mutate, toast, showError]);
 
   const openConfirm = useCallback((
-    title: string, description: string, variant: "primary" | "danger",
+    title: string, description: string, variant: "mall" | "danger",
     confirmLabel: string, action: () => Promise<void>,
   ) => {
     setConfirmModal({ open: true, title, description, variant, confirmLabel, action });
@@ -134,8 +134,8 @@ function RfqListContent() {
     const btns: React.ReactNode[] = [];
 
     // 买方前台按钮样式：小型圆角 pill 按钮
-    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468] bg-[#0c9468] px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56] active:bg-[#086046]";
-    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#0c9468]/40 px-3 py-1 text-xs font-medium text-[#0c9468] shadow-sm transition-colors hover:bg-[#0c9468]/5 active:bg-[#0c9468]/10";
+    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700 mall-btn-primary px-3 py-1 text-xs font-medium transition-colors";
+    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700/40 px-3 py-1 text-xs font-medium text-teal-700 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10";
     const btnDanger = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100";
     const btnWarn = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:bg-amber-100";
 
@@ -180,7 +180,7 @@ function RfqListContent() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            openConfirm(t("submitDraft"), t("submitDraftConfirm"), "primary", t("submitDraft"),
+            openConfirm(t("submitDraft"), t("submitDraftConfirm"), "mall", t("submitDraft"),
               () => execAction(() => submitRfq(rfq.id), t("submitDraftSuccess")));
           }}
           className={btnPrimary}
@@ -195,7 +195,7 @@ function RfqListContent() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            openConfirm(t("withdraw"), t("withdrawConfirm"), "primary", t("withdraw"),
+            openConfirm(t("withdraw"), t("withdrawConfirm"), "mall", t("withdraw"),
               () => execAction(() => withdrawRfq(rfq.id), t("withdrawSuccess")));
           }}
           className={btnWarn}
@@ -222,7 +222,7 @@ function RfqListContent() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "primary", tQ("accept"),
+            openConfirm(tQ("confirmAcceptTitle"), tQ("confirmAccept"), "mall", tQ("accept"),
               () => execAction(() => acceptRfq(rfq.id), tQ("acceptSuccess")));
           }}
           className={btnPrimary}
@@ -261,7 +261,7 @@ function RfqListContent() {
               type="button"
               onClick={() => { setMineOnly(false); setPage(1); }}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                !mineOnly ? "bg-[#0c9468] text-white" : "text-gray-600 hover:bg-gray-50"
+                !mineOnly ? "bg-lime text-teal-900" : "text-ink-2 hover:bg-teal-50"
               }`}
             >
               {t("filterAll")}
@@ -270,7 +270,7 @@ function RfqListContent() {
               type="button"
               onClick={() => { setMineOnly(true); setPage(1); }}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                mineOnly ? "bg-[#0c9468] text-white" : "text-gray-600 hover:bg-gray-50"
+                mineOnly ? "bg-lime text-teal-900" : "text-ink-2 hover:bg-teal-50"
               }`}
             >
               {t("filterMine")}
@@ -281,7 +281,7 @@ function RfqListContent() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-[#0c9468]"
+            className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-teal-700"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -294,7 +294,7 @@ function RfqListContent() {
           <div className="ml-auto flex items-center gap-2">
             <ContactPopover>
               <button
-                className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 {t("inquireNow")}
@@ -303,7 +303,7 @@ function RfqListContent() {
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/rfqs/create`)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-4 py-1.5 text-xs font-medium transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               {t("createRfq")}
@@ -322,7 +322,7 @@ function RfqListContent() {
 
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-[#0c9468]" />
+            <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
           </div>
         ) : !data || data.items.length === 0 ? (
           <div className="flex min-h-[400px] flex-col items-center justify-center">
@@ -332,14 +332,14 @@ function RfqListContent() {
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/buyer/cart`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#0c9468] bg-[#0c9468] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a7a56]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 {t("goToCart")}
               </button>
               <ContactPopover>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-full border border-whatsapp bg-whatsapp px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-whatsapp/90"
+                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition-colors border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {t("inquireNow")}
@@ -356,7 +356,7 @@ function RfqListContent() {
                 <div
                   key={rfq.id}
                   onClick={() => router.push(`/${locale}/buyer/rfqs/${rfq.id}`)}
-                  className="grid grid-cols-[1fr_90px_100px_110px_380px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-blue-50/30"
+                  className="grid grid-cols-[1fr_90px_100px_110px_380px] cursor-pointer items-center gap-3 px-5 py-4 transition-colors hover:bg-teal-50/60"
                 >
                   {/* 缩略图 + 商品信息 */}
                   <div className="flex items-center gap-4 min-w-0">
@@ -374,7 +374,7 @@ function RfqListContent() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-medium text-[#0c9468]">{rfq.rfq_no}</span>
+                      <span className="text-xs font-medium text-teal-700">{rfq.rfq_no}</span>
                       <p className="mt-0.5 line-clamp-2 text-sm text-gray-700">{summary}</p>
                     </div>
                   </div>
@@ -409,7 +409,7 @@ function RfqListContent() {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <Pagination
+        <Pagination tone="mall"
           current={page}
           total={totalPages}
           totalItems={data?.total}

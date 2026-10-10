@@ -60,22 +60,22 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
               className={
                 "flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all " +
                 (active
-                  ? "border-[#FF6B35] bg-[#FF6B35]/5"
-                  : "border-gray-200 hover:border-[#003366] hover:bg-[#003366]/5")
+                  ? "border-teal-700 bg-teal-700/5"
+                  : "border-gray-200 hover:border-teal-700 hover:bg-teal-700/5")
               }
             >
               <div
                 className={
                   "flex h-10 w-10 items-center justify-center rounded-lg " +
-                  (active ? "bg-[#FF6B35]/15" : "bg-gray-50")
+                  (active ? "bg-teal-700/15" : "bg-gray-50")
                 }
               >
-                <Globe className={"h-5 w-5 " + (active ? "text-[#FF6B35]" : "text-[#003366]")} />
+                <Globe className={"h-5 w-5 " + (active ? "text-sea" : "text-teal-700")} />
               </div>
               <div className="flex-1">
                 <p
                   className={
-                    "text-sm font-semibold " + (active ? "text-[#FF6B35]" : "text-gray-800")
+                    "text-sm font-semibold " + (active ? "text-sea" : "text-gray-800")
                   }
                 >
                   {opt.title}
@@ -99,7 +99,7 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
           type="button"
           onClick={onNext}
           disabled={!selected}
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-[#FF6B35] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e05a25] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg mall-btn-primary text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           下一步 <ChevronRight className="h-4 w-4" />
         </button>

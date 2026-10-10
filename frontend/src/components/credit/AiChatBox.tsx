@@ -99,7 +99,7 @@ export function AiChatBox({
   return (
     <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-        <Sparkles className="h-4 w-4 text-[#FF6B35]" />
+        <Sparkles className="h-4 w-4 text-sea" />
         <h3 className="text-sm font-semibold text-slate-900">AI 综合评价</h3>
       </div>
 
@@ -130,13 +130,13 @@ export function AiChatBox({
             }
           >
             {m.role === "assistant" && (
-              <Bot className="mt-1 h-4 w-4 shrink-0 text-[#FF6B35]" />
+              <Bot className="mt-1 h-4 w-4 shrink-0 text-sea" />
             )}
             <div
               className={
                 "max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm " +
                 (m.role === "user"
-                  ? "bg-[#003366] text-white"
+                  ? "bg-teal-700 text-white"
                   : "bg-slate-50 text-slate-800")
               }
             >
@@ -146,7 +146,7 @@ export function AiChatBox({
         ))}
         {streaming && (
           <div className="flex gap-2">
-            <Bot className="mt-1 h-4 w-4 shrink-0 text-[#FF6B35] animate-pulse" />
+            <Bot className="mt-1 h-4 w-4 shrink-0 text-sea animate-pulse" />
             <div className="max-w-[80%] whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800">
               {streamingContent || <span className="text-slate-400">思考中…</span>}
             </div>
@@ -203,7 +203,7 @@ function ChatInput({
         className={
           "relative flex items-end gap-2 rounded-xl border bg-white transition-colors " +
           (canSend
-            ? "border-slate-300 focus-within:border-[#003366]"
+            ? "border-slate-300 focus-within:border-teal-700"
             : "border-slate-200 focus-within:border-slate-400")
         }
       >
@@ -237,7 +237,7 @@ function ChatInput({
           className={
             "mb-2 mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors " +
             (canSend
-              ? "bg-[#003366] text-white hover:bg-[#002244]"
+              ? "bg-teal-700 text-white hover:bg-teal-800"
               : "bg-slate-100 text-slate-400")
           }
         >

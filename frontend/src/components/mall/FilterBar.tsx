@@ -58,8 +58,8 @@ function MobileFilterRow({
               onClick={() => onSelect(item.key)}
               className={`shrink-0 h-[26px] rounded-full px-2.5 text-[11px] font-medium transition-all ${
                 selected.includes(item.key)
-                  ? "bg-teal-700 text-white"
-                  : "bg-gray-100 text-gray-600 active:bg-teal-50"
+                  ? "bg-lime text-teal-900"
+                  : "bg-teal-50 text-ink-2 active:bg-teal-100"
               }`}
             >
               {item.label}
@@ -241,8 +241,8 @@ export function FilterBar({
             onClick={onFeaturedToggle}
             className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               featured
-                ? "bg-amber-500 text-white shadow-sm"
-                : "text-ink hover:bg-amber-50 hover:text-amber-700"
+                ? "bg-lime text-teal-900 shadow-sm"
+                : "text-ink hover:bg-teal-50 hover:text-teal-900"
             }`}
           >
             {t("featuredOnly")}
@@ -253,8 +253,8 @@ export function FilterBar({
             onClick={() => onSupplyModeChange(supplyMode === "PLATFORM_STOCK" ? "" : "PLATFORM_STOCK")}
             className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               supplyMode === "PLATFORM_STOCK"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-ink hover:bg-blue-50 hover:text-blue-700"
+                ? "bg-lime text-teal-900 shadow-sm"
+                : "text-ink hover:bg-teal-50 hover:text-teal-900"
             }`}
           >
             {t("supplyModePlatformStock")}
@@ -265,8 +265,8 @@ export function FilterBar({
             onClick={() => onSupplyModeChange(supplyMode === "SUPPLIER_DIRECT" ? "" : "SUPPLIER_DIRECT")}
             className={`shrink-0 whitespace-nowrap h-[28px] rounded-md px-2.5 text-[12px] font-semibold transition-all ${
               supplyMode === "SUPPLIER_DIRECT"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "text-ink hover:bg-emerald-50 hover:text-emerald-700"
+                ? "bg-lime text-teal-900 shadow-sm"
+                : "text-ink hover:bg-teal-50 hover:text-teal-900"
             }`}
           >
             {t("supplyModeSupplierDirect")}

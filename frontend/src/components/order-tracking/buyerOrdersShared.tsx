@@ -131,7 +131,7 @@ export function StatePanel({
       {kind === "NO_ORG" && (
         <Link
           href="/account"
-          className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+          className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-medium transition-colors"
         >
           {t("bindingNoOrgAction")}
         </Link>
@@ -140,7 +140,7 @@ export function StatePanel({
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+          className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-medium transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           {t("retry")}
@@ -160,7 +160,7 @@ export function EmptyOrdersState() {
       <p className="text-sm text-muted mb-5">{t("emptyDesc")}</p>
       <Link
         href="/mall"
-        className="inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+        className="inline-flex items-center gap-2 rounded-full mall-btn-primary px-6 py-2.5 text-sm font-medium transition-colors"
       >
         {t("emptyBrowse")}
       </Link>

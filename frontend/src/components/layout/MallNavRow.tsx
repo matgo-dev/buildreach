@@ -79,8 +79,8 @@ export function MallNavRow() {
         href={link.href}
         className={`${itemBase} ${
           active
-            ? "text-teal-800 border-b-[3px] border-gold"
-            : "text-ink-2 hover:text-teal-800"
+            ? "text-teal-900 border-b-[3px] border-lime"
+            : "text-ink-2 hover:text-teal-900"
         }`}
       >
         {t(link.labelKey)}
@@ -103,8 +103,8 @@ export function MallNavRow() {
         href={href}
         className={`${zoneItemBase} ${
           active
-            ? "border-gold bg-teal-50 text-teal-900 shadow-[inset_0_-2px_0_#e3a615]"
-            : "border-teal-100 bg-teal-50/70 text-teal-800 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
+            ? "border-lime bg-lime/30 text-teal-900"
+            : "border-line bg-teal-50 text-teal-900 hover:border-teal-200 hover:bg-teal-100"
         }`}
       >
         {label}
@@ -115,7 +115,7 @@ export function MallNavRow() {
   return (
     <nav
       className="sticky top-0 md:top-[82px] z-[70] bg-white border-b border-line"
-      style={{ boxShadow: "0 1px 2px rgba(16,36,65,.05)" }}
+      style={{ boxShadow: "0 1px 2px rgba(18,59,50,.04)" }}
     >
       <div className="mx-auto flex min-h-[44px] max-w-mall items-center justify-between gap-4 overflow-x-auto px-3 scrollbar-hide sm:min-h-[50px] sm:px-6">
         <div className="flex min-w-max items-center gap-0">

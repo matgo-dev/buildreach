@@ -102,11 +102,11 @@ export function CategorySidebar({
             ? { maxHeight: "calc(100vh - 164px)" }
             : {}),
           boxShadow:
-            "0 1px 2px rgba(16,36,65,.05), 0 2px 6px rgba(16,36,65,.04)",
+            "0 1px 2px rgba(18,59,50,.04), 0 2px 8px rgba(18,59,50,.04)",
         }}
       >
         {/* 头部 — 固定不滚动 */}
-        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-teal-700 text-white shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-lime text-teal-900 shrink-0">
           <LayoutGrid className="w-4 h-4" />
           <span className="text-sm font-bold">{t("allCategoryNav")}</span>
         </div>

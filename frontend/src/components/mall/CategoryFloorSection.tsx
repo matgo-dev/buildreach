@@ -40,24 +40,24 @@ export function CategoryFloorSection({
     <section
       id={config.id}
       className="rounded-xl overflow-hidden border border-line bg-white"
-      style={{ boxShadow: "0 1px 4px rgba(16,36,65,.05)" }}
+      style={{ boxShadow: "0 2px 12px rgba(18,59,50,.05)" }}
     >
       {/* ── 移动端品类标题横条(md 以上由左区背景图代替) ── */}
-      <div className="md:hidden px-4 py-3 text-white font-bold text-sm bg-gray-700">
+      <div className="md:hidden px-4 py-3 text-teal-900 font-bold text-sm bg-teal-100">
         {t(config.nameKey)}
       </div>
 
       <div className="flex min-h-0">
         {/* ── 左区：独立圆角背景卡，图片铺满并随圆角裁切 ── */}
         <div
-          className="relative hidden w-[220px] shrink-0 self-stretch overflow-hidden rounded-xl bg-gray-700 bg-no-repeat md:flex md:flex-col"
+          className="relative hidden w-[220px] shrink-0 self-stretch overflow-hidden rounded-xl bg-teal-900 bg-no-repeat md:flex md:flex-col"
           style={{
             backgroundImage: `url(${imageUrl(config.bgImage)})`,
             backgroundPosition: "center center",
             backgroundSize: "108% 108%",
           }}
         >
-          {/* 半透明遮罩保证文字可读 —— 祖母绿色调统一各楼层卡片(呼应品牌绿) */}
+          {/* 半透明遮罩保证文字可读 —— 品牌深绿统一各楼层卡片 */}
           <div className="absolute inset-0 bg-gradient-to-b from-teal-950/80 via-teal-900/55 to-teal-900/25" />
 
           {/* 文字叠在遮罩上 */}

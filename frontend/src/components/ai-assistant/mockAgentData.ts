@@ -49,7 +49,7 @@ const containerAgent: AgentDef = {
   id: "container",
   icon: "📦",
   color: "bg-blue-50",
-  accentHex: "#10b981",
+  accentHex: "#103d33",
   greeting: "你好！我是 Matgo 筑达 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
   greetingL10n: {
     zh: "你好！我是 Matgo 筑达 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
@@ -207,8 +207,8 @@ const containerAgent: AgentDef = {
 const complianceAgent: AgentDef = {
   id: "compliance",
   icon: "📋",
-  color: "bg-[#fdf4dc]",
-  accentHex: "#c1850b",
+  color: "bg-teal-100",
+  accentHex: "#127b89",
   greeting: "你好！我是 Matgo 筑达 合规资质顾问 📋\n\n我可以帮你：\n• 查询目的国所需的产品认证和资质\n• 了解 PVOC / COC / SONCAP 等合规要求\n• 获取认证费用、周期和办理流程\n\n请告诉我您要出口的品类和目的国，或点击下方快捷问题。",
   greetingL10n: {
     zh: "你好！我是 Matgo 筑达 合规资质顾问 📋\n\n我可以帮你：\n• 查询目的国所需的产品认证和资质\n• 了解 PVOC / COC / SONCAP 等合规要求\n• 获取认证费用、周期和办理流程\n\n请告诉我您要出口的品类和目的国，或点击下方快捷问题。",
@@ -401,7 +401,7 @@ const procurementAgent: AgentDef = {
   id: "procurement",
   icon: "🔍",
   color: "bg-teal-50",
-  accentHex: "#10b981",
+  accentHex: "#103d33",
   greeting: "你好！我是 Matgo 筑达 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
   greetingL10n: {
     zh: "你好！我是 Matgo 筑达 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
@@ -573,8 +573,8 @@ const procurementAgent: AgentDef = {
 const finderAgent: AgentDef = {
   id: "finder",
   icon: "🛒",
-  color: "bg-[#fdf4dc]",
-  accentHex: "#c1850b",
+  color: "bg-teal-100",
+  accentHex: "#127b89",
   greeting: "你好！我是 Matgo 筑达 AI 找货助手 🛒\n\n告诉我你想找什么，我帮你一键定位：\n• 直接说品类名称，如「劳保手套」「角磨机」\n• 描述你的场景，如「装修需要的水电材料」\n• 说出项目需求，如「学校建设需要什么」\n\n不用自己翻目录，开口就能找到！",
   greetingL10n: {
     zh: "你好！我是 Matgo 筑达 AI 找货助手 🛒\n\n告诉我你想找什么，我帮你一键定位：\n• 直接说品类名称，如「劳保手套」「角磨机」\n• 描述你的场景，如「装修需要的水电材料」\n• 说出项目需求，如「学校建设需要什么」\n\n不用自己翻目录，开口就能找到！",

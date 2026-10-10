@@ -134,7 +134,7 @@ function OrderList({
       </div>
 
       {totalPages > 1 && (
-        <Pagination current={page.page} total={totalPages} totalItems={total} onChange={onPageChange} />
+        <Pagination tone="mall" current={page.page} total={totalPages} totalItems={total} onChange={onPageChange} />
       )}
     </>
   );

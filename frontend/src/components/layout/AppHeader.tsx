@@ -70,19 +70,13 @@ export function AppHeader({
         {/* 左:品牌 — 已登录切换侧边栏,未登录跳首页 */}
         {user ? (
           <button onClick={toggleSidebar} className="group flex shrink-0 items-center gap-3 cursor-pointer" aria-label={`${BRAND.name} 菜单`}>
-            <img src={BRAND.logoMark} alt={BRAND.name} className="h-9 w-9 shrink-0 rounded object-contain transition-transform duration-300 group-hover:scale-105" />
-            <span className="leading-none text-left">
-              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name} <span className="text-[#006466]">{BRAND.nameZh}</span></span>
-              <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
-            </span>
+            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-7 w-auto shrink-0" />
+            <span className="text-lg font-black tracking-tight text-teal-900">{BRAND.nameZh}</span>
           </button>
         ) : (
           <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
-            <img src={BRAND.logoMark} alt={BRAND.name} className="h-9 w-9 shrink-0 rounded object-contain transition-transform duration-300 group-hover:scale-105" />
-            <span className="leading-none">
-              <span className="block text-xl font-black tracking-tight text-teal-900">{BRAND.name} <span className="text-[#006466]">{BRAND.nameZh}</span></span>
-              <span className="mt-0.5 block text-[9px] font-medium tracking-[0.15em] text-gray-400">{BRAND.nameEn}</span>
-            </span>
+            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-7 w-auto shrink-0" />
+            <span className="text-lg font-black tracking-tight text-teal-900">{BRAND.nameZh}</span>
           </Link>
         )}
 
@@ -120,7 +114,7 @@ export function AppHeader({
             >
               <ShoppingCart className="h-5 w-5" />
               {user && cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-teal-700 px-1 text-[10px] font-bold text-white">
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
@@ -134,7 +128,7 @@ export function AppHeader({
               className={
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors " +
                 (debugMode
-                  ? "border-gold/40 bg-gold/10 text-gold"
+                  ? "border-amber-300 bg-amber-50 text-amber-700"
                   : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50")
               }
             >

@@ -138,7 +138,7 @@ function Inner() {
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
           <Link
             href="/"
-            className="flex items-center gap-1 text-sm text-slate-500 hover:text-[#0c9468] transition-colors"
+            className="flex items-center gap-1 text-sm text-slate-500 hover:text-teal-700 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
             {t("backToHome")}
@@ -161,8 +161,8 @@ function Inner() {
                   onClick={() => scrollTo(id)}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                     isActive
-                      ? "bg-[#0c9468]/10 text-[#0c9468] font-medium"
-                      : "text-slate-600 hover:bg-slate-100"
+                      ? "bg-lime/40 text-teal-900 font-semibold"
+                      : "text-ink-2 hover:bg-teal-50"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -178,7 +178,7 @@ function Inner() {
           {/* Profile Header */}
           <div className="rounded-xl bg-white p-6 shadow-sm border border-slate-100">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#0c9468] text-white text-2xl font-bold">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-700 text-white text-2xl font-bold">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
@@ -504,7 +504,7 @@ function SectionCard({
   return (
     <div className="rounded-xl bg-white shadow-sm border border-slate-100 overflow-hidden">
       <div className="flex items-center gap-2.5 border-b border-slate-100 px-6 py-4">
-        <Icon className="h-5 w-5 text-[#0c9468]" />
+        <Icon className="h-5 w-5 text-teal-700" />
         <h3 className="text-base font-semibold text-slate-900">{title}</h3>
       </div>
       <div className="divide-y divide-slate-100">{children}</div>
@@ -548,7 +548,7 @@ function FieldRow({
             <div className="mt-0.5 text-sm text-slate-900 truncate">{value}</div>
           </div>
           {editable && (
-            <Pencil className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0c9468] transition-colors shrink-0" />
+            <Pencil className="h-3.5 w-3.5 text-slate-300 group-hover:text-teal-700 transition-colors shrink-0" />
           )}
         </div>
       )}
@@ -567,7 +567,7 @@ function InlineInput({
       className={`h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-800 placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
         hasError
           ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-          : "border-slate-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15"
+          : "border-slate-200 focus:border-teal-700 focus:ring-teal-700/15"
       }`}
     />
   );
@@ -591,7 +591,7 @@ function PasswordField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete="current-password"
-        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-800 placeholder-slate-400 transition-all focus:border-[#0c9468] focus:outline-none focus:ring-2 focus:ring-[#0c9468]/15"
+        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-800 placeholder-slate-400 transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
       />
       <button
         type="button"
@@ -665,7 +665,7 @@ function NameEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0c9468]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -754,7 +754,7 @@ function OrgEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0c9468]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -831,7 +831,7 @@ function EmailEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0c9468]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -904,7 +904,7 @@ function PhoneEditForm({
           <select
             value={region}
             onChange={(e) => { setRegion(e.target.value as PhoneRegion); setNewPhone(""); setError(""); }}
-            className="h-10 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0c9468]/15"
+            className="h-10 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
           >
             {(Object.keys(PHONE_REGION_CONFIG) as PhoneRegion[]).map((r) => (
               <option key={r} value={r}>
@@ -924,7 +924,7 @@ function PhoneEditForm({
             className={`h-10 flex-1 rounded-r-lg border bg-white px-3 text-sm text-slate-800 placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
               error
                 ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                : "border-slate-200 focus:border-[#0c9468] focus:ring-[#0c9468]/15"
+                : "border-slate-200 focus:border-teal-700 focus:ring-teal-700/15"
             }`}
           />
         </div>
@@ -934,7 +934,7 @@ function PhoneEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0c9468]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -1007,7 +1007,7 @@ function UsernameEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0c9468]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -1090,7 +1090,7 @@ function PasswordEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0c9468] px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0c9468]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}

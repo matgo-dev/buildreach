@@ -191,7 +191,7 @@ export function FilterPanel({
               </button>
               <button
                 onClick={confirmMulti}
-                className="h-[28px] rounded-md px-4 text-[12px] font-semibold bg-teal-700 text-white hover:bg-teal-800 transition-colors"
+                className="h-[28px] rounded-md px-4 text-[12px] font-semibold mall-btn-primary transition-colors"
               >
                 {t("filterConfirm")}
               </button>

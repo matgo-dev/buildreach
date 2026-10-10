@@ -128,7 +128,7 @@ export function LocaleSwitcher({ variant = "compact" }: Props) {
               }}
               className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors ${
                 l.code === locale
-                  ? "bg-blue-50 font-medium text-blue-700"
+                  ? "bg-teal-50 font-medium text-teal-900"
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >

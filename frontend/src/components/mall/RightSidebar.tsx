@@ -30,7 +30,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
           <MallCard padding="p-0" className="overflow-hidden">
             {!expanded ? (
               /* 收起态 — 轻量入口 */
-              <div className="p-2.5">
+              <div className="bg-teal-100 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Headphones className="w-4 h-4 text-teal-700" />
                   <h3 className="text-navy text-[15px] font-black">{t("customerSupport")}</h3>
@@ -39,11 +39,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                 <p className="text-muted text-[12px] font-bold mb-2.5">{t("consultantResponseHint")}</p>
                 <button
                   onClick={() => setExpanded(true)}
-                  className="w-full h-9 rounded-lg text-[13px] font-bold text-white transition-all hover:-translate-y-px inline-flex items-center justify-center gap-1.5"
-                  style={{
-                    background: "linear-gradient(135deg, #2bd86e, #1aa851)",
-                    boxShadow: "0 6px 16px rgba(37,211,102,.35)",
-                  }}
+                  className="w-full h-9 rounded-lg border-[1.5px] border-teal-700 bg-white text-[13px] font-bold text-teal-900 transition-colors hover:bg-teal-50 inline-flex items-center justify-center gap-1.5"
                 >
                   {t("consultantCta")}
                   <ChevronRight className="h-3.5 w-3.5" />
