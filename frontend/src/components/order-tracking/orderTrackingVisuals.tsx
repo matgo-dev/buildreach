@@ -93,7 +93,7 @@ export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
                 <Icon className="h-5 w-5" />
               </div>
               <div className="text-center">
-                <p className={`text-xs font-medium ${node.done || node.current ? "text-navy" : "text-slate-400"}`}>
+                <p className={`text-xs font-medium ${node.done || node.current ? "text-navy" : "text-muted"}`}>
                   {node.label}
                 </p>
                 <p className="text-[10px] text-muted">{node.sublabel}</p>

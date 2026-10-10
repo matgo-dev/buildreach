@@ -48,7 +48,7 @@ export function matchAnswer(agent: AgentDef, input: string, locale?: string): st
 const containerAgent: AgentDef = {
   id: "container",
   icon: "📦",
-  color: "bg-blue-50",
+  color: "bg-teal-100",
   accentHex: "#103d33",
   greeting: "你好！我是 Matgo 筑达 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
   greetingL10n: {
@@ -400,7 +400,7 @@ const complianceAgent: AgentDef = {
 const procurementAgent: AgentDef = {
   id: "procurement",
   icon: "🔍",
-  color: "bg-teal-50",
+  color: "bg-teal-100",
   accentHex: "#103d33",
   greeting: "你好！我是 Matgo 筑达 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
   greetingL10n: {

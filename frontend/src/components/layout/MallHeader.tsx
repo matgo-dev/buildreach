@@ -33,7 +33,7 @@ const ROLE_PILL: Record<RoleCode, { labelKey: string; cls: string }> = {
   BUYER:    { labelKey: "roleBuyer",    cls: "bg-teal-100 text-teal-900 border-teal-800/20" },
   SUPPLIER: { labelKey: "roleSupplier", cls: "bg-amber-50 text-amber-800 border-amber-200" },
   OPERATOR: { labelKey: "roleOperator", cls: "bg-sky-50 text-sky-700 border-sky-200" },
-  ADMIN:    { labelKey: "roleAdmin",    cls: "bg-slate-100 text-slate-700 border-slate-200" },
+  ADMIN:    { labelKey: "roleAdmin",    cls: "bg-slate-100 text-ink border-slate-200" },
 };
 
 /** Mall 专属 Header — 白底 + 字标 Logo + 大搜索框(深绿搜索按钮),配色对齐 intro.matgo.ai */
@@ -287,7 +287,7 @@ function UserMenu() {
                 {user.roles.map((r) => {
                   const meta = ROLE_PILL[r];
                   return (
-                    <span key={r} className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta?.cls ?? "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                    <span key={r} className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta?.cls ?? "border-slate-200 bg-slate-50 text-ink-2"}`}>
                       {meta ? t(meta.labelKey) : r}
                     </span>
                   );
@@ -300,7 +300,7 @@ function UserMenu() {
             <Link
               href={dashboardHref}
               role="menuitem"
-              className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
+              className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink hover:bg-teal-50 hover:text-teal-900 transition-colors"
             >
               <LayoutDashboard className="h-4 w-4 text-muted" />
               {t("menuDashboard")}
@@ -309,7 +309,7 @@ function UserMenu() {
               href="/account"
               onClick={() => setOpen(false)}
               role="menuitem"
-              className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
+              className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink hover:bg-teal-50 hover:text-teal-900 transition-colors"
             >
               <Settings className="h-4 w-4 text-muted" />
               {t("menuSettings")}

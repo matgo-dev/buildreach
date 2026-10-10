@@ -104,11 +104,11 @@ export function AiChatBox({
       </div>
 
       {/* 顶部:已缓存的 ai_summary */}
-      <div className="border-b border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-700">
+      <div className="border-b border-slate-100 px-4 py-3 text-sm leading-relaxed text-ink">
         {aiSummary ? (
           <div className="whitespace-pre-wrap">{aiSummary}</div>
         ) : (
-          <div className="text-slate-400">
+          <div className="text-muted">
             AI 评价正在生成,或 LLM 暂不可用 — 可直接追问下方对话框。
           </div>
         )}
@@ -120,7 +120,7 @@ export function AiChatBox({
         className="max-h-80 overflow-y-auto px-4 py-3 space-y-3"
       >
         {messages.length === 0 && !streaming && (
-          <div className="text-xs text-slate-400">还没有对话,试着问问"主要风险点是什么"。</div>
+          <div className="text-xs text-muted">还没有对话,试着问问"主要风险点是什么"。</div>
         )}
         {messages.map((m) => (
           <div
@@ -137,7 +137,7 @@ export function AiChatBox({
                 "max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm " +
                 (m.role === "user"
                   ? "bg-teal-700 text-white"
-                  : "bg-slate-50 text-slate-800")
+                  : "bg-slate-50 text-ink")
               }
             >
               {m.content}
@@ -147,8 +147,8 @@ export function AiChatBox({
         {streaming && (
           <div className="flex gap-2">
             <Bot className="mt-1 h-4 w-4 shrink-0 text-sea animate-pulse" />
-            <div className="max-w-[80%] whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800">
-              {streamingContent || <span className="text-slate-400">思考中…</span>}
+            <div className="max-w-[80%] whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink">
+              {streamingContent || <span className="text-muted">思考中…</span>}
             </div>
           </div>
         )}
@@ -226,7 +226,7 @@ function ChatInput({
                 : "针对该企业追问任何问题…"
           }
           rows={2}
-          className="flex-1 resize-none bg-transparent px-3.5 py-2.5 text-sm leading-6 text-slate-800 placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
+          className="flex-1 resize-none bg-transparent px-3.5 py-2.5 text-sm leading-6 text-ink placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
         />
         <button
           type="button"
@@ -238,13 +238,13 @@ function ChatInput({
             "mb-2 mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors " +
             (canSend
               ? "bg-teal-700 text-white hover:bg-teal-800"
-              : "bg-slate-100 text-slate-400")
+              : "bg-slate-100 text-muted")
           }
         >
           <ArrowUp className="h-4 w-4" />
         </button>
       </div>
-      <div className="mt-1.5 px-1 text-[10px] text-slate-400">
+      <div className="mt-1.5 px-1 text-[10px] text-muted">
         Enter 发送 · Shift + Enter 换行
       </div>
     </div>

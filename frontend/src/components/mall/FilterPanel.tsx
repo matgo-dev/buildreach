@@ -92,7 +92,7 @@ export function FilterPanel({
   return (
     <div className="flex items-start gap-2 sm:gap-3 px-3 sm:px-5 py-2.5">
       {/* 左侧标签 */}
-      <span className="text-[12px] font-semibold text-gray-500 whitespace-nowrap pt-1.5 min-w-[48px]">
+      <span className="text-[12px] font-semibold text-muted whitespace-nowrap pt-1.5 min-w-[48px]">
         {label}
       </span>
 
@@ -171,7 +171,7 @@ export function FilterPanel({
           <div className="mt-2 pt-2 border-t border-dashed border-gray-200 space-y-2">
             {pending.size > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[12px] text-gray-500 mr-1">{t("filterSelected")}</span>
+                <span className="text-[12px] text-muted mr-1">{t("filterSelected")}</span>
                 {Array.from(pending).map((k) => (
                   <span
                     key={k}
@@ -229,7 +229,7 @@ export function FilterPanel({
           </button>
         ) : null}
         {showCount && items.length > 0 && (
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px] text-muted">
             {t("filterTotal", { count: items.length })}
           </span>
         )}

@@ -50,19 +50,19 @@ function ReadonlyCategoryBreadcrumb({
   return (
     <nav aria-label="Breadcrumb" className="mb-4">
       <div className="flex flex-wrap items-center gap-2 py-1 text-[12px]">
-        <button type="button" onClick={onBack} className="shrink-0 text-gray-500 hover:text-teal-700">
+        <button type="button" onClick={onBack} className="shrink-0 text-muted hover:text-teal-700">
           {backLabel}
         </button>
         {crumbs.map((crumb) => (
           <React.Fragment key={crumb.code}>
             <span className="text-gray-300">/</span>
-            <span className="max-w-[140px] truncate text-gray-600 sm:max-w-[180px]">
+            <span className="max-w-[140px] truncate text-ink-2 sm:max-w-[180px]">
               {crumb.name}
             </span>
           </React.Fragment>
         ))}
         <span className="text-gray-300">/</span>
-        <span className="max-w-[220px] truncate font-medium text-gray-700">
+        <span className="max-w-[220px] truncate font-medium text-ink">
           {tail}
         </span>
       </div>
@@ -161,7 +161,7 @@ function ZoneProductDetailContent() {
       <PublicLayout>
         <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
           <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-          <h2 className="text-lg font-semibold text-gray-700">{tMall("detail.notFound")}</h2>
+          <h2 className="text-lg font-semibold text-ink">{tMall("detail.notFound")}</h2>
           <button
             onClick={() => router.push(`/${locale}/zone/${zoneCode}`)}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full mall-btn-primary px-5 py-2 text-sm font-medium transition-colors"
@@ -197,8 +197,8 @@ function ZoneProductDetailContent() {
 
           {/* 右:信息 + 规格切换 */}
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
-            <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
+            <p className="text-[11px] text-muted">SPU: {product.spu_code}</p>
+            <h1 className="text-xl font-bold text-ink">{product.name}</h1>
 
             {product.certifications && product.certifications.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
@@ -216,13 +216,13 @@ function ZoneProductDetailContent() {
             {(product.selling_points || product.description) && (
               <div className="mt-3 rounded-lg border border-teal-700/10 bg-teal-700/[0.03] px-4 py-3">
                 {product.selling_points && (
-                  <div className="text-sm leading-relaxed text-gray-800">
+                  <div className="text-sm leading-relaxed text-ink">
                     <span className="mr-1.5 text-xs font-semibold text-teal-700">✦ {tMall("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
                 {product.description && (
-                  <div className={`text-sm leading-relaxed text-gray-600 ${product.selling_points ? "mt-2" : ""}`}>
+                  <div className={`text-sm leading-relaxed text-ink-2 ${product.selling_points ? "mt-2" : ""}`}>
                     {product.description}
                   </div>
                 )}
@@ -230,31 +230,31 @@ function ZoneProductDetailContent() {
             )}
 
             {/* 换购价 / MOQ */}
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted">
               {priceRange && (
                 <span>
-                  {t("price")}: <span className="font-medium text-gray-700">{priceRange}</span>
+                  {t("price")}: <span className="font-medium text-ink">{priceRange}</span>
                 </span>
               )}
               {moq != null && (
                 <span>
-                  {tMall("detail.moq")}: <span className="font-medium text-gray-700">{moq.toLocaleString()} {moqUnit}</span>
+                  {tMall("detail.moq")}: <span className="font-medium text-ink">{moq.toLocaleString()} {moqUnit}</span>
                 </span>
               )}
               {product.origin && (
                 <span>
-                  {tMall("detail.origin")}: <span className="font-medium text-gray-700">{product.origin}</span>
+                  {tMall("detail.origin")}: <span className="font-medium text-ink">{product.origin}</span>
                 </span>
               )}
               {product.brand && (
                 <span>
-                  {tMall("detail.brand")}: <span className="font-medium text-gray-700">{product.brand}</span>
+                  {tMall("detail.brand")}: <span className="font-medium text-ink">{product.brand}</span>
                 </span>
               )}
             </div>
 
             {selectedSku?.sku_code && (
-              <p className="mt-1 text-[11px] text-gray-400">SKU: {selectedSku.sku_code}</p>
+              <p className="mt-1 text-[11px] text-muted">SKU: {selectedSku.sku_code}</p>
             )}
 
             {/* 规格变体切换 */}
@@ -275,7 +275,7 @@ function ZoneProductDetailContent() {
                 {t("addToInquiry")}
               </button>
               {needsSelection && (
-                <span className="text-xs text-gray-400">{t("selectSpecFirst")}</span>
+                <span className="text-xs text-muted">{t("selectSpecFirst")}</span>
               )}
             </div>
           </div>
@@ -285,15 +285,15 @@ function ZoneProductDetailContent() {
       {/* 规格参数 */}
       {product.attribute_groups.length > 0 && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-base font-semibold text-gray-800">{tMall("detail.tabSpecs")}</h3>
+          <h3 className="mb-3 text-base font-semibold text-ink">{tMall("detail.tabSpecs")}</h3>
           <div className="space-y-4">
             {product.attribute_groups.map((group) => (
               <div key={group.group}>
                 <dl className="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2">
                   {group.items.map((item) => (
                     <div key={item.key} className="flex text-sm">
-                      <dt className="w-28 shrink-0 text-gray-500">{item.key}</dt>
-                      <dd className="text-gray-800">
+                      <dt className="w-28 shrink-0 text-muted">{item.key}</dt>
+                      <dd className="text-ink">
                         {item.values.map((v) => v.value).join(", ")}
                         {item.unit ? ` ${item.unit}` : ""}
                       </dd>
@@ -309,9 +309,9 @@ function ZoneProductDetailContent() {
       {/* 产品描述 + 详情长图 */}
       {(product.detail_description || product.description || detailImages.length > 0) && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-base font-semibold text-gray-800">{tMall("detail.tabDescription")}</h3>
+          <h3 className="mb-3 text-base font-semibold text-ink">{tMall("detail.tabDescription")}</h3>
           {(product.detail_description || product.description) && (
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
               {product.detail_description || product.description}
             </div>
           )}

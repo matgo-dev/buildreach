@@ -312,7 +312,7 @@ function RfqListContent() {
         </div>
 
         {/* 表头 */}
-        <div className="grid grid-cols-[1fr_90px_100px_110px_380px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+        <div className="grid grid-cols-[1fr_90px_100px_110px_380px] items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-muted">
           <span className="font-medium">{t("productSummary")}</span>
           <span className="text-center font-medium">{t("totalQty")}</span>
           <span className="text-center font-medium">{t("status")}</span>
@@ -327,7 +327,7 @@ function RfqListContent() {
         ) : !data || data.items.length === 0 ? (
           <div className="flex min-h-[400px] flex-col items-center justify-center">
             <FileText className="mb-4 h-16 w-16 text-gray-200" />
-            <h2 className="text-lg font-semibold text-gray-600">{t("emptyList")}</h2>
+            <h2 className="text-lg font-semibold text-ink-2">{t("emptyList")}</h2>
             <div className="mt-4 flex items-center gap-3">
               <button
                 type="button"
@@ -375,13 +375,13 @@ function RfqListContent() {
                     </div>
                     <div className="min-w-0">
                       <span className="text-xs font-medium text-teal-700">{rfq.rfq_no}</span>
-                      <p className="mt-0.5 line-clamp-2 text-sm text-gray-700">{summary}</p>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-ink">{summary}</p>
                     </div>
                   </div>
 
                   {/* 数量 */}
                   <div className="text-center">
-                    <span className="text-sm text-gray-600">{t("itemCount", { count: rfq.items.length })}</span>
+                    <span className="text-sm text-ink-2">{t("itemCount", { count: rfq.items.length })}</span>
                   </div>
 
                   {/* 状态 */}
@@ -391,7 +391,7 @@ function RfqListContent() {
 
                   {/* 时间 */}
                   <div className="text-center">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-muted">
                       {rfq.created_at ? formatRelativeTime(rfq.created_at, locale) : "—"}
                     </span>
                   </div>

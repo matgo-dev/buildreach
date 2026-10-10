@@ -44,7 +44,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3 shadow-mall-sm">
-      <span className="text-xs text-gray-500">
+      <span className="text-xs text-muted">
         {t("showing", { start, end, total })}
       </span>
 
@@ -53,7 +53,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-muted transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
@@ -61,7 +61,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
         {/* 页码按钮 */}
         {getPageNumbers().map((p, i) =>
           p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-400">
+            <span key={`ellipsis-${i}`} className="px-1 text-xs text-muted">
               ...
             </span>
           ) : (
@@ -71,7 +71,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
               className={`flex h-7 min-w-[28px] items-center justify-center rounded border text-xs font-medium transition-colors ${
                 p === page
                   ? "border-teal-700 bg-teal-700 text-white"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  : "border-gray-200 text-ink-2 hover:bg-gray-50"
               }`}
             >
               {p}
@@ -83,7 +83,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= pages}
-          className="flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-muted transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
@@ -91,20 +91,20 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
         {/* 总页数 + 跳转 */}
         {pages > 1 && (
           <>
-            <span className="ml-2 text-xs text-gray-500">
+            <span className="ml-2 text-xs text-muted">
               {t("totalPages", { pages })}
             </span>
-            <span className="ml-2 text-xs text-gray-500">{t("jumpTo")}</span>
+            <span className="ml-2 text-xs text-muted">{t("jumpTo")}</span>
             <input
               type="text"
               value={jumpInput}
               onChange={(e) => setJumpInput(e.target.value.replace(/\D/g, ""))}
               onKeyDown={(e) => e.key === "Enter" && handleJump()}
-              className="ml-1 h-7 w-12 rounded border border-gray-200 px-2 text-center text-xs text-gray-700 outline-none focus:border-teal-500"
+              className="ml-1 h-7 w-12 rounded border border-gray-200 px-2 text-center text-xs text-ink outline-none focus:border-teal-500"
             />
             <button
               onClick={handleJump}
-              className="ml-1 h-7 rounded border border-gray-200 px-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+              className="ml-1 h-7 rounded border border-gray-200 px-2 text-xs text-ink-2 hover:bg-gray-50 transition-colors"
             >
               {t("jump")}
             </button>

@@ -79,7 +79,7 @@ export function MallNavRow() {
         href={link.href}
         className={`${itemBase} ${
           active
-            ? "text-teal-900 border-b-[3px] border-lime"
+            ? "bg-teal-800 text-white border-b-[3px] border-lime"
             : "text-ink-2 hover:text-teal-900"
         }`}
       >
@@ -123,7 +123,7 @@ export function MallNavRow() {
         </div>
         {zones.length > 0 && (
           <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-line pl-4">
-            <span className="hidden text-[11px] font-semibold text-gray-400 lg:inline">
+            <span className="hidden text-[11px] font-semibold text-muted lg:inline">
               {t("navExclusiveZone")}
             </span>
             {zones.map(renderZoneLink)}

@@ -113,7 +113,7 @@ export function MallFooter() {
           >
             <button
               onClick={() => setShowQr(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-3 right-3 text-muted hover:text-ink-2 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -128,11 +128,11 @@ export function MallFooter() {
                 className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
               />
               {contact.wechatId && (
-                <p className="mt-3 text-sm text-gray-500">
-                  {t("wechatIdLabel")}: <span className="font-mono text-gray-700">{contact.wechatId}</span>
+                <p className="mt-3 text-sm text-muted">
+                  {t("wechatIdLabel")}: <span className="font-mono text-ink">{contact.wechatId}</span>
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-400">{t("wechatScanHint")}</p>
+              <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
             </div>
           </div>
         </div>

@@ -248,7 +248,7 @@ function FormView({
               {(detected.dutyPct * 100).toFixed(0)}%
             </div>
           ) : (
-            <div className="mt-1.5 text-xs text-slate-400">{t("ccNoMatch")}</div>
+            <div className="mt-1.5 text-xs text-muted">{t("ccNoMatch")}</div>
           ))}
       </div>
 
@@ -314,7 +314,7 @@ function FormView({
         {t(compareMode ? "ccCompareBtn" : "ccCalcBtn")}
       </button>
 
-      <p className="text-[11px] leading-relaxed text-slate-400">{t("ccDisclaimer")}</p>
+      <p className="text-[11px] leading-relaxed text-muted">{t("ccDisclaimer")}</p>
     </div>
   );
 }
@@ -373,7 +373,7 @@ function ResultView({
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+      <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm leading-relaxed text-ink shadow-sm">
         <MarkdownLite text={md} />
       </div>
 
@@ -642,7 +642,7 @@ function NumInput({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-xl bg-transparent px-3 py-2.5 text-sm focus:outline-none"
       />
-      {suffix && <span className="pr-3 text-xs text-slate-400">{suffix}</span>}
+      {suffix && <span className="pr-3 text-xs text-muted">{suffix}</span>}
     </div>
   );
 }

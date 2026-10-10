@@ -96,10 +96,10 @@ function CrumbDropdown({
     >
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[12px] text-gray-700 hover:border-teal-400 hover:text-teal-700 transition-colors h-[28px]"
+        className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[12px] text-ink hover:border-teal-400 hover:text-teal-700 transition-colors h-[28px]"
       >
         <span className="max-w-[120px] truncate">{crumb.name}</span>
-        <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && siblings.length > 0 && (
@@ -114,7 +114,7 @@ function CrumbDropdown({
               className={`text-left px-3 py-2 text-[12px] transition-colors ${
                 s.code === crumb.code
                   ? "bg-teal-50 text-teal-700 font-medium"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-teal-700"
+                  : "text-ink-2 hover:bg-gray-50 hover:text-teal-700"
               }`}
             >
               {s.name}
@@ -155,7 +155,7 @@ export function CategoryBreadcrumb({
   return (
     <nav aria-label="Breadcrumb">
       <div className="flex flex-wrap items-center gap-2 text-[12px] py-1">
-        <span className="text-gray-500 shrink-0">
+        <span className="text-muted shrink-0">
           {t("allResults")}
         </span>
 
@@ -176,7 +176,7 @@ export function CategoryBreadcrumb({
         {tail && (
           <>
             <span className="text-gray-300">/</span>
-            <span className="max-w-[200px] truncate text-[12px] font-medium text-gray-700">
+            <span className="max-w-[200px] truncate text-[12px] font-medium text-ink">
               {tail}
             </span>
           </>

@@ -45,7 +45,7 @@ function MobileFilterRow({
   return (
     <div className="block lg:hidden px-3 py-2 border-b border-line">
       <div className="flex items-start gap-2">
-        <span className="text-[11px] font-semibold text-gray-500 shrink-0 pt-1.5">{label}:</span>
+        <span className="text-[11px] font-semibold text-muted shrink-0 pt-1.5">{label}:</span>
         <div
           ref={containerRef}
           className={`flex-1 flex flex-wrap gap-1.5 transition-all duration-200 ${

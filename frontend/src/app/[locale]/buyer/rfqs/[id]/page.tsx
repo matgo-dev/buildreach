@@ -186,7 +186,7 @@ function RfqDetailContent() {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
         <AlertCircle className="mb-4 h-12 w-12 text-gray-300" />
-        <p className="text-sm text-gray-500">{tError("rfq.not_found")}</p>
+        <p className="text-sm text-muted">{tError("rfq.not_found")}</p>
         <button
           type="button"
           onClick={() => router.back()}
@@ -213,16 +213,16 @@ function RfqDetailContent() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100"
+            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-gray-100"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">{rfq.rfq_no}</h1>
+            <h1 className="text-xl font-bold text-ink">{rfq.rfq_no}</h1>
             <div className="mt-1 flex items-center gap-2">
               <RfqStatusBadge status={rfq.status} />
               {rfq.created_at && (
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-muted">
                   {t("submitTime")}: {formatDate(rfq.created_at, locale)}
                 </span>
               )}
@@ -299,25 +299,25 @@ function RfqDetailContent() {
       {/* 无报价提示 */}
       {showQuoteSection && !quote && (
         <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
-          <p className="text-sm text-gray-400">{tQ("noQuote")}</p>
+          <p className="text-sm text-muted">{tQ("noQuote")}</p>
         </div>
       )}
 
       {/* 交货信息 */}
       {(rfq.requested_delivery_place || rfq.expected_delivery_date || rfq.target_currency) && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("section_delivery")}</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink">{t("section_delivery")}</h2>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             {rfq.requested_delivery_place && (
               <div>
-                <span className="text-xs text-gray-400">{t("deliveryPlace")}</span>
-                <p className="font-medium text-gray-800">{rfq.requested_delivery_place}</p>
+                <span className="text-xs text-muted">{t("deliveryPlace")}</span>
+                <p className="font-medium text-ink">{rfq.requested_delivery_place}</p>
               </div>
             )}
             {rfq.expected_delivery_date && (
               <div>
-                <span className="text-xs text-gray-400">{t("deliveryDate")}</span>
-                <p className="font-medium text-gray-800">
+                <span className="text-xs text-muted">{t("deliveryDate")}</span>
+                <p className="font-medium text-ink">
                   {formatDate(rfq.expected_delivery_date, locale, {
                     hour: undefined,
                     minute: undefined,
@@ -327,8 +327,8 @@ function RfqDetailContent() {
             )}
             {rfq.target_currency && (
               <div>
-                <span className="text-xs text-gray-400">{t("currency")}</span>
-                <p className="font-medium text-gray-800">{rfq.target_currency}</p>
+                <span className="text-xs text-muted">{t("currency")}</span>
+                <p className="font-medium text-ink">{rfq.target_currency}</p>
               </div>
             )}
           </div>
@@ -338,24 +338,24 @@ function RfqDetailContent() {
       {/* 联系方式 */}
       {(rfq.contact_name || rfq.contact_phone || rfq.contact_email) && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("section_contact")}</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink">{t("section_contact")}</h2>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             {rfq.contact_name && (
               <div>
-                <span className="text-xs text-gray-400">{t("contactName")}</span>
-                <p className="font-medium text-gray-800">{rfq.contact_name}</p>
+                <span className="text-xs text-muted">{t("contactName")}</span>
+                <p className="font-medium text-ink">{rfq.contact_name}</p>
               </div>
             )}
             {rfq.contact_phone && (
               <div>
-                <span className="text-xs text-gray-400">{t("contactPhone")}</span>
-                <p className="font-medium text-gray-800">{rfq.contact_phone}</p>
+                <span className="text-xs text-muted">{t("contactPhone")}</span>
+                <p className="font-medium text-ink">{rfq.contact_phone}</p>
               </div>
             )}
             {rfq.contact_email && (
               <div>
-                <span className="text-xs text-gray-400">{t("contactEmail")}</span>
-                <p className="font-medium text-gray-800">{rfq.contact_email}</p>
+                <span className="text-xs text-muted">{t("contactEmail")}</span>
+                <p className="font-medium text-ink">{rfq.contact_email}</p>
               </div>
             )}
           </div>
@@ -365,10 +365,10 @@ function RfqDetailContent() {
       {/* 附加要求 */}
       {((rfq.required_certifications && rfq.required_certifications.length > 0) || rfq.remark || (rfq.attachments && rfq.attachments.length > 0)) && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("section_extra")}</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink">{t("section_extra")}</h2>
           {rfq.required_certifications && rfq.required_certifications.length > 0 && (
             <div className="mb-3">
-              <span className="text-xs text-gray-400">{t("certifications")}</span>
+              <span className="text-xs text-muted">{t("certifications")}</span>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {rfq.required_certifications.map((cert) => (
                   <span
@@ -383,13 +383,13 @@ function RfqDetailContent() {
           )}
           {rfq.remark && (
             <div className="mb-3">
-              <span className="text-xs text-gray-400">{t("remark")}</span>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{rfq.remark}</p>
+              <span className="text-xs text-muted">{t("remark")}</span>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{rfq.remark}</p>
             </div>
           )}
           {rfq.attachments && rfq.attachments.length > 0 && (
             <div>
-              <span className="text-xs text-gray-400">{t("attachment.label")}</span>
+              <span className="text-xs text-muted">{t("attachment.label")}</span>
               <AttachmentGallery attachments={rfq.attachments} />
             </div>
           )}
@@ -402,13 +402,13 @@ function RfqDetailContent() {
       {withdrawOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800">{t("withdrawConfirm")}</h3>
+            <h3 className="text-lg font-semibold text-ink">{t("withdrawConfirm")}</h3>
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setWithdrawOpen(false)}
                 disabled={withdrawing}
-                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-ink-2 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
               >
                 {tCommon("cancel")}
               </button>
@@ -430,9 +430,9 @@ function RfqDetailContent() {
       {cancelOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800">{t("cancelConfirm")}</h3>
+            <h3 className="text-lg font-semibold text-ink">{t("cancelConfirm")}</h3>
             <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-gray-600">
+              <label className="mb-1 block text-sm font-medium text-ink-2">
                 {t("cancelReason")}
               </label>
               <textarea
@@ -448,7 +448,7 @@ function RfqDetailContent() {
                 type="button"
                 onClick={() => { setCancelOpen(false); setCancelReason(""); }}
                 disabled={cancelling}
-                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-ink-2 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
               >
                 {tCommon("cancel")}
               </button>
@@ -605,9 +605,9 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
                 {isImageContentType(att.content_type) && !thumbFailed.has(att.id) ? (
                   <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
                 ) : (
-                  <FileText className="h-6 w-6 text-gray-400" />
+                  <FileText className="h-6 w-6 text-muted" />
                 )}
-                <span className="mt-1 w-full truncate px-1 text-center text-[10px] text-gray-400">
+                <span className="mt-1 w-full truncate px-1 text-center text-[10px] text-muted">
                   {att.original_filename.length > 12
                     ? att.original_filename.slice(-12)
                     : att.original_filename}
@@ -619,7 +619,7 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
             )}
             {/* 文档下载图标 */}
             {!isImageContentType(att.content_type) && (
-              <Download className="absolute bottom-1 right-1 h-3.5 w-3.5 text-gray-400 opacity-0 group-hover:opacity-100" />
+              <Download className="absolute bottom-1 right-1 h-3.5 w-3.5 text-muted opacity-0 group-hover:opacity-100" />
             )}
           </button>
         ))}
@@ -645,7 +645,7 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
             </button>
             {lightboxLoading ? (
               <div className="flex h-64 w-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted" />
               </div>
             ) : lightboxUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -656,12 +656,12 @@ function AttachmentGallery({ attachments }: { attachments: AttachmentPublic[] })
               />
             ) : null}
             {lightboxAtt && (
-              <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+              <div className="mt-3 flex items-center justify-between text-sm text-muted">
                 <span className="truncate">{lightboxAtt.original_filename}</span>
                 <button
                   type="button"
                   onClick={() => downloadAttachment(lightboxAtt.id, lightboxAtt.original_filename)}
-                  className="ml-3 flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50"
+                  className="ml-3 flex items-center gap-1 whitespace-nowrap rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-ink-2 shadow-sm hover:bg-gray-50"
                 >
                   <Download className="h-3 w-3" />
                   {t("attachment.download")}
@@ -683,12 +683,12 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
       <div className="border-b border-gray-100 px-5 py-3">
-        <h2 className="text-sm font-semibold text-gray-700">{t("section_items")}</h2>
+        <h2 className="text-sm font-semibold text-ink">{t("section_items")}</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 text-left text-xs text-gray-500">
+            <tr className="bg-gray-50 text-left text-xs text-muted">
               <th className="px-5 py-2.5 font-medium">{t("productName")}</th>
               <th className="px-5 py-2.5 font-medium">{t("skuSpec")}</th>
               <th className="px-5 py-2.5 font-medium text-right">{t("quantity")}</th>
@@ -716,11 +716,11 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         {unavailable ? (
-                          <span className="text-sm font-medium text-gray-400">{item.product_name_snapshot ?? "—"}</span>
+                          <span className="text-sm font-medium text-muted">{item.product_name_snapshot ?? "—"}</span>
                         ) : (
                           <Link
                             href={`/mall/products/${item.product_id}`}
-                            className="text-sm font-medium text-gray-800 hover:text-teal-700 hover:underline"
+                            className="text-sm font-medium text-ink hover:text-teal-700 hover:underline"
                           >
                             {item.product_name_snapshot ?? "—"}
                           </Link>
@@ -735,33 +735,33 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                       {(item.spu_code || item.brand || item.origin) && (
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {item.spu_code && (
-                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-muted">
                               SPU: {item.spu_code}
                             </span>
                           )}
                           {item.brand && (
-                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-muted">
                               {item.brand}
                             </span>
                           )}
                           {item.origin && (
-                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-muted">
                               {item.origin}
                             </span>
                           )}
                         </div>
                       )}
                       {item.category_name && (
-                        <p className="mt-0.5 text-[10px] text-gray-400">{item.category_name}</p>
+                        <p className="mt-0.5 text-[10px] text-muted">{item.category_name}</p>
                       )}
 
                     </div>
                   </div>
                 </td>
-                <td className={`px-5 py-3 align-top text-xs ${item.variant_display ? "text-gray-600" : "text-gray-400"}`}>
+                <td className={`px-5 py-3 align-top text-xs ${item.variant_display ? "text-ink-2" : "text-muted"}`}>
                   {item.variant_display || t("noSpec")}
                 </td>
-                <td className={`px-5 py-3 text-right align-top font-semibold ${unavailable ? "text-gray-400" : "text-gray-800"}`}>
+                <td className={`px-5 py-3 text-right align-top font-semibold ${unavailable ? "text-muted" : "text-ink"}`}>
                   {item.quantity} {item.uom_snapshot ?? ""}
                 </td>
               </tr>
@@ -820,7 +820,7 @@ function QuoteCard({
       {/* 标题 */}
       <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-700">{tQ("viewTitle")}</h2>
+          <h2 className="text-sm font-semibold text-ink">{tQ("viewTitle")}</h2>
           {isAccepted && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
               <CheckCircle2 className="h-3 w-3" />
@@ -829,7 +829,7 @@ function QuoteCard({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{quote.quote_no}</span>
+          <span className="text-xs text-muted">{quote.quote_no}</span>
           {canExport && (
             <button
               type="button"
@@ -860,45 +860,45 @@ function QuoteCard({
       <div className="grid grid-cols-2 gap-3 border-b border-gray-100 px-5 py-4 text-sm sm:grid-cols-4">
         {quote.trade_term && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("tradeTerm")}</span>
-            <p className="font-medium text-gray-800">{quote.trade_term}</p>
+            <span className="text-xs text-muted">{tQ("tradeTerm")}</span>
+            <p className="font-medium text-ink">{quote.trade_term}</p>
           </div>
         )}
         {quote.named_place && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("namedPlace")}</span>
-            <p className="font-medium text-gray-800">{quote.named_place}</p>
+            <span className="text-xs text-muted">{tQ("namedPlace")}</span>
+            <p className="font-medium text-ink">{quote.named_place}</p>
           </div>
         )}
         {quote.currency && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("currency")}</span>
-            <p className="font-medium text-gray-800">{quote.currency}</p>
+            <span className="text-xs text-muted">{tQ("currency")}</span>
+            <p className="font-medium text-ink">{quote.currency}</p>
           </div>
         )}
         {quote.valid_until && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("validUntil")}</span>
-            <p className="font-medium text-gray-800">
+            <span className="text-xs text-muted">{tQ("validUntil")}</span>
+            <p className="font-medium text-ink">
               {formatDate(quote.valid_until, locale, { hour: undefined, minute: undefined })}
             </p>
           </div>
         )}
         {quote.lead_time_days != null && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("leadTimeDays")}</span>
-            <p className="font-medium text-gray-800">{quote.lead_time_days}</p>
+            <span className="text-xs text-muted">{tQ("leadTimeDays")}</span>
+            <p className="font-medium text-ink">{quote.lead_time_days}</p>
           </div>
         )}
         {quote.eta_days != null && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("etaDays")}</span>
-            <p className="font-medium text-gray-800">{quote.eta_days}</p>
+            <span className="text-xs text-muted">{tQ("etaDays")}</span>
+            <p className="font-medium text-ink">{quote.eta_days}</p>
           </div>
         )}
         {quote.total_amount != null && (
           <div>
-            <span className="text-xs text-gray-400">{tQ("totalAmount")}</span>
+            <span className="text-xs text-muted">{tQ("totalAmount")}</span>
             <p className="text-base font-bold text-teal-700">
               {formatCurrency(Number(quote.total_amount), currency, locale)}
             </p>
@@ -910,7 +910,7 @@ function QuoteCard({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 text-left text-xs text-gray-500 whitespace-nowrap">
+            <tr className="bg-gray-50 text-left text-xs text-muted whitespace-nowrap">
               <th className="px-4 py-2.5 font-medium">{tQ("product")}</th>
               <th className="px-4 py-2.5 font-medium text-right">{tQ("quantity")}</th>
               <th className="px-4 py-2.5 font-medium text-right">{tQ("unitPrice")}</th>
@@ -931,7 +931,7 @@ function QuoteCard({
       {/* 报价附件（买方可见） */}
       {quote.attachments && quote.attachments.length > 0 && (
         <div className="border-t border-gray-100 px-5 py-4">
-          <h3 className="mb-3 text-sm font-medium text-gray-700">{tQ("quoteAttachments")}</h3>
+          <h3 className="mb-3 text-sm font-medium text-ink">{tQ("quoteAttachments")}</h3>
           <AttachmentGallery attachments={quote.attachments} />
         </div>
       )}
@@ -960,7 +960,7 @@ function QuoteLineRow({
 
   return (
     <tr className="border-t border-gray-100 even:bg-slate-50/50">
-      <td className="px-4 py-3 font-medium text-gray-800">
+      <td className="px-4 py-3 font-medium text-ink">
         <div className="flex items-center gap-1.5">
           {isFee && (
             <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
@@ -970,12 +970,12 @@ function QuoteLineRow({
           {productName}
         </div>
       </td>
-      <td className="px-4 py-3 text-right text-gray-800">
+      <td className="px-4 py-3 text-right text-ink">
         {qty != null ? <>{qty} {uom}</> : "—"}
       </td>
       <td className="px-4 py-3 text-right">
-        {isFee ? <span className="text-gray-400">—</span> : (
-        <div className="font-semibold text-gray-800">
+        {isFee ? <span className="text-muted">—</span> : (
+        <div className="font-semibold text-ink">
           {qi.unit_price != null
             ? formatCurrency(Number(qi.unit_price), currency, locale)
             : "—"}
@@ -993,7 +993,7 @@ function QuoteLineRow({
                   const next = sorted[idx + 1];
                   const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
                   return (
-                    <div key={idx} className="text-[10px] text-gray-500">
+                    <div key={idx} className="text-[10px] text-muted">
                       <span className="inline-block w-16">{label}</span>
                       <span className="font-semibold text-teal-700">{formatCurrency(Number(tier.unit_price), currency, locale)}</span>
                     </div>
@@ -1004,16 +1004,16 @@ function QuoteLineRow({
           </div>
         )}
       </td>
-      <td className="px-4 py-3 text-right text-gray-600">
+      <td className="px-4 py-3 text-right text-ink-2">
         {qi.moq != null ? Number(qi.moq) : "—"}
       </td>
-      <td className="px-4 py-3 text-right text-gray-600">
+      <td className="px-4 py-3 text-right text-ink-2">
         {qi.cbm_per_unit != null ? Number(qi.cbm_per_unit) : "—"}
       </td>
-      <td className="px-4 py-3 text-right text-gray-600">
+      <td className="px-4 py-3 text-right text-ink-2">
         {qi.gross_weight_per_unit != null ? Number(qi.gross_weight_per_unit) : "—"}
       </td>
-      <td className="px-4 py-3 text-right font-semibold text-gray-800">
+      <td className="px-4 py-3 text-right font-semibold text-ink">
         {qi.line_amount != null
           ? formatCurrency(Number(qi.line_amount), currency, locale)
           : "—"}

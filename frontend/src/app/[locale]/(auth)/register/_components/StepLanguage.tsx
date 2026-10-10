@@ -44,7 +44,7 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
       <div>
         <h2 className="text-xl font-bold text-gray-900">是否开启多语种适配?</h2>
         {/* [待评审] 文案对齐「只记录不翻译」口径 */}
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted">
           我们会记录您的语言偏好,用于后续多语种适配;本轮仅记录,不改变当前页面语言。
         </p>
       </div>
@@ -75,12 +75,12 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
               <div className="flex-1">
                 <p
                   className={
-                    "text-sm font-semibold " + (active ? "text-sea" : "text-gray-800")
+                    "text-sm font-semibold " + (active ? "text-sea" : "text-ink")
                   }
                 >
                   {opt.title}
                 </p>
-                <p className="text-xs text-gray-400">{opt.subtitle}</p>
+                <p className="text-xs text-muted">{opt.subtitle}</p>
               </div>
             </button>
           );
@@ -91,7 +91,7 @@ export function StepLanguage({ countryCode, selected, onSelect, onBack, onNext }
         <button
           type="button"
           onClick={onBack}
-          className="h-12 flex-1 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50"
+          className="h-12 flex-1 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-ink-2 transition-colors hover:bg-gray-50"
         >
           ← 返回上一步
         </button>

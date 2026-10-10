@@ -55,7 +55,7 @@ export function AppSidebar() {
       <div className="border-b border-white/10 px-3 py-2">
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted hover:bg-white/5 hover:text-white transition-colors"
         >
           <Home className="h-4 w-4" />
           <span>{t("navHome")}</span>
@@ -74,7 +74,7 @@ export function AppSidebar() {
 
         {debugMode && (
           <>
-            <div className="mt-4 px-3 pb-1 pt-3 text-[10px] uppercase tracking-widest text-slate-500">
+            <div className="mt-4 px-3 pb-1 pt-3 text-[10px] uppercase tracking-widest text-muted">
               {t("debugOtherWorkspaces")}
             </div>
             {WORKSPACES.filter((w) => w.code !== currentWs?.code).map((w) => (
@@ -151,7 +151,7 @@ function SectionHeader({
     <div
       className={
         "mb-1 mt-2 flex items-center gap-2 px-3 text-[10px] uppercase tracking-widest " +
-        (muted ? "text-slate-600" : "text-slate-500")
+        (muted ? "text-ink-2" : "text-muted")
       }
     >
       {accentColor && (
@@ -192,7 +192,7 @@ function NavLink({
         <span
           className={
             "block text-[9px] font-normal " +
-            (isActive ? "text-white/60" : access.ok ? "text-gray-600" : "text-gray-700")
+            (isActive ? "text-white/60" : access.ok ? "text-ink-2" : "text-ink")
           }
         >
           {item.labelEn}
@@ -207,7 +207,7 @@ function NavLink({
         href={item.path}
         className={
           "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors " +
-          (isActive ? activeClass : "text-gray-400 hover:bg-white/5 hover:text-white")
+          (isActive ? activeClass : "text-muted hover:bg-white/5 hover:text-white")
         }
       >
         <Icon className="h-4 w-4 shrink-0" />
@@ -220,7 +220,7 @@ function NavLink({
     return (
       <div
         title={access.reason}
-        className="flex cursor-not-allowed select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-600"
+        className="flex cursor-not-allowed select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-ink-2"
       >
         <Icon className="h-4 w-4 shrink-0" />
         {TextBlock}

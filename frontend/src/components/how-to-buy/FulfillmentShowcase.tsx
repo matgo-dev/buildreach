@@ -69,14 +69,14 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
           <span className="text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-3 py-0.5">
             {t("phaseOnline")}
           </span>
-          <span className="text-xs text-gray-400">P1 ~ P3</span>
+          <span className="text-xs text-muted">P1 ~ P3</span>
           <span className="flex-1 h-px bg-gray-200" />
           <span className="text-xs font-semibold text-sea bg-ocean/10 border border-ocean/30 rounded-full px-3 py-0.5">
             {t("phaseOffline")}
           </span>
-          <span className="text-xs text-gray-400">1 ~ 6（FOB）</span>
+          <span className="text-xs text-muted">1 ~ 6（FOB）</span>
           <span className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400">{t("phaseBuyerSelf")}</span>
+          <span className="text-xs text-muted">{t("phaseBuyerSelf")}</span>
           <span className="text-xs text-gray-300">7 ~ 8</span>
         </div>
         {/* 步骤条 */}
@@ -89,7 +89,7 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                       step.disabled
-                        ? "bg-gray-200 text-gray-400"
+                        ? "bg-gray-200 text-muted"
                         : isHighlight
                           ? "bg-lime text-teal-900 ring-2 ring-lime/50"
                           : step.phase === "online"
@@ -100,7 +100,7 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
                     {step.id}
                   </div>
                   <span className={`text-[10px] mt-1 whitespace-nowrap max-w-[60px] text-center leading-tight ${
-                    step.disabled ? "text-gray-300" : "text-gray-500"
+                    step.disabled ? "text-gray-300" : "text-muted"
                   }`}>
                     {t(`step_${step.id}_label`)}
                   </span>
@@ -131,10 +131,10 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
 function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <section className="mx-auto max-w-5xl px-6 py-12">
-      <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2 text-center">
+      <h2 className="text-xl md:text-2xl font-bold text-ink mb-2 text-center">
         {t("sectionProcess")}
       </h2>
-      <p className="text-sm text-gray-500 text-center mb-10">
+      <p className="text-sm text-muted text-center mb-10">
         {t("sectionProcessSub")}
       </p>
 
@@ -154,7 +154,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-mall-sm ${
                       step.disabled
-                        ? "bg-gray-200 text-gray-400"
+                        ? "bg-gray-200 text-muted"
                         : isHighlight
                           ? "bg-lime text-teal-900 ring-4 ring-lime/40"
                           : step.phase === "online"
@@ -201,7 +201,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                           <span
                             className={`md:hidden w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                               step.disabled
-                                ? "bg-gray-200 text-gray-400"
+                                ? "bg-gray-200 text-muted"
                                 : isHighlight
                                   ? "bg-lime text-teal-900"
                                   : step.phase === "online"
@@ -211,7 +211,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                           >
                             {step.id}
                           </span>
-                          <h3 className="text-[15px] font-bold text-gray-800">
+                          <h3 className="text-[15px] font-bold text-ink">
                             {t(`step_${step.id}_label`)}
                           </h3>
                           {isHighlight && (
@@ -220,7 +220,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                             </span>
                           )}
                         </div>
-                        <p className="text-[13px] text-gray-600 leading-relaxed">
+                        <p className="text-[13px] text-ink-2 leading-relaxed">
                           {t(`step_${step.id}_desc`)}
                         </p>
                       </div>
@@ -276,7 +276,7 @@ function ConsolidationSection({ t }: { t: ReturnType<typeof useTranslations> }) 
             <span className="inline-block text-xs font-semibold text-sea bg-ocean/10 border border-ocean/30 rounded-full px-3 py-0.5 mb-3">
               {t("consolidationTag")}
             </span>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6 leading-tight">
+            <h2 className="text-xl md:text-2xl font-bold text-ink mb-6 leading-tight">
               {t("consolidationTitle")}
             </h2>
             <div className="space-y-4">
@@ -286,10 +286,10 @@ function ConsolidationSection({ t }: { t: ReturnType<typeof useTranslations> }) 
                     {i}
                   </span>
                   <div>
-                    <div className="text-[14px] font-semibold text-gray-800">
+                    <div className="text-[14px] font-semibold text-ink">
                       {t(`consolidation_point${i}_title`)}
                     </div>
-                    <div className="text-[13px] text-gray-500 leading-relaxed">
+                    <div className="text-[13px] text-muted leading-relaxed">
                       {t(`consolidation_point${i}_desc`)}
                     </div>
                   </div>
@@ -340,15 +340,15 @@ function TrustSection({ t }: { t: ReturnType<typeof useTranslations> }) {
 function CertificationsSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <section className="mx-auto max-w-5xl px-6 py-12 text-center">
-      <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+      <h2 className="text-xl md:text-2xl font-bold text-ink mb-2">
         {t("certTitle")}
       </h2>
-      <p className="text-sm text-gray-500 mb-8">{t("certSub")}</p>
+      <p className="text-sm text-muted mb-8">{t("certSub")}</p>
       <div className="flex flex-wrap justify-center gap-3">
         {CERT_BADGES.map((cert) => (
           <span
             key={cert}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-sm"
           >
             <span className="w-2 h-2 rounded-full bg-lime" />
             {cert}
@@ -364,22 +364,22 @@ function BoundarySection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <section className="bg-teal-50 border-t border-line">
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">
+        <h2 className="text-lg font-bold text-ink mb-4 text-center">
           {t("boundaryTitle")}
         </h2>
         <div className="rounded-xl bg-white border border-gray-200 p-6">
           <div className="flex flex-wrap gap-3 justify-center mb-4">
             {/* 范围图例 */}
-            <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
               <span className="w-3 h-3 rounded-sm bg-teal-500" />
               {t("boundaryIncluded")}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
               <span className="w-3 h-3 rounded-sm bg-gray-300" />
               {t("boundaryExcluded")}
             </span>
           </div>
-          <p className="text-[13px] text-gray-600 leading-relaxed text-center max-w-3xl mx-auto">
+          <p className="text-[13px] text-ink-2 leading-relaxed text-center max-w-3xl mx-auto">
             {t("boundaryDesc")}
           </p>
         </div>

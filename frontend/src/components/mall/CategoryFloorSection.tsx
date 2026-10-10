@@ -89,7 +89,7 @@ export function CategoryFloorSection({
               <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
             </div>
           ) : products.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+            <div className="h-full flex flex-col items-center justify-center text-muted gap-2">
               <PackageOpen className="w-10 h-10" />
               <p className="text-sm">{t("floorComingSoon")}</p>
             </div>

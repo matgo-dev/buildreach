@@ -45,10 +45,10 @@ function StepCard({
         {/* 右侧内容 */}
         <div className="flex-1 px-5 py-4">
           <h3 className="text-[15px] font-bold text-teal-900 mb-1">{title}</h3>
-          <p className="text-[13px] text-gray-600 leading-relaxed mb-1.5">
+          <p className="text-[13px] text-ink-2 leading-relaxed mb-1.5">
             {desc}
           </p>
-          <p className="text-[12px] text-gray-400 leading-relaxed">{detail}</p>
+          <p className="text-[12px] text-muted leading-relaxed">{detail}</p>
         </div>
       </div>
     </div>
@@ -229,7 +229,7 @@ function HowToBuyContent() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* 左：7 步详情 */}
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">
+            <h2 className="text-lg font-bold text-ink mb-4">
               {t("stepsTitle")}
             </h2>
             <div className="space-y-3">
@@ -249,7 +249,7 @@ function HowToBuyContent() {
           <div className="space-y-4">
             {/* 平台优势 */}
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <h3 className="text-[14px] font-bold text-gray-800 mb-3">
+              <h3 className="text-[14px] font-bold text-ink mb-3">
                 {t("advantagesTitle")}
               </h3>
               <div className="space-y-3">
@@ -259,10 +259,10 @@ function HowToBuyContent() {
                       {t(`adv${i}Icon`)}
                     </span>
                     <div>
-                      <div className="text-[13px] font-semibold text-gray-800">
+                      <div className="text-[13px] font-semibold text-ink">
                         {t(`adv${i}Title`)}
                       </div>
-                      <div className="text-[12px] text-gray-500 leading-relaxed">
+                      <div className="text-[12px] text-muted leading-relaxed">
                         {t(`adv${i}Desc`)}
                       </div>
                     </div>
@@ -273,20 +273,20 @@ function HowToBuyContent() {
 
             {/* FAQ */}
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <h3 className="text-[14px] font-bold text-gray-800 mb-3">
+              <h3 className="text-[14px] font-bold text-ink mb-3">
                 {t("faqTitle")}
               </h3>
               <div className="space-y-2">
                 {Array.from({ length: FAQ_COUNT }, (_, i) => i + 1).map(
                   (i) => (
                     <details key={i} className="group">
-                      <summary className="cursor-pointer text-[13px] font-medium text-gray-700 hover:text-teal-700 transition-colors list-none flex items-start gap-2 py-0.5">
-                        <span className="text-gray-400 group-open:rotate-90 transition-transform text-[10px] mt-[3px] flex-shrink-0">
+                      <summary className="cursor-pointer text-[13px] font-medium text-ink hover:text-teal-700 transition-colors list-none flex items-start gap-2 py-0.5">
+                        <span className="text-muted group-open:rotate-90 transition-transform text-[10px] mt-[3px] flex-shrink-0">
                           ▶
                         </span>
                         {t(`faq${i}Q`)}
                       </summary>
-                      <p className="mt-1 ml-4 text-[12px] text-gray-500 leading-relaxed pb-1">
+                      <p className="mt-1 ml-4 text-[12px] text-muted leading-relaxed pb-1">
                         {t(`faq${i}A`)}
                       </p>
                     </details>

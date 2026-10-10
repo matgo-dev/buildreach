@@ -151,7 +151,7 @@ export function CategorySidebar({
                       className={`text-[13px] leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis block ${
                         isHovered || hasActiveChild
                           ? "text-teal-700 font-bold"
-                          : "text-gray-700"
+                          : "text-ink"
                       }`}
                     >
                       {row.map((cat, i) => (
@@ -256,7 +256,7 @@ export function CategorySidebar({
                           className={`shrink-0 text-sm font-medium leading-6 transition-colors whitespace-nowrap ${
                             activeCategoryCode === l2.code
                               ? "text-teal-900 font-bold"
-                              : "text-gray-600 hover:text-teal-900"
+                              : "text-ink-2 hover:text-teal-900"
                           }`}
                         >
                           {l2.name}
@@ -276,7 +276,7 @@ export function CategorySidebar({
                               className={`text-sm leading-6 transition-colors ${
                                 activeCategoryCode === l3.code
                                   ? "font-semibold text-teal-900"
-                                  : "text-gray-500 hover:text-teal-900"
+                                  : "text-muted hover:text-teal-900"
                               }`}
                             >
                               {l3.name}

@@ -132,18 +132,18 @@ function Inner() {
   const visibleSections = hasOrg ? SECTIONS : SECTIONS.filter((s) => s !== "organization");
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-bg">
       {/* 顶栏 */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
           <Link
             href="/"
-            className="flex items-center gap-1 text-sm text-slate-500 hover:text-teal-700 transition-colors"
+            className="flex items-center gap-1 text-sm text-muted hover:text-teal-700 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
             {t("backToHome")}
           </Link>
-          <h1 className="ml-auto text-sm font-semibold text-slate-700">{t("title")}</h1>
+          <h1 className="ml-auto text-sm font-semibold text-ink">{t("title")}</h1>
           <span className="w-20" />
         </div>
       </header>
@@ -187,16 +187,16 @@ function Inner() {
                   {user.roles.map((role) => (
                     <span
                       key={role}
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role] ?? "bg-slate-100 text-slate-700"}`}
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role] ?? "bg-slate-100 text-ink"}`}
                     >
                       {t(`roles.${role}`)}
                     </span>
                   ))}
                   {user.organization && (
-                    <span className="text-sm text-slate-500">{user.organization.name}</span>
+                    <span className="text-sm text-muted">{user.organization.name}</span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-slate-500">{user.email}</p>
+                <p className="mt-1 text-sm text-muted">{user.email}</p>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ function Inner() {
               <FieldRow
                 label={t("fields.language")}
                 value={user.language_preference ?? t("placeholders.notSet")}
-                icon={<Globe className="h-4 w-4 text-slate-400" />}
+                icon={<Globe className="h-4 w-4 text-muted" />}
               />
             </SectionCard>
           </section>
@@ -315,7 +315,7 @@ function Inner() {
               <FieldRow
                 label={t("fields.password")}
                 value={t("placeholders.passwordMasked")}
-                icon={<Lock className="h-4 w-4 text-slate-400" />}
+                icon={<Lock className="h-4 w-4 text-muted" />}
 
                 editing={editing === "password"}
                 onEdit={() => startEditing("password")}
@@ -396,7 +396,7 @@ function Inner() {
                     value={
                       <>
                         <span className="font-mono font-semibold text-slate-900">#{user.organization!.id}</span>
-                        <span className="ml-3 text-xs text-slate-500 whitespace-normal">{t("hints.orgCode")}</span>
+                        <span className="ml-3 text-xs text-muted whitespace-normal">{t("hints.orgCode")}</span>
                       </>
                     }
                   />
@@ -412,7 +412,7 @@ function Inner() {
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         user.organization!.is_owner
                           ? "bg-amber-100 text-amber-800"
-                          : "bg-slate-100 text-slate-700"
+                          : "bg-slate-100 text-ink"
                       }`}
                     >
                       {t(`orgRoles.${user.organization!.is_owner ? "owner" : "member"}`)}
@@ -450,7 +450,7 @@ function Inner() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
               <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl">
                 <h3 className="text-lg font-semibold text-gray-900">{t("deactivate_title")}</h3>
-                <p className="text-sm text-gray-500 mt-2">{t("deactivate_warning")}</p>
+                <p className="text-sm text-muted mt-2">{t("deactivate_warning")}</p>
                 <div className="mt-4">
                   <PasswordField
                     value={deactivatePassword}
@@ -468,7 +468,7 @@ function Inner() {
                       setDeactivatePassword("");
                       setDeactivateError("");
                     }}
-                    className="flex-1 h-9 px-4 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex-1 h-9 px-4 text-sm border border-slate-200 rounded-lg text-ink-2 hover:bg-slate-50 transition-colors"
                   >
                     {t("deactivate_cancel")}
                   </button>
@@ -532,7 +532,7 @@ function FieldRow({
     <div className="px-6 py-4">
       {editing ? (
         <div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">{label}</p>
+          <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">{label}</p>
           {editForm}
         </div>
       ) : (
@@ -544,7 +544,7 @@ function FieldRow({
         >
           {icon}
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
+            <p className="text-xs font-medium text-muted uppercase tracking-wider">{label}</p>
             <div className="mt-0.5 text-sm text-slate-900 truncate">{value}</div>
           </div>
           {editable && (
@@ -564,7 +564,7 @@ function InlineInput({
   return (
     <input
       {...rest}
-      className={`h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-800 placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
+      className={`h-10 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
         hasError
           ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
           : "border-slate-200 focus:border-teal-700 focus:ring-teal-700/15"
@@ -591,13 +591,13 @@ function PasswordField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete="current-password"
-        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-800 placeholder-slate-400 transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
+        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-10 text-sm text-ink placeholder-slate-400 transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
       />
       <button
         type="button"
         onClick={() => setShow(!show)}
         tabIndex={-1}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -651,7 +651,7 @@ function NameEditForm({
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
       <div>
-        <Label htmlFor="editName" className="text-xs text-slate-500">{t("fields.name")}</Label>
+        <Label htmlFor="editName" className="text-xs text-muted">{t("fields.name")}</Label>
         <InlineInput
           id="editName"
           value={name}
@@ -673,7 +673,7 @@ function NameEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="h-9 rounded-lg px-4 text-sm font-medium text-ink-2 hover:bg-slate-100 transition-colors"
         >
           {t("actions.cancel")}
         </button>
@@ -730,7 +730,7 @@ function OrgEditForm({
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
       <div>
-        <Label htmlFor="editOrgName" className="text-xs text-slate-500">{t("fields.orgName")}</Label>
+        <Label htmlFor="editOrgName" className="text-xs text-muted">{t("fields.orgName")}</Label>
         <InlineInput
           id="editOrgName"
           value={name}
@@ -740,7 +740,7 @@ function OrgEditForm({
         />
       </div>
       <div>
-        <Label htmlFor="editOrgUscc" className="text-xs text-slate-500">{t("fields.orgUscc")}</Label>
+        <Label htmlFor="editOrgUscc" className="text-xs text-muted">{t("fields.orgUscc")}</Label>
         <InlineInput
           id="editOrgUscc"
           value={uscc}
@@ -762,7 +762,7 @@ function OrgEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="h-9 rounded-lg px-4 text-sm font-medium text-ink-2 hover:bg-slate-100 transition-colors"
         >
           {t("actions.cancel")}
         </button>
@@ -816,7 +816,7 @@ function EmailEditForm({
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
       <div>
-        <Label htmlFor="editEmail" className="text-xs text-slate-500">{t("fields.email")}</Label>
+        <Label htmlFor="editEmail" className="text-xs text-muted">{t("fields.email")}</Label>
         <InlineInput
           id="editEmail"
           type="email"
@@ -839,7 +839,7 @@ function EmailEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="h-9 rounded-lg px-4 text-sm font-medium text-ink-2 hover:bg-slate-100 transition-colors"
         >
           {t("actions.cancel")}
         </button>
@@ -897,14 +897,14 @@ function PhoneEditForm({
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
-      <p className="text-xs text-slate-500">{t("hints.phoneCanBeCleared")}</p>
+      <p className="text-xs text-muted">{t("hints.phoneCanBeCleared")}</p>
       <div>
-        <Label htmlFor="editPhone" className="text-xs text-slate-500">{t("fields.phone")}</Label>
+        <Label htmlFor="editPhone" className="text-xs text-muted">{t("fields.phone")}</Label>
         <div className="flex">
           <select
             value={region}
             onChange={(e) => { setRegion(e.target.value as PhoneRegion); setNewPhone(""); setError(""); }}
-            className="h-10 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
+            className="h-10 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 px-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal-700/15"
           >
             {(Object.keys(PHONE_REGION_CONFIG) as PhoneRegion[]).map((r) => (
               <option key={r} value={r}>
@@ -921,7 +921,7 @@ function PhoneEditForm({
               setError("");
             }}
             placeholder={t("placeholders.enterNewPhone")}
-            className={`h-10 flex-1 rounded-r-lg border bg-white px-3 text-sm text-slate-800 placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
+            className={`h-10 flex-1 rounded-r-lg border bg-white px-3 text-sm text-ink placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
               error
                 ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
                 : "border-slate-200 focus:border-teal-700 focus:ring-teal-700/15"
@@ -942,7 +942,7 @@ function PhoneEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="h-9 rounded-lg px-4 text-sm font-medium text-ink-2 hover:bg-slate-100 transition-colors"
         >
           {t("actions.cancel")}
         </button>
@@ -992,9 +992,9 @@ function UsernameEditForm({
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
-      <p className="text-xs text-slate-500">{t("hints.usernameCanBeCleared")}</p>
+      <p className="text-xs text-muted">{t("hints.usernameCanBeCleared")}</p>
       <div>
-        <Label htmlFor="editUsername" className="text-xs text-slate-500">{t("fields.username")}</Label>
+        <Label htmlFor="editUsername" className="text-xs text-muted">{t("fields.username")}</Label>
         <InlineInput
           id="editUsername"
           value={newUsername}
@@ -1015,7 +1015,7 @@ function UsernameEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="h-9 rounded-lg px-4 text-sm font-medium text-ink-2 hover:bg-slate-100 transition-colors"
         >
           {t("actions.cancel")}
         </button>
@@ -1074,15 +1074,15 @@ function PasswordEditForm({
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-3 max-w-md">
       <div>
-        <Label htmlFor="oldPwd" className="text-xs text-slate-500">{t("fields.currentPassword")}</Label>
+        <Label htmlFor="oldPwd" className="text-xs text-muted">{t("fields.currentPassword")}</Label>
         <PasswordField value={oldPwd} onChange={(v) => { setOldPwd(v); setError(""); }} placeholder={t("placeholders.enterCurrentPassword")} />
       </div>
       <div>
-        <Label htmlFor="newPwd" className="text-xs text-slate-500">{t("fields.newPassword")}</Label>
+        <Label htmlFor="newPwd" className="text-xs text-muted">{t("fields.newPassword")}</Label>
         <PasswordField value={newPwd} onChange={(v) => { setNewPwd(v); setError(""); }} placeholder={t("placeholders.enterNewPassword")} />
       </div>
       <div>
-        <Label htmlFor="confirmPwd" className="text-xs text-slate-500">{t("fields.confirmPassword")}</Label>
+        <Label htmlFor="confirmPwd" className="text-xs text-muted">{t("fields.confirmPassword")}</Label>
         <PasswordField value={confirmPwd} onChange={(v) => { setConfirmPwd(v); setError(""); }} placeholder={t("placeholders.confirmNewPassword")} />
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -1098,7 +1098,7 @@ function PasswordEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 rounded-lg px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="h-9 rounded-lg px-4 text-sm font-medium text-ink-2 hover:bg-slate-100 transition-colors"
         >
           {t("actions.cancel")}
         </button>

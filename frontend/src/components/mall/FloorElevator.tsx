@@ -122,7 +122,7 @@ export function FloorElevator({ floors }: { floors: FloorItem[] }) {
         })}
         <button
           onClick={scrollToTop}
-          className="block w-full px-1.5 py-2 text-center text-[10px] text-gray-400 hover:text-teal-800 hover:bg-teal-50 transition-colors border-t border-gray-100"
+          className="block w-full px-1.5 py-2 text-center text-[10px] text-muted hover:text-teal-800 hover:bg-teal-50 transition-colors border-t border-gray-100"
         >
           <ArrowUp className="w-3 h-3 mx-auto mb-0.5" />
           {t("floorBackToTop")}

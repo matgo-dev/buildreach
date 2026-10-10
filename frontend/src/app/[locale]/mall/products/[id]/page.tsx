@@ -36,7 +36,7 @@ function SwatchThumb({ src, alt }: { src: string; alt: string }) {
 
   if (failed) {
     return (
-      <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-500">
+      <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-muted">
         {alt || "—"}
       </div>
     );
@@ -57,7 +57,7 @@ function SwatchThumb({ src, alt }: { src: string; alt: string }) {
           loading="lazy"
         />
         {alt && (
-          <span className="mt-0.5 block text-center text-[10px] text-gray-500 leading-tight">
+          <span className="mt-0.5 block text-center text-[10px] text-muted leading-tight">
             {alt}
           </span>
         )}
@@ -79,7 +79,7 @@ function SwatchThumb({ src, alt }: { src: string; alt: string }) {
               onClick={() => setPreview(false)}
               className="absolute -right-3 -top-3 rounded-full bg-white p-1.5 shadow-md hover:bg-gray-100 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-4 w-4 text-ink-2" />
             </button>
             {alt && (
               <p className="mt-2 text-center text-sm text-white/80">{alt}</p>
@@ -111,7 +111,7 @@ function InlineAttrItem({
 
   return (
     <div className="mb-4">
-      <div className="mb-1.5 text-xs font-semibold text-gray-600">{item.key}</div>
+      <div className="mb-1.5 text-xs font-semibold text-ink-2">{item.key}</div>
       {isSwatch ? (
         <div className="flex flex-wrap gap-2">
           {item.values.map((v, i) => {
@@ -132,7 +132,7 @@ function InlineAttrItem({
                 {swatchOk ? (
                   <SwatchThumb src={imageUrl(v.swatch_image!)} alt={v.value} />
                 ) : (
-                  <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-600">
+                  <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-ink-2">
                     {v.value}
                   </div>
                 )}
@@ -153,7 +153,7 @@ function InlineAttrItem({
                 className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
                   isSelected
                     ? "border-teal-700 bg-teal-50 text-teal-700 font-medium"
-                    : "border-gray-200 bg-white text-gray-600"
+                    : "border-gray-200 bg-white text-ink-2"
                 } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
               >
                 {v.value}
@@ -214,12 +214,12 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
       const right = rows[i + 1];
       paired.push(
         <tr key={i} className={i % 4 === 0 ? "bg-white" : "bg-gray-50/40"}>
-          <td className="border border-gray-200 px-4 py-2.5 text-gray-500 whitespace-nowrap">{left.label}</td>
-          <td className="border border-gray-200 px-4 py-2.5 text-gray-800">{left.value}</td>
+          <td className="border border-gray-200 px-4 py-2.5 text-muted whitespace-nowrap">{left.label}</td>
+          <td className="border border-gray-200 px-4 py-2.5 text-ink">{left.value}</td>
           {right ? (
             <>
-              <td className="border border-gray-200 px-4 py-2.5 text-gray-500 whitespace-nowrap">{right.label}</td>
-              <td className="border border-gray-200 px-4 py-2.5 text-gray-800">{right.value}</td>
+              <td className="border border-gray-200 px-4 py-2.5 text-muted whitespace-nowrap">{right.label}</td>
+              <td className="border border-gray-200 px-4 py-2.5 text-ink">{right.value}</td>
             </>
           ) : (
             <>
@@ -249,7 +249,7 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
                 <tr>
                   <td
                     colSpan={4}
-                    className="border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-bold text-gray-700"
+                    className="border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-bold text-ink"
                   >
                     {section.groupLabel}
                   </td>
@@ -261,7 +261,7 @@ function SpecificationsTab({ product }: { product: ProductPublicDetail }) {
         </tbody>
       </table>
       {sections.length === 0 && (
-        <p className="py-8 text-center text-sm text-gray-400">{t("detail.noSpecs")}</p>
+        <p className="py-8 text-center text-sm text-muted">{t("detail.noSpecs")}</p>
       )}
     </div>
   );
@@ -285,20 +285,20 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
     <div className="space-y-6">
       {!hasDetailDesc && product.selling_points && (
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-700">{t("detail.sellingPoints")}</h4>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+          <h4 className="mb-2 text-sm font-semibold text-ink">{t("detail.sellingPoints")}</h4>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
             {product.selling_points}
           </div>
         </div>
       )}
       {!hasDetailDesc && product.description && (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
           {product.description}
         </div>
       )}
       {/* 产品介绍长文:在详情图之前 */}
       {product.detail_description && (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
           {product.detail_description}
         </div>
       )}
@@ -319,7 +319,7 @@ function DescriptionTab({ product }: { product: ProductPublicDetail }) {
         </div>
       )}
       {!hasText && detailImages.length === 0 && (
-        <p className="py-8 text-center text-sm text-gray-400">{t("detail.noDescription")}</p>
+        <p className="py-8 text-center text-sm text-muted">{t("detail.noDescription")}</p>
       )}
     </div>
   );
@@ -494,8 +494,8 @@ function ProductDetailContent() {
       <PublicLayout>
         <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
           <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-          <h2 className="text-lg font-semibold text-gray-700">{t("detail.notFound")}</h2>
-          <p className="mt-2 text-sm text-gray-400">{t("detail.notFoundHint")}</p>
+          <h2 className="text-lg font-semibold text-ink">{t("detail.notFound")}</h2>
+          <p className="mt-2 text-sm text-muted">{t("detail.notFoundHint")}</p>
           <button
             onClick={() => router.push(`/${locale}/mall`)}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full mall-btn-primary px-5 py-2 text-sm font-medium transition-colors"
@@ -536,8 +536,8 @@ function ProductDetailContent() {
 
           {/* 右:信息面板 */}
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-gray-400">SPU: {product.spu_code}</p>
-            <h1 className="text-xl font-bold text-gray-800">{product.name}</h1>
+            <p className="text-[11px] text-muted">SPU: {product.spu_code}</p>
+            <h1 className="text-xl font-bold text-ink">{product.name}</h1>
 
             {/* 认证徽章行（与列表卡片统一，不再显示履约模式/精选标签） */}
 
@@ -559,13 +559,13 @@ function ProductDetailContent() {
             {(product.selling_points || product.description) && (
               <div className="mt-3 rounded-lg border border-teal-700/10 bg-teal-700/[0.03] px-4 py-3">
                 {product.selling_points && (
-                  <div className="text-sm leading-relaxed text-gray-800">
+                  <div className="text-sm leading-relaxed text-ink">
                     <span className="mr-1.5 text-xs font-semibold text-teal-700">✦ {t("detail.sellingPoints")}</span>
                     {product.selling_points}
                   </div>
                 )}
                 {product.description && (
-                  <div className={`text-sm leading-relaxed text-gray-600 ${product.selling_points ? "mt-2" : ""}`}>
+                  <div className={`text-sm leading-relaxed text-ink-2 ${product.selling_points ? "mt-2" : ""}`}>
                     {product.description}
                   </div>
                 )}
@@ -574,18 +574,18 @@ function ProductDetailContent() {
 
             {/* 基础信息(产地/品牌/型号/MOQ) */}
             {(product.origin || product.brand || product.manufacturer_model || product.moq != null) && (
-              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted">
                 {product.moq != null && (
-                  <span>{t("detail.moq")}: <span className="font-medium text-gray-700">{product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}</span></span>
+                  <span>{t("detail.moq")}: <span className="font-medium text-ink">{product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}</span></span>
                 )}
                 {product.origin && (
-                  <span>{t("detail.origin")}: <span className="font-medium text-gray-700">{product.origin}</span></span>
+                  <span>{t("detail.origin")}: <span className="font-medium text-ink">{product.origin}</span></span>
                 )}
                 {product.brand && (
-                  <span>{t("detail.brand")}: <span className="font-medium text-gray-700">{product.brand}</span></span>
+                  <span>{t("detail.brand")}: <span className="font-medium text-ink">{product.brand}</span></span>
                 )}
                 {product.manufacturer_model && (
-                  <span>{t("detail.model")}: <span className="font-medium text-gray-700">{product.manufacturer_model}</span></span>
+                  <span>{t("detail.model")}: <span className="font-medium text-ink">{product.manufacturer_model}</span></span>
                 )}
               </div>
             )}
@@ -640,7 +640,7 @@ function ProductDetailContent() {
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? "border-b-2 border-teal-700 text-teal-700"
-                  : "text-gray-500 hover:text-gray-700"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {tab.label}
@@ -653,7 +653,7 @@ function ProductDetailContent() {
       <div className="rounded-b-xl border border-t-0 border-gray-200 bg-white">
         {/* 产品规格 */}
         <div ref={(el) => { sectionRefs.current.specifications = el; }} className="scroll-mt-14 p-5">
-          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabSpecs")}</h3>
+          <h3 className="mb-3 text-base font-semibold text-ink">{t("detail.tabSpecs")}</h3>
           <SpecificationsTab product={product} />
         </div>
 
@@ -661,7 +661,7 @@ function ProductDetailContent() {
 
         {/* 产品描述(文字 + DETAIL 描述长图合并) */}
         <div ref={(el) => { sectionRefs.current.description = el; }} className="scroll-mt-14 p-5">
-          <h3 className="mb-3 text-base font-semibold text-gray-800">{t("detail.tabDescription")}</h3>
+          <h3 className="mb-3 text-base font-semibold text-ink">{t("detail.tabDescription")}</h3>
           <DescriptionTab product={product} />
         </div>
       </div>

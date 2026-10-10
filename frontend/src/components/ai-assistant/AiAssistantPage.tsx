@@ -20,9 +20,6 @@ interface AgentMeta {
   titleKey: string;
   subtitleKey: string;
   featureKeys: string[];
-  tagBg: string;
-  tagText: string;
-  tagBorder: string;
 }
 
 const AGENT_META: Record<string, AgentMeta> = {
@@ -30,25 +27,21 @@ const AGENT_META: Record<string, AgentMeta> = {
     titleKey: "containerTitle",
     subtitleKey: "containerSubtitle",
     featureKeys: ["containerTag1", "containerTag2", "containerTag3"],
-    tagBg: "bg-lime/25", tagText: "text-teal-900", tagBorder: "border-lime",
   },
   compliance: {
     titleKey: "complianceTitle",
     subtitleKey: "complianceSubtitle",
     featureKeys: ["complianceTag1", "complianceTag2", "complianceTag3"],
-    tagBg: "bg-teal-100", tagText: "text-sea", tagBorder: "border-ocean/40",
   },
   procurement: {
     titleKey: "procurementTitle",
     subtitleKey: "procurementSubtitle",
     featureKeys: ["procurementTag1", "procurementTag2", "procurementTag3"],
-    tagBg: "bg-lime/25", tagText: "text-teal-900", tagBorder: "border-lime",
   },
   finder: {
     titleKey: "finderTitle",
     subtitleKey: "finderSubtitle",
     featureKeys: ["finderTag1", "finderTag2", "finderTag3"],
-    tagBg: "bg-teal-100", tagText: "text-sea", tagBorder: "border-ocean/40",
   },
 };
 
@@ -103,7 +96,7 @@ export function AiAssistantPage() {
 
       {/* 底部说明 */}
       <div className="text-center pb-4 pt-8">
-        <p className="text-sm text-gray-400">{t("moreComingSoon")}</p>
+        <p className="text-sm text-muted">{t("moreComingSoon")}</p>
       </div>
 
       {/* 对话弹窗 */}
@@ -142,8 +135,7 @@ function FeatureCard({
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 p-5 sm:p-6 transition-all hover:shadow-lg"
-      style={{ background: "linear-gradient(120deg, #f0fbfb, #ecfdf5)" }}
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-teal-50 p-5 sm:p-6 transition-all hover:shadow-lg"
     >
       <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-teal-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
         <Sparkles className="h-3 w-3" />
@@ -195,7 +187,7 @@ function AgentCard({ agent, onStart }: { agent: AgentDef; onStart: () => void })
         <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${agent.color} text-xl`}>
           {agent.icon}
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full ${meta.tagBg} px-2 py-0.5 text-[11px] font-medium ${meta.tagText}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full bg-lime/25 px-2 py-0.5 text-[11px] font-medium text-teal-900`}>
           <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse" />
           {t("online")}
         </span>
@@ -208,7 +200,7 @@ function AgentCard({ agent, onStart }: { agent: AgentDef; onStart: () => void })
         {meta.featureKeys.map((k) => (
           <span
             key={k}
-            className={`rounded-full border ${meta.tagBorder} ${meta.tagBg} px-2.5 py-1 text-xs ${meta.tagText}`}
+            className={`rounded-full border border-lime bg-lime/25 px-2.5 py-1 text-xs text-teal-900`}
           >
             {t(k)}
           </span>
@@ -334,11 +326,11 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm text-sm">
                 <Bot className="h-4 w-4 text-teal-700" />
               </div>
-              <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+              <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-ink shadow-sm">
                 {streamedContent ? (
                   <MarkdownLite text={streamedContent} />
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-slate-400">
+                  <span className="inline-flex items-center gap-1 text-muted">
                     <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
                     <span className="animate-bounce" style={{ animationDelay: "150ms" }}>·</span>
                     <span className="animate-bounce" style={{ animationDelay: "300ms" }}>·</span>
@@ -397,7 +389,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         <Bot className="h-4 w-4 text-teal-700" />
       </div>
       <div className="flex max-w-[85%] flex-col items-start gap-1">
-        <div className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+        <div className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-ink shadow-sm">
           <MarkdownLite text={message.content} />
         </div>
         <CopyButton text={message.content} variant="ghost" />
@@ -454,7 +446,7 @@ function ChatInputBar({
           disabled={streaming}
           placeholder={streaming ? t("inputStreaming") : t("inputPlaceholder")}
           rows={1}
-          className="flex-1 resize-none bg-transparent px-4 py-3 text-sm leading-6 text-slate-800 placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
+          className="flex-1 resize-none bg-transparent px-4 py-3 text-sm leading-6 text-ink placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
         />
         <button
           type="button"
@@ -464,7 +456,7 @@ function ChatInputBar({
             "mb-2.5 mr-2.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all " +
             (canSend
               ? "text-white shadow-sm hover:opacity-90"
-              : "bg-slate-200 text-slate-400")
+              : "bg-slate-200 text-muted")
           }
           style={canSend ? { background: "#103d33" } : undefined}
         >
@@ -472,8 +464,8 @@ function ChatInputBar({
         </button>
       </div>
       <div className="mt-1.5 flex items-center justify-between px-1">
-        <span className="text-[10px] text-slate-400">{t("inputHintSend")}</span>
-        <span className="text-[10px] text-slate-400">{t("poweredBy")}</span>
+        <span className="text-[10px] text-muted">{t("inputHintSend")}</span>
+        <span className="text-[10px] text-muted">{t("poweredBy")}</span>
       </div>
     </div>
   );

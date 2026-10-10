@@ -28,7 +28,7 @@ function ResetPasswordContent() {
     return (
       <div className="text-center space-y-4">
         <AlertCircle className="mx-auto h-10 w-10 text-red-400" />
-        <p className="text-sm text-gray-600">{t("invalid_link")}</p>
+        <p className="text-sm text-ink-2">{t("invalid_link")}</p>
         <Link
           href="/forgot-password"
           className="inline-block text-sm font-semibold text-sea hover:text-teal-900"
@@ -79,7 +79,7 @@ function ResetPasswordContent() {
         <CheckCircle2 className="mx-auto h-12 w-12 text-[#10B981]" />
         <div>
           <h2 className="text-lg font-bold text-gray-900">{t("success_title")}</h2>
-          <p className="mt-2 text-sm text-gray-500">{t("success_desc")}</p>
+          <p className="mt-2 text-sm text-muted">{t("success_desc")}</p>
         </div>
         <Link
           href="/login"
@@ -95,7 +95,7 @@ function ResetPasswordContent() {
     <>
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-900">{t("title")}</h2>
-        <p className="mt-2 text-sm text-gray-500">{t("subtitle")}</p>
+        <p className="mt-2 text-sm text-muted">{t("subtitle")}</p>
       </div>
 
       {error && (
@@ -107,7 +107,7 @@ function ResetPasswordContent() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="password" className="text-sm font-semibold text-ink">
             {t("new_password")}
           </Label>
           <div className="relative">
@@ -124,7 +124,7 @@ function ResetPasswordContent() {
               }}
               autoComplete="new-password"
               className={
-                "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-gray-800 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
+                "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2 " +
                 (pwdErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
                   : "border-gray-200 focus:border-teal-700 focus:ring-teal-700/15")
@@ -133,14 +133,14 @@ function ResetPasswordContent() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           {pwdErr && <p className="text-xs text-red-500">{pwdErr}</p>}
-          <p className="mt-1 text-[11px] text-gray-400">{t("pwd_hint")}</p>
+          <p className="mt-1 text-[11px] text-muted">{t("pwd_hint")}</p>
         </div>
 
         <button
@@ -169,7 +169,7 @@ function ResetPasswordContent() {
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-3">
-        <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
+        <Link href="/" className="text-xs text-muted transition-colors hover:text-ink-2">
           {tc("back_to_home")}
         </Link>
         <span className="text-xs text-gray-300">|</span>

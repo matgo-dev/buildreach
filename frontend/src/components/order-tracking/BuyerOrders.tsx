@@ -121,7 +121,7 @@ function OrderList({
         <StatCard icon={Warehouse} label={t("statPreparing")} value={String(count("PREPARING"))} color="text-amber-700 bg-amber-50" onClick={() => toggle("PREPARING")} active={filter === "PREPARING"} />
         <StatCard icon={Ship} label={t("statShipping")} value={String(count("SHIPPING"))} color="text-blue-700 bg-blue-50" onClick={() => toggle("SHIPPING")} active={filter === "SHIPPING"} />
         <StatCard icon={CheckCircle2} label={t("statArrived")} value={String(count("ARRIVED"))} color="text-green-700 bg-green-50" onClick={() => toggle("ARRIVED")} active={filter === "ARRIVED"} />
-        <StatCard icon={Ban} label={t("statCancelled")} value={String(count("CANCELLED"))} color="text-slate-500 bg-slate-100" onClick={() => toggle("CANCELLED")} active={filter === "CANCELLED"} />
+        <StatCard icon={Ban} label={t("statCancelled")} value={String(count("CANCELLED"))} color="text-muted bg-slate-100" onClick={() => toggle("CANCELLED")} active={filter === "CANCELLED"} />
       </div>
 
       {visible.length === 0 && (

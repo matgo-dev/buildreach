@@ -74,7 +74,7 @@ export function CompanyDetailView({
 
   if (loading && !data) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
+      <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-sm text-muted">
         加载中…
       </div>
     );
@@ -103,7 +103,7 @@ export function CompanyDetailView({
       {!hideBackLink && (
         <Link
           href="/credit"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-teal-700"
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-teal-700"
         >
           <ArrowLeft className="h-4 w-4" />
           返回搜索
@@ -114,29 +114,29 @@ export function CompanyDetailView({
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-muted">
               <Globe className="h-3.5 w-3.5" />
               <span className="font-mono">{data.country_code}</span>
               {data.registration_no && <span>· 注册号 {data.registration_no}</span>}
             </div>
             <h1 className="mt-1 text-2xl font-bold text-slate-900">{data.name}</h1>
             {data.legal_name_en && (
-              <p className="mt-0.5 text-sm text-slate-500">{data.legal_name_en}</p>
+              <p className="mt-0.5 text-sm text-muted">{data.legal_name_en}</p>
             )}
           </div>
           <div className="flex flex-col items-end gap-2">
             <GradeBadge grade={snap?.grade ?? null} size="lg" showTagline />
             {snap && (
-              <div className="text-right text-xs text-slate-500">
+              <div className="text-right text-xs text-muted">
                 综合得分 <span className="text-lg font-bold text-slate-900">{snap.total_score}</span>
-                <span className="text-slate-400"> / 100</span>
+                <span className="text-muted"> / 100</span>
               </div>
             )}
             {canRecompute && (
               <button
                 onClick={handleRecompute}
                 disabled={recomputing}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1 text-xs text-ink-2 hover:bg-slate-50 disabled:opacity-50"
               >
                 <RefreshCw className={"h-3 w-3 " + (recomputing ? "animate-spin" : "")} />
                 {recomputing ? "重算中…" : "触发重算"}
@@ -157,15 +157,15 @@ export function CompanyDetailView({
               totalScore={snap.total_score}
             />
           ) : (
-            <div className="py-12 text-center text-sm text-slate-400">暂无评分</div>
+            <div className="py-12 text-center text-sm text-muted">暂无评分</div>
           )}
           {/* 维度明细列表 */}
           <div className="mt-4 space-y-1.5">
             {data.dimensions.map((d) => (
               <div key={d.code} className="flex items-center justify-between text-xs">
-                <span className="text-slate-600">{d.name}</span>
+                <span className="text-ink-2">{d.name}</span>
                 <span className="font-medium text-slate-900">
-                  {d.score} <span className="text-slate-400">/ {d.max_score}</span>
+                  {d.score} <span className="text-muted">/ {d.max_score}</span>
                 </span>
               </div>
             ))}
@@ -186,7 +186,7 @@ export function CompanyDetailView({
               <InfoRow label="地址" value={data.basic.address} truncate />
               {data.basic.website && (
                 <div className="flex gap-3 text-xs">
-                  <span className="w-16 shrink-0 text-slate-400">官网</span>
+                  <span className="w-16 shrink-0 text-muted">官网</span>
                   <a
                     href={data.basic.website}
                     target="_blank"
@@ -199,7 +199,7 @@ export function CompanyDetailView({
               )}
             </dl>
           ) : (
-            <div className="text-sm text-slate-400">暂无工商基本信息</div>
+            <div className="text-sm text-muted">暂无工商基本信息</div>
           )}
         </div>
       </div>
@@ -241,11 +241,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex gap-3 text-xs">
-      <span className="flex w-16 shrink-0 items-center gap-1 text-slate-400">
+      <span className="flex w-16 shrink-0 items-center gap-1 text-muted">
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </span>
-      <span className={"flex-1 text-slate-700 " + (truncate ? "truncate" : "")}>
+      <span className={"flex-1 text-ink " + (truncate ? "truncate" : "")}>
         {value || <span className="text-slate-300">—</span>}
       </span>
     </div>
@@ -287,7 +287,7 @@ function SubitemTable({
 
   return (
     <table className="min-w-full text-xs">
-      <thead className="bg-slate-50 text-slate-500">
+      <thead className="bg-slate-50 text-muted">
         <tr>
           <th className="w-44 px-3 py-2 text-left">维度</th>
           <th className="px-3 py-2 text-left">子项</th>
@@ -306,26 +306,26 @@ function SubitemTable({
                 {idx === 0 && (
                   <td
                     rowSpan={g.rows.length}
-                    className="align-top border-r border-slate-100 px-3 py-2 text-slate-700"
+                    className="align-top border-r border-slate-100 px-3 py-2 text-ink"
                   >
                     <div className="font-medium">{g.name}</div>
-                    <div className="mt-0.5 text-[11px] text-slate-400">
+                    <div className="mt-0.5 text-[11px] text-muted">
                       {g.score} / {g.maxScore}
                     </div>
                   </td>
                 )}
                 <td className="px-3 py-2 text-slate-900">{d.subitem_name}</td>
                 <td className="px-3 py-2 text-right font-medium">
-                  {d.score} <span className="text-slate-400">/ {d.max_score}</span>
+                  {d.score} <span className="text-muted">/ {d.max_score}</span>
                 </td>
-                <td className="px-3 py-2 text-slate-500">
+                <td className="px-3 py-2 text-muted">
                   {d.is_default_score ? (
                     <span className="text-amber-600">(默认分)</span>
                   ) : (
                     d.hit_rule_description || "—"
                   )}
                   {overrideLabelByDim?.get(d.dimension_code) && (
-                    <div className="mt-0.5 text-[11px] text-slate-500">
+                    <div className="mt-0.5 text-[11px] text-muted">
                       {overrideLabelByDim.get(d.dimension_code)}
                     </div>
                   )}

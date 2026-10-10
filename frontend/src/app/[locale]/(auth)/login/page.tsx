@@ -125,7 +125,7 @@ function LoginContent() {
 
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
         <div className="space-y-1.5">
-          <Label htmlFor="identifier" className="text-sm font-semibold text-gray-700">
+          <Label htmlFor="identifier" className="text-sm font-semibold text-ink">
             {t("identifier_label")}
           </Label>
           <div className="flex">
@@ -133,7 +133,7 @@ function LoginContent() {
               <select
                 value={phoneRegion}
                 onChange={(e) => setPhoneRegion(e.target.value)}
-                className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-gray-600 focus:outline-none"
+                className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 px-2 text-sm text-ink-2 focus:outline-none"
               >
                 {PHONE_REGIONS.map((r) => (
                   <option key={r.code} value={r.code}>
@@ -156,7 +156,7 @@ function LoginContent() {
               placeholder={t("identifier_placeholder")}
               autoComplete="username"
               className={
-                "w-full h-12 px-4 border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
+                "w-full h-12 px-4 border bg-white text-sm text-ink placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
                 (isPhone ? "rounded-r-lg rounded-l-none " : "rounded-lg ") +
                 (idErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
@@ -169,13 +169,13 @@ function LoginContent() {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="password" className="text-sm font-semibold text-ink">
               {t("password_label")}
             </Label>
             {forgotPasswordOn && (
               <Link
                 href="/forgot-password"
-                className="text-xs text-gray-400 transition-colors hover:text-sea"
+                className="text-xs text-muted transition-colors hover:text-sea"
               >
                 {t("forgot_password")}
               </Link>
@@ -191,7 +191,7 @@ function LoginContent() {
               placeholder={t("password_placeholder")}
               autoComplete="current-password"
               className={
-                "w-full h-12 px-4 pr-12 rounded-lg border bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
+                "w-full h-12 px-4 pr-12 rounded-lg border bg-white text-sm text-ink placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
                 (pwdErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
                   : "border-gray-200 focus:border-sea focus:ring-sea/15")
@@ -200,7 +200,7 @@ function LoginContent() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-ink-2 transition-colors"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -226,7 +226,7 @@ function LoginContent() {
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted">
           {t("no_account")}{" "}
           <Link href="/register" className="font-semibold text-sea transition-colors hover:text-teal-900">
             {t("register_now")}
@@ -235,7 +235,7 @@ function LoginContent() {
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-3">
-        <Link href="/" className="text-xs text-gray-400 transition-colors hover:text-gray-600">
+        <Link href="/" className="text-xs text-muted transition-colors hover:text-ink-2">
           {tc("back_to_home")}
         </Link>
         <span className="text-xs text-gray-300">|</span>

@@ -186,7 +186,7 @@ export function SkuSelector({ skus, selection, onSelectionChange }: SkuSelectorP
     <div className="space-y-3">
       {dimensions.map((dim) => (
         <div key={dim.key}>
-          <div className="mb-1.5 text-xs font-semibold text-gray-600">{dim.label}</div>
+          <div className="mb-1.5 text-xs font-semibold text-ink-2">{dim.label}</div>
           <div className="flex flex-wrap gap-1.5">
             {dim.values.map((val) => {
               const isSelected = selection[dim.key] === val;
@@ -202,8 +202,8 @@ export function SkuSelector({ skus, selection, onSelectionChange }: SkuSelectorP
                     isSelected
                       ? "border-teal-700 bg-teal-50 font-semibold text-teal-700"
                       : available
-                        ? "border-gray-200 bg-white text-gray-600 hover:border-teal-700 hover:text-teal-700"
-                        : "cursor-not-allowed border-dashed border-gray-200 text-gray-400 opacity-40"
+                        ? "border-gray-200 bg-white text-ink-2 hover:border-teal-700 hover:text-teal-700"
+                        : "cursor-not-allowed border-dashed border-gray-200 text-muted opacity-40"
                   }`}
                   title={!available ? t("detail.unavailable") : undefined}
                 >

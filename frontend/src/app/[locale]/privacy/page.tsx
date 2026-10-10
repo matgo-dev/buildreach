@@ -28,12 +28,12 @@ export default function PrivacyPage() {
     <PublicLayout>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-2xl font-black text-teal-700 mb-2">{t("privacy.title")}</h1>
-        <p className="text-sm text-gray-400 mb-8">{t("privacy.lastUpdated")}</p>
+        <p className="text-sm text-muted mb-8">{t("privacy.lastUpdated")}</p>
         <div className="space-y-6">
           {sections.map((s, i) => (
             <section key={i}>
-              <h2 className="text-base font-bold text-gray-800 mb-2">{`${i + 1}. ${s.title}`}</h2>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{s.content}</p>
+              <h2 className="text-base font-bold text-ink mb-2">{`${i + 1}. ${s.title}`}</h2>
+              <p className="text-sm text-ink-2 leading-relaxed whitespace-pre-line">{s.content}</p>
             </section>
           ))}
         </div>

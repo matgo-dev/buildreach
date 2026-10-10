@@ -31,20 +31,20 @@ export function StepCountry({ selected, onSelect, onNext }: StepCountryProps) {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-gray-900">选择您的企业注册地</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted">
           请严格按照营业执照所在国家选择,这决定了后续的资质校验标准。
         </p>
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="country-select" className="text-sm font-semibold text-gray-700">
+        <label htmlFor="country-select" className="text-sm font-semibold text-ink">
           企业注册地 <span className="text-red-500">*</span>
         </label>
         <select
           id="country-select"
           value={selected}
           onChange={(e) => handleChange(e.target.value as CountryCode)}
-          className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
+          className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-ink transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
         >
           <option value="" disabled>
             请选择国家 / 地区

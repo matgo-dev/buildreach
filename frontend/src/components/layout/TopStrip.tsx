@@ -88,18 +88,18 @@ function UserDropdown() {
             <Link
               href={workspaceDashboardOf(user.roles)}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-teal-50 hover:text-teal-900 transition-colors"
             >
-              <LayoutDashboard className="h-3.5 w-3.5 text-slate-400" />
+              <LayoutDashboard className="h-3.5 w-3.5 text-muted" />
               {t("menuDashboard")}
             </Link>
           )}
           <Link
             href="/account"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-teal-50 hover:text-teal-900 transition-colors"
           >
-            <Settings className="h-3.5 w-3.5 text-slate-400" />
+            <Settings className="h-3.5 w-3.5 text-muted" />
             {t("stripProfile")}
           </Link>
           <div className="border-t border-slate-100 my-0.5" />

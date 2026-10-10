@@ -181,7 +181,7 @@ function CartContent() {
         {items.length === 0 ? (
           <div className="flex min-h-[400px] flex-col items-center justify-center">
             <ShoppingCart className="mb-4 h-16 w-16 text-gray-200" />
-            <h2 className="text-lg font-semibold text-gray-600">{t("empty")}</h2>
+            <h2 className="text-lg font-semibold text-ink-2">{t("empty")}</h2>
             <div className="mt-4 flex items-center gap-3">
               <button
                 type="button"
@@ -205,7 +205,7 @@ function CartContent() {
           <>
 
         {/* 表头 — 移动端隐藏 */}
-        <div className="hidden sm:flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-gray-500">
+        <div className="hidden sm:flex items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 text-xs text-muted">
           <input
             type="checkbox"
             checked={allChecked}
@@ -285,7 +285,7 @@ function CartContent() {
                   </a>
                   {/* 短描述 */}
                   {item.description && (
-                    <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{item.description}</p>
+                    <p className="mt-0.5 text-xs text-muted line-clamp-1">{item.description}</p>
                   )}
                   {/* 标签行：MOQ / 品牌 / 产地 / 交期 / 认证 */}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -300,7 +300,7 @@ function CartContent() {
                       </span>
                     )}
                     {item.origin && (
-                      <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+                      <span className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-muted">
                         📍 {item.origin}
                       </span>
                     )}
@@ -328,7 +328,7 @@ function CartContent() {
                 <div className="flex items-center gap-3 sm:contents pl-7 sm:pl-0">
                 {/* 变体规格 — 只显示规格值(同 create 页口径),无则「无具体规格」 */}
                 <div className="sm:w-28 shrink-0 pt-1 text-xs">
-                  <span className={item.variant_display ? "text-gray-600" : "text-gray-400"}>
+                  <span className={item.variant_display ? "text-ink-2" : "text-muted"}>
                     {item.variant_display || tRfq("noSpec")}
                   </span>
                 </div>
@@ -355,14 +355,14 @@ function CartContent() {
                             .then((cart) => { mutate(cart, false); syncFromCart(cart); })
                             .catch(() => { e.target.value = String(item.quantity); });
                         }}
-                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-gray-800 outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                       />
                       {item.unit && (
-                        <span className="text-[11px] text-gray-400 sm:block sm:mt-0.5">{item.unit}</span>
+                        <span className="text-[11px] text-muted sm:block sm:mt-0.5">{item.unit}</span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-sm text-muted">—</span>
                   )}
                 </div>
 
@@ -371,7 +371,7 @@ function CartContent() {
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(item.item_id)}
-                    className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    className="rounded p-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-500"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -400,14 +400,14 @@ function CartContent() {
                 disabled={purchasableItems.length === 0}
                 className="h-4 w-4 rounded border-gray-300 text-teal-700 focus:ring-teal-700"
               />
-              <span className="text-xs sm:text-sm text-gray-700">{tCommon("selectAll")}</span>
+              <span className="text-xs sm:text-sm text-ink">{tCommon("selectAll")}</span>
             </label>
 
             {/* 右：统计 + 提交 */}
             <div className="ml-auto flex items-center gap-2 sm:gap-4">
-              <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+              <span className="text-xs sm:text-sm text-muted whitespace-nowrap">
                 {t("selected", { count: checkedIds.size })}
-                <span className="text-gray-400"> / {items.length}</span>
+                <span className="text-muted"> / {items.length}</span>
               </span>
               <button
                 type="button"

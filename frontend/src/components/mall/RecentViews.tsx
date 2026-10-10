@@ -45,7 +45,7 @@ export function RecentViews() {
 
   return (
     <div className="mb-4 rounded-lg bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-600">
+      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-ink-2">
         <Clock className="h-4 w-4" />
         <span>{t("recentViews")}</span>
       </div>
@@ -90,7 +90,7 @@ export function RecentViews() {
                 )}
               </div>
               {/* 商品名 */}
-              <p className="truncate text-xs text-gray-700 group-hover:text-teal-700">
+              <p className="truncate text-xs text-ink group-hover:text-teal-700">
                 {item.name}
               </p>
             </div>

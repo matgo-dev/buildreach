@@ -39,7 +39,7 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
                   "flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-colors " +
                   (done || active
                     ? "bg-teal-700 text-white"
-                    : "bg-gray-200 text-gray-500") +
+                    : "bg-gray-200 text-muted") +
                   (clickable
                     ? " cursor-pointer hover:ring-2 hover:ring-teal-700/30"
                     : " cursor-default")
@@ -50,7 +50,7 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
               <span
                 className={
                   "mt-1.5 text-xs " +
-                  (done || active ? "font-semibold text-teal-700" : "text-gray-400")
+                  (done || active ? "font-semibold text-teal-700" : "text-muted")
                 }
               >
                 {s.label}
