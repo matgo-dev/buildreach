@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageCircle, Mail, X } from "lucide-react";
 import { BRAND } from "@/config/brand";
-import { useContactInfo } from "@/hooks/useWhatsApp";
+import { useContactInfo, useWhatsApp } from "@/hooks/useWhatsApp";
 import { WeChatIcon } from "@/components/icons/WeChatIcon";
 
 /** Mall 页脚 — 浅灰绿底四列,深绿标题正文(对齐 intro.matgo.ai 浅色页脚) */
 export function MallFooter() {
   const t = useTranslations("mall");
   const contact = useContactInfo();
+  const wa = useWhatsApp();
   const [showQr, setShowQr] = useState(false);
 
   return (
@@ -63,13 +64,33 @@ export function MallFooter() {
               {contact.whatsappNumber && (
                 <p className="flex items-center gap-1.5">
                   <MessageCircle className="w-3.5 h-3.5 shrink-0" />
-                  {contact.whatsappNumber}
+                  {wa.configured ? (
+                    <a
+                      href={wa.buildLink()!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-teal-900 hover:underline transition-colors"
+                    >
+                      {contact.whatsappNumber}
+                    </a>
+                  ) : (
+                    contact.whatsappNumber
+                  )}
                 </p>
               )}
               {contact.wechatId && (
                 <p className="flex items-center gap-1.5">
                   <WeChatIcon className="w-3.5 h-3.5 shrink-0" />
-                  <span>{contact.wechatId}</span>
+                  {contact.wechatQrImage ? (
+                    <button
+                      onClick={() => setShowQr(true)}
+                      className="hover:text-teal-900 hover:underline transition-colors"
+                    >
+                      {contact.wechatId}
+                    </button>
+                  ) : (
+                    <span>{contact.wechatId}</span>
+                  )}
                   {contact.wechatQrImage && (
                     <button
                       onClick={() => setShowQr(true)}
@@ -88,7 +109,12 @@ export function MallFooter() {
               {contact.email && (
                 <p className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 shrink-0" />
-                  {contact.email}
+                  <a
+                    href={`mailto:${contact.email}`}
+                    className="hover:text-teal-900 hover:underline transition-colors"
+                  >
+                    {contact.email}
+                  </a>
                 </p>
               )}
             </div>
@@ -97,7 +123,7 @@ export function MallFooter() {
 
         {/* 底部版权 */}
         <div className="border-t border-line py-3.5 px-6 text-center text-[12px] text-muted">
-          © {new Date().getFullYear()} Matgo. All rights reserved.
+          © {new Date().getFullYear()} MATMART COMPANY LIMITED. All rights reserved.
         </div>
       </footer>
 
