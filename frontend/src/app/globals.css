@@ -3,8 +3,9 @@
 
 /* 商城前台品牌：大块浅色面 + 主按钮，集中定义便于整体调色 */
 @layer components {
+  /* 按 intro 规范:大块用冰青平涂,柠绿只作细线强调 */
   .mall-surface {
-    @apply border border-line bg-gradient-to-r from-teal-100 via-teal-100 to-lime/30;
+    @apply border border-line border-t-[3px] border-t-lime bg-teal-100;
   }
   .mall-btn-primary {
     @apply bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-mall-sm hover:from-teal-500 hover:to-teal-600;

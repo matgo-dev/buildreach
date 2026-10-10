@@ -246,7 +246,7 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
 /** 拼柜核心差异 */
 function ConsolidationSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
-    <section className="bg-gray-50 border-y border-gray-200">
+    <section className="bg-teal-50 border-y border-line">
       <div className="mx-auto max-w-5xl px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           {/* 左：图片画廊 */}
@@ -313,7 +313,7 @@ function TrustSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   ];
 
   return (
-    <section className="border-y border-line bg-gradient-to-r from-teal-100 via-teal-100 to-lime/30">
+    <section className="border-y border-line bg-teal-100">
       <div className="mx-auto max-w-5xl px-6 py-12">
         <h2 className="text-xl md:text-2xl font-bold text-teal-900 mb-8 text-center">
           {t("trustTitle")}
@@ -362,7 +362,7 @@ function CertificationsSection({ t }: { t: ReturnType<typeof useTranslations> })
 /** 服务范围声明 */
 function BoundarySection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
-    <section className="bg-gray-50 border-t border-gray-200">
+    <section className="bg-teal-50 border-t border-line">
       <div className="mx-auto max-w-5xl px-6 py-10">
         <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">
           {t("boundaryTitle")}
