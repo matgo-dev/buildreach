@@ -203,8 +203,8 @@ function ChatInput({
         className={
           "relative flex items-end gap-2 rounded-xl border bg-white transition-colors " +
           (canSend
-            ? "border-slate-300 focus-within:border-teal-700"
-            : "border-slate-200 focus-within:border-slate-400")
+            ? "border-control focus-within:border-teal-700"
+            : "border-control focus-within:border-teal-700")
         }
       >
         <textarea

@@ -250,7 +250,7 @@ function RfqEditContent() {
                     <div className="inline-flex items-center gap-1.5">
                       <input type="number" value={item.quantity}
                         onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) handleQtyChange(idx, v); }}
-                        min={1} className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+                        min={1} className="h-8 w-20 rounded border border-control text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
                       <span className="text-xs text-muted">{tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
                     </div>
                     )}
@@ -282,18 +282,18 @@ function RfqEditContent() {
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("deliveryPlace")}</label>
             <input type="text" value={deliveryPlace} onChange={(e) => setDeliveryPlace(e.target.value)} placeholder={t("deliveryPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("deliveryDate")}</label>
             <input type="date" lang={locale} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} min={todayStr}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full cursor-pointer rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("currency")}</label>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20">
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20">
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
@@ -301,7 +301,7 @@ function RfqEditContent() {
             <label className="mb-1 block text-sm font-medium text-ink">{t("destinationPort")}</label>
             <input type="text" list="destination-port-options" value={destinationPort} onChange={(e) => setDestinationPort(e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
             <datalist id="destination-port-options">
               <option value="Dar es Salaam Port" />
               <option value="Mombasa Port" />
@@ -313,7 +313,7 @@ function RfqEditContent() {
             <label className="mb-1 block text-sm font-medium text-ink">{t("preferredTradeTerm")}</label>
             <input type="text" list="trade-term-options" value={preferredTradeTerm} onChange={(e) => setPreferredTradeTerm(e.target.value)}
               placeholder={t("preferredTradeTermPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
             <datalist id="trade-term-options">
               <option value="FOB" />
               <option value="CFR" />
@@ -333,17 +333,17 @@ function RfqEditContent() {
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("contactName")}</label>
             <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("contactPhone")}</label>
             <input type="text" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("contactEmail")}</label>
             <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
           </div>
         </div>
       </div>
@@ -377,7 +377,7 @@ function RfqEditContent() {
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("remark")}</label>
             <textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
+              className="w-full rounded-lg border border-control px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
           </div>
           <AttachmentUploader
             attachments={attachments}

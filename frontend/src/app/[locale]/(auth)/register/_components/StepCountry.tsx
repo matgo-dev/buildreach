@@ -44,7 +44,7 @@ export function StepCountry({ selected, onSelect, onNext }: StepCountryProps) {
           id="country-select"
           value={selected}
           onChange={(e) => handleChange(e.target.value as CountryCode)}
-          className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-ink transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
+          className="h-11 w-full rounded-lg border border-control bg-white px-3 text-sm text-ink transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
         >
           <option value="" disabled>
             请选择国家 / 地区

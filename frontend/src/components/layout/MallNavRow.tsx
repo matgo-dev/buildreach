@@ -43,7 +43,7 @@ export function MallNavRow() {
 
   // 收紧内边距(px-2/sm:px-3),让整排双语项 + 专区一行装下不横滑。
   const itemBase =
-    "relative h-[44px] sm:h-[50px] inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 transition-colors -mb-px";
+    "relative self-stretch inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 transition-colors -mb-px";
   const zoneItemBase =
     "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px] font-extrabold transition-colors";
 
@@ -79,7 +79,7 @@ export function MallNavRow() {
         href={link.href}
         className={`${itemBase} ${
           active
-            ? "bg-teal-800 text-white border-b-[3px] border-lime"
+            ? "text-teal-900 border-b-[3px] border-lime"
             : "text-ink-2 hover:text-teal-900"
         }`}
       >
@@ -118,7 +118,7 @@ export function MallNavRow() {
       style={{ boxShadow: "0 1px 2px rgba(18,59,50,.04)" }}
     >
       <div className="mx-auto flex min-h-[44px] max-w-mall items-center justify-between gap-4 overflow-x-auto px-3 scrollbar-hide sm:min-h-[50px] sm:px-6">
-        <div className="flex min-w-max items-center gap-0">
+        <div className="flex min-w-max items-stretch self-stretch gap-0">
           {navLinks.map(renderNavLink)}
         </div>
         {zones.length > 0 && (

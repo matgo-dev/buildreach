@@ -52,7 +52,7 @@ export function QuantityInput({ value, onChange, moq, unit }: QuantityInputProps
         </span>
         <div
           className={`flex items-center overflow-hidden rounded-md border-[1.5px] ${
-            isBelowMoq ? "border-red-400" : "border-gray-200"
+            isBelowMoq ? "border-red-400" : "border-control"
           }`}
         >
           <button

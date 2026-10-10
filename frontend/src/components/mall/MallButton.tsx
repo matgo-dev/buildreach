@@ -3,17 +3,15 @@
 import { type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 
-type Variant = "teal" | "lime" | "outline" | "onDark" | "whatsapp";
+type Variant = "teal" | "lime" | "outline" | "whatsapp";
 
-// 主操作深绿实底白字;lime 为品牌强调(柠绿底必须配深绿字);outline 为次操作;
-// onDark 为深绿底上的次操作(白描边白字)。
-export const MALL_BTN_ON_DARK = "border-[1.5px] border-white/60 bg-transparent text-white font-bold hover:bg-white/10";
+// 主操作深绿实底白字;lime 为品牌强调(柠绿底必须配深绿字);outline 为次操作。
+export const MALL_BTN_OUTLINE = "border-[1.5px] border-teal-700 text-teal-700 font-bold bg-white hover:bg-teal-50";
 
 const STYLES: Record<Variant, string> = {
   teal: "mall-btn-primary font-bold",
   lime: "bg-lime text-teal-900 font-bold hover:bg-lime-soft",
-  outline: "border-[1.5px] border-teal-700 text-teal-700 font-bold bg-white hover:bg-teal-50",
-  onDark: MALL_BTN_ON_DARK,
+  outline: MALL_BTN_OUTLINE,
   whatsapp: "bg-whatsapp text-white font-bold hover:brightness-95",
 };
 
@@ -36,7 +34,7 @@ type ButtonProps = CommonProps & ButtonHTMLAttributes<HTMLButtonElement> & { hre
 type LinkProps = CommonProps & { href: string; target?: string; rel?: string };
 
 /**
- * Mall 通用按钮 — 5 种变体(teal/lime/outline/onDark/whatsapp) × 3 种尺寸。
+ * Mall 通用按钮 — 4 种变体(teal/lime/outline/whatsapp) × 3 种尺寸。
  *
  * 传 href 渲染为 Link,否则渲染为 button。
  * 仅用于 mall/buyer 页面,不影响 operator/admin。

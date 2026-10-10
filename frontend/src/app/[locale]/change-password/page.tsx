@@ -169,7 +169,7 @@ function PwdField({
     "h-11 w-full rounded-lg border bg-white px-3 pr-12 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
   const tone = error
     ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-    : "border-gray-200 focus:border-sea focus:ring-sea/15";
+    : "border-control focus:border-sea focus:ring-sea/15";
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm font-semibold text-ink">

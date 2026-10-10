@@ -53,7 +53,7 @@ type Role = "BUYER" | "SUPPLIER" | "";
 const INPUT_BASE =
   "h-11 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK_BUYER =
-  "border-gray-200 focus:border-teal-700 focus:ring-teal-700/15";
+  "border-control focus:border-teal-700 focus:ring-teal-700/15";
 const INPUT_ERR =
   "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 

@@ -281,7 +281,7 @@ function RfqListContent() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="h-8 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-teal-700"
+            className="h-8 rounded-lg border border-control px-3 text-xs outline-none focus:border-teal-700"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>

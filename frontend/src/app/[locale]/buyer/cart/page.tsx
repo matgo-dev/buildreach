@@ -355,7 +355,7 @@ function CartContent() {
                             .then((cart) => { mutate(cart, false); syncFromCart(cart); })
                             .catch(() => { e.target.value = String(item.quantity); });
                         }}
-                        className="h-8 w-20 rounded border border-gray-200 text-center text-sm font-bold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                        className="h-8 w-20 rounded border border-control text-center text-sm font-bold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                       />
                       {item.unit && (
                         <span className="text-[11px] text-muted sm:block sm:mt-0.5">{item.unit}</span>

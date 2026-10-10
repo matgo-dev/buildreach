@@ -57,7 +57,7 @@ interface StepFormProps {
 const INPUT_BASE =
   "h-11 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-gray-400 transition-all focus:outline-none focus:ring-2";
 const INPUT_OK =
-  "border-gray-200 focus:border-sea focus:ring-sea/15";
+  "border-control focus:border-sea focus:ring-sea/15";
 const INPUT_ERR = "border-red-400 focus:border-red-500 focus:ring-red-500/15";
 
 function cls(err: string | null, extra = "") {

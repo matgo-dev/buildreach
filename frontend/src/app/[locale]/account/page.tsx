@@ -567,7 +567,7 @@ function InlineInput({
       className={`h-10 w-full rounded-lg border bg-white px-3 text-sm text-ink placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
         hasError
           ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-          : "border-slate-200 focus:border-teal-700 focus:ring-teal-700/15"
+          : "border-control focus:border-teal-700 focus:ring-teal-700/15"
       }`}
     />
   );
@@ -591,7 +591,7 @@ function PasswordField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete="current-password"
-        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-10 text-sm text-ink placeholder-slate-400 transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
+        className="h-10 w-full rounded-lg border border-control bg-white px-3 pr-10 text-sm text-ink placeholder-slate-400 transition-all focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/15"
       />
       <button
         type="button"
@@ -924,7 +924,7 @@ function PhoneEditForm({
             className={`h-10 flex-1 rounded-r-lg border bg-white px-3 text-sm text-ink placeholder-slate-400 transition-all focus:outline-none focus:ring-2 ${
               error
                 ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                : "border-slate-200 focus:border-teal-700 focus:ring-teal-700/15"
+                : "border-control focus:border-teal-700 focus:ring-teal-700/15"
             }`}
           />
         </div>

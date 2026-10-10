@@ -50,6 +50,8 @@ const config: Config = {
           DEFAULT: "#d1e3d8",
           strong: "#b5cdbf",
         },
+        // 可输入控件边框:对白底约 3.2:1,满足 WCAG 非文本对比 3:1,又不显得框重
+        control: "#6a9a84",
         bg: "#f8faf5",
         whatsapp: "#25d366",
       },

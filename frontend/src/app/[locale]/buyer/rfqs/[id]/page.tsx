@@ -439,7 +439,7 @@ function RfqDetailContent() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                className="w-full rounded-lg border border-control px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                 placeholder={t("cancelReason")}
               />
             </div>

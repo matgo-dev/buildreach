@@ -286,7 +286,7 @@ export default function ProductSearchModal({
                 }}
                 placeholder={t("searchPlaceholder")}
                 autoFocus
-                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                className="h-10 w-full rounded-lg border border-control pl-9 pr-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
               />
             </div>
             <button

@@ -119,7 +119,7 @@ export function MallHeader() {
         {/* 中:搜索框 — PC 上显示在这一行 */}
         <form onSubmit={handleSearch} className="relative min-w-0 hidden md:block">
           <div
-            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-muted/60 transition-colors focus-within:border-sea focus-within:ring-2 focus-within:ring-sea/20"
+            className="flex rounded-[10px] overflow-hidden border-2 border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
           >
             <input
               type="search"
@@ -132,7 +132,7 @@ export function MallHeader() {
             />
             <button
               type="submit"
-              className="w-[60px] mall-btn-primary grid place-items-center transition-colors"
+              className="w-[60px] bg-lime text-teal-900 hover:bg-lime-soft grid place-items-center transition-colors"
               aria-label="Search"
             >
               <Search className="h-5 w-5" strokeWidth={2.4} />
@@ -186,7 +186,7 @@ export function MallHeader() {
         {/* 移动端搜索框 — 独占一行 */}
         <form onSubmit={handleSearch} className="relative md:hidden pb-3">
           <div
-            className="flex rounded-[10px] overflow-hidden border-[1.5px] border-muted/60 transition-colors focus-within:border-sea focus-within:ring-2 focus-within:ring-sea/20"
+            className="flex rounded-[10px] overflow-hidden border-2 border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
           >
             <input
               type="search"
@@ -199,7 +199,7 @@ export function MallHeader() {
             />
             <button
               type="submit"
-              className="w-[50px] mall-btn-primary grid place-items-center transition-colors"
+              className="w-[50px] bg-lime text-teal-900 hover:bg-lime-soft grid place-items-center transition-colors"
               aria-label="Search"
             >
               <Search className="h-4.5 w-4.5" strokeWidth={2.4} />

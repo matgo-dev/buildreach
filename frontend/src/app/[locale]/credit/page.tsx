@@ -95,7 +95,7 @@ function CreditInner() {
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-700 focus:outline-none"
+              className="rounded-md border border-control bg-white px-3 py-2 text-sm focus:border-teal-700 focus:outline-none"
             >
               {COUNTRY_OPTIONS.map((c) => (
                 <option key={c.code || "ALL"} value={c.code}>
@@ -112,7 +112,7 @@ function CreditInner() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="企业名 / 英文名 / 注册号关键词"
-              className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-teal-700 focus:outline-none"
+              className="w-full rounded-md border border-control bg-white py-2 pl-9 pr-3 text-sm focus:border-teal-700 focus:outline-none"
             />
           </div>
         </div>

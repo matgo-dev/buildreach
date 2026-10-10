@@ -721,7 +721,7 @@ function RfqCreateContent() {
               onChange={(e) => updateDraft("remark", e.target.value)}
               rows={4}
               placeholder={t("descriptionPlaceholder")}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="w-full rounded-lg border border-control px-3 py-2 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <AttachmentUploader
@@ -777,7 +777,7 @@ function RfqCreateContent() {
                             if (!isNaN(v) && v > 0) handleCartQuantityChange(item.item_id, v);
                           }}
                           min={1}
-                          className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                          className="h-8 w-20 rounded border border-control text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                         />
                         <span className="text-xs text-muted">
                           {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
@@ -818,7 +818,7 @@ function RfqCreateContent() {
                           if (!isNaN(v) && v > 0) handleManualQtyChange(idx, v);
                         }}
                         min={1}
-                        className="h-8 w-20 rounded border border-gray-200 text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                        className="h-8 w-20 rounded border border-control text-right text-sm font-semibold text-ink outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
                       />
                       <span className="text-xs text-muted">
                         {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}
@@ -870,7 +870,7 @@ function RfqCreateContent() {
               value={draft.requested_delivery_place}
               onChange={(e) => updateDraft("requested_delivery_place", e.target.value)}
               placeholder={t("deliveryPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <div>
@@ -881,7 +881,7 @@ function RfqCreateContent() {
               <button
                 type="button"
                 onClick={openDatePicker}
-                className="flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 px-3 text-left text-sm outline-none transition-colors focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+                className="flex h-10 w-full items-center justify-between rounded-lg border border-control px-3 text-left text-sm outline-none transition-colors focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
               >
                 <span className={draft.expected_delivery_date ? "text-ink" : "text-muted"}>
                   {draft.expected_delivery_date || "YYYY-MM-DD"}
@@ -908,7 +908,7 @@ function RfqCreateContent() {
             <select
               value={draft.target_currency}
               onChange={(e) => updateDraft("target_currency", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -925,7 +925,7 @@ function RfqCreateContent() {
               value={draft.destination_port}
               onChange={(e) => updateDraft("destination_port", e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
             <datalist id="destination-port-options">
               <option value="Dar es Salaam Port" />
@@ -944,7 +944,7 @@ function RfqCreateContent() {
               value={draft.preferred_trade_term}
               onChange={(e) => updateDraft("preferred_trade_term", e.target.value)}
               placeholder={t("preferredTradeTermPlaceholder")}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
             <datalist id="trade-term-options">
               <option value="FOB" />
@@ -970,7 +970,7 @@ function RfqCreateContent() {
               type="text"
               value={draft.contact_name}
               onChange={(e) => updateDraft("contact_name", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <div>
@@ -981,7 +981,7 @@ function RfqCreateContent() {
               type="text"
               value={draft.contact_phone}
               onChange={(e) => updateDraft("contact_phone", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
           <div>
@@ -992,7 +992,7 @@ function RfqCreateContent() {
               type="email"
               value={draft.contact_email}
               onChange={(e) => updateDraft("contact_email", e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
+              className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
           </div>
         </div>

@@ -237,7 +237,7 @@ function FormView({
             value={form.product}
             onChange={(e) => onProductChange(e.target.value)}
             placeholder={t("ccProductPlaceholder")}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-teal-400 focus:outline-none"
+            className="w-full rounded-xl border border-control bg-white px-3 py-2.5 text-sm focus:border-teal-700 focus:outline-none"
           />
         </Field>
         {form.product.trim() &&
@@ -617,7 +617,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-teal-400 focus:outline-none"
+      className="w-full rounded-xl border border-control bg-white px-3 py-2.5 text-sm focus:border-teal-700 focus:outline-none"
     >
       {children}
     </select>
@@ -634,7 +634,7 @@ function NumInput({
   suffix?: string;
 }) {
   return (
-    <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-teal-400">
+    <div className="flex items-center rounded-xl border border-control bg-white focus-within:border-teal-700">
       <input
         type="number"
         min="0"

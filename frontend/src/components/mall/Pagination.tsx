@@ -100,7 +100,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
               value={jumpInput}
               onChange={(e) => setJumpInput(e.target.value.replace(/\D/g, ""))}
               onKeyDown={(e) => e.key === "Enter" && handleJump()}
-              className="ml-1 h-7 w-12 rounded border border-gray-200 px-2 text-center text-xs text-ink outline-none focus:border-teal-500"
+              className="ml-1 h-7 w-12 rounded border border-control px-2 text-center text-xs text-ink outline-none focus:border-teal-500"
             />
             <button
               onClick={handleJump}

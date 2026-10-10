@@ -121,16 +121,16 @@ export function FloatingWhatsApp() {
           onClick={() => setOpen((v) => !v)}
           className={`group flex items-center gap-2 rounded-full pl-3.5 pr-4 py-2.5 shadow-lg transition-all duration-200 ${
             open
-              ? "bg-teal-700 hover:bg-teal-800"
-              : "bg-teal-700 hover:bg-teal-800 hover:shadow-xl hover:scale-105"
+              ? "bg-lime hover:bg-lime-soft"
+              : "bg-lime hover:bg-lime-soft hover:shadow-xl hover:scale-105"
           }`}
         >
           {open ? (
-            <X className="h-4.5 w-4.5 text-white" />
+            <X className="h-4.5 w-4.5 text-teal-900" />
           ) : (
-            <Headphones className="h-5 w-5 text-white" />
+            <Headphones className="h-5 w-5 text-teal-900" />
           )}
-          <span className="text-[13px] font-bold text-white whitespace-nowrap">
+          <span className="text-[13px] font-bold text-teal-900 whitespace-nowrap">
             {open ? t("floatWaClose") : t("floatContactTab")}
           </span>
         </button>

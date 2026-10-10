@@ -160,7 +160,7 @@ function LoginContent() {
                 (isPhone ? "rounded-r-lg rounded-l-none " : "rounded-lg ") +
                 (idErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-sea focus:ring-sea/15")
+                  : "border-control focus:border-sea focus:ring-sea/15")
               }
             />
           </div>
@@ -194,7 +194,7 @@ function LoginContent() {
                 "w-full h-12 px-4 pr-12 rounded-lg border bg-white text-sm text-ink placeholder-gray-400 focus:outline-none focus:ring-2 transition-all " +
                 (pwdErr
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-200 focus:border-sea focus:ring-sea/15")
+                  : "border-control focus:border-sea focus:ring-sea/15")
               }
             />
             <button

@@ -137,13 +137,13 @@ function FeatureCard({
     <div
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-teal-50 p-5 sm:p-6 transition-all hover:shadow-lg"
     >
-      <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-teal-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+      <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-lime px-2.5 py-1 text-[11px] font-bold text-teal-900">
         <Sparkles className="h-3 w-3" />
         {t("costCalcBadge")}
       </span>
 
       <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-md">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-800">
           {icon}
         </div>
         <div className="flex-1 min-w-0 pr-16">
@@ -184,8 +184,8 @@ function AgentCard({ agent, onStart }: { agent: AgentDef; onStart: () => void })
       style={{ boxShadow: "0 1px 4px rgba(16,36,65,.05)" }}
     >
       <div className="flex items-start justify-between">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${agent.color} text-xl`}>
-          {agent.icon}
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${agent.color}`}>
+          <agent.icon className="h-5 w-5 text-teal-800" strokeWidth={1.75} />
         </div>
         <span className={`inline-flex items-center gap-1 rounded-full bg-lime/25 px-2 py-0.5 text-[11px] font-medium text-teal-900`}>
           <span className="h-1.5 w-1.5 rounded-full bg-lime animate-pulse" />
@@ -297,8 +297,8 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-lg">
-            {agent.icon}
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+            <agent.icon className="h-4 w-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-bold truncate">{t(meta.titleKey)}</div>
@@ -429,8 +429,8 @@ function ChatInputBar({
         className={
           "relative flex items-end gap-2 rounded-2xl border bg-slate-50 transition-colors " +
           (canSend
-            ? "border-slate-300 focus-within:border-slate-400"
-            : "border-slate-200 focus-within:border-slate-300")
+            ? "border-control focus-within:border-teal-700"
+            : "border-control focus-within:border-teal-700")
         }
       >
         <textarea
