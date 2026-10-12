@@ -16,6 +16,7 @@ import {
   Settings,
   ShoppingCart,
   User,
+  Users,
 } from "lucide-react";
 
 import { useAuthStore } from "@/stores/authStore";
@@ -314,6 +315,17 @@ function UserMenu() {
               <Settings className="h-4 w-4 text-muted" />
               {t("menuSettings")}
             </Link>
+            {user.organization?.type === "BUYER_ORG" && user.organization.is_owner && (
+              <Link
+                href="/buyer/members"
+                onClick={() => setOpen(false)}
+                role="menuitem"
+                className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink hover:bg-teal-50 hover:text-teal-900 transition-colors"
+              >
+                <Users className="h-4 w-4 text-muted" />
+                {t("menuMembers")}
+              </Link>
+            )}
           </div>
 
           <div className="border-t border-slate-100 py-1.5">

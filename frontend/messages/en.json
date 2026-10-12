@@ -533,6 +533,7 @@
     "roleAdmin": "Admin",
     "menuDashboard": "Dashboard",
     "menuSettings": "Account Settings",
+    "menuMembers": "Members",
     "menuSettingsDisabled": "Coming soon",
     "menuLogout": "Log out",
     "debugOtherWorkspaces": "Other workspaces (debug)",
@@ -1230,6 +1231,47 @@
     "documentGeneratingToast": "Quotation is being generated, please try again later",
     "documentFailedToast": "Quotation generation failed, please contact support"
   },
+  "buyerMembers": {
+    "title": "Members",
+    "subtitle": "Create accounts for your colleagues. Members can view and submit RFQs for your company.",
+    "ownerOnly": "Only the organization owner can access this page",
+    "create": "New member",
+    "empty": "No members yet",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load",
+    "col": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "status": "Status",
+      "joined": "Joined",
+      "actions": "Actions"
+    },
+    "role": { "owner": "Owner", "member": "Member" },
+    "status": { "ACTIVE": "Active", "DISABLED": "Disabled" },
+    "actions": { "disable": "Disable", "enable": "Enable", "cancel": "Cancel", "submit": "Create" },
+    "confirmDisable": "Disable {email}? They will be signed out immediately.",
+    "toast": {
+      "created": "Member created. Share the initial password with them; they must change it on first login.",
+      "disabled": "Disabled {email}",
+      "enabled": "Enabled {email}",
+      "disableFailed": "Failed to disable",
+      "enableFailed": "Failed to enable",
+      "createFailed": "Failed to create"
+    },
+    "form": {
+      "title": "New member",
+      "name": "Name *",
+      "email": "Email *",
+      "password": "Initial password *",
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailFormat": "Invalid email format",
+      "emailDomain": "Email domain not accepted",
+      "hint": "The member signs in with email + initial password and must change it on first login."
+    }
+  },
   "nav": {
     "mall": "Mall",
     "inquiryBasket": "Inquiry Basket",
@@ -1296,7 +1338,8 @@
       "cancel": "Cancel",
       "save": "Save",
       "change": "Change",
-      "changePassword": "Change Password"
+      "changePassword": "Change Password",
+      "manageMembers": "Manage members"
     },
     "placeholders": {
       "notSet": "Not set",

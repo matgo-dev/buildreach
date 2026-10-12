@@ -533,6 +533,7 @@
     "roleAdmin": "Msimamizi",
     "menuDashboard": "Dashibodi",
     "menuSettings": "Mipangilio ya Akaunti",
+    "menuMembers": "Wanachama",
     "menuSettingsDisabled": "Inakuja hivi karibuni",
     "menuLogout": "Toka",
     "debugOtherWorkspaces": "Nafasi nyingine (utatuzi)",
@@ -1230,6 +1231,47 @@
     "documentGeneratingToast": "Nukuu inatengenezwa, tafadhali jaribu tena baadaye",
     "documentFailedToast": "Nukuu imeshindwa kutengenezwa, wasiliana na msaada"
   },
+  "buyerMembers": {
+    "title": "Wanachama",
+    "subtitle": "Unda akaunti za wenzako. Wanachama wanaweza kuona na kutuma maombi ya bei ya kampuni yako.",
+    "ownerOnly": "Mmiliki wa shirika pekee anaweza kufikia ukurasa huu",
+    "create": "Mwanachama mpya",
+    "empty": "Hakuna wanachama bado",
+    "loading": "Inapakia…",
+    "loadFailed": "Imeshindwa kupakia",
+    "col": {
+      "name": "Jina",
+      "email": "Barua pepe",
+      "phone": "Simu",
+      "role": "Jukumu",
+      "status": "Hali",
+      "joined": "Alijiunga",
+      "actions": "Vitendo"
+    },
+    "role": { "owner": "Mmiliki", "member": "Mwanachama" },
+    "status": { "ACTIVE": "Hai", "DISABLED": "Imezimwa" },
+    "actions": { "disable": "Zima", "enable": "Washa", "cancel": "Ghairi", "submit": "Unda" },
+    "confirmDisable": "Zima {email}? Ataondolewa mara moja.",
+    "toast": {
+      "created": "Mwanachama ameundwa. Mpe nenosiri la awali; lazima alibadilishe akiingia mara ya kwanza.",
+      "disabled": "Imezima {email}",
+      "enabled": "Imewasha {email}",
+      "disableFailed": "Imeshindwa kuzima",
+      "enableFailed": "Imeshindwa kuwasha",
+      "createFailed": "Imeshindwa kuunda"
+    },
+    "form": {
+      "title": "Mwanachama mpya",
+      "name": "Jina *",
+      "email": "Barua pepe *",
+      "password": "Nenosiri la awali *",
+      "nameRequired": "Jina linahitajika",
+      "emailRequired": "Barua pepe inahitajika",
+      "emailFormat": "Muundo wa barua pepe si sahihi",
+      "emailDomain": "Kikoa cha barua pepe hakikubaliki",
+      "hint": "Mwanachama anaingia kwa barua pepe + nenosiri la awali na lazima alibadilishe akiingia mara ya kwanza."
+    }
+  },
   "nav": {
     "mall": "Duka",
     "inquiryBasket": "Kikapu cha Maombi",
@@ -1296,7 +1338,8 @@
       "cancel": "Ghairi",
       "save": "Hifadhi",
       "change": "Badilisha",
-      "changePassword": "Badilisha Nenosiri"
+      "changePassword": "Badilisha Nenosiri",
+      "manageMembers": "Simamia wanachama"
     },
     "placeholders": {
       "notSet": "Haijawekwa",

@@ -533,6 +533,7 @@
     "roleAdmin": "系统管理员",
     "menuDashboard": "工作台",
     "menuSettings": "账户设置",
+    "menuMembers": "成员管理",
     "menuSettingsDisabled": "改版中",
     "menuLogout": "退出登录",
     "debugOtherWorkspaces": "其他工作台(调试可见)",
@@ -1230,6 +1231,47 @@
     "documentGeneratingToast": "报价单正在生成中，请稍后重试",
     "documentFailedToast": "报价单生成失败，请联系客服"
   },
+  "buyerMembers": {
+    "title": "成员管理",
+    "subtitle": "为公司同事创建账号。成员可查看并发起本公司的询价。",
+    "ownerOnly": "仅组织所有者可访问此页面",
+    "create": "新建成员",
+    "empty": "暂无成员",
+    "loading": "加载中…",
+    "loadFailed": "加载失败",
+    "col": {
+      "name": "姓名",
+      "email": "邮箱",
+      "phone": "手机号",
+      "role": "角色",
+      "status": "状态",
+      "joined": "加入时间",
+      "actions": "操作"
+    },
+    "role": { "owner": "所有者", "member": "成员" },
+    "status": { "ACTIVE": "正常", "DISABLED": "已停用" },
+    "actions": { "disable": "停用", "enable": "启用", "cancel": "取消", "submit": "创建" },
+    "confirmDisable": "确定停用 {email}?停用后该成员立即无法登录。",
+    "toast": {
+      "created": "成员已创建。请把初始密码告知该成员,其首次登录会被要求修改密码。",
+      "disabled": "已停用 {email}",
+      "enabled": "已启用 {email}",
+      "disableFailed": "停用失败",
+      "enableFailed": "启用失败",
+      "createFailed": "创建失败"
+    },
+    "form": {
+      "title": "新建成员",
+      "name": "姓名 *",
+      "email": "邮箱 *",
+      "password": "初始密码 *",
+      "nameRequired": "请填写姓名",
+      "emailRequired": "请填写邮箱",
+      "emailFormat": "邮箱格式不正确",
+      "emailDomain": "邮箱域名不可用",
+      "hint": "成员用邮箱 + 初始密码登录,首次登录会被要求修改密码。"
+    }
+  },
   "nav": {
     "mall": "严选商城",
     "inquiryBasket": "询价篮",
@@ -1296,7 +1338,8 @@
       "cancel": "取消",
       "save": "保存",
       "change": "修改",
-      "changePassword": "修改密码"
+      "changePassword": "修改密码",
+      "manageMembers": "成员管理"
     },
     "placeholders": {
       "notSet": "未设置",

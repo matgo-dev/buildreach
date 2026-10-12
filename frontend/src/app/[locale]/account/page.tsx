@@ -445,6 +445,16 @@ function Inner() {
                     value={user.organization!.status}
                   />
                 )}
+                {user.organization!.type === "BUYER_ORG" && user.organization!.is_owner && (
+                  <div className="px-6 py-4">
+                    <Link
+                      href="/buyer/members"
+                      className="inline-flex h-9 items-center rounded-lg border border-teal-700 px-4 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                    >
+                      {t("actions.manageMembers")}
+                    </Link>
+                  </div>
+                )}
               </SectionCard>
             </section>
           )}
