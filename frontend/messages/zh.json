@@ -713,8 +713,6 @@
     "floatWeChatDesc": "扫码添加微信",
     "chatOnWeChat": "微信咨询",
     "wechatScanQr": "二维码",
-    "wechatAddUs": "添加微信",
-    "wechatScanHint": "使用微信扫一扫添加",
     "waMsgGreeting": "您好，{body}",
     "waMsgSep": "，",
     "waMsgUserOrg": "我是{org}的{name}",

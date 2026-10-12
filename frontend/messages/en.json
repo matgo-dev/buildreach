@@ -714,8 +714,6 @@
     "floatWeChatDesc": "Scan QR code to connect",
     "chatOnWeChat": "WeChat",
     "wechatScanQr": "QR Code",
-    "wechatAddUs": "Add Us on WeChat",
-    "wechatScanHint": "Scan with WeChat to add us",
     "waMsgGreeting": "Hi, {body}",
     "waMsgSep": ", ",
     "waMsgUserOrg": "I'm {name} from {org}",

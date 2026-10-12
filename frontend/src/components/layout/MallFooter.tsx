@@ -147,7 +147,7 @@ export function MallFooter() {
                 ) : (
                   <WeChatIcon className="w-6 h-6 text-[#07c160]" />
                 )}
-                <h3 className="text-lg font-bold text-gray-900">{qr === "wa" ? "WhatsApp" : t("wechatAddUs")}</h3>
+                <h3 className="text-lg font-bold text-gray-900">{qr === "wa" ? "WhatsApp" : "WeChat"}</h3>
               </div>
               <img
                 src={(qr === "wa" ? contact.whatsappQrImage : contact.wechatQrImage) ?? ""}
@@ -161,7 +161,6 @@ export function MallFooter() {
                 </p>
               )}
               <p className="mt-1 text-sm text-muted">{qr === "wa" ? contact.whatsappNumber : contact.wechatId}</p>
-              {qr === "wx" && <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>}
             </div>
           </div>
         </div>

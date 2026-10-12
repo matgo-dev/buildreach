@@ -149,7 +149,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <WeChatIcon className="w-6 h-6 text-[#07c160]" />
-                <h3 className="text-lg font-bold text-gray-900">{t("wechatAddUs")}</h3>
+                <h3 className="text-lg font-bold text-gray-900">WeChat</h3>
               </div>
               <img
                 src={contact.wechatQrImage}
@@ -165,7 +165,6 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
               {contact.wechatId && (
                 <p className={`${contact.wechatContactName ? "mt-1" : "mt-3"} text-sm text-muted`}>{contact.wechatId}</p>
               )}
-              <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
             </div>
           </div>
         </div>,
