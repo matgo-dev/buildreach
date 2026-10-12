@@ -441,3 +441,54 @@ async def create_member(
     await db.refresh(user)
     await db.refresh(member)
     return user, member
+
+
+async def set_member_status(
+    db: AsyncSession,
+    *,
+    owner_user_id: int,
+    owner_email: str | None,
+    target_user_id: int,
+    enabled: bool,
+    request: Request | None = None,
+) -> tuple[User, BuyerMember]:
+    """Owner 停用/启用本组织成员。
+
+    - 目标必须是本组织成员,否则 404(不泄露他组织用户是否存在)。
+    - 不能停用自己 → 400。
+    - 已是目标状态 → 幂等返回,不写审计。
+    - 停用不 bump token_version:get_current_user 每请求检查 status=DISABLED。
+    """
+    _, org = await _require_owner_membership(db, owner_user_id)
+    if not enabled and target_user_id == owner_user_id:
+        raise ValidationFailedError("不能停用自己的账号")
+
+    row = await db.execute(
+        select(User, BuyerMember)
+        .join(BuyerMember, BuyerMember.user_id == User.id)
+        .where(BuyerMember.buyer_org_id == org.id, User.id == target_user_id)
+    )
+    record = row.first()
+    if record is None:
+        raise NotFoundError("成员不存在")
+    user, member = record
+
+    new_status = UserStatus.ACTIVE if enabled else UserStatus.DISABLED
+    if user.status == new_status:
+        return user, member
+    user.status = new_status
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.MEMBER_ENABLE if enabled else AuditAction.MEMBER_DISABLE,
+        user_id=owner_user_id,
+        user_email=owner_email,
+        resource_id=user.id,
+        request=request,
+        extra={"buyer_org_id": org.id, "target_user_id": user.id, "target_email": user.email},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(user)
+    return user, member

@@ -102,3 +102,46 @@ async def test_create_member_weak_password_422(client):
         MEMBERS, json={"name": "E", "email": "weak@test.com", "password": "123456"}, headers=owner_h
     )
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_disable_self_400(client):
+    owner_h, _ = await _register_owner(client)
+    me = await client.get("/api/v1/auth/me", headers=owner_h)
+    my_id = me.json()["data"]["id"]
+    r = await client.post(f"{MEMBERS}/{my_id}/disable", headers=owner_h)
+    assert r.status_code == 400, r.text
+
+
+@pytest.mark.asyncio
+async def test_disable_other_org_user_404(client):
+    owner_h, _ = await _register_owner(client)
+    other = await register_buyer_tz(client, company_name="Other Co")
+    other_token = other["response"].json()["data"]["access_token"]
+    other_me = await client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {other_token}"}
+    )
+    other_id = other_me.json()["data"]["id"]
+    r = await client.post(f"{MEMBERS}/{other_id}/disable", headers=owner_h)
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
+async def test_disable_then_enable_member(client):
+    owner_h, _ = await _register_owner(client)
+    email = f"emp{_next_phone().replace('+', '')}@test.com"
+    created = (await _create_member(client, owner_h, email)).json()["data"]
+
+    r = await client.post(f"{MEMBERS}/{created['id']}/disable", headers=owner_h)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["status"] == "DISABLED"
+
+    bad = await _login(client, email, _MEMBER_PASSWORD)
+    assert bad.status_code in (401, 403)
+
+    r2 = await client.post(f"{MEMBERS}/{created['id']}/enable", headers=owner_h)
+    assert r2.status_code == 200
+    assert r2.json()["data"]["status"] == "ACTIVE"
+
+    ok = await _login(client, email, _MEMBER_PASSWORD)
+    assert ok.status_code == 200

@@ -933,6 +933,42 @@ async def create_my_member(
 
 
 @router.post(
+    "/me/organization/members/{user_id}/disable",
+    summary="停用本组织成员(仅 owner)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def disable_my_member(
+    user_id: int,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.set_member_status(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, enabled=False, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.post(
+    "/me/organization/members/{user_id}/enable",
+    summary="启用本组织成员(仅 owner)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def enable_my_member(
+    user_id: int,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.set_member_status(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, enabled=True, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.post(
     "/me/email",
     summary="修改自己登录邮箱(需当前密码)",
     dependencies=[Depends(block_if_must_change_password)],
