@@ -710,6 +710,7 @@
     "floatContactTab": "Support",
     "floatContactHint": "Choose your preferred channel",
     "floatWaDesc": "Instant chat, no friend request needed",
+    "contactRole": "Business Contact",
     "floatWeChatDesc": "Scan QR code to connect",
     "chatOnWeChat": "WeChat",
     "wechatScanQr": "QR Code",

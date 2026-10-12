@@ -120,6 +120,10 @@ class Settings(BaseSettings):
     # 客服邮箱
     CONTACT_EMAIL: str = "2026matmart@gmail.com"
 
+    # 各渠道联系人称呼(如"廖先生"),前端入口展示;空则显示通用描述。两渠道可能不是同一人,分开配
+    WHATSAPP_CONTACT_NAME: str = ""
+    WECHAT_CONTACT_NAME: str = ""
+
     # 微信客服配置。未配置时前端隐藏 WeChat 入口。
     WECHAT_ID: str = ""
     WECHAT_QR_IMAGE: str = ""

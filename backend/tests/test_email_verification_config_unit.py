@@ -79,12 +79,16 @@ class TestBuildContactPayload:
             mock_s.CONTACT_EMAIL = "support@example.com"
             mock_s.WECHAT_ID = "Matgo_Service"
             mock_s.WECHAT_QR_IMAGE = "/contact/wechat-qr.png"
+            mock_s.WHATSAPP_CONTACT_NAME = " 廖先生 "
+            mock_s.WECHAT_CONTACT_NAME = "林先生"
             assert build_contact_payload() == {
                 "whatsapp_link": "https://wa.me/255697123456",
                 "whatsapp_number": "+255 697 123 456",
                 "wechat_id": "Matgo_Service",
                 "wechat_qr_image": "/contact/wechat-qr.png",
                 "email": "support@example.com",
+                "whatsapp_contact_name": "廖先生",
+                "wechat_contact_name": "林先生",
             }
 
     def test_blank_fields_become_null(self):
@@ -93,12 +97,16 @@ class TestBuildContactPayload:
             mock_s.CONTACT_EMAIL = ""
             mock_s.WECHAT_ID = "   "     # 纯空白视为未配置
             mock_s.WECHAT_QR_IMAGE = ""
+            mock_s.WHATSAPP_CONTACT_NAME = "  "
+            mock_s.WECHAT_CONTACT_NAME = ""
             payload = build_contact_payload()
         assert payload["whatsapp_link"] is None
         assert payload["whatsapp_number"] is None
         assert payload["wechat_id"] is None
         assert payload["wechat_qr_image"] is None
         assert payload["email"] is None
+        assert payload["whatsapp_contact_name"] is None
+        assert payload["wechat_contact_name"] is None
 
     def test_number_present_but_unparseable_nulls_number(self):
         # 号码只有符号 → 解析不出链接,number 也应为 None(与 link 一致)
@@ -107,6 +115,8 @@ class TestBuildContactPayload:
             mock_s.CONTACT_EMAIL = "a@b.com"
             mock_s.WECHAT_ID = ""
             mock_s.WECHAT_QR_IMAGE = ""
+            mock_s.WHATSAPP_CONTACT_NAME = ""
+            mock_s.WECHAT_CONTACT_NAME = ""
             payload = build_contact_payload()
         assert payload["whatsapp_link"] is None
         assert payload["whatsapp_number"] is None

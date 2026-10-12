@@ -43,6 +43,8 @@ export function useContactInfo() {
     wechatId: contact?.wechat_id?.trim() || null,
     wechatQrImage: contact?.wechat_qr_image?.trim() || null,
     email: contact?.email?.trim() || null,
+    whatsappContactName: contact?.whatsapp_contact_name?.trim() || null,
+    wechatContactName: contact?.wechat_contact_name?.trim() || null,
     configured: !!whatsappLink || !!contact?.email,
   };
 }

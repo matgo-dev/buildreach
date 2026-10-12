@@ -11,6 +11,8 @@ export interface PublicConfig {
     wechat_id: string | null;
     wechat_qr_image: string | null;
     email: string | null;
+    whatsapp_contact_name: string | null;
+    wechat_contact_name: string | null;
   };
   auth: {
     require_email_verification: boolean;

@@ -78,7 +78,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                             {t("recommended")}
                           </span>
                         </div>
-                        <p className="text-[10px] text-white/80 leading-tight">{t("floatWaDesc")}</p>
+                        <p className="text-[10px] text-white/80 leading-tight">{contact.whatsappContactName ? `${contact.whatsappContactName} · ${t("contactRole")}` : t("floatWaDesc")}</p>
                       </div>
                     </a>
                   )}
@@ -94,7 +94,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] font-bold text-navy">WeChat</p>
-                        <p className="text-[10px] text-muted leading-tight">{t("floatWeChatDesc")}</p>
+                        <p className="text-[10px] text-muted leading-tight">{contact.wechatContactName ? `${contact.wechatContactName} · ${t("contactRole")}` : t("floatWeChatDesc")}</p>
                       </div>
                     </button>
                   )}

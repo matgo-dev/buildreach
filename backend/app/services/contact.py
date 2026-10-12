@@ -38,4 +38,6 @@ def build_contact_payload() -> dict:
         "wechat_id": settings.WECHAT_ID.strip() or None,
         "wechat_qr_image": settings.WECHAT_QR_IMAGE.strip() or None,
         "email": settings.CONTACT_EMAIL.strip() or None,
+        "whatsapp_contact_name": settings.WHATSAPP_CONTACT_NAME.strip() or None,
+        "wechat_contact_name": settings.WECHAT_CONTACT_NAME.strip() or None,
     }
