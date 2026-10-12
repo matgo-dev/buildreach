@@ -1249,7 +1249,7 @@
       "actions": "Vitendo"
     },
     "role": { "owner": "Mmiliki", "member": "Mwanachama" },
-    "status": { "ACTIVE": "Hai", "DISABLED": "Imezimwa" },
+    "status": { "ACTIVE": "Hai", "DISABLED": "Imezimwa", "DEACTIVATED": "Imefungwa" },
     "actions": { "disable": "Zima", "enable": "Washa", "cancel": "Ghairi", "submit": "Unda" },
     "confirmDisable": "Zima {email}? Ataondolewa mara moja.",
     "toast": {

@@ -1249,7 +1249,7 @@
       "actions": "Actions"
     },
     "role": { "owner": "Owner", "member": "Member" },
-    "status": { "ACTIVE": "Active", "DISABLED": "Disabled" },
+    "status": { "ACTIVE": "Active", "DISABLED": "Disabled", "DEACTIVATED": "Deactivated" },
     "actions": { "disable": "Disable", "enable": "Enable", "cancel": "Cancel", "submit": "Create" },
     "confirmDisable": "Disable {email}? They will be signed out immediately.",
     "toast": {

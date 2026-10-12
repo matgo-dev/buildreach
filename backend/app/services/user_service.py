@@ -150,6 +150,9 @@ async def update_user(
         target.name = name
 
     if email is not None and email != target.email:
+        # super admin 的邮箱是"不能停用 / 不能重置密码"两道守卫的判定依据,改了就能绕过
+        if target.email == settings.SUPER_ADMIN_EMAIL:
+            raise ValidationFailedError("不能修改 super admin 的邮箱")
         # 检查邮箱唯一(排除 DISABLED)
         row = await db.execute(
             select(User.id).where(

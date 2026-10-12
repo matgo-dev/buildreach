@@ -145,3 +145,80 @@ async def test_disable_then_enable_member(client):
 
     ok = await _login(client, email, _MEMBER_PASSWORD)
     assert ok.status_code == 200
+
+
+# ---------- 终审修复:停用/启用的作用域 ----------
+
+async def _member_id(client, owner_h: dict) -> int:
+    email = f"emp{_next_phone().replace('+', '')}@test.com"
+    return (await _create_member(client, owner_h, email)).json()["data"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_owner_cannot_disable_another_owner_404(client, db_session):
+    """同组织另一个 owner 不在可操作范围内 → 404(与"非成员"同口径)。"""
+    from sqlalchemy import select
+    from app.db.models.buyer_member import BuyerMember
+
+    owner_h, org_id = await _register_owner(client)
+    mid = await _member_id(client, owner_h)
+    row = await db_session.execute(
+        select(BuyerMember).where(BuyerMember.user_id == mid, BuyerMember.buyer_org_id == org_id)
+    )
+    row.scalar_one().is_owner = True
+    await db_session.commit()
+
+    r = await client.post(f"{MEMBERS}/{mid}/disable", headers=owner_h)
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
+async def test_owner_cannot_disable_member_with_internal_role_404(client, db_session):
+    """成员兼有 OPERATOR 角色 → users.status 是平台级,owner 不能动 → 404。"""
+    from sqlalchemy import select
+    from app.db.models.role import Role
+    from app.db.models.user_role import UserRole
+
+    owner_h, _ = await _register_owner(client)
+    mid = await _member_id(client, owner_h)
+    role_id = (await db_session.execute(select(Role.id).where(Role.code == "OPERATOR"))).scalar_one()
+    db_session.add(UserRole(user_id=mid, role_id=role_id))
+    await db_session.commit()
+
+    r = await client.post(f"{MEMBERS}/{mid}/disable", headers=owner_h)
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
+async def test_owner_cannot_disable_multi_org_member_404(client, db_session):
+    """成员同时属于另一组织(运营合并产生)→ 停用会波及他组织 → 404。"""
+    from app.db.models.buyer_member import BuyerMember
+
+    owner_h, _ = await _register_owner(client)
+    mid = await _member_id(client, owner_h)
+    other = await register_buyer_tz(client, company_name="Other Co")
+    other_token = other["response"].json()["data"]["access_token"]
+    other_org = (await client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {other_token}"}
+    )).json()["data"]["organization"]["id"]
+    db_session.add(BuyerMember(user_id=mid, buyer_org_id=other_org, is_owner=False))
+    await db_session.commit()
+
+    r = await client.post(f"{MEMBERS}/{mid}/disable", headers=owner_h)
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
+async def test_deactivated_member_cannot_be_toggled_400(client, db_session):
+    """成员自己注销(DEACTIVATED)后,owner 既不能停用也不能启用 → 400。"""
+    from app.db.models.user import User, UserStatus
+
+    owner_h, _ = await _register_owner(client)
+    mid = await _member_id(client, owner_h)
+    (await db_session.get(User, mid)).status = UserStatus.DEACTIVATED
+    await db_session.commit()
+
+    assert (await client.post(f"{MEMBERS}/{mid}/disable", headers=owner_h)).status_code == 400
+    assert (await client.post(f"{MEMBERS}/{mid}/enable", headers=owner_h)).status_code == 400
+    lst = await client.get(MEMBERS, headers=owner_h)
+    assert [m["status"] for m in lst.json()["data"] if m["id"] == mid] == ["DEACTIVATED"]

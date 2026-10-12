@@ -36,11 +36,16 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/auth/me/email"),
     ("POST", "/api/v1/auth/me/username"),
     ("POST", "/api/v1/auth/me/phone"),
+    # auth — 买方组织 owner 成员管理,均走 me_service 内的 write_audit(MEMBER_*)
+    ("POST", "/api/v1/auth/me/organization/members"),
+    ("POST", "/api/v1/auth/me/organization/members/{user_id}/disable"),
+    ("POST", "/api/v1/auth/me/organization/members/{user_id}/enable"),
     # admin — 内部账号管理,均走 user_service / 路由内的 write_audit
     ("POST", "/api/v1/admin/users"),
     ("POST", "/api/v1/admin/users/{user_id}/disable"),
     ("POST", "/api/v1/admin/users/{user_id}/enable"),
     ("POST", "/api/v1/admin/users/{user_id}/force-logout"),
+    ("POST", "/api/v1/admin/users/{user_id}/reset-password"),
     # credit — AI 评语生成(含 LLM 成本归因审计)
     ("POST", "/api/v1/credit/companies/{company_id}/ai-summary/generate"),
     # product — 运营商品管理写操作

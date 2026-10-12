@@ -8,7 +8,7 @@
 """
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -454,8 +454,11 @@ async def set_member_status(
 ) -> tuple[User, BuyerMember]:
     """Owner 停用/启用本组织成员。
 
-    - 目标必须是本组织成员,否则 404(不泄露他组织用户是否存在)。
+    users.status 是平台级的,而成员关系是组织级的。owner 只能动"完全属于本组织"的账号:
+    - 目标必须是本组织的**非 owner** 成员、只持 BUYER 角色、且只属于这一个组织;
+      任一不满足 → 404(与"非成员"同口径,不泄露该用户的其他身份)。
     - 不能停用自己 → 400。
+    - 只允许 ACTIVE→DISABLED / DISABLED→ACTIVE;成员自己注销的 DEACTIVATED 不可被 owner 改动 → 400。
     - 已是目标状态 → 幂等返回,不写审计。
     - 停用不 bump token_version:get_current_user 每请求检查 status=DISABLED。
     """
@@ -466,12 +469,32 @@ async def set_member_status(
     row = await db.execute(
         select(User, BuyerMember)
         .join(BuyerMember, BuyerMember.user_id == User.id)
-        .where(BuyerMember.buyer_org_id == org.id, User.id == target_user_id)
+        .where(
+            BuyerMember.buyer_org_id == org.id,
+            BuyerMember.is_owner.is_(False),
+            User.id == target_user_id,
+        )
     )
     record = row.first()
     if record is None:
         raise NotFoundError("成员不存在")
     user, member = record
+
+    # 只属于这一个组织
+    membership_count = (await db.execute(
+        select(func.count(BuyerMember.id)).where(BuyerMember.user_id == user.id)
+    )).scalar_one()
+    # 只持 BUYER 角色
+    other_roles = (await db.execute(
+        select(func.count(UserRole.id))
+        .join(Role, Role.id == UserRole.role_id)
+        .where(UserRole.user_id == user.id, Role.code != RoleCode.BUYER)
+    )).scalar_one()
+    if membership_count != 1 or other_roles != 0:
+        raise NotFoundError("成员不存在")
+
+    if user.status == UserStatus.DEACTIVATED:
+        raise ValidationFailedError("该成员已注销账号,无法操作")
 
     new_status = UserStatus.ACTIVE if enabled else UserStatus.DISABLED
     if user.status == new_status:

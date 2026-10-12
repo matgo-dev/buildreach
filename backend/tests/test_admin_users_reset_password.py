@@ -80,6 +80,23 @@ async def test_operator_cannot_reset_403(client, superadmin_headers):
 
 
 @pytest.mark.asyncio
+async def test_cannot_change_super_admin_email_400(client, superadmin_headers):
+    """堵"改 super admin 邮箱 → 再重置密码"的绕过:super admin 邮箱不可经 admin 接口修改。"""
+    me = await client.get("/api/v1/auth/me", headers=superadmin_headers)
+    my_id = me.json()["data"]["id"]
+    r = await client.put(
+        f"/api/v1/admin/users/{my_id}",
+        json={"email": "hijack@x.com"}, headers=superadmin_headers,
+    )
+    assert r.status_code == 400, r.text
+    # 改姓名仍然允许
+    r2 = await client.put(
+        f"/api/v1/admin/users/{my_id}", json={"name": "Root"}, headers=superadmin_headers,
+    )
+    assert r2.status_code == 200, r2.text
+
+
+@pytest.mark.asyncio
 async def test_reset_weak_password_422(client, superadmin_headers):
     op_id = await _create_operator(client, superadmin_headers, "rp4@x.com")
     r = await client.post(

@@ -160,7 +160,7 @@ function MembersInner() {
                     </td>
                     <td className="px-4 py-3 text-slate-500">{formatRelativeTime(m.created_at, locale)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {!isSelf && !m.is_owner && (
+                      {!isSelf && !m.is_owner && m.status !== "DEACTIVATED" && (
                         m.status === "ACTIVE" ? (
                           <button
                             disabled={busyId === m.id}

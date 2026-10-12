@@ -9,7 +9,8 @@ export interface MemberOut {
   name: string;
   email: string | null;
   phone: string | null;
-  status: "ACTIVE" | "DISABLED";
+  /** DEACTIVATED = 成员自己注销,owner 不可操作 */
+  status: "ACTIVE" | "DISABLED" | "DEACTIVATED";
   is_owner: boolean;
   created_at: string;
 }

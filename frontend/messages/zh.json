@@ -1249,7 +1249,7 @@
       "actions": "操作"
     },
     "role": { "owner": "所有者", "member": "成员" },
-    "status": { "ACTIVE": "正常", "DISABLED": "已停用" },
+    "status": { "ACTIVE": "正常", "DISABLED": "已停用", "DEACTIVATED": "已注销" },
     "actions": { "disable": "停用", "enable": "启用", "cancel": "取消", "submit": "创建" },
     "confirmDisable": "确定停用 {email}?停用后该成员立即无法登录。",
     "toast": {
