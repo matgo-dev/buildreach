@@ -8,11 +8,13 @@ export interface PublicConfig {
   contact: {
     whatsapp_link: string | null;
     whatsapp_number: string | null;
+    whatsapp_qr_image: string | null;
     wechat_id: string | null;
     wechat_qr_image: string | null;
     email: string | null;
-    whatsapp_contact_name: string | null;
-    wechat_contact_name: string | null;
+    /** 按语言的称呼,如 {zh, en, sw} 或 {default};见后端 parse_localized_name */
+    whatsapp_contact_name: Record<string, string> | null;
+    wechat_contact_name: Record<string, string> | null;
   };
   auth: {
     require_email_verification: boolean;

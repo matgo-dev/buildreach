@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { MessageCircle, Star, X } from "lucide-react";
+import { MessageCircle, QrCode, Star, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useWhatsApp, useContactInfo } from "@/hooks/useWhatsApp";
 import { WeChatIcon } from "@/components/icons/WeChatIcon";
@@ -113,7 +113,7 @@ export function ContactPopover({
         <>
           {/* WhatsApp — 推荐 */}
           {wa.configured && (
-            <a
+                        <a
               href={wa.buildLink(context)!}
               target="_blank"
               rel="noopener noreferrer"
@@ -127,7 +127,7 @@ export function ContactPopover({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <span className="text-[12px] font-bold">WhatsApp</span>
-                  <span className="inline-flex items-center gap-0.5 text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
+                  <span className="inline-flex items-center gap-0.5 whitespace-nowrap text-[9px] bg-white/25 rounded-full px-1 py-px font-medium">
                     <Star className="h-2 w-2 fill-current" />
                     {t("recommended")}
                   </span>
@@ -150,6 +150,7 @@ export function ContactPopover({
                 <p className="text-[12px] font-bold text-navy">WeChat</p>
                 <p className="text-[10px] text-muted leading-tight">{contact.wechatContactName ? `${contact.wechatContactName} · ${t("contactRole")}` : t("floatWeChatDesc")}</p>
               </div>
+              <QrCode className="h-3.5 w-3.5 shrink-0 text-muted" />
             </button>
           )}
         </>
@@ -224,12 +225,16 @@ export function ContactPopover({
               <img
                 src={contact.wechatQrImage}
                 alt="WeChat QR Code"
-                className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
+                className="w-56 h-auto mx-auto rounded-lg border border-gray-100"
               />
-              {contact.wechatId && (
-                <p className="mt-3 text-sm text-muted">
-                  {t("wechatIdLabel")}: <span className="font-mono text-ink">{contact.wechatId}</span>
+              {contact.wechatContactName && (
+                <p className="mt-3 text-sm font-semibold text-ink">
+                  {contact.wechatContactName}
+                  <span className="ml-1.5 font-normal text-muted">· {t("contactRole")}</span>
                 </p>
+              )}
+              {contact.wechatId && (
+                <p className={`${contact.wechatContactName ? "mt-1" : "mt-3"} text-sm text-muted`}>{contact.wechatId}</p>
               )}
               <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
             </div>

@@ -715,7 +715,6 @@
     "chatOnWeChat": "WeChat",
     "wechatScanQr": "QR Code",
     "wechatAddUs": "Add Us on WeChat",
-    "wechatIdLabel": "WeChat ID",
     "wechatScanHint": "Scan with WeChat to add us",
     "waMsgGreeting": "Hi, {body}",
     "waMsgSep": ", ",

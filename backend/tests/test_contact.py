@@ -95,10 +95,11 @@ async def test_contact_info_includes_wechat_runtime_config(client: AsyncClient):
     """
     with patch("app.services.contact.settings") as mock_s:
         mock_s.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+        mock_s.WHATSAPP_QR_IMAGE = "/contact/wa-qr.png"
         mock_s.CONTACT_EMAIL = "support@example.com"
         mock_s.WECHAT_ID = "Matgo_Service"
         mock_s.WECHAT_QR_IMAGE = "/contact/wechat-qr.png"
-        mock_s.WHATSAPP_CONTACT_NAME = "廖先生"
+        mock_s.WHATSAPP_CONTACT_NAME = "zh=廖先生;en=Mr. Liao"
         mock_s.WECHAT_CONTACT_NAME = "林先生"
         resp = await client.get("/api/v1/contact/info")
 
@@ -108,11 +109,12 @@ async def test_contact_info_includes_wechat_runtime_config(client: AsyncClient):
     assert body["data"] == {
         "whatsapp_link": "https://wa.me/255697123456",
         "whatsapp_number": "+255 697 123 456",
+        "whatsapp_qr_image": "/contact/wa-qr.png",
         "wechat_id": "Matgo_Service",
         "wechat_qr_image": "/contact/wechat-qr.png",
         "email": "support@example.com",
-        "whatsapp_contact_name": "廖先生",
-        "wechat_contact_name": "林先生",
+        "whatsapp_contact_name": {"zh": "廖先生", "en": "Mr. Liao"},
+        "wechat_contact_name": {"default": "林先生"},
     }
 
 
@@ -121,6 +123,7 @@ async def test_contact_info_blank_wechat_config_returns_null(client: AsyncClient
     """微信未配置时前端拿到 null,从而隐藏 WeChat 入口。"""
     with patch("app.services.contact.settings") as mock_s:
         mock_s.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+        mock_s.WHATSAPP_QR_IMAGE = ""
         mock_s.CONTACT_EMAIL = "support@example.com"
         mock_s.WECHAT_ID = "  "
         mock_s.WECHAT_QR_IMAGE = ""
@@ -133,5 +136,6 @@ async def test_contact_info_blank_wechat_config_returns_null(client: AsyncClient
     assert body["code"] == 0
     assert body["data"]["wechat_id"] is None
     assert body["data"]["wechat_qr_image"] is None
+    assert body["data"]["whatsapp_qr_image"] is None
     assert body["data"]["whatsapp_contact_name"] is None
     assert body["data"]["wechat_contact_name"] is None

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/authStore";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
+import { imageUrl } from "@/lib/env";
 
 export interface WhatsAppContext {
   /** 商品名称 */
@@ -25,6 +26,12 @@ function resolveWhatsAppLink(raw: string | undefined | null): string | null {
   return digits ? `https://wa.me/${digits}` : null;
 }
 
+/** 按 当前语言 → en → 任意一个 回落取称呼 */
+function pickLocalizedName(names: Record<string, string> | null | undefined, locale: string): string | null {
+  if (!names) return null;
+  return names[locale] || names.en || Object.values(names)[0] || null;
+}
+
 /**
  * 平台联系方式（WhatsApp + WeChat + 邮箱）。
  * 派生自统一公开配置 usePublicConfig —— 配置由服务端运行时环境变量注入，
@@ -32,6 +39,7 @@ function resolveWhatsAppLink(raw: string | undefined | null): string | null {
  */
 export function useContactInfo() {
   const { data, isLoading } = usePublicConfig();
+  const locale = useLocale();
   const contact = data?.contact;
 
   const whatsappLink = contact?.whatsapp_link || resolveWhatsAppLink(contact?.whatsapp_number);
@@ -40,11 +48,13 @@ export function useContactInfo() {
     isLoading,
     whatsappLink,
     whatsappNumber: contact?.whatsapp_number?.trim() || null,
+    // 码图与商品图同路:相对路径 /static/... 拼到后端地址,绝对 URL 原样(生产反代同源,本地分端口)
+    whatsappQrImage: imageUrl(contact?.whatsapp_qr_image?.trim()) || null,
     wechatId: contact?.wechat_id?.trim() || null,
-    wechatQrImage: contact?.wechat_qr_image?.trim() || null,
+    wechatQrImage: imageUrl(contact?.wechat_qr_image?.trim()) || null,
     email: contact?.email?.trim() || null,
-    whatsappContactName: contact?.whatsapp_contact_name?.trim() || null,
-    wechatContactName: contact?.wechat_contact_name?.trim() || null,
+    whatsappContactName: pickLocalizedName(contact?.whatsapp_contact_name, locale),
+    wechatContactName: pickLocalizedName(contact?.wechat_contact_name, locale),
     configured: !!whatsappLink || !!contact?.email,
   };
 }
