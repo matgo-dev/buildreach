@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuthStore } from "@/stores/authStore";
 import { ApiError } from "@/lib/api";
 import { orgMembersApi, type MemberOut } from "@/lib/orgMembers";
-import { PASSWORD_RULE_MESSAGE, validateEmail, validatePassword, validateRequired } from "@/lib/validators";
+import { validateEmail, validatePassword, validateRequired } from "@/lib/validators";
 import { formatRelativeTime } from "@/lib/formatters";
 
 export default function BuyerMembersPage() {
@@ -274,7 +274,7 @@ function CreateMemberModal({ onClose, onCreated }: { onClose: () => void; onCrea
           <div className="space-y-1">
             <Label htmlFor="m-password" className="text-sm font-semibold text-slate-700">{t("form.password")}</Label>
             <input id="m-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} />
-            <p className="mt-1 text-xs text-slate-400">{PASSWORD_RULE_MESSAGE}</p>
+            <p className="mt-1 text-xs text-slate-400">{t("form.passwordRule")}</p>
           </div>
           <p className="text-xs text-muted">{t("form.hint")}</p>
           <div className="mt-5 flex justify-end gap-2">

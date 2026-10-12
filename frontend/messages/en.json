@@ -1269,6 +1269,7 @@
       "emailRequired": "Email is required",
       "emailFormat": "Invalid email format",
       "emailDomain": "Email domain not accepted",
+      "passwordRule": "6-20 characters, with at least two of: letters, digits, symbols",
       "hint": "The member signs in with email + initial password and must change it on first login."
     }
   },

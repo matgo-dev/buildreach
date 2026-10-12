@@ -96,9 +96,17 @@ class ChangePhoneIn(BaseModel):
 class MemberCreateIn(BaseModel):
     """Owner 建子账号。手机号不在此填,成员登录后在账户页自助维护。"""
 
-    name: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., max_length=100)
     email: NormalizedEmailStr
     password: str
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("姓名不能为空")
+        return v
 
     @field_validator("password")
     @classmethod

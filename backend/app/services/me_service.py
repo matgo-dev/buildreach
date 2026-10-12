@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -30,6 +31,7 @@ from app.db.models.buyer_organization import BuyerOrganization
 from app.db.models.role import Role, RoleCode
 from app.db.models.user import User, UserStatus
 from app.db.models.user_role import UserRole
+from app.services import session_service
 
 
 async def _load_user(db: AsyncSession, user_id: int) -> User:
@@ -404,10 +406,6 @@ async def create_member(
     """Owner 建子账号:User(BUYER, must_change_password=True) + BuyerMember(非 owner),单事务。"""
     _, org = await _require_owner_membership(db, owner_user_id)
 
-    dup = await db.execute(select(User.id).where(User.email == email))
-    if dup.scalar_one_or_none() is not None:
-        raise EmailAlreadyRegisteredError()
-
     role_row = await db.execute(select(Role).where(Role.code == RoleCode.BUYER))
     role = role_row.scalar_one_or_none()
     if role is None:
@@ -421,7 +419,12 @@ async def create_member(
         must_change_password=True,
     )
     db.add(user)
-    await db.flush()
+    # 邮箱唯一性以 uq_users_email 为唯一源头:并发同邮箱也只会有一个成功,另一个在此处拿 409
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise EmailAlreadyRegisteredError()
     db.add(UserRole(user_id=user.id, role_id=role.id))
     member = BuyerMember(user_id=user.id, buyer_org_id=org.id, is_owner=False)
     db.add(member)
@@ -500,6 +503,9 @@ async def set_member_status(
     if user.status == new_status:
         return user, member
     user.status = new_status
+    if not enabled:
+        # 停用即结束全部会话:启用后旧浏览器必须重新登录,不能靠残留的 refresh token 续登
+        await session_service.revoke_all_sessions(db, user_id=user.id)
 
     await write_audit(
         db,

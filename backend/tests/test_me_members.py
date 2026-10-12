@@ -96,6 +96,16 @@ async def test_create_member_duplicate_email_409(client):
 
 
 @pytest.mark.asyncio
+async def test_create_member_blank_name_422(client):
+    owner_h, _ = await _register_owner(client)
+    r = await client.post(
+        MEMBERS, json={"name": "   ", "email": "blank@test.com", "password": _MEMBER_PASSWORD},
+        headers=owner_h,
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_create_member_weak_password_422(client):
     owner_h, _ = await _register_owner(client)
     r = await client.post(
@@ -127,14 +137,27 @@ async def test_disable_other_org_user_404(client):
 
 
 @pytest.mark.asyncio
-async def test_disable_then_enable_member(client):
+async def test_disable_then_enable_member(client, db_session):
+    from sqlalchemy import func, select
+    from app.db.models.auth_session import AuthSession
+
     owner_h, _ = await _register_owner(client)
     email = f"emp{_next_phone().replace('+', '')}@test.com"
     created = (await _create_member(client, owner_h, email)).json()["data"]
+    # 成员先登录一次,持有有效 token + 会话行
+    member_login = await _login(client, email, _MEMBER_PASSWORD)
+    member_h = {"Authorization": f"Bearer {member_login.json()['data']['access_token']}"}
 
     r = await client.post(f"{MEMBERS}/{created['id']}/disable", headers=owner_h)
     assert r.status_code == 200, r.text
     assert r.json()["data"]["status"] == "DISABLED"
+
+    # 旧 token 立即失效(403 账号已停用),会话行被清空(启用后旧浏览器不能续登)
+    assert (await client.get("/api/v1/auth/me", headers=member_h)).status_code == 403
+    sessions = (await db_session.execute(
+        select(func.count(AuthSession.id)).where(AuthSession.user_id == created["id"])
+    )).scalar_one()
+    assert sessions == 0
 
     bad = await _login(client, email, _MEMBER_PASSWORD)
     assert bad.status_code in (401, 403)

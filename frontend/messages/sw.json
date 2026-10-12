@@ -1269,6 +1269,7 @@
       "emailRequired": "Barua pepe inahitajika",
       "emailFormat": "Muundo wa barua pepe si sahihi",
       "emailDomain": "Kikoa cha barua pepe hakikubaliki",
+      "passwordRule": "Herufi 6-20, zenye angalau aina mbili kati ya: herufi, tarakimu, alama",
       "hint": "Mwanachama anaingia kwa barua pepe + nenosiri la awali na lazima alibadilishe akiingia mara ya kwanza."
     }
   },
