@@ -12,7 +12,7 @@ export function MallFooter() {
   const t = useTranslations("mall");
   const contact = useContactInfo();
   const wa = useWhatsApp();
-  const [showQr, setShowQr] = useState(false);
+  const [qr, setQr] = useState<"wa" | "wx" | null>(null);
 
   return (
     <>
@@ -76,6 +76,11 @@ export function MallFooter() {
                   ) : (
                     contact.whatsappNumber
                   )}
+                  {contact.whatsappQrImage && (
+                    <button onClick={() => setQr("wa")} className="ml-1 shrink-0 rounded border border-line bg-white hover:border-teal-400 transition-colors" title={t("wechatScanQr")}>
+                      <img src={contact.whatsappQrImage} alt="WhatsApp QR" className="w-8 h-8 object-contain" />
+                    </button>
+                  )}
                 </p>
               )}
               {contact.wechatId && (
@@ -83,7 +88,7 @@ export function MallFooter() {
                   <WeChatIcon className="w-3.5 h-3.5 shrink-0" />
                   {contact.wechatQrImage ? (
                     <button
-                      onClick={() => setShowQr(true)}
+                      onClick={() => setQr("wx")}
                       className="hover:text-teal-900 hover:underline transition-colors"
                     >
                       {contact.wechatId}
@@ -92,16 +97,8 @@ export function MallFooter() {
                     <span>{contact.wechatId}</span>
                   )}
                   {contact.wechatQrImage && (
-                    <button
-                      onClick={() => setShowQr(true)}
-                      className="ml-1.5 shrink-0 rounded border border-line hover:border-teal-400 transition-colors overflow-hidden"
-                      title={t("wechatScanQr")}
-                    >
-                      <img
-                        src={contact.wechatQrImage}
-                        alt="WeChat QR"
-                        className="w-7 h-7 object-cover"
-                      />
+                    <button onClick={() => setQr("wx")} className="ml-1 shrink-0 rounded border border-line bg-white hover:border-teal-400 transition-colors" title={t("wechatScanQr")}>
+                      <img src={contact.wechatQrImage} alt="WeChat QR" className="w-8 h-8 object-contain" />
                     </button>
                   )}
                 </p>
@@ -127,38 +124,43 @@ export function MallFooter() {
         </div>
       </footer>
 
-      {/* WeChat QR 码弹窗 */}
-      {showQr && contact.wechatQrImage && (
+      {/* 二维码弹窗(WhatsApp / WeChat 共用,一次只看一个) */}
+      {qr && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50"
-          onClick={() => setShowQr(false)}
+          onClick={() => setQr(null)}
         >
           <div
             className="relative bg-white rounded-2xl p-6 shadow-2xl max-w-xs w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setShowQr(false)}
+              onClick={() => setQr(null)}
               className="absolute top-3 right-3 text-muted hover:text-ink-2 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <WeChatIcon className="w-6 h-6 text-[#07c160]" />
-                <h3 className="text-lg font-bold text-gray-900">{t("wechatAddUs")}</h3>
+                {qr === "wa" ? (
+                  <MessageCircle className="w-6 h-6 text-[#25d366]" />
+                ) : (
+                  <WeChatIcon className="w-6 h-6 text-[#07c160]" />
+                )}
+                <h3 className="text-lg font-bold text-gray-900">{qr === "wa" ? "WhatsApp" : "WeChat"}</h3>
               </div>
               <img
-                src={contact.wechatQrImage}
-                alt="WeChat QR Code"
-                className="w-52 h-52 mx-auto rounded-lg border border-gray-100"
+                src={(qr === "wa" ? contact.whatsappQrImage : contact.wechatQrImage) ?? ""}
+                alt={qr === "wa" ? "WhatsApp QR Code" : "WeChat QR Code"}
+                className="w-56 h-auto mx-auto rounded-lg border border-gray-100"
               />
-              {contact.wechatId && (
-                <p className="mt-3 text-sm text-muted">
-                  {t("wechatIdLabel")}: <span className="font-mono text-ink">{contact.wechatId}</span>
+              {(qr === "wa" ? contact.whatsappContactName : contact.wechatContactName) && (
+                <p className="mt-3 text-sm font-semibold text-ink">
+                  {qr === "wa" ? contact.whatsappContactName : contact.wechatContactName}
+                  <span className="ml-1.5 font-normal text-muted">· {t("contactRole")}</span>
                 </p>
               )}
-              <p className="mt-2 text-xs text-muted">{t("wechatScanHint")}</p>
+              <p className="mt-1 text-sm text-muted">{qr === "wa" ? contact.whatsappNumber : contact.wechatId}</p>
             </div>
           </div>
         </div>

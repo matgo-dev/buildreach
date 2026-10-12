@@ -4,7 +4,7 @@ import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { ArrowLeft, AlertCircle, Loader2, ShoppingCart } from "lucide-react";
+import { ArrowLeft, AlertCircle, Loader2, MessageCircle, ShoppingCart } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 import { ProductGallery } from "@/components/mall/ProductGallery";
+import { ContactPopover } from "@/components/mall/ContactPopover";
 import { buildCategoryPath } from "@/components/mall/CategoryBreadcrumb";
 import {
   SkuSelector,
@@ -265,7 +266,7 @@ function ZoneProductDetailContent() {
             )}
 
             {/* 询价 CTA */}
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
                 onClick={handleAddToInquiry}
                 disabled={adding || needsSelection}
@@ -274,6 +275,16 @@ function ZoneProductDetailContent() {
                 {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
                 {t("addToInquiry")}
               </button>
+              {/* 立即咨询:与商城详情页同款,WhatsApp 预填带商品名+编码 */}
+              <ContactPopover context={{ productName: product.name, productCode: product.spu_code }}>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-teal-700 bg-white px-6 py-2.5 text-sm font-semibold text-teal-900 transition-colors hover:bg-teal-50"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {tMall("detail.contactPlatform")}
+                </button>
+              </ContactPopover>
               {needsSelection && (
                 <span className="text-xs text-muted">{t("selectSpecFirst")}</span>
               )}

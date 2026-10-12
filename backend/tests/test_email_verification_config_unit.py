@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.core.config import email_verification_misconfigured, settings
-from app.services.contact import build_contact_payload
+from app.services.contact import build_contact_payload, parse_localized_name
 
 
 # ---- Settings.smtp_configured ----
@@ -72,41 +72,77 @@ class TestEmailVerificationMisconfigured:
 
 # ---- build_contact_payload ----
 
+class TestParseLocalizedName:
+    def test_single_value_is_default(self):
+        assert parse_localized_name(" 廖先生 ") == {"default": "廖先生"}
+
+    def test_localized_pairs(self):
+        assert parse_localized_name("zh=廖先生; EN = Mr. Liao ;sw=Bw. Liao") == {
+            "zh": "廖先生", "en": "Mr. Liao", "sw": "Bw. Liao",
+        }
+
+    def test_mixed_default_and_pairs(self):
+        assert parse_localized_name("廖先生;en=Mr. Liao") == {"default": "廖先生", "en": "Mr. Liao"}
+
+    def test_blank_segments_and_empty_values_ignored(self):
+        assert parse_localized_name("zh=;;en=Mr. Liao;") == {"en": "Mr. Liao"}
+
+    def test_blank_or_all_empty_returns_none(self):
+        assert parse_localized_name(None) is None
+        assert parse_localized_name("   ") is None
+        assert parse_localized_name("zh=;en=") is None
+
+
 class TestBuildContactPayload:
     def test_all_configured(self):
         with patch("app.services.contact.settings") as mock_s:
             mock_s.WHATSAPP_DEFAULT_NUMBER = "+255 697 123 456"
+            mock_s.WHATSAPP_QR_IMAGE = "/contact/wa-qr.png"
             mock_s.CONTACT_EMAIL = "support@example.com"
             mock_s.WECHAT_ID = "Matgo_Service"
             mock_s.WECHAT_QR_IMAGE = "/contact/wechat-qr.png"
+            mock_s.WHATSAPP_CONTACT_NAME = " 廖先生 "
+            mock_s.WECHAT_CONTACT_NAME = "林先生"
             assert build_contact_payload() == {
                 "whatsapp_link": "https://wa.me/255697123456",
                 "whatsapp_number": "+255 697 123 456",
+                "whatsapp_qr_image": "/contact/wa-qr.png",
                 "wechat_id": "Matgo_Service",
                 "wechat_qr_image": "/contact/wechat-qr.png",
                 "email": "support@example.com",
+                "whatsapp_contact_name": {"default": "廖先生"},
+                "wechat_contact_name": {"default": "林先生"},
             }
 
     def test_blank_fields_become_null(self):
         with patch("app.services.contact.settings") as mock_s:
             mock_s.WHATSAPP_DEFAULT_NUMBER = ""
+            mock_s.WHATSAPP_QR_IMAGE = "/contact/wa-qr.png"   # 号码没配时码也不该下发
             mock_s.CONTACT_EMAIL = ""
             mock_s.WECHAT_ID = "   "     # 纯空白视为未配置
             mock_s.WECHAT_QR_IMAGE = ""
+            mock_s.WHATSAPP_CONTACT_NAME = "  "
+            mock_s.WECHAT_CONTACT_NAME = ""
             payload = build_contact_payload()
         assert payload["whatsapp_link"] is None
         assert payload["whatsapp_number"] is None
+        assert payload["whatsapp_qr_image"] is None
         assert payload["wechat_id"] is None
         assert payload["wechat_qr_image"] is None
         assert payload["email"] is None
+        assert payload["whatsapp_contact_name"] is None
+        assert payload["wechat_contact_name"] is None
 
     def test_number_present_but_unparseable_nulls_number(self):
         # 号码只有符号 → 解析不出链接,number 也应为 None(与 link 一致)
         with patch("app.services.contact.settings") as mock_s:
             mock_s.WHATSAPP_DEFAULT_NUMBER = "+  - "
+            mock_s.WHATSAPP_QR_IMAGE = ""
             mock_s.CONTACT_EMAIL = "a@b.com"
             mock_s.WECHAT_ID = ""
             mock_s.WECHAT_QR_IMAGE = ""
+            mock_s.WHATSAPP_CONTACT_NAME = ""
+            mock_s.WECHAT_CONTACT_NAME = ""
             payload = build_contact_payload()
         assert payload["whatsapp_link"] is None
         assert payload["whatsapp_number"] is None

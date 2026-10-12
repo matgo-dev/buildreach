@@ -116,9 +116,16 @@ class Settings(BaseSettings):
 
     # WhatsApp 客服号码(允许带 +、空格、横线,解析时规范化)
     WHATSAPP_DEFAULT_NUMBER: str = "+255 758 311 131"
+    # WhatsApp 官方二维码图(Business App「短链接」导出后上传;空则不显示码入口)
+    WHATSAPP_QR_IMAGE: str = ""
 
     # 客服邮箱
     CONTACT_EMAIL: str = "2026matmart@gmail.com"
+
+    # 各渠道联系人称呼,前端入口展示;空则显示通用描述。两渠道可能不是同一人,分开配。
+    # 单值 "廖先生" 或按语言 "zh=廖先生;en=Mr. Liao;sw=Bw. Liao"(解析见 services.contact.parse_localized_name)
+    WHATSAPP_CONTACT_NAME: str = ""
+    WECHAT_CONTACT_NAME: str = ""
 
     # 微信客服配置。未配置时前端隐藏 WeChat 入口。
     WECHAT_ID: str = ""
