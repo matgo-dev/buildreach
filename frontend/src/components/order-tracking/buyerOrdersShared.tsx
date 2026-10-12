@@ -12,7 +12,7 @@ import {
   type PortalValueSegments,
   type ShipmentStage,
 } from "@/lib/api/buyerOrders";
-import { lookup, segmentShares, type SegmentKey } from "./orderProgress";
+import { lookup, segmentShares, sharePercentLabel, type SegmentKey } from "./orderProgress";
 
 /** 订单级(整单事实六态)/ 柜级(递进链)阶段 → i18n key + 徽标配色。API 只给 code,标签在 messages。
  *  两套只在 ARRIVED 上同名且含义一致(全部到港 / 本柜到港),故一张表。 */
@@ -81,7 +81,7 @@ export function ValueSegmentBar({ segments, legend = false }: { segments: Portal
   const t = useTranslations("orderTracking");
   const shares = segmentShares(segments).filter((s) => s.share > 0);
   if (shares.length === 0) return null;
-  const pct = (share: number) => `${Math.round(share * 100)}%`;
+  const pct = sharePercentLabel;
   return (
     <div>
       <div

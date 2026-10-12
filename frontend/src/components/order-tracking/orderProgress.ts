@@ -107,3 +107,9 @@ export function segmentShares(segments: PortalValueSegments): { key: SegmentKey;
   const total = amounts.reduce((a, b) => a + b, 0);
   return SEGMENT_KEYS.map((key, i) => ({ key, share: total > 0 ? amounts[i] / total : 0 }));
 }
+
+/** 占比 → 百分比文字。非零但不足 1% 显示「<1%」:一柜货值在百万大单里只占零点几,四舍五入成 0% 会让客户以为那柜没货。 */
+export function sharePercentLabel(share: number): string {
+  if (share > 0 && share < 0.01) return "<1%";
+  return `${Math.round(share * 100)}%`;
+}
