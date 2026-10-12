@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.email import NormalizedEmailStr
+from app.core.security import PASSWORD_RULE_MESSAGE, validate_password_strength
 
 # 与 schemas/auth.py 中的 USERNAME_REGEX 保持一致
 USERNAME_REGEX = re.compile(r"^(?![0-9]+$)[A-Za-z0-9_\-]{3,50}$")
@@ -89,3 +91,28 @@ class ChangePhoneIn(BaseModel):
     new_phone: str | None = Field(default=None, max_length=30)
     phone_region: str | None = Field(default=None, max_length=2)
     current_password: str = Field(..., min_length=1)
+
+
+class MemberCreateIn(BaseModel):
+    """Owner 建子账号。手机号不在此填,成员登录后在账户页自助维护。"""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    email: NormalizedEmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _check(cls, v: str) -> str:
+        if not validate_password_strength(v):
+            raise ValueError(PASSWORD_RULE_MESSAGE)
+        return v
+
+
+class MemberOut(BaseModel):
+    id: int
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    status: str
+    is_owner: bool
+    created_at: datetime

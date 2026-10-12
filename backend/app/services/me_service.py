@@ -16,16 +16,20 @@ from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
 from app.core.exceptions import (
     ConflictError,
+    EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     NotFoundError,
     PermissionDeniedError,
+    ValidationFailedError,
 )
 from app.core.phone import normalize_phone_to_e164, try_normalize_phone
-from app.core.security import verify_password
+from app.core.security import hash_password, verify_password
 from app.db.models.audit_log import AuditStatus
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrganization
-from app.db.models.user import User
+from app.db.models.role import Role, RoleCode
+from app.db.models.user import User, UserStatus
+from app.db.models.user_role import UserRole
 
 
 async def _load_user(db: AsyncSession, user_id: int) -> User:
@@ -369,3 +373,71 @@ async def change_username(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+# ----- 组织成员管理(仅 owner) -----
+
+async def list_members(
+    db: AsyncSession, *, user_id: int
+) -> list[tuple[User, BuyerMember]]:
+    """本组织全部成员,owner 排前、其次按 id。成员数个位数到几十,不分页。"""
+    _, org = await _require_owner_membership(db, user_id)
+    rows = await db.execute(
+        select(User, BuyerMember)
+        .join(BuyerMember, BuyerMember.user_id == User.id)
+        .where(BuyerMember.buyer_org_id == org.id)
+        .order_by(BuyerMember.is_owner.desc(), User.id)
+    )
+    return [(u, m) for u, m in rows.all()]
+
+
+async def create_member(
+    db: AsyncSession,
+    *,
+    owner_user_id: int,
+    owner_email: str | None,
+    name: str,
+    email: str,
+    password: str,
+    request: Request | None = None,
+) -> tuple[User, BuyerMember]:
+    """Owner 建子账号:User(BUYER, must_change_password=True) + BuyerMember(非 owner),单事务。"""
+    _, org = await _require_owner_membership(db, owner_user_id)
+
+    dup = await db.execute(select(User.id).where(User.email == email))
+    if dup.scalar_one_or_none() is not None:
+        raise EmailAlreadyRegisteredError()
+
+    role_row = await db.execute(select(Role).where(Role.code == RoleCode.BUYER))
+    role = role_row.scalar_one_or_none()
+    if role is None:
+        raise NotFoundError("Role not found: BUYER")
+
+    user = User(
+        email=email,
+        name=name,
+        password_hash=hash_password(password),
+        status=UserStatus.ACTIVE,
+        must_change_password=True,
+    )
+    db.add(user)
+    await db.flush()
+    db.add(UserRole(user_id=user.id, role_id=role.id))
+    member = BuyerMember(user_id=user.id, buyer_org_id=org.id, is_owner=False)
+    db.add(member)
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.MEMBER_CREATE,
+        user_id=owner_user_id,
+        user_email=owner_email,
+        resource_id=user.id,
+        request=request,
+        extra={"buyer_org_id": org.id, "target_user_id": user.id, "target_email": email},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(member)
+    return user, member

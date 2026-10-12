@@ -39,7 +39,10 @@ from app.schemas.auth import (
     SupplierRegisterIn,
     TokenOut,
 )
-from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, OrgUpdateIn, ProfileUpdateIn
+from app.schemas.me import (
+    ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, MemberCreateIn, MemberOut,
+    OrgUpdateIn, ProfileUpdateIn,
+)
 from app.services import auth_service, me_service, session_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
@@ -877,6 +880,56 @@ async def update_my_organization(
         "status": org.status,
         "is_owner": True,
     })
+
+
+# ----- 组织成员管理(仅买方组织 owner) -----
+
+def _member_payload(user: User, member: BuyerMember) -> dict:
+    return MemberOut(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        phone=user.phone,
+        status=user.status,
+        is_owner=member.is_owner,
+        created_at=member.created_at,
+    ).model_dump(mode="json")
+
+
+@router.get(
+    "/me/organization/members",
+    summary="本组织成员列表(仅 owner)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def list_my_members(
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await me_service.list_members(db, user_id=current.id)
+    return success([_member_payload(u, m) for u, m in rows])
+
+
+@router.post(
+    "/me/organization/members",
+    summary="建子账号(仅 owner;首次登录强制改密)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def create_my_member(
+    body: MemberCreateIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.create_member(
+        db,
+        owner_user_id=current.id,
+        owner_email=current.email,
+        name=body.name,
+        email=body.email,
+        password=body.password,
+        request=request,
+    )
+    return success(_member_payload(user, member))
 
 
 @router.post(
