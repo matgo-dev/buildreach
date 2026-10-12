@@ -861,6 +861,9 @@ async def update_my_organization(
         user_email=current.email,
         name=body.name,
         unified_social_credit_code=body.unified_social_credit_code,
+        address=body.address,
+        tin=body.tin,
+        brela_no=body.brela_no,
         request=request,
     )
     return success({
@@ -868,6 +871,9 @@ async def update_my_organization(
         "id": org.id,
         "name": org.name,
         "unified_social_credit_code": org.unified_social_credit_code,
+        "address": org.address,
+        "tin": org.tin,
+        "brela_no": org.brela_no,
         "status": org.status,
         "is_owner": True,
     })

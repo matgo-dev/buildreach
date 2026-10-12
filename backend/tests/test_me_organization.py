@@ -182,3 +182,31 @@ async def test_operator_search_buyer_org_by_uscc(client):
     assert r.status_code == 200, r.text
     items = r.json()["data"]["items"]
     assert any(it["unified_social_credit_code"] == _USCC for it in items)
+
+
+@pytest.mark.asyncio
+async def test_owner_update_tz_fields(client):
+    """地址 / TIN / BRELA 号可改;PATCH 语义:不传不动,空串清空。"""
+    h, _ = await _register_owner(client)
+    r = await client.patch(
+        "/api/v1/auth/me/organization",
+        json={"address": "Plot 12, Dar", "tin": "123-456-789", "brela_no": "BRELA-001"},
+        headers=h,
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["address"] == "Plot 12, Dar"
+    assert data["tin"] == "123-456-789"
+    assert data["brela_no"] == "BRELA-001"
+
+    # /me 同步反映
+    me = await client.get("/api/v1/auth/me", headers=h)
+    org = me.json()["data"]["organization"]
+    assert org["tin"] == "123-456-789"
+    assert org["brela_no"] == "BRELA-001"
+
+    # 只传 tin 空串 → tin 清空,address 不动
+    r2 = await client.patch("/api/v1/auth/me/organization", json={"tin": ""}, headers=h)
+    assert r2.status_code == 200
+    assert r2.json()["data"]["tin"] is None
+    assert r2.json()["data"]["address"] == "Plot 12, Dar"

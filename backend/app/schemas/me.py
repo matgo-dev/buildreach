@@ -38,11 +38,15 @@ class OrgUpdateIn(BaseModel):
 
     PATCH 语义:不传 = 不修改。
     - name 传入即必须非空(组织名 NOT NULL,不允许清空)。
-    - unified_social_credit_code 传空字符串 = 清空(该字段可空且唯一)。
+    - 其余字段传空字符串 = 清空(均可空)。
+    - unified_social_credit_code 唯一;坦桑字段(address/tin/brela_no)不做唯一约束。
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     unified_social_credit_code: str | None = Field(default=None, max_length=18)
+    address: str | None = Field(default=None, max_length=255)
+    tin: str | None = Field(default=None, max_length=50)
+    brela_no: str | None = Field(default=None, max_length=50)
 
 
 class ChangeEmailIn(BaseModel):

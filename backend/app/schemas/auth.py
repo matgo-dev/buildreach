@@ -175,6 +175,10 @@ class OrganizationOut(BaseModel):
     status: str | None = None
     # 买方组织统一社会信用代码(供 owner 自助维护 + 运营授权检索);supplier 恒 None
     unified_social_credit_code: str | None = None
+    # 坦桑场景组织字段(owner 可自助维护);supplier 恒 None
+    address: str | None = None
+    tin: str | None = None
+    brela_no: str | None = None
 
 
 class ZoneOut(BaseModel):

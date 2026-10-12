@@ -132,25 +132,19 @@ async def update_profile(
     return user
 
 
-async def update_buyer_organization(
-    db: AsyncSession,
-    *,
-    user_id: int,
-    user_email: str | None,
-    name: str | None,
-    unified_social_credit_code: str | None,
-    request: Request | None = None,
-) -> BuyerOrganization:
-    """Owner 修改自己所属买方组织的资料。PATCH 语义:None=不改。
+async def _require_owner_membership(
+    db: AsyncSession, user_id: int
+) -> tuple[BuyerMember, BuyerOrganization]:
+    """取当前用户的买方组织成员关系(owner 优先),非 owner → 403。
 
-    - 仅 is_owner=True 的成员可改,否则 403(其他成员只读)。
-    - name 传入即非空(schema 保证);unified_social_credit_code 传空串=清空。
-    - unified_social_credit_code 唯一,撞其他组织 → 409。
+    与 dependencies._load_organization 同序(is_owner desc, id asc),保证
+    /me 显示的组织与这里操作的组织是同一个。
     """
     row = await db.execute(
         select(BuyerMember, BuyerOrganization)
         .join(BuyerOrganization, BuyerOrganization.id == BuyerMember.buyer_org_id)
         .where(BuyerMember.user_id == user_id)
+        .order_by(BuyerMember.is_owner.desc(), BuyerMember.id)
         .limit(1)
     )
     record = row.first()
@@ -158,7 +152,29 @@ async def update_buyer_organization(
         raise NotFoundError("未关联任何买方组织")
     member, org = record
     if not member.is_owner:
-        raise PermissionDeniedError("仅组织所有者可修改组织信息")
+        raise PermissionDeniedError("仅组织所有者可执行此操作")
+    return member, org
+
+
+async def update_buyer_organization(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    user_email: str | None,
+    name: str | None,
+    unified_social_credit_code: str | None,
+    address: str | None = None,
+    tin: str | None = None,
+    brela_no: str | None = None,
+    request: Request | None = None,
+) -> BuyerOrganization:
+    """Owner 修改自己所属买方组织的资料。PATCH 语义:None=不改。
+
+    - 仅 is_owner=True 的成员可改,否则 403(其他成员只读)。
+    - name 传入即非空(schema 保证);其余字段传空串=清空。
+    - unified_social_credit_code 唯一,撞其他组织 → 409。
+    """
+    _, org = await _require_owner_membership(db, user_id)
 
     changes: dict[str, dict[str, str | None]] = {}
 
@@ -182,6 +198,16 @@ async def update_buyer_organization(
                 "old": org.unified_social_credit_code, "new": new_uscc,
             }
             org.unified_social_credit_code = new_uscc
+
+    # 坦桑字段:无唯一约束,统一"空串=清空"
+    for field_name, raw in (("address", address), ("tin", tin), ("brela_no", brela_no)):
+        if raw is None:
+            continue
+        cleaned = raw.strip() or None
+        old = getattr(org, field_name)
+        if cleaned != old:
+            changes[field_name] = {"old": old, "new": cleaned}
+            setattr(org, field_name, cleaned)
 
     if not changes:
         return org
