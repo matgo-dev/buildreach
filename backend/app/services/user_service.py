@@ -14,6 +14,7 @@ from app.db.models.permission import Permission  # noqa: F401  (确保 metadata 
 from app.db.models.role import Role, RoleCode
 from app.db.models.user import User, UserStatus
 from app.db.models.user_role import UserRole
+from app.services import session_service
 
 ALLOWED_INTERNAL_ROLES = {RoleCode.ADMIN, RoleCode.OPERATOR}
 
@@ -149,6 +150,9 @@ async def update_user(
         target.name = name
 
     if email is not None and email != target.email:
+        # super admin 的邮箱是"不能停用 / 不能重置密码"两道守卫的判定依据,改了就能绕过
+        if target.email == settings.SUPER_ADMIN_EMAIL:
+            raise ValidationFailedError("不能修改 super admin 的邮箱")
         # 检查邮箱唯一(排除 DISABLED)
         row = await db.execute(
             select(User.id).where(
@@ -289,6 +293,53 @@ async def enable_user(
         db,
         resource_type=AuditResourceType.USER,
         action=AuditAction.USER_ENABLE,
+        user_id=actor_user_id,
+        user_email=actor_user_email,
+        resource_id=target.id,
+        request=request,
+        extra={"target_user_id": target.id, "target_email": target.email},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(target)
+    return target
+
+
+async def reset_password(
+    db: AsyncSession,
+    *,
+    target_user_id: int,
+    actor_user_id: int,
+    actor_user_email: str,
+    new_password: str,
+    request: Request | None = None,
+) -> User:
+    """ADMIN 重置任意用户密码。
+
+    - 不能重置自己(走 /auth/change-password)
+    - 不能重置 super admin(与 disable_user 口径一致)
+    - 密码规则由 schema 校验;此处再兜一次,防止被绕过 schema 直接调用
+    - must_change_password=True + token_version+1 + 清会话:旧 token 立刻失效,首登强制改密
+    """
+    target = await db.get(User, target_user_id)
+    if target is None:
+        raise NotFoundError("User not found")
+    if target.id == actor_user_id:
+        raise ValidationFailedError("不能重置自己的密码,请使用「修改密码」")
+    if target.email == settings.SUPER_ADMIN_EMAIL:
+        raise ValidationFailedError("不能重置 super admin 密码")
+    if not validate_password_strength(new_password):
+        raise ValidationFailedError(PASSWORD_RULE_MESSAGE)
+
+    target.password_hash = hash_password(new_password)
+    target.must_change_password = True
+    target.token_version += 1
+    await session_service.revoke_all_sessions(db, user_id=target.id)
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.PASSWORD_RESET_BY_ADMIN,
         user_id=actor_user_id,
         user_email=actor_user_email,
         resource_id=target.id,

@@ -8,7 +8,8 @@
 """
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -16,16 +17,21 @@ from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
 from app.core.exceptions import (
     ConflictError,
+    EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     NotFoundError,
     PermissionDeniedError,
+    ValidationFailedError,
 )
 from app.core.phone import normalize_phone_to_e164, try_normalize_phone
-from app.core.security import verify_password
+from app.core.security import hash_password, verify_password
 from app.db.models.audit_log import AuditStatus
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrganization
-from app.db.models.user import User
+from app.db.models.role import Role, RoleCode
+from app.db.models.user import User, UserStatus
+from app.db.models.user_role import UserRole
+from app.services import session_service
 
 
 async def _load_user(db: AsyncSession, user_id: int) -> User:
@@ -132,25 +138,19 @@ async def update_profile(
     return user
 
 
-async def update_buyer_organization(
-    db: AsyncSession,
-    *,
-    user_id: int,
-    user_email: str | None,
-    name: str | None,
-    unified_social_credit_code: str | None,
-    request: Request | None = None,
-) -> BuyerOrganization:
-    """Owner 修改自己所属买方组织的资料。PATCH 语义:None=不改。
+async def _require_owner_membership(
+    db: AsyncSession, user_id: int
+) -> tuple[BuyerMember, BuyerOrganization]:
+    """取当前用户的买方组织成员关系(owner 优先),非 owner → 403。
 
-    - 仅 is_owner=True 的成员可改,否则 403(其他成员只读)。
-    - name 传入即非空(schema 保证);unified_social_credit_code 传空串=清空。
-    - unified_social_credit_code 唯一,撞其他组织 → 409。
+    与 dependencies._load_organization 同序(is_owner desc, id asc),保证
+    /me 显示的组织与这里操作的组织是同一个。
     """
     row = await db.execute(
         select(BuyerMember, BuyerOrganization)
         .join(BuyerOrganization, BuyerOrganization.id == BuyerMember.buyer_org_id)
         .where(BuyerMember.user_id == user_id)
+        .order_by(BuyerMember.is_owner.desc(), BuyerMember.id)
         .limit(1)
     )
     record = row.first()
@@ -158,7 +158,29 @@ async def update_buyer_organization(
         raise NotFoundError("未关联任何买方组织")
     member, org = record
     if not member.is_owner:
-        raise PermissionDeniedError("仅组织所有者可修改组织信息")
+        raise PermissionDeniedError("仅组织所有者可执行此操作")
+    return member, org
+
+
+async def update_buyer_organization(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    user_email: str | None,
+    name: str | None,
+    unified_social_credit_code: str | None,
+    address: str | None = None,
+    tin: str | None = None,
+    brela_no: str | None = None,
+    request: Request | None = None,
+) -> BuyerOrganization:
+    """Owner 修改自己所属买方组织的资料。PATCH 语义:None=不改。
+
+    - 仅 is_owner=True 的成员可改,否则 403(其他成员只读)。
+    - name 传入即非空(schema 保证);其余字段传空串=清空。
+    - unified_social_credit_code 唯一,撞其他组织 → 409。
+    """
+    _, org = await _require_owner_membership(db, user_id)
 
     changes: dict[str, dict[str, str | None]] = {}
 
@@ -182,6 +204,16 @@ async def update_buyer_organization(
                 "old": org.unified_social_credit_code, "new": new_uscc,
             }
             org.unified_social_credit_code = new_uscc
+
+    # 坦桑字段:无唯一约束,统一"空串=清空"
+    for field_name, raw in (("address", address), ("tin", tin), ("brela_no", brela_no)):
+        if raw is None:
+            continue
+        cleaned = raw.strip() or None
+        old = getattr(org, field_name)
+        if cleaned != old:
+            changes[field_name] = {"old": old, "new": cleaned}
+            setattr(org, field_name, cleaned)
 
     if not changes:
         return org
@@ -343,3 +375,240 @@ async def change_username(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+# ----- 组织成员管理(仅 owner) -----
+
+async def list_members(
+    db: AsyncSession, *, user_id: int
+) -> list[tuple[User, BuyerMember]]:
+    """本组织全部成员,owner 排前、其次按 id。成员数个位数到几十,不分页。"""
+    _, org = await _require_owner_membership(db, user_id)
+    rows = await db.execute(
+        select(User, BuyerMember)
+        .join(BuyerMember, BuyerMember.user_id == User.id)
+        .where(BuyerMember.buyer_org_id == org.id)
+        .order_by(BuyerMember.is_owner.desc(), User.id)
+    )
+    return [(u, m) for u, m in rows.all()]
+
+
+async def create_member(
+    db: AsyncSession,
+    *,
+    owner_user_id: int,
+    owner_email: str | None,
+    name: str,
+    email: str,
+    password: str,
+    request: Request | None = None,
+) -> tuple[User, BuyerMember]:
+    """Owner 建子账号:User(BUYER, must_change_password=True) + BuyerMember(非 owner),单事务。"""
+    _, org = await _require_owner_membership(db, owner_user_id)
+
+    role_row = await db.execute(select(Role).where(Role.code == RoleCode.BUYER))
+    role = role_row.scalar_one_or_none()
+    if role is None:
+        raise NotFoundError("Role not found: BUYER")
+
+    user = User(
+        email=email,
+        name=name,
+        password_hash=hash_password(password),
+        status=UserStatus.ACTIVE,
+        must_change_password=True,
+    )
+    db.add(user)
+    # 邮箱唯一性以 uq_users_email 为唯一源头:并发同邮箱也只会有一个成功,另一个在此处拿 409
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise EmailAlreadyRegisteredError()
+    db.add(UserRole(user_id=user.id, role_id=role.id))
+    member = BuyerMember(user_id=user.id, buyer_org_id=org.id, is_owner=False)
+    db.add(member)
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.MEMBER_CREATE,
+        user_id=owner_user_id,
+        user_email=owner_email,
+        resource_id=user.id,
+        request=request,
+        extra={"buyer_org_id": org.id, "target_user_id": user.id, "target_email": email},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(member)
+    return user, member
+
+
+async def _require_manageable_member(
+    db: AsyncSession, org: BuyerOrganization, target_user_id: int
+) -> tuple[User, BuyerMember]:
+    """取 owner 可管理的成员。users 表字段是平台级的,成员关系是组织级的,
+    所以只有"完全属于本组织"的账号 owner 才能动:
+
+    - 本组织的非 owner 成员、只持 BUYER 角色、只属于这一个组织;任一不满足 → 404
+      (与"非成员"同口径,不泄露该用户的其他身份)。
+    - 成员自己注销的 DEACTIVATED 不可被 owner 改动 → 400。
+    """
+    row = await db.execute(
+        select(User, BuyerMember)
+        .join(BuyerMember, BuyerMember.user_id == User.id)
+        .where(
+            BuyerMember.buyer_org_id == org.id,
+            BuyerMember.is_owner.is_(False),
+            User.id == target_user_id,
+        )
+    )
+    record = row.first()
+    if record is None:
+        raise NotFoundError("成员不存在")
+    user, member = record
+
+    membership_count = (await db.execute(
+        select(func.count(BuyerMember.id)).where(BuyerMember.user_id == user.id)
+    )).scalar_one()
+    other_roles = (await db.execute(
+        select(func.count(UserRole.id))
+        .join(Role, Role.id == UserRole.role_id)
+        .where(UserRole.user_id == user.id, Role.code != RoleCode.BUYER)
+    )).scalar_one()
+    if membership_count != 1 or other_roles != 0:
+        raise NotFoundError("成员不存在")
+
+    if user.status == UserStatus.DEACTIVATED:
+        raise ValidationFailedError("该成员已注销账号,无法操作")
+    return user, member
+
+
+async def set_member_status(
+    db: AsyncSession,
+    *,
+    owner_user_id: int,
+    owner_email: str | None,
+    target_user_id: int,
+    enabled: bool,
+    request: Request | None = None,
+) -> tuple[User, BuyerMember]:
+    """Owner 停用/启用本组织成员。
+
+    users.status 是平台级的,而成员关系是组织级的。owner 只能动"完全属于本组织"的账号:
+    - 目标必须是本组织的**非 owner** 成员、只持 BUYER 角色、且只属于这一个组织;
+      任一不满足 → 404(与"非成员"同口径,不泄露该用户的其他身份)。
+    - 不能停用自己 → 400。
+    - 只允许 ACTIVE→DISABLED / DISABLED→ACTIVE;成员自己注销的 DEACTIVATED 不可被 owner 改动 → 400。
+    - 已是目标状态 → 幂等返回,不写审计。
+    - 停用不 bump token_version:get_current_user 每请求检查 status=DISABLED。
+    """
+    _, org = await _require_owner_membership(db, owner_user_id)
+    if not enabled and target_user_id == owner_user_id:
+        raise ValidationFailedError("不能停用自己的账号")
+    user, member = await _require_manageable_member(db, org, target_user_id)
+
+    new_status = UserStatus.ACTIVE if enabled else UserStatus.DISABLED
+    if user.status == new_status:
+        return user, member
+    user.status = new_status
+    if not enabled:
+        # 停用即结束全部会话:启用后旧浏览器必须重新登录,不能靠残留的 refresh token 续登
+        await session_service.revoke_all_sessions(db, user_id=user.id)
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.MEMBER_ENABLE if enabled else AuditAction.MEMBER_DISABLE,
+        user_id=owner_user_id,
+        user_email=owner_email,
+        resource_id=user.id,
+        request=request,
+        extra={"buyer_org_id": org.id, "target_user_id": user.id, "target_email": user.email},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(user)
+    return user, member
+
+
+async def update_member(
+    db: AsyncSession,
+    *,
+    owner_user_id: int,
+    owner_email: str | None,
+    target_user_id: int,
+    name: str | None,
+    email: str | None,
+    request: Request | None = None,
+) -> tuple[User, BuyerMember]:
+    """Owner 改成员姓名/邮箱(子账号归组织)。PATCH 语义:None=不改。邮箱唯一以索引为准 → 409。"""
+    _, org = await _require_owner_membership(db, owner_user_id)
+    user, member = await _require_manageable_member(db, org, target_user_id)
+
+    changes: dict[str, dict[str, str | None]] = {}
+    if name is not None and name != user.name:
+        changes["name"] = {"old": user.name, "new": name}
+        user.name = name
+    if email is not None and email != user.email:
+        changes["email"] = {"old": user.email, "new": email}
+        user.email = email
+    if not changes:
+        return user, member
+
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise EmailAlreadyRegisteredError()
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.MEMBER_UPDATE,
+        user_id=owner_user_id,
+        user_email=owner_email,
+        resource_id=user.id,
+        request=request,
+        extra={"buyer_org_id": org.id, "target_user_id": user.id, "changes": changes},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(user)
+    return user, member
+
+
+async def reset_member_password(
+    db: AsyncSession,
+    *,
+    owner_user_id: int,
+    owner_email: str | None,
+    target_user_id: int,
+    new_password: str,
+    request: Request | None = None,
+) -> tuple[User, BuyerMember]:
+    """Owner 重置成员密码:与 ADMIN 重置同口径——直设 + 首登强制改密 + 旧 token/会话全失效。"""
+    _, org = await _require_owner_membership(db, owner_user_id)
+    user, member = await _require_manageable_member(db, org, target_user_id)
+
+    user.password_hash = hash_password(new_password)
+    user.must_change_password = True
+    user.token_version += 1
+    await session_service.revoke_all_sessions(db, user_id=user.id)
+
+    await write_audit(
+        db,
+        resource_type=AuditResourceType.USER,
+        action=AuditAction.MEMBER_PASSWORD_RESET,
+        user_id=owner_user_id,
+        user_email=owner_email,
+        resource_id=user.id,
+        request=request,
+        extra={"buyer_org_id": org.id, "target_user_id": user.id, "target_email": user.email},
+        commit=False,
+    )
+    await db.commit()
+    await db.refresh(user)
+    return user, member

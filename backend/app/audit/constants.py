@@ -45,6 +45,12 @@ class AuditAction(str, Enum):
     USER_DISABLE = "USER_DISABLE"       # ADMIN 停用账号
     USER_ENABLE = "USER_ENABLE"         # ADMIN 启用账号
     FORCE_LOGOUT = "FORCE_LOGOUT"     # 管理员强制下线(bump token_version)
+    MEMBER_CREATE = "MEMBER_CREATE"       # 买方组织 owner 建子账号
+    MEMBER_DISABLE = "MEMBER_DISABLE"     # 买方组织 owner 停用成员
+    MEMBER_ENABLE = "MEMBER_ENABLE"       # 买方组织 owner 启用成员
+    MEMBER_UPDATE = "MEMBER_UPDATE"       # 买方组织 owner 改成员姓名/邮箱
+    MEMBER_PASSWORD_RESET = "MEMBER_PASSWORD_RESET"  # 买方组织 owner 重置成员密码
+    PASSWORD_RESET_BY_ADMIN = "PASSWORD_RESET_BY_ADMIN"  # ADMIN 直设密码 + 首登强制改密
     REFRESH_REPLAY = "REFRESH_REPLAY"  # refresh token 重放检测(会话被杀)
     ROLE_ASSIGN = "ROLE_ASSIGN"
     ROLE_REVOKE = "ROLE_REVOKE"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LayoutDashboard, LogOut, Settings, ShieldCheck, User } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Settings, ShieldCheck, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuthStore } from "@/stores/authStore";
@@ -102,6 +102,16 @@ function UserDropdown() {
             <Settings className="h-3.5 w-3.5 text-muted" />
             {t("stripProfile")}
           </Link>
+          {user.organization?.type === "BUYER_ORG" && user.organization.is_owner && (
+            <Link
+              href="/buyer/members"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-teal-50 hover:text-teal-900 transition-colors"
+            >
+              <Users className="h-3.5 w-3.5 text-muted" />
+              {t("menuMembers")}
+            </Link>
+          )}
           <div className="border-t border-slate-100 my-0.5" />
           <button
             onClick={() => { setOpen(false); logout(); }}
