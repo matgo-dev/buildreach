@@ -1250,7 +1250,7 @@
     },
     "role": { "owner": "Owner", "member": "Member" },
     "status": { "ACTIVE": "Active", "DISABLED": "Disabled", "DEACTIVATED": "Deactivated" },
-    "actions": { "disable": "Disable", "enable": "Enable", "cancel": "Cancel", "submit": "Create" },
+    "actions": { "disable": "Disable", "enable": "Enable", "cancel": "Cancel", "submit": "Create", "edit": "Edit", "resetPassword": "Reset password", "save": "Save", "reset": "Reset" },
     "confirmDisable": "Disable {email}? They will be signed out immediately.",
     "toast": {
       "created": "Member created. Share the initial password with them; they must change it on first login.",
@@ -1258,10 +1258,18 @@
       "enabled": "Enabled {email}",
       "disableFailed": "Failed to disable",
       "enableFailed": "Failed to enable",
-      "createFailed": "Failed to create"
+      "createFailed": "Failed to create",
+      "updated": "Member updated",
+      "updateFailed": "Failed to update",
+      "reset": "Password reset. They must change it on next login.",
+      "resetFailed": "Failed to reset"
     },
     "form": {
       "title": "New member",
+      "editTitle": "Edit member",
+      "resetTitle": "Reset password",
+      "newPassword": "New password *",
+      "resetHint": "All of this member's sessions end immediately; they must change the password on next login.",
       "name": "Name *",
       "email": "Email *",
       "password": "Initial password *",

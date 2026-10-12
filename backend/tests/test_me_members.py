@@ -245,3 +245,88 @@ async def test_deactivated_member_cannot_be_toggled_400(client, db_session):
     assert (await client.post(f"{MEMBERS}/{mid}/enable", headers=owner_h)).status_code == 400
     lst = await client.get(MEMBERS, headers=owner_h)
     assert [m["status"] for m in lst.json()["data"] if m["id"] == mid] == ["DEACTIVATED"]
+
+
+# ---------- owner 改成员资料 / 重置成员密码(子账号归组织) ----------
+
+@pytest.mark.asyncio
+async def test_owner_updates_member_name_and_email(client):
+    owner_h, _ = await _register_owner(client)
+    email = f"emp{_next_phone().replace('+', '')}@test.com"
+    mid = (await _create_member(client, owner_h, email)).json()["data"]["id"]
+    new_email = f"renamed{_next_phone().replace('+', '')}@test.com"
+
+    r = await client.patch(
+        f"{MEMBERS}/{mid}", json={"name": "Renamed", "email": new_email}, headers=owner_h
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["name"] == "Renamed"
+    assert r.json()["data"]["email"] == new_email
+
+    # 新邮箱能登,旧邮箱不能
+    assert (await _login(client, new_email, _MEMBER_PASSWORD)).status_code == 200
+    assert (await _login(client, email, _MEMBER_PASSWORD)).status_code == 401
+
+    # PATCH 语义:只传 name 不动 email
+    r2 = await client.patch(f"{MEMBERS}/{mid}", json={"name": "Again"}, headers=owner_h)
+    assert r2.status_code == 200 and r2.json()["data"]["email"] == new_email
+
+
+@pytest.mark.asyncio
+async def test_update_member_duplicate_email_409(client):
+    owner_h, _ = await _register_owner(client)
+    e1 = f"a{_next_phone().replace('+', '')}@test.com"
+    e2 = f"b{_next_phone().replace('+', '')}@test.com"
+    m1 = (await _create_member(client, owner_h, e1)).json()["data"]["id"]
+    await _create_member(client, owner_h, e2)
+    r = await client.patch(f"{MEMBERS}/{m1}", json={"email": e2}, headers=owner_h)
+    assert r.status_code == 409, r.text
+
+
+@pytest.mark.asyncio
+async def test_update_member_scope(client):
+    """非 owner 改自己 → 403;owner 改他组织用户 → 404;owner 改自己(是 owner)→ 404。"""
+    owner_h, _ = await _register_owner(client)
+    email = f"emp{_next_phone().replace('+', '')}@test.com"
+    mid = (await _create_member(client, owner_h, email)).json()["data"]["id"]
+    mtok = (await _login(client, email, _MEMBER_PASSWORD)).json()["data"]["access_token"]
+    cp = await client.post(
+        "/api/v1/auth/change-password",
+        json={"old_password": _MEMBER_PASSWORD, "new_password": "Cc111222333"},
+        headers={"Authorization": f"Bearer {mtok}"},
+    )
+    member_h = {"Authorization": f"Bearer {cp.json()['data']['access_token']}"}
+    assert (await client.patch(f"{MEMBERS}/{mid}", json={"name": "X"}, headers=member_h)).status_code == 403
+
+    other = await register_buyer_tz(client, company_name="Other Co")
+    other_id = (await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {other['response'].json()['data']['access_token']}"},
+    )).json()["data"]["id"]
+    assert (await client.patch(f"{MEMBERS}/{other_id}", json={"name": "X"}, headers=owner_h)).status_code == 404
+
+    my_id = (await client.get("/api/v1/auth/me", headers=owner_h)).json()["data"]["id"]
+    assert (await client.patch(f"{MEMBERS}/{my_id}", json={"name": "X"}, headers=owner_h)).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_owner_resets_member_password(client):
+    owner_h, _ = await _register_owner(client)
+    email = f"emp{_next_phone().replace('+', '')}@test.com"
+    mid = (await _create_member(client, owner_h, email)).json()["data"]["id"]
+    mtok = (await _login(client, email, _MEMBER_PASSWORD)).json()["data"]["access_token"]
+    member_h = {"Authorization": f"Bearer {mtok}"}
+
+    r = await client.post(f"{MEMBERS}/{mid}/reset-password", json={"new_password": "Dd444555666"}, headers=owner_h)
+    assert r.status_code == 200, r.text
+    # 旧 token 失效;旧密码不能登;新密码能登且要改密
+    assert (await client.get("/api/v1/auth/me", headers=member_h)).status_code == 401
+    assert (await _login(client, email, _MEMBER_PASSWORD)).status_code == 401
+    login = await _login(client, email, "Dd444555666")
+    assert login.status_code == 200
+    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {login.json()['data']['access_token']}"})
+    assert me.json()["data"]["must_change_password"] is True
+
+    # 弱密码 422;他组织 404
+    assert (await client.post(f"{MEMBERS}/{mid}/reset-password", json={"new_password": "123456"}, headers=owner_h)).status_code == 422
+    assert (await client.post(f"{MEMBERS}/999999/reset-password", json={"new_password": "Dd444555666"}, headers=owner_h)).status_code == 404

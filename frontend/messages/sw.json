@@ -1250,7 +1250,7 @@
     },
     "role": { "owner": "Mmiliki", "member": "Mwanachama" },
     "status": { "ACTIVE": "Hai", "DISABLED": "Imezimwa", "DEACTIVATED": "Imefungwa" },
-    "actions": { "disable": "Zima", "enable": "Washa", "cancel": "Ghairi", "submit": "Unda" },
+    "actions": { "disable": "Zima", "enable": "Washa", "cancel": "Ghairi", "submit": "Unda", "edit": "Hariri", "resetPassword": "Weka upya nenosiri", "save": "Hifadhi", "reset": "Weka upya" },
     "confirmDisable": "Zima {email}? Ataondolewa mara moja.",
     "toast": {
       "created": "Mwanachama ameundwa. Mpe nenosiri la awali; lazima alibadilishe akiingia mara ya kwanza.",
@@ -1258,10 +1258,18 @@
       "enabled": "Imewasha {email}",
       "disableFailed": "Imeshindwa kuzima",
       "enableFailed": "Imeshindwa kuwasha",
-      "createFailed": "Imeshindwa kuunda"
+      "createFailed": "Imeshindwa kuunda",
+      "updated": "Taarifa za mwanachama zimesasishwa",
+      "updateFailed": "Imeshindwa kusasisha",
+      "reset": "Nenosiri limewekwa upya. Lazima alibadilishe akiingia tena.",
+      "resetFailed": "Imeshindwa kuweka upya"
     },
     "form": {
       "title": "Mwanachama mpya",
+      "editTitle": "Hariri mwanachama",
+      "resetTitle": "Weka upya nenosiri",
+      "newPassword": "Nenosiri jipya *",
+      "resetHint": "Vikao vyote vya mwanachama huyu vinaisha mara moja; lazima abadilishe nenosiri akiingia tena.",
       "name": "Jina *",
       "email": "Barua pepe *",
       "password": "Nenosiri la awali *",

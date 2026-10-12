@@ -40,6 +40,8 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/auth/me/organization/members"),
     ("POST", "/api/v1/auth/me/organization/members/{user_id}/disable"),
     ("POST", "/api/v1/auth/me/organization/members/{user_id}/enable"),
+    ("PATCH", "/api/v1/auth/me/organization/members/{user_id}"),
+    ("POST", "/api/v1/auth/me/organization/members/{user_id}/reset-password"),
     # admin — 内部账号管理,均走 user_service / 路由内的 write_audit
     ("POST", "/api/v1/admin/users"),
     ("POST", "/api/v1/admin/users/{user_id}/disable"),

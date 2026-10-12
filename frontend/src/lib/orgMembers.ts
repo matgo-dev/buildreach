@@ -28,4 +28,8 @@ export const orgMembersApi = {
   create: (body: MemberCreateIn) => api.post<MemberOut>(BASE, body),
   disable: (userId: number) => api.post<MemberOut>(`${BASE}/${userId}/disable`),
   enable: (userId: number) => api.post<MemberOut>(`${BASE}/${userId}/enable`),
+  update: (userId: number, body: { name?: string; email?: string }) =>
+    api.patch<MemberOut>(`${BASE}/${userId}`, body),
+  resetPassword: (userId: number, new_password: string) =>
+    api.post<MemberOut>(`${BASE}/${userId}/reset-password`, { new_password }),
 };

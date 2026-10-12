@@ -41,7 +41,7 @@ from app.schemas.auth import (
 )
 from app.schemas.me import (
     ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, MemberCreateIn, MemberOut,
-    OrgUpdateIn, ProfileUpdateIn,
+    MemberResetPasswordIn, MemberUpdateIn, OrgUpdateIn, ProfileUpdateIn,
 )
 from app.services import auth_service, me_service, session_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
@@ -964,6 +964,44 @@ async def enable_my_member(
     user, member = await me_service.set_member_status(
         db, owner_user_id=current.id, owner_email=current.email,
         target_user_id=user_id, enabled=True, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.patch(
+    "/me/organization/members/{user_id}",
+    summary="改本组织成员姓名/邮箱(仅 owner;子账号归组织)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def update_my_member(
+    user_id: int,
+    body: MemberUpdateIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.update_member(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, name=body.name, email=body.email, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.post(
+    "/me/organization/members/{user_id}/reset-password",
+    summary="重置本组织成员密码(仅 owner;成员首次登录强制改密,旧 token 全失效)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def reset_my_member_password(
+    user_id: int,
+    body: MemberResetPasswordIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.reset_member_password(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, new_password=body.new_password, request=request,
     )
     return success(_member_payload(user, member))
 

@@ -1250,7 +1250,7 @@
     },
     "role": { "owner": "所有者", "member": "成员" },
     "status": { "ACTIVE": "正常", "DISABLED": "已停用", "DEACTIVATED": "已注销" },
-    "actions": { "disable": "停用", "enable": "启用", "cancel": "取消", "submit": "创建" },
+    "actions": { "disable": "停用", "enable": "启用", "cancel": "取消", "submit": "创建", "edit": "编辑", "resetPassword": "重置密码", "save": "保存", "reset": "重置" },
     "confirmDisable": "确定停用 {email}?停用后该成员立即无法登录。",
     "toast": {
       "created": "成员已创建。请把初始密码告知该成员,其首次登录会被要求修改密码。",
@@ -1258,10 +1258,18 @@
       "enabled": "已启用 {email}",
       "disableFailed": "停用失败",
       "enableFailed": "启用失败",
-      "createFailed": "创建失败"
+      "createFailed": "创建失败",
+      "updated": "成员信息已更新",
+      "updateFailed": "更新失败",
+      "reset": "已重置,该成员下次登录需修改密码",
+      "resetFailed": "重置失败"
     },
     "form": {
       "title": "新建成员",
+      "editTitle": "编辑成员",
+      "resetTitle": "重置密码",
+      "newPassword": "新密码 *",
+      "resetHint": "重置后该成员所有已登录会话立即失效,下次登录必须修改密码。",
       "name": "姓名 *",
       "email": "邮箱 *",
       "password": "初始密码 *",

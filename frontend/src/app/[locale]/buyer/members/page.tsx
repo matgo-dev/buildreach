@@ -39,6 +39,8 @@ function MembersInner() {
   const [createOpen, setCreateOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [disableTarget, setDisableTarget] = useState<MemberOut | null>(null);
+  const [editTarget, setEditTarget] = useState<MemberOut | null>(null);
+  const [resetTarget, setResetTarget] = useState<MemberOut | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -161,23 +163,39 @@ function MembersInner() {
                     <td className="px-4 py-3 text-slate-500">{formatRelativeTime(m.created_at, locale)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {!isSelf && !m.is_owner && m.status !== "DEACTIVATED" && (
-                        m.status === "ACTIVE" ? (
+                        <div className="flex items-center gap-2">
                           <button
                             disabled={busyId === m.id}
-                            onClick={() => setDisableTarget(m)}
-                            className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            onClick={() => setEditTarget(m)}
+                            className="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                           >
-                            {t("actions.disable")}
+                            {t("actions.edit")}
                           </button>
-                        ) : (
                           <button
                             disabled={busyId === m.id}
-                            onClick={() => onEnable(m)}
-                            className="rounded border border-emerald-300 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+                            onClick={() => setResetTarget(m)}
+                            className="rounded border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
                           >
-                            {t("actions.enable")}
+                            {t("actions.resetPassword")}
                           </button>
-                        )
+                          {m.status === "ACTIVE" ? (
+                            <button
+                              disabled={busyId === m.id}
+                              onClick={() => setDisableTarget(m)}
+                              className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {t("actions.disable")}
+                            </button>
+                          ) : (
+                            <button
+                              disabled={busyId === m.id}
+                              onClick={() => onEnable(m)}
+                              className="rounded border border-emerald-300 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+                            >
+                              {t("actions.enable")}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -209,7 +227,171 @@ function MembersInner() {
           }}
         />
       )}
+
+      {editTarget && (
+        <EditMemberModal
+          member={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={async () => {
+            setEditTarget(null);
+            await load();
+            toast.success(t("toast.updated"));
+          }}
+        />
+      )}
+
+      {resetTarget && (
+        <ResetMemberPasswordModal
+          member={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onDone={async () => {
+            setResetTarget(null);
+            await load();
+            toast.success(t("toast.reset"));
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+const MODAL_INPUT_CLS =
+  "h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-ink focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20";
+
+function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-ink">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EditMemberModal({ member, onClose, onSaved }: { member: MemberOut; onClose: () => void; onSaved: () => Promise<void> }) {
+  const t = useTranslations("buyerMembers");
+  const [name, setName] = useState(member.name);
+  const [email, setEmail] = useState(member.email ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState("");
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateRequired(name)) return setErr(t("form.nameRequired"));
+    const emailErr = validateEmail(email, {
+      required: t("form.emailRequired"),
+      format: t("form.emailFormat"),
+      domain: t("form.emailDomain"),
+    });
+    if (emailErr) return setErr(emailErr);
+    const body: { name?: string; email?: string } = {};
+    if (name.trim() !== member.name) body.name = name.trim();
+    if (email.trim() !== (member.email ?? "")) body.email = email.trim();
+    if (Object.keys(body).length === 0) return onClose();
+
+    setErr("");
+    setSubmitting(true);
+    try {
+      await orgMembersApi.update(member.id, body);
+      await onSaved();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("toast.updateFailed"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={t("form.editTitle")} onClose={onClose}>
+      {err && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4" /> {err}
+        </div>
+      )}
+      <form onSubmit={onSubmit} className="space-y-3" noValidate>
+        <div className="space-y-1">
+          <Label htmlFor="e-name" className="text-sm font-semibold text-slate-700">{t("form.name")}</Label>
+          <input id="e-name" value={name} onChange={(e) => setName(e.target.value)} className={MODAL_INPUT_CLS} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="e-email" className="text-sm font-semibold text-slate-700">{t("form.email")}</Label>
+          <input id="e-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={MODAL_INPUT_CLS} />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+            {t("actions.cancel")}
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-700/90 disabled:opacity-60"
+          >
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("actions.save")}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function ResetMemberPasswordModal({ member, onClose, onDone }: { member: MemberOut; onClose: () => void; onDone: () => Promise<void> }) {
+  const t = useTranslations("buyerMembers");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState("");
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pwErr = validatePassword(password);
+    if (pwErr) return setErr(pwErr);
+    setErr("");
+    setSubmitting(true);
+    try {
+      await orgMembersApi.resetPassword(member.id, password);
+      await onDone();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("toast.resetFailed"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={`${t("form.resetTitle")} · ${member.email ?? member.name}`} onClose={onClose}>
+      {err && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4" /> {err}
+        </div>
+      )}
+      <form onSubmit={onSubmit} className="space-y-3" noValidate>
+        <div className="space-y-1">
+          <Label htmlFor="r-password" className="text-sm font-semibold text-slate-700">{t("form.newPassword")}</Label>
+          <input id="r-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={MODAL_INPUT_CLS} />
+          <p className="mt-1 text-xs text-slate-400">{t("form.passwordRule")}</p>
+        </div>
+        <p className="text-xs text-muted">{t("form.resetHint")}</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+            {t("actions.cancel")}
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-700/90 disabled:opacity-60"
+          >
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("actions.reset")}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 

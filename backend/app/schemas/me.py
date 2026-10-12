@@ -116,6 +116,36 @@ class MemberCreateIn(BaseModel):
         return v
 
 
+class MemberUpdateIn(BaseModel):
+    """Owner 改成员资料(子账号归组织)。PATCH 语义:不传 = 不改。"""
+
+    name: str | None = Field(default=None, max_length=100)
+    email: NormalizedEmailStr | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            raise ValueError("姓名不能为空")
+        return v
+
+
+class MemberResetPasswordIn(BaseModel):
+    """Owner 重置成员密码;目标 must_change_password 置 True,旧 token 全失效。"""
+
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _check(cls, v: str) -> str:
+        if not validate_password_strength(v):
+            raise ValueError(PASSWORD_RULE_MESSAGE)
+        return v
+
+
 class MemberOut(BaseModel):
     id: int
     name: str
