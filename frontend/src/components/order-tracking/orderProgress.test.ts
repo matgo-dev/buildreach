@@ -9,6 +9,7 @@ import {
   litNodes,
   pendingLines,
   segmentShares,
+  sharePercentLabel,
 } from "./orderProgress";
 
 function line(over: Partial<PortalOrderLine> = {}): PortalOrderLine {
@@ -115,5 +116,18 @@ describe("segmentShares", () => {
   it("a malformed amount counts as zero", () => {
     const shares = segmentShares(seg({ arrived: "abc", loaded: "10.00" }));
     expect(shares.map((s) => s.share)).toEqual([0, 0, 1, 0, 0]);
+  });
+});
+
+describe("sharePercentLabel", () => {
+  it("rounds to whole percent", () => {
+    expect(sharePercentLabel(0.456)).toBe("46%");
+    expect(sharePercentLabel(1)).toBe("100%");
+  });
+
+  it("never shows 0% for a non-zero share", () => {
+    expect(sharePercentLabel(0.004)).toBe("<1%");
+    expect(sharePercentLabel(0.0099)).toBe("<1%");
+    expect(sharePercentLabel(0)).toBe("0%");
   });
 });
