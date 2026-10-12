@@ -14,6 +14,10 @@ export interface OrganizationInfo {
   status?: string | null;
   /** 买方组织统一社会信用代码(owner 可自助维护);supplier 恒 null */
   unified_social_credit_code?: string | null;
+  /** 坦桑场景组织字段(owner 可自助维护);supplier 恒 null */
+  address?: string | null;
+  tin?: string | null;
+  brela_no?: string | null;
 }
 
 export interface MeData {
@@ -208,8 +212,13 @@ export const authApi = {
     api.post<MeBasic>("/api/v1/auth/me/phone", { new_phone, current_password }),
 
   /** owner 修改自己所属买方组织信息(name / 统一社会信用代码);返回更新后的组织 */
-  updateOrganization: (payload: { name?: string; unified_social_credit_code?: string | null }) =>
-    api.patch<OrganizationInfo>("/api/v1/auth/me/organization", payload),
+  updateOrganization: (payload: {
+    name?: string;
+    unified_social_credit_code?: string | null;
+    address?: string | null;
+    tin?: string | null;
+    brela_no?: string | null;
+  }) => api.patch<OrganizationInfo>("/api/v1/auth/me/organization", payload),
 
   deactivateAccount: (password: string) =>
     api.post<null>("/api/v1/auth/deactivate", { password }),

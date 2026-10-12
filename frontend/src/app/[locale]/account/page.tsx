@@ -359,6 +359,9 @@ function Inner() {
                     <OrgEditForm
                       initialName={user.organization!.name}
                       initialUscc={user.organization!.unified_social_credit_code ?? ""}
+                      initialAddress={user.organization!.address ?? ""}
+                      initialTin={user.organization!.tin ?? ""}
+                      initialBrela={user.organization!.brela_no ?? ""}
                       t={t}
                       toast={toast}
                       onSaved={(org) => {
@@ -381,11 +384,28 @@ function Inner() {
                       }
                     />
                     {user.organization!.type === "BUYER_ORG" && (
-                      <FieldRow
-                        label={t("fields.orgUscc")}
-                        value={user.organization!.unified_social_credit_code || t("placeholders.notSet")}
-                        onEdit={user.organization!.is_owner ? () => startEditing("org") : undefined}
-                      />
+                      <>
+                        <FieldRow
+                          label={t("fields.orgAddress")}
+                          value={user.organization!.address || t("placeholders.notSet")}
+                          onEdit={user.organization!.is_owner ? () => startEditing("org") : undefined}
+                        />
+                        <FieldRow
+                          label={t("fields.orgTin")}
+                          value={user.organization!.tin || t("placeholders.notSet")}
+                          onEdit={user.organization!.is_owner ? () => startEditing("org") : undefined}
+                        />
+                        <FieldRow
+                          label={t("fields.orgBrela")}
+                          value={user.organization!.brela_no || t("placeholders.notSet")}
+                          onEdit={user.organization!.is_owner ? () => startEditing("org") : undefined}
+                        />
+                        <FieldRow
+                          label={t("fields.orgUscc")}
+                          value={user.organization!.unified_social_credit_code || t("placeholders.notSet")}
+                          onEdit={user.organization!.is_owner ? () => startEditing("org") : undefined}
+                        />
+                      </>
                     )}
                   </>
                 )}
@@ -685,6 +705,9 @@ function NameEditForm({
 function OrgEditForm({
   initialName,
   initialUscc,
+  initialAddress,
+  initialTin,
+  initialBrela,
   t,
   toast,
   onSaved,
@@ -692,6 +715,9 @@ function OrgEditForm({
 }: {
   initialName: string;
   initialUscc: string;
+  initialAddress: string;
+  initialTin: string;
+  initialBrela: string;
   t: TranslateFunc;
   toast: Toast;
   onSaved: (org: OrganizationInfo) => void;
@@ -699,6 +725,9 @@ function OrgEditForm({
 }) {
   const [name, setName] = useState(initialName);
   const [uscc, setUscc] = useState(initialUscc);
+  const [address, setAddress] = useState(initialAddress);
+  const [tin, setTin] = useState(initialTin);
+  const [brela, setBrela] = useState(initialBrela);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -711,10 +740,13 @@ function OrgEditForm({
     setError("");
     setSubmitting(true);
     try {
-      // uscc 传空串 = 清空(后端 PATCH 语义)
+      // 传空串 = 清空(后端 PATCH 语义)
       const org = await authApi.updateOrganization({
         name: name.trim(),
         unified_social_credit_code: uscc.trim(),
+        address: address.trim(),
+        tin: tin.trim(),
+        brela_no: brela.trim(),
       });
       toast.success(t("success.orgSaved"));
       onSaved(org);
@@ -737,6 +769,36 @@ function OrgEditForm({
           onChange={(e) => { setName(e.target.value); setError(""); }}
           placeholder={t("placeholders.enterOrgName")}
           hasError={!!error}
+        />
+      </div>
+      <div>
+        <Label htmlFor="editOrgAddress" className="text-xs text-muted">{t("fields.orgAddress")}</Label>
+        <InlineInput
+          id="editOrgAddress"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder={t("placeholders.enterAddress")}
+          maxLength={255}
+        />
+      </div>
+      <div>
+        <Label htmlFor="editOrgTin" className="text-xs text-muted">{t("fields.orgTin")}</Label>
+        <InlineInput
+          id="editOrgTin"
+          value={tin}
+          onChange={(e) => setTin(e.target.value)}
+          placeholder={t("placeholders.enterTin")}
+          maxLength={50}
+        />
+      </div>
+      <div>
+        <Label htmlFor="editOrgBrela" className="text-xs text-muted">{t("fields.orgBrela")}</Label>
+        <InlineInput
+          id="editOrgBrela"
+          value={brela}
+          onChange={(e) => setBrela(e.target.value)}
+          placeholder={t("placeholders.enterBrela")}
+          maxLength={50}
         />
       </div>
       <div>
