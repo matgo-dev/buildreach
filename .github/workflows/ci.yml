@@ -110,12 +110,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # 纯逻辑单测(vitest,只测 .ts 派生 / 计算,不测组件;组件接线由下面的 build 类型检查 + 联调守)
+      - name: Unit tests
+        run: pnpm test
+
       # next build 自带 tsc 类型检查 + eslint(next.config 没关这两项),
       # 所以不再单独跑 tsc --noEmit
       - name: Build
         run: pnpm build
 
-      # 前端没有测试框架,安全响应头(next.config headers/poweredByHeader)
+      # 安全响应头(next.config headers/poweredByHeader)
       # 用起 standalone 后逐路径 curl 的方式守门,防止改 matcher/中间件时静默掉头
       - name: Check security headers
         run: scripts/check-security-headers.sh

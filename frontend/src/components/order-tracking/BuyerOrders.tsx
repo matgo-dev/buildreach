@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Anchor, Ban, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
+import { Ban, CheckCircle2, ChevronRight, Package, Ship, Warehouse } from "lucide-react";
 import {
   BFF_ORDERS_SOURCE,
   type BindingState,
@@ -13,19 +13,18 @@ import {
 } from "@/lib/api/buyerOrders";
 import Pagination from "@/components/ui/Pagination";
 import { BuyerOrderDetail } from "./BuyerOrderDetail";
-import { EmptyOrdersState, LoadingSkeleton, Money, StagePill, StatePanel, stageLabelKey, useDay } from "./buyerOrdersShared";
+import { EmptyOrdersState, KeyDateLine, LoadingSkeleton, Money, StagePill, StatePanel, ValueSegmentBar, useDay } from "./buyerOrdersShared";
 import { FulfillmentHeroBanner, StatCard } from "./orderTrackingVisuals";
-import { stageProgress } from "./orderProgress";
 
 // 一页拉满契约上限:客户一年几单,多年也在一页内,统计卡计数与下钻因此就是全量;超 100 单才翻页。
 // 超 100 单后统计卡与下钻只覆盖当前页,那是把筛选与计数移到履约服务端的触发信号,不是在前端加第二页统计。
 const PAGE_SIZE = 100;
 
-/** 统计卡四桶(契约 §5.3,单一源头):卡片计数与点击下钻都只从这里取阶段集合。
+/** 统计卡四桶(契约 §5.3 v5,单一源头):卡片计数与点击下钻都只从这里取阶段集合。
  *  每个 OrderStage 恰属一个桶,四桶之和 = "全部"(履约回的 total)。 */
 const STAGE_FILTERS = {
-  PREPARING: ["CONFIRMED", "RECEIVED"],
-  SHIPPING: ["LOADED", "CLEARED", "IN_TRANSIT"],
+  PREPARING: ["NOT_SHIPPED"],
+  SHIPPING: ["PARTIALLY_SHIPPED", "SHIPPED", "PARTIALLY_ARRIVED"],
   ARRIVED: ["ARRIVED"],
   CANCELLED: ["CANCELLED"],
 } as const satisfies Record<string, readonly OrderStage[]>;
@@ -140,11 +139,10 @@ function OrderList({
   );
 }
 
+/** 列表卡 = 徽标 + 关键日期行 + 无图例细分段条(契约 §5.3 v5:图例与百分比只在详情头)。 */
 function OrderCard({ order, onClick }: { order: PortalOrderListItem; onClick: () => void }) {
   const t = useTranslations("orderTracking");
   const day = useDay();
-  const progress = stageProgress(order.stage);
-  const labelKey = stageLabelKey(order.stage);
 
   return (
     <button
@@ -168,22 +166,11 @@ function OrderCard({ order, onClick }: { order: PortalOrderListItem; onClick: ()
             <Money amount={order.total_amount} currency={order.currency} />
           </div>
 
-          {/* 阶段进度条:订单 stage 驱动的展示百分比;CANCELLED 与不认识的 stage 不画 */}
-          {progress !== null && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-muted mb-1.5">
-                <span className="flex items-center gap-1">
-                  <Anchor className="h-3 w-3" />
-                  {labelKey ? t(labelKey) : order.stage}
-                </span>
-                <span>{progress}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+          {/* 取消单不画进度 */}
+          {order.stage !== "CANCELLED" && (
+            <div className="mt-3 space-y-2">
+              <KeyDateLine shipmentCount={order.shipment_count} nextEta={order.next_eta} stage={order.stage} />
+              <ValueSegmentBar segments={order.value_segments} />
             </div>
           )}
         </div>

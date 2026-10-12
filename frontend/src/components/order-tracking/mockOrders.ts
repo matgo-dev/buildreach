@@ -1,11 +1,19 @@
 /**
  * 订单追踪 Mock 数据 — demo 账号(地推营销)用。
  *
- * 形状与履约门户投影一致(契约 §4.2 v4),走真实用户同一套渲染,六节点按同一套事实点亮。
- * 五单覆盖:已到港 / 双柜(一柜强制离港"报关待补":节点 4 灭 5 亮)/ 部分入仓且部分已装柜(节点 2 灭 3 亮)/
+ * 形状与履约门户投影一致(契约 §4.2 v5),走真实用户同一套渲染,六节点按同一套事实点亮。
+ * 五单覆盖:已到港 / 双柜(一柜强制离港"报关待补":节点 4 灭 5 亮)/ 部分入仓且部分已装柜(待装柜 tab 有未到齐行)/
  * 已入仓待装柜 / 已取消。
+ * 派生字段(pending / in_warehouse / value_segments / next_eta / shipment_count)在真实数据里由履约算,
+ * 这里按同一口径手填,数字须自洽(五段货值之和 = 行货值之和)。
  */
-import type { OrdersSource, PortalOrderDetail, PortalOrderLine, PortalShipment } from "@/lib/api/buyerOrders";
+import type {
+  OrdersSource,
+  PortalOrderDetail,
+  PortalOrderLine,
+  PortalShipment,
+  PortalShipmentLine,
+} from "@/lib/api/buyerOrders";
 
 function line(
   sort_order: number,
@@ -18,9 +26,24 @@ function line(
   shipped_qty: string,
   unit_price: string,
   line_total: string,
+  pending_qty: string,
+  in_warehouse_qty: string,
 ): PortalOrderLine {
-  return { name_snapshot, spec_text_snapshot, unit_code, unit_label, qty, received_qty, shipped_qty, unit_price, line_total, sort_order };
+  return {
+    name_snapshot, spec_text_snapshot, unit_code, unit_label, qty, received_qty, shipped_qty,
+    pending_qty, in_warehouse_qty, unit_price, line_total, sort_order,
+  };
 }
+
+/** 柜内行:取订单行的快照,只带数量(无价)。 */
+function inContainer(l: PortalOrderLine, qty: string): PortalShipmentLine {
+  return {
+    name_snapshot: l.name_snapshot, spec_text_snapshot: l.spec_text_snapshot,
+    unit_code: l.unit_code, unit_label: l.unit_label, qty, sort_order: l.sort_order,
+  };
+}
+
+const ZERO_SEGMENTS = { arrived: "0.00", in_transit: "0.00", loaded: "0.00", in_warehouse: "0.00", not_received: "0.00" };
 
 const NO_CUSTOMS = { customs_status: "NONE", declared_at: null, released_at: null } as const;
 
@@ -37,6 +60,7 @@ function shipment(s: Partial<PortalShipment> & Pick<PortalShipment, "container_n
     port_of_loading: "Ningbo",
     port_of_discharge: "Dar es Salaam",
     milestones: [],
+    lines: [],
     ...s,
   };
 }
@@ -49,11 +73,14 @@ const MOCK_ORDERS: PortalOrderDetail[] = [
     status: "CONFIRMED",
     currency: "USD",
     total_amount: "11600.00",
-    stage: "RECEIVED",
+    stage: "NOT_SHIPPED",
     line_count: 2,
+    shipment_count: 0,
+    next_eta: null,
+    value_segments: { ...ZERO_SEGMENTS, in_warehouse: "11600.00" },
     lines: [
-      line(1, "Cast Aluminum Entry Door", "1200×2100mm · Bronze", "PCS", "pcs", "80", "80", "0", "85.00", "6800.00"),
-      line(2, "Wood Grain Floor Tile 600×600", "Matt · 1.44 m²/box", "SQM", "m²", "800", "800", "0", "6.00", "4800.00"),
+      line(1, "Cast Aluminum Entry Door", "1200×2100mm · Bronze", "PCS", "pcs", "80", "80", "0", "85.00", "6800.00", "80", "80"),
+      line(2, "Wood Grain Floor Tile 600×600", "Matt · 1.44 m²/box", "SQM", "m²", "800", "800", "0", "6.00", "4800.00", "800", "800"),
     ],
     shipments: [],
   },
@@ -64,17 +91,22 @@ const MOCK_ORDERS: PortalOrderDetail[] = [
     status: "CONFIRMED",
     currency: "USD",
     total_amount: "11250.00",
-    stage: "CONFIRMED",
+    stage: "PARTIALLY_SHIPPED",
     line_count: 2,
+    shipment_count: 1,
+    next_eta: "2026-10-24",
+    // 行 1 全部已装柜 4250;行 2 在仓 1200×3.5 = 4200、未到仓 800×3.5 = 2800
+    value_segments: { ...ZERO_SEGMENTS, loaded: "4250.00", in_warehouse: "4200.00", not_received: "2800.00" },
     lines: [
-      line(1, "Steel Rebar HRB400 Φ12", "12m / pc", "M", "m", "5000", "5000", "5000", "0.85", "4250.00"),
-      line(2, "Stone Coated Metal Roof Tile", "1340×420mm · Red", "PCS", "pcs", "2000", "1200", "0", "3.50", "7000.00"),
+      line(1, "Steel Rebar HRB400 Φ12", "12m / pc", "M", "m", "5000", "5000", "5000", "0.85", "4250.00", "0", "0"),
+      line(2, "Stone Coated Metal Roof Tile", "1340×420mm · Red", "PCS", "pcs", "2000", "1200", "0", "3.50", "7000.00", "2000", "1200"),
     ],
     shipments: [
       shipment({
         container_no: "MSKU7304512",
         container_type: "20GP",
         stage: "CLEARED",
+        lines: [inContainer(line(1, "Steel Rebar HRB400 Φ12", "12m / pc", "M", "m", "5000", "5000", "5000", "0.85", "4250.00", "0", "0"), "5000")],
         vessel_name: "MAERSK KENSINGTON",
         voyage_no: "438S",
         customs_status: "RELEASED",
@@ -93,17 +125,25 @@ const MOCK_ORDERS: PortalOrderDetail[] = [
     status: "CONFIRMED",
     currency: "USD",
     total_amount: "18750.00",
-    stage: "CLEARED",
+    stage: "SHIPPED",
     line_count: 3,
+    shipment_count: 2,
+    next_eta: "2026-10-01",
+    // 柜 1(在途)装了行 1、行 2 = 7500;柜 2(已放行待离港)装了行 3 = 11250
+    value_segments: { ...ZERO_SEGMENTS, in_transit: "7500.00", loaded: "11250.00" },
     lines: [
-      line(1, "Brass Check Valve DN25", null, "PCS", "pcs", "500", "500", "500", "4.20", "2100.00"),
-      line(2, "LED Ceiling Fan Light", "48\" · 3 blades", "PCS", "pcs", "300", "300", "300", "18.00", "5400.00"),
-      line(3, "Steel Rebar HRB400 Φ16", "12m / pc", "M", "m", "9000", "9000", "9000", "1.25", "11250.00"),
+      line(1, "Brass Check Valve DN25", null, "PCS", "pcs", "500", "500", "500", "4.20", "2100.00", "0", "0"),
+      line(2, "LED Ceiling Fan Light", "48\" · 3 blades", "PCS", "pcs", "300", "300", "300", "18.00", "5400.00", "0", "0"),
+      line(3, "Steel Rebar HRB400 Φ16", "12m / pc", "M", "m", "9000", "9000", "9000", "1.25", "11250.00", "0", "0"),
     ],
     shipments: [
       shipment({
         container_no: "COSU6285417",
         stage: "IN_TRANSIT",
+        lines: [
+          inContainer(line(1, "Brass Check Valve DN25", null, "PCS", "pcs", "500", "500", "500", "4.20", "2100.00", "0", "0"), "500"),
+          inContainer(line(2, "LED Ceiling Fan Light", "48\" · 3 blades", "PCS", "pcs", "300", "300", "300", "18.00", "5400.00", "0", "0"), "300"),
+        ],
         vessel_name: "COSCO SHIPPING ARIES",
         voyage_no: "052W",
         customs_status: "DECLARED",
@@ -120,6 +160,7 @@ const MOCK_ORDERS: PortalOrderDetail[] = [
       shipment({
         container_no: "MSCU8374921",
         stage: "CLEARED",
+        lines: [inContainer(line(3, "Steel Rebar HRB400 Φ16", "12m / pc", "M", "m", "9000", "9000", "9000", "1.25", "11250.00", "0", "0"), "9000")],
         vessel_name: "MSC ANNA",
         voyage_no: "612E",
         customs_status: "RELEASED",
@@ -140,15 +181,23 @@ const MOCK_ORDERS: PortalOrderDetail[] = [
     total_amount: "8850.00",
     stage: "ARRIVED",
     line_count: 3,
+    shipment_count: 1,
+    next_eta: null,
+    value_segments: { ...ZERO_SEGMENTS, arrived: "8850.00" },
     lines: [
-      line(1, "Cross Pickaxe Heavy Duty", null, "PCS", "pcs", "500", "500", "500", "6.50", "3250.00"),
-      line(2, "Fall Arrester 5m", null, "PCS", "pcs", "200", "200", "200", "12.00", "2400.00"),
-      line(3, "Titanium Spring Washer Set M4", null, "SET", "sets", "20000", "20000", "20000", "0.16", "3200.00"),
+      line(1, "Cross Pickaxe Heavy Duty", null, "PCS", "pcs", "500", "500", "500", "6.50", "3250.00", "0", "0"),
+      line(2, "Fall Arrester 5m", null, "PCS", "pcs", "200", "200", "200", "12.00", "2400.00", "0", "0"),
+      line(3, "Titanium Spring Washer Set M4", null, "SET", "sets", "20000", "20000", "20000", "0.16", "3200.00", "0", "0"),
     ],
     shipments: [
       shipment({
         container_no: "EGLV2059831",
         stage: "ARRIVED",
+        lines: [
+          inContainer(line(1, "Cross Pickaxe Heavy Duty", null, "PCS", "pcs", "500", "500", "500", "6.50", "3250.00", "0", "0"), "500"),
+          inContainer(line(2, "Fall Arrester 5m", null, "PCS", "pcs", "200", "200", "200", "12.00", "2400.00", "0", "0"), "200"),
+          inContainer(line(3, "Titanium Spring Washer Set M4", null, "SET", "sets", "20000", "20000", "20000", "0.16", "3200.00", "0", "0"), "20000"),
+        ],
         vessel_name: "EVER GIVEN",
         voyage_no: "1127-012W",
         customs_status: "RELEASED",
@@ -175,7 +224,10 @@ const MOCK_ORDERS: PortalOrderDetail[] = [
     total_amount: "1200.00",
     stage: "CANCELLED",
     line_count: 1,
-    lines: [line(1, "PTFE Seal Gasket DN150", null, "PCS", "pcs", "1000", "0", "0", "1.20", "1200.00")],
+    shipment_count: 0,
+    next_eta: null,
+    value_segments: { ...ZERO_SEGMENTS, not_received: "1200.00" },
+    lines: [line(1, "PTFE Seal Gasket DN150", null, "PCS", "pcs", "1000", "0", "0", "1.20", "1200.00", "1000", "0")],
     shipments: [],
   },
 ];

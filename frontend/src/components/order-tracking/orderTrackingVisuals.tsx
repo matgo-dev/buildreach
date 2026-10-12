@@ -1,10 +1,9 @@
 "use client";
 
-/** 订单跟踪页的视觉组件:demo 与真实用户共用。hero 是品牌承诺文案;路线图与统计卡由阶段驱动。 */
+/** 订单跟踪页的视觉组件:demo 与真实用户共用。hero 是品牌承诺文案;统计卡可点击下钻。
+ *  (v5 删掉了「运输路线」横条:与时间线、订单头分段条三处重复,多柜时按订单级定位与按柜时间线矛盾。) */
 import { useTranslations } from "next-intl";
-import { Anchor, Factory, Ship, Warehouse } from "lucide-react";
-import type { OrderStage } from "@/lib/api/buyerOrders";
-import { FULFILLMENT_NODES, stageRouteIndex } from "./orderProgress";
+import { FULFILLMENT_NODES } from "./orderProgress";
 
 /** 统计卡。传 onClick 即可点击下钻,active 标当前筛选。 */
 export function StatCard({
@@ -46,77 +45,6 @@ export function StatCard({
     >
       {inner}
     </button>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════
-   路线可视化（CSS 绘制，不依赖地图 SDK）
-   ═══════════════════════════════════════════════════════ */
-
-/* 路线上的"当前位置"由订单 stage 驱动(契约 §5.3),下标取自 orderProgress.STAGE_VIEW。
-   履约无事实源的环节(本地配送等)不画永远灰着的节点(契约 §9)。 */
-
-export function RouteVisualization({ stage }: { stage: OrderStage | string }) {
-  const t = useTranslations("orderTracking");
-  // 不认识的 stage:不定位(全灰),不冒充已知阶段
-  const current = stageRouteIndex(stage) ?? -1;
-  const at = (i: number) => ({ done: i < current, current: i === current });
-
-  const nodes = [
-    { label: t("routeFactory"), sublabel: "China", icon: Factory, ...at(0) },
-    { label: t("routeWarehouse"), sublabel: "Ningbo / Shanghai", icon: Warehouse, ...at(1) },
-    { label: t("routePort"), sublabel: "China Port", icon: Anchor, ...at(2) },
-    { label: t("routeSea"), sublabel: "~25 days", icon: Ship, ...at(3) },
-    { label: "Dar es Salaam", sublabel: "Tanzania Port", icon: Anchor, ...at(4) },
-  ];
-
-  return (
-    <div className="flex items-center justify-between gap-0 overflow-x-auto py-4">
-      {nodes.map((node, i) => {
-        const Icon = node.icon;
-        const isLast = i === nodes.length - 1;
-
-        return (
-          <div key={i} className="flex items-center flex-1 min-w-0">
-            {/* 节点 */}
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-full border-2 ${
-                  node.done
-                    ? "border-teal-500 bg-teal-500 text-white"
-                    : node.current
-                    ? "border-teal-500 bg-white text-teal-700 ring-4 ring-teal-100 animate-pulse"
-                    : "border-slate-200 bg-white text-slate-300"
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="text-center">
-                <p className={`text-xs font-medium ${node.done || node.current ? "text-navy" : "text-muted"}`}>
-                  {node.label}
-                </p>
-                <p className="text-[10px] text-muted">{node.sublabel}</p>
-              </div>
-            </div>
-
-            {/* 连线 */}
-            {!isLast && (
-              <div className="flex-1 mx-1 h-0.5 min-w-[20px]">
-                <div
-                  className={`h-full ${
-                    node.done ? "bg-teal-400" : "bg-slate-200"
-                  }`}
-                  style={node.current ? {
-                    background: "repeating-linear-gradient(90deg, #32bdc9 0, #32bdc9 6px, transparent 6px, transparent 12px)",
-                  } : undefined}
-                />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
 

@@ -4,13 +4,23 @@ import { useLocale, useTranslations } from "next-intl";
 import { AlertCircle, Building2, Headset, Link2Off, Package, RefreshCw } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { formatDate } from "@/lib/formatters";
-import { formatDecimalString, type BindingState, type CustomsStatus, type OrderStage } from "@/lib/api/buyerOrders";
-import { lookup } from "./orderProgress";
+import {
+  formatDecimalString,
+  type BindingState,
+  type CustomsStatus,
+  type OrderStage,
+  type PortalValueSegments,
+  type ShipmentStage,
+} from "@/lib/api/buyerOrders";
+import { lookup, segmentShares, type SegmentKey } from "./orderProgress";
 
-/** 订单级 / 柜级阶段 → i18n key + 徽标配色。API 只给 code,标签在 messages。 */
-const STAGE_META: Record<OrderStage, { key: string; cls: string }> = {
-  CONFIRMED: { key: "stageConfirmed", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  RECEIVED: { key: "stageReceived", cls: "bg-orange-50 text-orange-700 border-orange-200" },
+/** 订单级(整单事实六态)/ 柜级(递进链)阶段 → i18n key + 徽标配色。API 只给 code,标签在 messages。
+ *  两套只在 ARRIVED 上同名且含义一致(全部到港 / 本柜到港),故一张表。 */
+const STAGE_META: Record<OrderStage | ShipmentStage, { key: string; cls: string }> = {
+  NOT_SHIPPED: { key: "stageNotShipped", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  PARTIALLY_SHIPPED: { key: "stagePartiallyShipped", cls: "bg-sky-50 text-sky-700 border-sky-200" },
+  SHIPPED: { key: "stageShipped", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  PARTIALLY_ARRIVED: { key: "stagePartiallyArrived", cls: "bg-teal-50 text-teal-700 border-teal-200" },
   LOADED: { key: "stageLoaded", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   CLEARED: { key: "stageCleared", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   IN_TRANSIT: { key: "stageInTransit", cls: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -52,6 +62,60 @@ export function CustomsPill({ status }: { status: CustomsStatus | string }) {
       {meta ? t(meta.key) : status}
     </span>
   );
+}
+
+/** 五段的 i18n key 与条色(最领先在前)。色阶:到港绿 → 海运蓝 → 装柜浅蓝 → 在仓琥珀 → 未到仓灰。 */
+const SEGMENT_META: Record<SegmentKey, { key: string; bar: string; dot: string }> = {
+  arrived: { key: "segArrived", bar: "bg-green-500", dot: "bg-green-500" },
+  in_transit: { key: "segInTransit", bar: "bg-blue-500", dot: "bg-blue-500" },
+  loaded: { key: "segLoaded", bar: "bg-sky-300", dot: "bg-sky-300" },
+  in_warehouse: { key: "segInWarehouse", bar: "bg-amber-400", dot: "bg-amber-400" },
+  not_received: { key: "segNotReceived", bar: "bg-slate-200", dot: "bg-slate-300" },
+};
+
+/**
+ * 按货值的分段进度条(契约 §5.3 v5)。零宽段不画;`legend` 时下方列非零段的名称 + 百分比(详情头),
+ * 否则只有细条(列表卡)。五段全零(取消单等)不渲染任何东西。
+ */
+export function ValueSegmentBar({ segments, legend = false }: { segments: PortalValueSegments; legend?: boolean }) {
+  const t = useTranslations("orderTracking");
+  const shares = segmentShares(segments).filter((s) => s.share > 0);
+  if (shares.length === 0) return null;
+  const pct = (share: number) => `${Math.round(share * 100)}%`;
+  return (
+    <div>
+      <div
+        className={`flex w-full overflow-hidden rounded-full bg-slate-100 ${legend ? "h-2.5" : "h-1.5"}`}
+        role="img"
+        aria-label={shares.map((s) => `${t(SEGMENT_META[s.key].key)} ${pct(s.share)}`).join(", ")}
+      >
+        {shares.map((s) => (
+          <div key={s.key} className={`h-full ${SEGMENT_META[s.key].bar}`} style={{ width: `${s.share * 100}%` }} />
+        ))}
+      </div>
+      {legend && (
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+          {shares.map((s) => (
+            <li key={s.key} className="flex items-center gap-1.5">
+              <span className={`inline-block h-2 w-2 rounded-full ${SEGMENT_META[s.key].dot}`} />
+              {t(SEGMENT_META[s.key].key)}
+              <span className="font-medium text-navy">{pct(s.share)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** 关键日期行:最近一柜预计到港 · 共 N 柜;全部到港 → 共 N 柜 · 已全部到港;无柜 → 不显示。 */
+export function KeyDateLine({ shipmentCount, nextEta, stage }: { shipmentCount: number; nextEta: string | null; stage: string }) {
+  const t = useTranslations("orderTracking");
+  const day = useDay();
+  if (shipmentCount === 0) return null;
+  if (nextEta) return <p className="text-sm text-navy">{t("nextEta", { date: day(nextEta), count: shipmentCount })}</p>;
+  if (stage === "ARRIVED") return <p className="text-sm text-navy">{t("allArrived", { count: shipmentCount })}</p>;
+  return <p className="text-sm text-muted">{t("containerCount", { count: shipmentCount })}</p>;
 }
 
 /** 金额:currency + decimal string,不经 float。 */
