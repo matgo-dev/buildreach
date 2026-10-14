@@ -1,0 +1,308 @@
+"""矿业勘探·开采专区(mining)商品导入:6 张配货表 → 专区 + 平台商品(ZONE_ONLY)。
+
+输入(目录由 --src 指定,默认仓库外的 矿业专区资料/):
+- 01_浮选厂*.xlsx / 02_井下开采*.xlsx / 03_矿山化验室*.xlsx / 04_金矿CIP_CIL*.xlsx / 05_露天开采*.xlsx / 600型与800型*.xlsx
+- data/zone_import/mining/spu_merge.csv   原品名 → SPU 品名 + 规格(规格留空 = 纯别名)
+- data/zone_import/mining/rules.csv       (file_key, sheet, section, keyword) → (专区大类, 平台品类)
+
+产出:
+- zone(code=mining)+ 11 个 kind=CATEGORY 大类 + 6 个 kind=SCENE 场景
+- 平台一级 33/34/35 及其叶子(整棵 is_active=false)
+- 每个 SPU:products(ZONE_ONLY/ACTIVE)+ SKU(多规格走变体)+ SPU 级属性 + 1 行 CATEGORY zone_product + N 行 SCENE zone_product
+- --dry-run 写审核 CSV:data/zone_import/mining/dry_run_audit.csv(不提交到 git)
+
+幂等:zone/zone_category 按 code upsert;product 按 spu_code;zone_product 按三元组;已存在商品只更新可变字段、不动 SKU。
+
+用法:
+    cd backend
+    python scripts/import_zone_mining.py --src "/path/矿业专区资料" --dry-run
+    python scripts/import_zone_mining.py --src "/path/矿业专区资料" --commit
+生产(OVH)须 ALLOW_ZONE_IMPORT_PROD=1。
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import collections
+import csv
+import os
+import re
+import sys
+import unicodedata
+from dataclasses import dataclass, field
+from pathlib import Path
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_BACKEND_ROOT))
+_REPO_ROOT = _BACKEND_ROOT.parent
+
+import openpyxl  # noqa: E402
+
+from app.services.product_code import platform_spu_code, platform_sku_code  # noqa: E402
+
+ZONE_CODE = "mining"
+ZONE_NAME = ("矿业勘探·开采", "Mining Exploration & Extraction", "Uchunguzi na Uchimbaji wa Madini")
+SOURCE_KEY = "ZMINE"   # 统一 code 规则里的来源标识,只进 hash
+SOURCE = "IMPORT"
+BATCH_ID = "zone_mining_v1"
+
+DATA_DIR = _REPO_ROOT / "data" / "zone_import" / "mining"
+MERGE_CSV = DATA_DIR / "spu_merge.csv"
+RULES_CSV = DATA_DIR / "rules.csv"
+AUDIT_CSV = DATA_DIR / "dry_run_audit.csv"
+
+# 不导入的 sheet(汇总/依据/重复)
+SKIP_SHEETS = {
+    "规模与汇总", "原表处理对照", "依据与说明", "口径与来源",
+    "预算汇总", "原始预算依据", "新报价依据", "800型10台预算",
+}
+
+# 文件前缀 → 场景 code
+SCENE_BY_FILE_KEY = {"01": "S01", "02": "S02", "03": "S05", "04": "S04", "05": "S03", "600": "S06"}
+
+# (code, zh, en, sw)
+ZONE_CATEGORIES = [
+    ("C01", "破碎与磨矿", "Crushing & Grinding", "Kusaga na Kuponda"),
+    ("C02", "选矿与浸出设备", "Beneficiation & Leaching Equipment", "Vifaa vya Uchenjuaji"),
+    ("C03", "钻探与凿岩", "Drilling & Rock Drilling", "Uchimbaji Visima"),
+    ("C04", "矿用药剂与工艺耗材", "Mining Reagents & Process Consumables", "Kemikali za Uchimbaji"),
+    ("C05", "泵、管路与输送", "Pumps, Piping & Conveying", "Pampu, Mabomba na Usafirishaji"),
+    ("C06", "电气、照明与仪表", "Electrical, Lighting & Instruments", "Umeme, Taa na Vipimo"),
+    ("C07", "工程机械与车辆易损件", "Machinery & Vehicle Wear Parts", "Vipuri vya Mitambo na Magari"),
+    ("C08", "油品与润滑", "Oils & Lubricants", "Mafuta na Vilainishi"),
+    ("C09", "维修工具", "Maintenance Tools", "Zana za Matengenezo"),
+    ("C10", "劳保与现场耗材", "PPE & Site Consumables", "Vifaa vya Usalama na Matumizi"),
+    ("C11", "化验室仪器与耗材", "Laboratory Instruments & Consumables", "Vifaa vya Maabara"),
+]
+ZONE_SCENES = [
+    ("S01", "浮选厂", "Flotation Plant", "Kiwanda cha Flotation"),
+    ("S02", "井下开采", "Underground Mining", "Uchimbaji wa Chini ya Ardhi"),
+    ("S03", "露天开采", "Open-pit Mining", "Uchimbaji wa Wazi"),
+    ("S04", "金矿 CIP·CIL", "Gold CIP/CIL", "Dhahabu CIP/CIL"),
+    ("S05", "矿山化验室", "Mine Laboratory", "Maabara ya Mgodi"),
+    ("S06", "勘探钻机", "Exploration Drill Rig", "Mashine ya Uchimbaji wa Utafiti"),
+]
+# (code, zh, en, sw, parent_code)  整棵 is_active=false
+PLATFORM_CATEGORIES = [
+    ("33", "矿山与钻探机械", "Mining & Drilling Machinery", "Mitambo ya Uchimbaji", None),
+    ("33.001", "破碎与磨矿", "Crushing & Grinding", "Kusaga na Kuponda", "33"),
+    ("33.002", "选矿与浸出", "Beneficiation & Leaching", "Uchenjuaji", "33"),
+    ("33.003", "钻探与凿岩", "Drilling & Rock Drilling", "Uchimbaji Visima", "33"),
+    ("33.004", "矿用泵与输送", "Mining Pumps & Conveying", "Pampu na Usafirishaji", "33"),
+    ("34", "工业化学品与药剂", "Industrial Chemicals & Reagents", "Kemikali za Viwandani", None),
+    ("34.001", "选矿药剂", "Flotation Reagents", "Kemikali za Flotation", "34"),
+    ("34.002", "浸出与回收药剂", "Leaching & Recovery Reagents", "Kemikali za Uchenjuaji", "34"),
+    ("35", "实验室仪器与耗材", "Laboratory Instruments & Consumables", "Vifaa vya Maabara", None),
+    ("35.001", "分析仪器", "Analytical Instruments", "Vifaa vya Uchambuzi", "35"),
+    ("35.002", "制样设备", "Sample Preparation Equipment", "Vifaa vya Kuandaa Sampuli", "35"),
+    ("35.003", "器皿与耗材", "Labware & Consumables", "Vyombo na Matumizi ya Maabara", "35"),
+    ("35.004", "试剂", "Reagents", "Vitendanishi", "35"),
+]
+
+
+# ── 纯函数 ────────────────────────────────────────────────
+
+def hard(s: str) -> str:
+    """硬归一化:NFKC(全角→半角)+ 去所有空白。join key 与稳定 code 派生都用它。"""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(s or "")))
+
+
+def mining_spu_code(name: str) -> str:
+    return platform_spu_code(SOURCE_KEY, hard(name))
+
+
+def mining_sku_code(spu_code: str, spec: str | None) -> str:
+    return platform_sku_code(SOURCE_KEY, f"{spu_code}:{hard(spec) if spec else 'D'}")
+
+
+@dataclass
+class SourceRow:
+    file_key: str      # 01 / 02 / 03 / 04 / 05 / 600
+    sheet: str
+    row_id: str        # 表内编号列
+    section: str       # 环节/类别(600 表无此列 → "")
+    name: str
+    spec_text: str     # 参考型号/规格(采购说明文本)
+    unit: str
+    generic: str       # 是否通用
+
+
+def _file_key(path: Path) -> str | None:
+    n = path.name
+    if n[:2].isdigit() and n[2] == "_":
+        return n[:2]
+    if n.startswith("600"):
+        return "600"
+    return None
+
+
+def _cell(v) -> str:
+    return str(v).strip() if v not in (None, "") else ""
+
+
+def load_source_rows(src_dir: Path) -> list[SourceRow]:
+    """读目录下 6 个 xlsx 的商品行。表头 = 含「编号」单元格的那一行;列按表头关键字定位。"""
+    rows: list[SourceRow] = []
+    for path in sorted(src_dir.glob("*.xlsx")):
+        key = _file_key(path)
+        if key is None:
+            continue
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        for ws in wb.worksheets:
+            if ws.title in SKIP_SHEETS:
+                continue
+            header: list[str] | None = None
+            for r in ws.iter_rows(min_row=1, max_row=12, values_only=True):
+                if any(_cell(c) == "编号" for c in r):
+                    header = [_cell(c) for c in r]
+                    break
+            if header is None:
+                continue
+
+            def col(*keys: str) -> int | None:
+                for k in keys:
+                    for i, h in enumerate(header):
+                        if h and k in h:
+                            return i
+                return None
+
+            i_id, i_name = col("编号"), col("易耗品", "名称")
+            i_sec, i_spec, i_unit, i_gen = col("类别"), col("型号", "规格"), col("单位"), col("是否通用")
+            if i_name is None:
+                continue
+            started = False
+            for r in ws.iter_rows(values_only=True):
+                if not started:
+                    started = any(_cell(c) == "编号" for c in r)
+                    continue
+
+                def at(i: int | None) -> str:
+                    # read_only 模式下行长度可能短于表头,越界一律当空
+                    return _cell(r[i]) if i is not None and i < len(r) else ""
+
+                rid, name = at(i_id), at(i_name)
+                if not rid or not name or len(name) > 60:
+                    continue
+                rows.append(SourceRow(
+                    file_key=key, sheet=ws.title, row_id=rid,
+                    section=at(i_sec), name=name, spec_text=at(i_spec),
+                    unit=at(i_unit), generic=at(i_gen),
+                ))
+        wb.close()
+    return rows
+
+
+def load_merge_map(path: Path) -> dict[str, tuple[str, str]]:
+    out: dict[str, tuple[str, str]] = {}
+    with path.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            out[hard(row["原品名"])] = (row["SPU品名"].strip(), row["规格"].strip())
+    return out
+
+
+@dataclass(frozen=True)
+class Rule:
+    file_key: str
+    sheet: str
+    section: str
+    keyword: str
+    zone_cat: str
+    category_code: str
+
+
+def load_rules(path: Path) -> list[Rule]:
+    rules: list[Rule] = []
+    with path.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            rules.append(Rule(
+                row["file_key"].strip(), row["sheet"].strip(), row["section"].strip(),
+                row["keyword"].strip(), row["zone_cat"].strip(), row["category_code"].strip(),
+            ))
+    return rules
+
+
+def _rule_scope_matches(rule: Rule, row: SourceRow) -> bool:
+    return (
+        rule.file_key in ("*", row.file_key)
+        and rule.sheet in ("*", row.sheet)
+        and rule.section in ("*", "", row.section)
+    )
+
+
+def match_rule(row: SourceRow, rules: list[Rule]) -> Rule | None:
+    """关键词规则优先(按文件顺序第一条命中),再退到无关键词规则。"""
+    for rule in rules:
+        if rule.keyword and rule.keyword in row.name and _rule_scope_matches(rule, row):
+            return rule
+    for rule in rules:
+        if not rule.keyword and _rule_scope_matches(rule, row):
+            return rule
+    return None
+
+
+_MODEL_RE = re.compile(r"按(.{2,30}?(?:型号|机型))")
+
+
+def extract_applicable_model(spec_text: str) -> str | None:
+    """从采购说明里抽「按 XX 型号/机型」作为适用机型属性;抽不到返回 None。"""
+    m = _MODEL_RE.search(spec_text or "")
+    return m.group(1) if m else None
+
+
+@dataclass
+class SpuRow:
+    name: str
+    spu_code: str
+    description: str
+    specs: list[str] = field(default_factory=list)
+    unit: str = ""
+    section: str = ""
+    generic: str = ""
+    applicable_model: str | None = None
+    scenes: list[str] = field(default_factory=list)
+    zone_cat: str | None = None
+    category_code: str | None = None
+    source_ids: list[str] = field(default_factory=list)
+    conflicts: list[str] = field(default_factory=list)
+
+
+def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rules: list[Rule]) -> list[SpuRow]:
+    """源行 → SPU:按合并表改名/取规格,按归一化品名聚合;场景取并集;大类取第一次命中,不一致记 conflicts。"""
+    out: dict[str, SpuRow] = {}
+    order: list[str] = []
+    units: dict[str, list[str]] = collections.defaultdict(list)
+    for r in rows:
+        name, spec = r.name, ""
+        merged = merge_map.get(hard(r.name))
+        if merged is not None:
+            name, spec = merged
+        k = hard(name)
+        s = out.get(k)
+        if s is None:
+            s = SpuRow(
+                name=name, spu_code=mining_spu_code(name), description=r.spec_text,
+                section=r.section, generic=r.generic,
+                applicable_model=extract_applicable_model(r.spec_text),
+            )
+            out[k] = s
+            order.append(k)
+        if spec and spec not in s.specs:
+            s.specs.append(spec)
+        scene = SCENE_BY_FILE_KEY[r.file_key]
+        if scene not in s.scenes:
+            s.scenes.append(scene)
+        s.source_ids.append(f"{r.file_key}:{r.row_id}")
+        if r.unit:
+            units[k].append(r.unit)
+        rule = match_rule(r, rules)
+        if rule is not None:
+            if s.zone_cat is None:
+                s.zone_cat, s.category_code = rule.zone_cat, rule.category_code
+            elif (rule.zone_cat, rule.category_code) != (s.zone_cat, s.category_code):
+                s.conflicts.append(
+                    f"{r.file_key}:{r.row_id} → {rule.zone_cat}/{rule.category_code} ≠ {s.zone_cat}/{s.category_code}"
+                )
+    for k in order:
+        us = units[k]
+        out[k].unit = collections.Counter(us).most_common(1)[0][0] if us else "PCS"
+    return [out[k] for k in order]
