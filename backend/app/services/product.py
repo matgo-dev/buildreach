@@ -15,6 +15,7 @@ from fastapi import UploadFile
 from sqlalchemy import (
     bindparam,
     delete as sa_delete,
+    exists,
     func,
     or_,
     select,
@@ -61,6 +62,7 @@ from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.supplier_organization import SupplierOrganization
+from app.db.models.zone import Zone, ZoneProduct
 from app.db.base import _utcnow
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
@@ -607,6 +609,7 @@ async def list_products_operator(
     status: str | None = None,
     supply_mode: str | None = None,
     keyword: str | None = None,
+    zone_code: str | None = None,
     page: int = 1,
     size: int = 20,
 ) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
@@ -630,6 +633,15 @@ async def list_products_operator(
         kf = _build_keyword_filter(keyword)
         q = q.where(kf)
         count_q = count_q.where(kf)
+    if zone_code:
+        # 属于某专区:EXISTS zone_products ⋈ zones(code)。不存在的 code 自然为空。
+        zf = exists(
+            select(ZoneProduct.id)
+            .join(Zone, Zone.id == ZoneProduct.zone_id)
+            .where(ZoneProduct.spu_id == Product.id, Zone.code == zone_code)
+        )
+        q = q.where(zf)
+        count_q = count_q.where(zf)
 
     total = (await db.execute(count_q)).scalar() or 0
     q = q.order_by(Product.created_at.desc()).offset((page - 1) * size).limit(size)
@@ -637,6 +649,24 @@ async def list_products_operator(
     products = list(rows)
     main_image_map = await _batch_main_images(db, [p.id for p in products])
     return products, total, main_image_map
+
+
+async def batch_zone_codes(db: AsyncSession, product_ids: list[int]) -> dict[int, list[str]]:
+    """一页商品 → 各自所属专区 code 列表(去重、按 code 排序)。运营列表角标用,一次查询不 N+1。"""
+    if not product_ids:
+        return {}
+    rows = (await db.execute(
+        select(ZoneProduct.spu_id, Zone.code)
+        .join(Zone, Zone.id == ZoneProduct.zone_id)
+        .where(ZoneProduct.spu_id.in_(product_ids))
+        .distinct()
+    )).all()
+    out: dict[int, list[str]] = {}
+    for spu_id, code in rows:
+        out.setdefault(spu_id, []).append(code)
+    for v in out.values():
+        v.sort()
+    return out
 
 
 async def list_products_public(

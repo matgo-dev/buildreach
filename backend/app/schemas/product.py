@@ -332,6 +332,8 @@ class ProductOperator(BaseModel):
     main_image: str | None = None
     main_image_thumbnail: str | None = None
     status: str
+    visibility: str = "PUBLIC"
+    zone_codes: list[str] = []
     created_by_name: str = ""
     price_min: Decimal | None = None
     price_max: Decimal | None = None

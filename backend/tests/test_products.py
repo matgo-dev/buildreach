@@ -2300,3 +2300,47 @@ async def test_home_floor_skips_imageless_product_even_if_newer(client, db_sessi
     product_ids = {p["id"] for p in safety["products"]}
     assert imaged_pid in product_ids, "有图商品应被选中"
     assert imageless_pid not in product_ids, "无图商品即使更新也不应顶替有图商品"
+
+
+# ── 运营列表:专区筛选 + 可见性/所属专区角标 ────────────────
+
+@pytest.mark.asyncio
+async def test_operator_list_zone_code_filter_and_badges(client, db_session):
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+    from app.db.models.zone import Zone, ZoneCategory, ZoneProduct
+
+    zone = Zone(code="ZONE-OPLIST", name_zh="运营列表测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.flush()
+    zc = ZoneCategory(zone_id=zone.id, code="C01", name_zh="大类")
+    db_session.add(zc)
+    await db_session.flush()
+    inside = Product(spu_code="OPLIST-IN", name_zh="专区内商品", category_code="04.001",
+                     status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS")
+    outside = Product(spu_code="OPLIST-OUT", name_zh="专区外商品", category_code="04.001",
+                      status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC, moq=1, unit="PCS")
+    db_session.add_all([inside, outside])
+    await db_session.flush()
+    db_session.add(ZoneProduct(zone_id=zone.id, spu_id=inside.id, zone_category_id=zc.id))
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+    r = await client.get("/api/v1/operator/products?zone_code=ZONE-OPLIST", headers=headers)
+    assert r.status_code == 200, r.text
+    items = r.json()["data"]["items"]
+    assert [i["spu_code"] for i in items] == ["OPLIST-IN"]
+    assert items[0]["visibility"] == "ZONE_ONLY"
+    assert items[0]["zone_codes"] == ["ZONE-OPLIST"]
+
+    r2 = await client.get("/api/v1/operator/products?keyword=OPLIST-OUT", headers=headers)
+    out = r2.json()["data"]["items"][0]
+    assert out["visibility"] == "PUBLIC"
+    assert out["zone_codes"] == []
+
+
+@pytest.mark.asyncio
+async def test_operator_list_unknown_zone_empty(client, db_session):
+    headers = await _login_operator(client)
+    r = await client.get("/api/v1/operator/products?zone_code=NO-SUCH-ZONE", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["total"] == 0
