@@ -318,6 +318,10 @@ export interface ProductOperatorItem {
   main_image: string | null;
   main_image_thumbnail: string | null;
   status: string;
+  /** PUBLIC=主商城可见;ZONE_ONLY=只在专区可见 */
+  visibility: "PUBLIC" | "ZONE_ONLY";
+  /** 所属专区 code 列表(空 = 不属于任何专区) */
+  zone_codes: string[];
   created_by_name: string;
   price_min: number | null;
   price_max: number | null;
@@ -332,6 +336,8 @@ export interface ProductListParams {
   status?: string;
   supply_mode?: string;
   keyword?: string;
+  /** 只看某专区的商品 */
+  zone_code?: string;
   page?: number;
   size?: number;
 }
@@ -438,6 +444,7 @@ export const operatorProductsApi = {
     if (params?.status) qs.set("status", params.status);
     if (params?.supply_mode) qs.set("supply_mode", params.supply_mode);
     if (params?.keyword) qs.set("keyword", params.keyword);
+    if (params?.zone_code) qs.set("zone_code", params.zone_code);
     if (params?.page !== undefined) qs.set("page", String(params.page));
     if (params?.size !== undefined) qs.set("size", String(params.size));
     const q = qs.toString();

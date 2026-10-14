@@ -383,6 +383,8 @@
     "allSubCategories": "All",
     "allStatus": "All Status",
     "allSupplyMode": "All Modes",
+    "zoneFilterAll": "All zones",
+    "zoneOnlyBadge": "Zone only",
     "search": "Search",
     "totalCount": "{count} products",
     "statusDraft": "Draft",

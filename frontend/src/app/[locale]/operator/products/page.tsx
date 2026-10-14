@@ -20,6 +20,7 @@ import {
   type ProductOperatorItem,
 } from "@/lib/api/operatorProducts";
 import { Permissions } from "@/lib/permissions";
+import { zoneGrantsApi, type ZoneBrief } from "@/lib/api/zoneGrants";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { imageUrl } from "@/lib/env";
 
@@ -118,6 +119,15 @@ function ProductListInner() {
   const [categoryCode, setCategoryCode] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [supplyModeFilter, setSupplyModeFilter] = useState("");
+  const [zoneFilter, setZoneFilter] = useState("");
+  const [zones, setZones] = useState<ZoneBrief[]>([]);
+  useEffect(() => {
+    zoneGrantsApi.listZones().then(setZones).catch(() => setZones([]));
+  }, []);
+  const zoneNameByCode = useMemo(
+    () => Object.fromEntries(zones.map((z) => [z.code, z.name_zh])) as Record<string, string>,
+    [zones]
+  );
 
   // 排序（后端暂不支持，客户端排序）
   const [sortBy, setSortBy] = useState<string | null>(null);
@@ -176,6 +186,7 @@ function ProductListInner() {
         if (categoryCode) params.category_code = categoryCode;
         if (statusFilter) params.status = statusFilter;
         if (supplyModeFilter) params.supply_mode = supplyModeFilter;
+        if (zoneFilter) params.zone_code = zoneFilter;
 
         const data = await operatorProductsApi.list(params);
         setItems(data.items);
@@ -188,7 +199,7 @@ function ProductListInner() {
         setLoading(false);
       }
     },
-    [keyword, categoryCode, statusFilter, supplyModeFilter, t]
+    [keyword, categoryCode, statusFilter, supplyModeFilter, zoneFilter, t]
   );
 
   // 初始加载 + 筛选变更自动重载（回第 1 页）
@@ -201,7 +212,7 @@ function ProductListInner() {
     }
     void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryCode, statusFilter, supplyModeFilter]);
+  }, [categoryCode, statusFilter, supplyModeFilter, zoneFilter]);
 
   // ---------- 客户端排序 ----------
   const handleSort = useCallback((field: string) => {
@@ -323,7 +334,7 @@ function ProductListInner() {
     }
   }, [confirmState, t]);
 
-  const hasFilters = keyword.trim() || categoryCode || statusFilter;
+  const hasFilters = keyword.trim() || categoryCode || statusFilter || zoneFilter;
 
   return (
     <div className="space-y-5">
@@ -385,6 +396,19 @@ function ProductListInner() {
           <option value="PLATFORM_STOCK">{tDetail("supplyModePlatformStock")}</option>
           <option value="SUPPLIER_DIRECT">{tDetail("supplyModeSupplierDirect")}</option>
         </select>
+
+        {zones.length > 0 && (
+          <select
+            value={zoneFilter}
+            onChange={(e) => setZoneFilter(e.target.value)}
+            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="">{t("zoneFilterAll")}</option>
+            {zones.map((z) => (
+              <option key={z.code} value={z.code}>{z.name_zh}</option>
+            ))}
+          </select>
+        )}
 
         <button
           onClick={() => void load(1)}
@@ -555,6 +579,20 @@ function ProductListInner() {
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900 max-w-[280px]">{item.name}</p>
+                          {(item.visibility === "ZONE_ONLY" || item.zone_codes.length > 0) && (
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {item.visibility === "ZONE_ONLY" && (
+                                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                                  {t("zoneOnlyBadge")}
+                                </span>
+                              )}
+                              {item.zone_codes.map((code) => (
+                                <span key={code} className="rounded bg-teal-50 px-1.5 py-0.5 text-[11px] font-medium text-teal-700">
+                                  {zoneNameByCode[code] ?? code}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           {item.created_by_name && (
                             <p className="truncate text-xs text-slate-400">{item.created_by_name}</p>
                           )}

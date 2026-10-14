@@ -383,6 +383,8 @@
     "allSubCategories": "全部",
     "allStatus": "全部状态",
     "allSupplyMode": "全部模式",
+    "zoneFilterAll": "全部专区",
+    "zoneOnlyBadge": "仅专区可见",
     "search": "搜索",
     "totalCount": "共 {count} 件商品",
     "statusDraft": "草稿",
