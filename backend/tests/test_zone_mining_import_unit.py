@@ -205,3 +205,15 @@ def test_mark_i18n_sets_pending_for_translatable_fields_and_manual_for_spec():
     plain = ProductAttr(attr_key_zh="是否通用", attr_value_zh="否（机型专用）", selectable=False)
     mark_attr_i18n(plain)
     assert plain.trans_meta["attr_value_en"] == "pending"
+
+
+def test_noise_filter_drops_report_forms():
+    from scripts.import_zone_mining import is_noise_name
+    assert is_noise_name("班报表")
+    assert not is_noise_name("岩心牌")
+
+
+def test_build_spus_records_matched_rule_for_audit():
+    rows = [SourceRow("01", "药剂及钢球", "X-1", "", "研磨钢球", "", "吨", "")]
+    rules = [Rule("*", "*", "*", "钢球", "C01", "33.001")]
+    assert build_spus(rows, {}, rules)[0].rule_desc == "*/*/*/钢球"

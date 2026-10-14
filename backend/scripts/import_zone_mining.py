@@ -140,7 +140,7 @@ def _cell(v) -> str:
     return str(v).strip() if v not in (None, "") else ""
 
 
-_NOISE_RE = re.compile(r"^(待核|待定|合计|小计)|(方案|服务)$")
+_NOISE_RE = re.compile(r"^(待核|待定|合计|小计)|(方案|服务|报表)$")
 
 
 def is_noise_name(name: str) -> bool:
@@ -274,6 +274,7 @@ class SpuRow:
     category_code: str | None = None
     source_ids: list[str] = field(default_factory=list)
     conflicts: list[str] = field(default_factory=list)
+    rule_desc: str = ""   # 命中规则 file/sheet/section/keyword,审核 CSV 用
 
 
 def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rules: list[Rule]) -> list[SpuRow]:
@@ -308,6 +309,7 @@ def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rul
         if rule is not None:
             if s.zone_cat is None:
                 s.zone_cat, s.category_code = rule.zone_cat, rule.category_code
+                s.rule_desc = f"{rule.file_key}/{rule.sheet}/{rule.section or '*'}/{rule.keyword or '-'}"
             elif (rule.zone_cat, rule.category_code) != (s.zone_cat, s.category_code):
                 s.conflicts.append(
                     f"{r.file_key}:{r.row_id} → {rule.zone_cat}/{rule.category_code} ≠ {s.zone_cat}/{s.category_code}"
@@ -541,19 +543,57 @@ async def upsert_zone_product(
     await db.flush()
 
 
+async def prune_stale_zone_products(db: AsyncSession, zone: Zone, product: Product, expected_category_ids: set[int]) -> int:
+    """规则/场景改动后重跑:删掉本批次写入、但已不在期望集合里的挂载行;手工挂的(非本批次)不动。"""
+    from sqlalchemy import delete
+    conds = [
+        ZoneProduct.zone_id == zone.id,
+        ZoneProduct.spu_id == product.id,
+        ZoneProduct.source_batch_id == BATCH_ID,
+    ]
+    if expected_category_ids:
+        conds.append(ZoneProduct.zone_category_id.not_in(expected_category_ids))
+    res = await db.execute(delete(ZoneProduct).where(*conds))
+    return res.rowcount or 0
+
+
+async def find_orphan_products(db: AsyncSession, computed_spu_codes: set[str]) -> list[Product]:
+    """本批次以前导入、但这次按合并表算不出来的商品(典型:spu_merge.csv 改了品名 → spu_code 变了)。"""
+    rows = (await db.execute(
+        select(Product).where(
+            Product.deleted_at.is_(None),
+            Product.source_meta["batch"].as_string() == BATCH_ID,
+        ).order_by(Product.spu_code)
+    )).scalars().all()
+    return [p for p in rows if p.spu_code not in computed_spu_codes]
+
+
+async def soft_delete_orphans(db: AsyncSession, zone: Zone, orphans: list[Product]) -> int:
+    """--prune-orphans:孤儿商品软删 + 清其专区挂载(SKU/属性随商品不可见,不动,避免破坏已有引用)。"""
+    from sqlalchemy import delete
+    if not orphans:
+        return 0
+    ids = [p.id for p in orphans]
+    await db.execute(delete(ZoneProduct).where(ZoneProduct.zone_id == zone.id, ZoneProduct.spu_id.in_(ids)))
+    for p in orphans:
+        p.deleted_at = func.now()
+    await db.flush()
+    return len(ids)
+
+
 def write_audit(spus: list[SpuRow], path: Path) -> None:
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "环节", "是否通用", "适用机型", "来源编号", "冲突", "采购说明"])
+        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "命中规则", "环节", "是否通用", "适用机型", "来源编号", "冲突", "采购说明"])
         for s in spus:
             w.writerow([
                 s.spu_code, s.name, " / ".join(s.specs), s.unit, " / ".join(s.scenes),
-                s.zone_cat or "【未命中】", s.category_code or "", s.section, s.generic, s.applicable_model or "",
+                s.zone_cat or "【未命中】", s.category_code or "", s.rule_desc, s.section, s.generic, s.applicable_model or "",
                 " / ".join(s.source_ids), " | ".join(s.conflicts), s.description,
             ])
 
 
-async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool) -> dict:
+async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orphans: bool = False) -> dict:
     stats: collections.Counter = collections.Counter()
     rows = load_source_rows(src_dir)
     spus = build_spus(rows, load_merge_map(MERGE_CSV), load_rules(RULES_CSV))
@@ -574,20 +614,36 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool) -> dict:
     zone = await get_or_create_zone(db, stats)
     zcs = await upsert_zone_categories(db, zone, stats)
 
+    # 孤儿守卫:上次导入过、这次算不出来的商品(合并表改名会触发)。不处理就会在专区里留下重复/过期商品。
+    orphans = await find_orphan_products(db, {s.spu_code for s in spus})
+    stats["orphan_products"] = len(orphans)
+    if orphans:
+        for p in orphans[:20]:
+            print(f"孤儿商品: {p.spu_code} {p.name_zh}")
+        if prune_orphans:
+            stats["orphans_soft_deleted"] = await soft_delete_orphans(db, zone, orphans)
+        elif not dry_run:
+            raise RuntimeError(f"拒绝落库:{len(orphans)} 个孤儿商品(上批导入、本次不在清单内)。确认后加 --prune-orphans 软删,或改回品名。")
+
     sort_counters: dict[str, int] = collections.defaultdict(int)
     for s in spus:
         if s.zone_cat is None:
             continue
         product = await upsert_product(db, s, stats)
+        expected: set[int] = set()
         await upsert_zone_product(db, zone, zcs[s.zone_cat], product, sort_counters[s.zone_cat], stats)
+        expected.add(zcs[s.zone_cat].id)
         sort_counters[s.zone_cat] += 1
         for scene in s.scenes:
             await upsert_zone_product(db, zone, zcs[scene], product, sort_counters[scene], stats)
+            expected.add(zcs[scene].id)
             sort_counters[scene] += 1
+        # 规则改动后重跑:清掉本批次写入但已不在期望集合里的挂载
+        stats["zone_products_removed"] += await prune_stale_zone_products(db, zone, product, expected)
     return dict(stats)
 
 
-async def _execute(src_dir: Path, dry_run: bool) -> None:
+async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) -> None:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from app.core.config import settings
 
@@ -601,7 +657,7 @@ async def _execute(src_dir: Path, dry_run: bool) -> None:
     engine = create_async_engine(settings.DATABASE_URL)
     Session = async_sessionmaker(engine, expire_on_commit=False)
     async with Session() as db:
-        stats = await run_import(db, src_dir, dry_run)
+        stats = await run_import(db, src_dir, dry_run, prune_orphans=prune_orphans)
         if dry_run:
             await db.rollback()
         else:
@@ -614,7 +670,8 @@ async def _execute(src_dir: Path, dry_run: bool) -> None:
     for k in ("source_rows", "spus", "unmatched", "conflicts", "platform_categories_created", "platform_categories_existing",
               "zone_created", "zone_categories_created", "zone_categories_updated",
               "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
-              "zone_products_created", "zone_products_updated", "zone_products_existing"):
+              "zone_products_created", "zone_products_updated", "zone_products_existing", "zone_products_removed",
+              "orphan_products", "orphans_soft_deleted"):
         print(f"{k:32s} {stats.get(k, 0)}")
     if dry_run:
         print(f"\n审核 CSV:{AUDIT_CSV}\n这是干跑,数据库未改动。未命中/冲突清零后加 --commit 落库。")
@@ -626,8 +683,9 @@ def main() -> None:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--dry-run", action="store_true")
     g.add_argument("--commit", action="store_true")
+    ap.add_argument("--prune-orphans", action="store_true", help="把上批导入、本次不在清单内的商品软删并清其专区挂载(合并表改名后用)")
     args = ap.parse_args()
-    asyncio.run(_execute(args.src, dry_run=args.dry_run))
+    asyncio.run(_execute(args.src, dry_run=args.dry_run, prune_orphans=args.prune_orphans))
 
 
 if __name__ == "__main__":
