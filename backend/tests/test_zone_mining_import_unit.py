@@ -182,3 +182,26 @@ def test_match_rule_file_specific_keyword_beats_wildcard_keyword():
     site = SourceRow("04", "回收及公辅", "R-1", "", "流量计", "", "台", "")
     assert match_rule(lab, rules).zone_cat == "C11"
     assert match_rule(site, rules).zone_cat == "C06"
+
+
+def test_mark_i18n_sets_pending_for_translatable_fields_and_manual_for_spec():
+    """导入行必须打翻译标记,否则生产的定时扫描器(sweep_pending 按 i18n_pending_at)永远不会补 en/sw。"""
+    from app.db.models.product import Product
+    from app.db.models.product_attr import ProductAttr
+    from scripts.import_zone_mining import mark_attr_i18n, mark_product_i18n
+
+    p = Product(spu_code="X", name_zh="绳卡", description_zh="按钢丝绳直径核对", category_code="04.001")
+    mark_product_i18n(p)
+    assert p.trans_meta["name_zh"] == "src" and p.trans_meta["name_en"] == "pending" and p.trans_meta["name_sw"] == "pending"
+    assert p.trans_meta["description_en"] == "pending"
+    assert p.i18n_pending_at is not None
+
+    spec = ProductAttr(attr_key_zh="规格", attr_key_en="spec", attr_value_zh="φ8", attr_value_en="φ8", selectable=True)
+    mark_attr_i18n(spec, value_language_neutral=True)
+    assert spec.trans_meta["attr_key_en"] == "pending"          # 键翻译
+    assert spec.trans_meta["attr_value_en"] == "manual"         # 规格值语言中性,不翻
+    assert spec.trans_meta["attr_value_sw"] == "manual"
+
+    plain = ProductAttr(attr_key_zh="是否通用", attr_value_zh="否（机型专用）", selectable=False)
+    mark_attr_i18n(plain)
+    assert plain.trans_meta["attr_value_en"] == "pending"

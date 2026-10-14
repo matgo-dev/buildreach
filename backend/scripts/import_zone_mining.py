@@ -334,6 +334,43 @@ from app.db.models.zone import (  # noqa: E402
     ZoneCategory,
     ZoneProduct,
 )
+from app.core.i18n_write import _get_meta, _set_meta, _set_pending_at  # noqa: E402
+
+_LOCALES = ("zh", "en", "sw")
+
+
+def _mark(obj, field: str, *, neutral: bool = False) -> None:
+    """给一个字段打翻译记账:zh=src;en/sw = pending(待翻)或 manual(语言中性值,不翻)。"""
+    meta = _get_meta(obj)
+    meta[f"{field}_zh"] = "src"
+    for loc in _LOCALES[1:]:
+        meta[f"{field}_{loc}"] = "manual" if neutral else "pending"
+    _set_meta(obj, meta)
+    if not neutral:
+        _set_pending_at(obj)
+
+
+def mark_product_i18n(product: Product) -> None:
+    """脚本建的商品不会经过 API 的 apply_i18n_create,这里补同样的记账,
+    让生产的定时扫描器(sweep_pending 按 i18n_pending_at)和 backfill_translations 自动补 en/sw。"""
+    if hasattr(product, "source_lang"):
+        product.source_lang = "zh"
+    _mark(product, "name")
+    if product.description_zh:
+        _mark(product, "description")
+
+
+def mark_sku_i18n(sku: ProductSku) -> None:
+    if hasattr(sku, "source_lang"):
+        sku.source_lang = "zh"
+    _mark(sku, "name")
+
+
+def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = False) -> None:
+    if hasattr(attr, "source_lang"):
+        attr.source_lang = "zh"
+    _mark(attr, "attr_key")
+    _mark(attr, "attr_value", neutral=value_language_neutral)
 
 
 async def ensure_platform_categories(db: AsyncSession, stats: collections.Counter) -> None:
@@ -421,6 +458,10 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         product.moq_unit = s.unit
         product.visibility = ProductVisibility.ZONE_ONLY
         product.status = ProductStatus.ACTIVE
+        if not product.name_en and not _get_meta(product):
+            # 早期导入未打翻译标记的行:补标记一次(已有 en 或已有记账的不动,避免重复翻译)
+            mark_product_i18n(product)
+            stats["products_marked_for_i18n"] += 1
         stats["products_updated"] += 1
         await db.flush()
         return product
@@ -432,6 +473,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         unit="PCS", moq=1, moq_unit=s.unit, source=SOURCE,
         source_meta={"batch": BATCH_ID, "source_ids": s.source_ids, "scenes": s.scenes},
     )
+    mark_product_i18n(product)
     db.add(product)
     await db.flush()
 
@@ -442,28 +484,35 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
                 product_id=product.id, sku_code=mining_sku_code(s.spu_code, spec),
                 name_zh=f"{s.name} {spec}", moq=1, is_default=(i == 0), status=SkuStatus.ACTIVE,
             )
+            mark_sku_i18n(sku)
             db.add(sku)
             await db.flush()
-            db.add(ProductAttr(
+            spec_attr = ProductAttr(
                 product_id=product.id, sku_id=sku.id,
                 attr_key_zh="规格", attr_key_en="spec",
-                attr_value_zh=spec, attr_value_en=spec,
+                attr_value_zh=spec, attr_value_en=spec, attr_value_sw=spec,
                 selectable=True, sort_order=i,
-            ))
+            )
+            mark_attr_i18n(spec_attr, value_language_neutral=True)
+            db.add(spec_attr)
         stats["skus_created"] += len(s.specs)
     else:
         stats["products_simple"] += 1
-        db.add(ProductSku(
+        sku = ProductSku(
             product_id=product.id, sku_code=mining_sku_code(s.spu_code, None),
             name_zh=s.name, moq=1, is_default=True, status=SkuStatus.ACTIVE,
-        ))
+        )
+        mark_sku_i18n(sku)
+        db.add(sku)
         stats["skus_created"] += 1
 
     for i, (kz, ke, v) in enumerate(_spu_attrs(s)):
-        db.add(ProductAttr(
+        attr = ProductAttr(
             product_id=product.id, sku_id=None,
             attr_key_zh=kz, attr_key_en=ke, attr_value_zh=v, selectable=False, sort_order=i,
-        ))
+        )
+        mark_attr_i18n(attr)
+        db.add(attr)
     await db.flush()
     return product
 
@@ -564,7 +613,7 @@ async def _execute(src_dir: Path, dry_run: bool) -> None:
     print("=" * 64)
     for k in ("source_rows", "spus", "unmatched", "conflicts", "platform_categories_created", "platform_categories_existing",
               "zone_created", "zone_categories_created", "zone_categories_updated",
-              "products_simple", "products_variant", "products_updated", "skus_created",
+              "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
               "zone_products_created", "zone_products_updated", "zone_products_existing"):
         print(f"{k:32s} {stats.get(k, 0)}")
     if dry_run:
