@@ -13,20 +13,27 @@ import { categoriesApi, type CategoryTreeNode } from "@/lib/api/categories";
  *
  * 悬浮子分类面板用完整树数据渲染，首屏不阻塞。
  */
-export function useCategoryTree() {
+export interface UseCategoryTreeOptions {
+  /** 运营选择器用:连停用类目一起拉(主商城永远不要传) */
+  includeInactive?: boolean;
+}
+
+export function useCategoryTree(options: UseCategoryTreeOptions = {}) {
   const locale = useLocale();
+  const includeInactive = options.includeInactive === true;
+  const flag = includeInactive ? "&include_inactive=true" : "";
 
   // 阶段1: L1+L2 浅层树（首屏快速渲染）
   const shallow = useSWR<CategoryTreeNode[]>(
-    `/api/v1/categories/tree?max_depth=2&locale=${locale}`,
-    () => categoriesApi.tree({ max_depth: 2 }),
+    `/api/v1/categories/tree?max_depth=2&locale=${locale}${flag}`,
+    () => categoriesApi.tree({ max_depth: 2, include_inactive: includeInactive }),
     { revalidateOnFocus: false, revalidateIfStale: false },
   );
 
   // 阶段2: 完整树（后台静默加载，用于悬浮面板）
   const full = useSWR<CategoryTreeNode[]>(
-    `/api/v1/categories/tree?locale=${locale}`,
-    () => categoriesApi.tree(),
+    `/api/v1/categories/tree?locale=${locale}${flag}`,
+    () => categoriesApi.tree({ include_inactive: includeInactive }),
     { revalidateOnFocus: false, revalidateIfStale: false },
   );
 

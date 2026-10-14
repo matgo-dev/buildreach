@@ -231,3 +231,34 @@ async def test_api_trace_id_header_present(client):
     r = await client.get("/api/v1/categories")
     assert r.status_code == 200
     assert r.headers.get("x-trace-id"), "X-Trace-Id 响应头缺失"
+
+_ACTIVE_PLUS_INACTIVE = [
+    ("01", "启用一级", 1, None, 1, True),
+    ("01.001", "启用叶子", 2, "01", 1, True),
+    ("98", "停用一级", 1, None, 900, False),
+    ("98.001", "停用叶子", 2, "98", 1, False),
+]
+
+
+@pytest.mark.asyncio
+async def test_tree_include_inactive_flag(client, db_session):
+    """默认树不含停用一级;include_inactive=true 时停用一级连同其停用叶子一起返回(嵌套,不顶到根)。"""
+    await _seed(db_session, _ACTIVE_PLUS_INACTIVE)
+    cs.invalidate_category_cache()  # 进程内 TTL 缓存会留着上个测试的树
+    r = await client.get("/api/v1/categories/tree")
+    assert {n["code"] for n in r.json()["data"]} == {"01"}
+
+    r2 = await client.get("/api/v1/categories/tree?include_inactive=true")
+    roots = {n["code"]: n for n in r2.json()["data"]}
+    assert set(roots) == {"01", "98"}
+    assert [c["code"] for c in roots["98"]["children"]] == ["98.001"]
+
+
+@pytest.mark.asyncio
+async def test_list_include_inactive_flag(client, db_session):
+    await _seed(db_session, _ACTIVE_PLUS_INACTIVE)
+    cs.invalidate_category_cache()
+    r = await client.get("/api/v1/categories?include_inactive=true&level=1")
+    assert {n["code"] for n in r.json()["data"]} == {"01", "98"}
+    r2 = await client.get("/api/v1/categories?level=1")
+    assert {n["code"] for n in r2.json()["data"]} == {"01"}

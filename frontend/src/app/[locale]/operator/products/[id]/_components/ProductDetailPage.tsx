@@ -81,7 +81,7 @@ export default function ProductDetailPage() {
     return err instanceof Error ? err.message : String(err);
   }, [tError]);
   const { hasPermission } = usePermissions();
-  const { tree: categoryTree } = useCategoryTree();
+  const { tree: categoryTree } = useCategoryTree({ includeInactive: true });
 
   const productId = Number(params.id);
   const startInEdit = searchParams.get("edit") === "true";

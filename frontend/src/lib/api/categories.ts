@@ -49,10 +49,11 @@ export const categoriesApi = {
   },
   /** L1 品类缩略图(移动端宫格入口) */
   thumbnails: () => api.get<CategoryThumbnail[]>("/api/v1/categories/thumbnails"),
-  /** 嵌套树;is_active 默认 true, max_depth 限制层级深度。 */
-  tree: (params?: { is_active?: boolean; max_depth?: number }) => {
+  /** 嵌套树;is_active 默认 true, include_inactive=true 返回启用+停用(运营选择器用), max_depth 限制层级深度。 */
+  tree: (params?: { is_active?: boolean; include_inactive?: boolean; max_depth?: number }) => {
     const qs = new URLSearchParams();
     if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active));
+    if (params?.include_inactive) qs.set("include_inactive", "true");
     if (params?.max_depth !== undefined) qs.set("max_depth", String(params.max_depth));
     const q = qs.toString();
     return api.get<CategoryTreeNode[]>(`/api/v1/categories/tree${q ? `?${q}` : ""}`);

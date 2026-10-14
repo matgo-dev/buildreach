@@ -101,7 +101,7 @@ function ProductListInner() {
   const router = useRouter();
   const locale = useLocale();
   const { hasPermission } = usePermissions();
-  const { tree: categoryTree } = useCategoryTree();
+  const { tree: categoryTree } = useCategoryTree({ includeInactive: true });
 
   const catMap = useMemo(() => buildCategoryMap(categoryTree), [categoryTree]);
 

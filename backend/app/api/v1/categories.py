@@ -19,11 +19,13 @@ async def list_categories(
     level: int | None = Query(None, ge=1, le=4, description="可选,只返回某一层(1-4)"),
     parent_code: str | None = Query(None, description="可选,只返回某父节点(按 code)的子级"),
     is_active: bool = Query(True, description="默认只返回启用的"),
+    include_inactive: bool = Query(False, description="true 时忽略 is_active,启用+停用全部返回(运营选择器用)"),
     is_leaf: bool | None = Query(None, description="可选,只返回叶子/非叶子品类"),
     db: AsyncSession = Depends(get_db),
 ):
     rows = await category_service.list_flat(
-        db, level=level, parent_code=parent_code, is_active=is_active, is_leaf=is_leaf
+        db, level=level, parent_code=parent_code,
+        is_active=None if include_inactive else is_active, is_leaf=is_leaf,
     )
     return success([r.model_dump() for r in rows])
 
@@ -39,8 +41,11 @@ async def get_category_thumbnails(
 @router.get("/tree", summary="商品分类嵌套树")
 async def get_categories_tree(
     is_active: bool = Query(True, description="默认只返回启用的"),
+    include_inactive: bool = Query(False, description="true 时忽略 is_active,启用+停用全部返回(运营选择器用)"),
     max_depth: int | None = Query(None, ge=1, le=4, description="限制返回层级深度(1-4),不传返回全部"),
     db: AsyncSession = Depends(get_db),
 ):
-    tree = await category_service.get_tree(db, is_active=is_active, max_depth=max_depth)
+    tree = await category_service.get_tree(
+        db, is_active=None if include_inactive else is_active, max_depth=max_depth,
+    )
     return success([n.model_dump() for n in tree])

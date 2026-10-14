@@ -19,6 +19,8 @@ export interface CategoryCascaderProps {
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  /** 运营端:连停用类目一起可选(专区商品挂在停用的一级下) */
+  includeInactive?: boolean;
 }
 
 export const EMPTY_CATEGORY: SelectedCategory = { codes: [] };
@@ -55,9 +57,10 @@ export function CategoryCascader({
   required,
   disabled,
   className,
+  includeInactive,
 }: CategoryCascaderProps) {
   const t = useTranslations("category");
-  const { tree, isLoading, error } = useCategoryTree();
+  const { tree, isLoading, error } = useCategoryTree({ includeInactive });
 
   // 计算每级的选项列表
   const levels = React.useMemo(() => {

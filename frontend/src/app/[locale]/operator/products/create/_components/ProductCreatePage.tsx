@@ -544,7 +544,7 @@ export function ProductCreatePage() {
                   </span>
                 </div>
                 <div className={fieldErrors.category ? "rounded-md ring-1 ring-red-500" : ""}>
-                  <CategoryCascader value={category} onChange={handleCategoryChange} required />
+                  <CategoryCascader value={category} onChange={handleCategoryChange} required includeInactive />
                 </div>
                 {fieldErrors.category && <p className="mt-1 text-xs text-red-500">{fieldErrors.category}</p>}
                 {attrLoading && (
