@@ -19,3 +19,12 @@ def test_zone_grant_has_zone_org_unique():
 
 def test_zone_has_unique_code_column():
     assert Zone.__table__.c.code.unique is True
+
+
+def test_zone_category_kind_column_defaults_to_category():
+    from app.db.models.zone import ZONE_CATEGORY_KIND_CATEGORY, ZONE_CATEGORY_KIND_SCENE
+    col = ZoneCategory.__table__.c.kind
+    assert col.nullable is False
+    assert col.server_default.arg == "CATEGORY"
+    assert ZONE_CATEGORY_KIND_CATEGORY == "CATEGORY"
+    assert ZONE_CATEGORY_KIND_SCENE == "SCENE"

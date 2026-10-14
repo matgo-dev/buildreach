@@ -37,6 +37,10 @@ class Zone(Base, TimestampUpdateMixin):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
+ZONE_CATEGORY_KIND_CATEGORY = "CATEGORY"  # 商品类型轴:一件商品一个
+ZONE_CATEGORY_KIND_SCENE = "SCENE"        # 应用场景轴:一件商品可多个
+
+
 class ZoneCategory(Base, TimestampUpdateMixin, I18nMixin):
     __tablename__ = "zone_categories"
     __table_args__ = (
@@ -52,6 +56,10 @@ class ZoneCategory(Base, TimestampUpdateMixin, I18nMixin):
     name_en: Mapped[str | None] = mapped_column(String(128))
     name_sw: Mapped[str | None] = mapped_column(String(128))
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # 轴类型:CATEGORY(商品类型,默认)| SCENE(应用场景)。两轴都存本表,靠 kind 区分。
+    kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=ZONE_CATEGORY_KIND_CATEGORY, server_default="CATEGORY",
+    )
     mapped_platform_codes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)  # OVH category codes, 选品辅助
 
 

@@ -79,6 +79,7 @@ def _zone_category_to_public(zc: ZoneCategory) -> dict:
     return {
         "id": zc.id,
         "code": zc.code,
+        "kind": zc.kind,
         "name": get_localized(zc, "name"),
         "name_zh": zc.name_zh,
         "name_en": zc.name_en,
