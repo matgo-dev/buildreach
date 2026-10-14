@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.exc import IntegrityError
 
 from app.db.models.product import Product, ProductStatus, ProductVisibility
 from app.db.models.zone import (
@@ -170,3 +171,13 @@ async def test_zone_product_detail_returns_zone_categories(client: AsyncClient, 
     zcs = r.json()["data"]["zone_categories"]
     assert [(z["kind"], z["code"]) for z in zcs] == [("CATEGORY", "C01"), ("SCENE", "S01"), ("SCENE", "S02")]
     assert zcs[1]["name"] == "浮选厂"
+
+
+@pytest.mark.asyncio
+async def test_zone_category_kind_check_constraint(db_session):
+    """kind 枚举在 DB 层收口:'Scene' 这类脏值写入即被 CHECK 拒绝,不会静默成第三个轴。"""
+    zone = await _make_zone(db_session, "ZONE-KIND-CK")
+    db_session.add(ZoneCategory(zone_id=zone.id, code="X01", name_zh="脏值", kind="Scene"))
+    with pytest.raises(IntegrityError):
+        await db_session.flush()
+    await db_session.rollback()

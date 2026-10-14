@@ -81,7 +81,8 @@ export default function ProductDetailPage() {
     return err instanceof Error ? err.message : String(err);
   }, [tError]);
   const { hasPermission } = usePermissions();
-  const { tree: categoryTree } = useCategoryTree({ includeInactive: true });
+  // 专区商品挂在停用的一级下,品类路径要显示出来得连停用树一起拉;后端按 zone:manage 门控
+  const { tree: categoryTree } = useCategoryTree({ includeInactive: hasPermission(Permissions.ZONE_MANAGE) });
 
   const productId = Number(params.id);
   const startInEdit = searchParams.get("edit") === "true";

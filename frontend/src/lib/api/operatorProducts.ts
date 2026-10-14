@@ -321,7 +321,8 @@ export interface ProductOperatorItem {
   /** PUBLIC=主商城可见;ZONE_ONLY=只在专区可见 */
   visibility: "PUBLIC" | "ZONE_ONLY";
   /** 所属专区 code 列表(空 = 不属于任何专区) */
-  zone_codes: string[];
+  /** 所属专区 code 列表;老后端没有这个字段,渲染时按 [] 处理 */
+  zone_codes?: string[];
   created_by_name: string;
   price_min: number | null;
   price_max: number | null;

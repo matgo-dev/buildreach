@@ -102,7 +102,9 @@ function ProductListInner() {
   const router = useRouter();
   const locale = useLocale();
   const { hasPermission } = usePermissions();
-  const { tree: categoryTree } = useCategoryTree({ includeInactive: true });
+  // 专区相关能力(停用品类树 / 专区列表)都要 zone:manage;没有的角色不发请求,免得每次加载吃 403
+  const canManageZones = hasPermission(Permissions.ZONE_MANAGE);
+  const { tree: categoryTree } = useCategoryTree({ includeInactive: canManageZones });
 
   const catMap = useMemo(() => buildCategoryMap(categoryTree), [categoryTree]);
 
@@ -122,8 +124,9 @@ function ProductListInner() {
   const [zoneFilter, setZoneFilter] = useState("");
   const [zones, setZones] = useState<ZoneBrief[]>([]);
   useEffect(() => {
+    if (!canManageZones) return;
     zoneGrantsApi.listZones().then(setZones).catch(() => setZones([]));
-  }, []);
+  }, [canManageZones]);
   const zoneNameByCode = useMemo(
     () => Object.fromEntries(zones.map((z) => [z.code, z.name_zh])) as Record<string, string>,
     [zones]
@@ -579,14 +582,14 @@ function ProductListInner() {
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900 max-w-[280px]">{item.name}</p>
-                          {(item.visibility === "ZONE_ONLY" || item.zone_codes.length > 0) && (
+                          {(item.visibility === "ZONE_ONLY" || (item.zone_codes ?? []).length > 0) && (
                             <div className="mt-0.5 flex flex-wrap gap-1">
                               {item.visibility === "ZONE_ONLY" && (
                                 <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
                                   {t("zoneOnlyBadge")}
                                 </span>
                               )}
-                              {item.zone_codes.map((code) => (
+                              {(item.zone_codes ?? []).map((code) => (
                                 <span key={code} className="rounded bg-teal-50 px-1.5 py-0.5 text-[11px] font-medium text-teal-700">
                                   {zoneNameByCode[code] ?? code}
                                 </span>

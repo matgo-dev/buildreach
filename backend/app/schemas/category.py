@@ -27,6 +27,7 @@ class CategoryNode(BaseModel):
     parent_code: str | None = None
     sort_order: int
     is_leaf: bool = True
+    is_active: bool = True
 
 
 class CategoryTreeNode(BaseModel):
@@ -41,6 +42,8 @@ class CategoryTreeNode(BaseModel):
     short_name: str | None = None  # 按请求 locale 填充
     level: int
     is_leaf: bool = True
+    # 默认树只含启用节点;include_inactive=true 时前端靠它把停用节点标出来/禁掉
+    is_active: bool = True
     children: List["CategoryTreeNode"] = []
 
 

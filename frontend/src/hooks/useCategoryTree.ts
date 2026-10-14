@@ -14,7 +14,7 @@ import { categoriesApi, type CategoryTreeNode } from "@/lib/api/categories";
  * 悬浮子分类面板用完整树数据渲染，首屏不阻塞。
  */
 export interface UseCategoryTreeOptions {
-  /** 运营选择器用:连停用类目一起拉(主商城永远不要传) */
+  /** 运营列表筛选用:连停用类目一起拉。后端要求 zone:manage,调用方必须先判权限再传 true(主商城永远不要传) */
   includeInactive?: boolean;
 }
 

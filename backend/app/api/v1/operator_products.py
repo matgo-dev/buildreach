@@ -191,7 +191,7 @@ def _to_operator(
         main_image=main_url,
         main_image_thumbnail=thumb_url,
         status=p.status,
-        visibility=getattr(p, "visibility", "PUBLIC"),
+        visibility=p.visibility,
         zone_codes=zone_codes or [],
         created_by_name=created_by_name,
         price_min=prices["price_min"],

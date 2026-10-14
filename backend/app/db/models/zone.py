@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -47,6 +48,8 @@ class ZoneCategory(Base, TimestampUpdateMixin, I18nMixin):
         UniqueConstraint("zone_id", "code", name="uq_zone_categories_zone_code"),
         # 供 zone_product 复合外键引用(保证类目属于同一 zone)
         UniqueConstraint("zone_id", "id", name="uq_zone_categories_zone_id_id"),
+        # 轴类型枚举在 DB 层收口:脏值(如 'Scene')写入即拒,不靠应用层约定
+        CheckConstraint("kind IN ('CATEGORY', 'SCENE')", name="ck_zone_categories_kind"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

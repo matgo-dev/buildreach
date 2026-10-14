@@ -117,6 +117,7 @@
       "required_attr_missing": "Required attributes missing: {keys}",
       "attr_scope_mismatch": "Attribute {attr_key} scope should be {expected_scope}",
       "category_not_leaf": "Category {category_code} is not a leaf node; only level-3 categories are allowed",
+      "category_inactive": "Category {category_code} is inactive (zone-only); public products cannot be filed under it",
       "invalid_range": "{min_field} cannot be greater than {max_field}",
       "illegal_transition": "Cannot transition from {current} to {target}",
       "image_not_owned": "Image {image_id} does not belong to product {product_id}",
@@ -266,6 +267,7 @@
     "select_level4": "Select level 4",
     "select_parent_first": "Select parent first",
     "load_error": "Failed to load categories",
+    "inactive_suffix": " (inactive)",
     "no_data": "No categories available, please contact admin",
     "has_subcategory": "has subcategory"
   },

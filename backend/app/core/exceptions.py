@@ -387,6 +387,17 @@ class CategoryNotLeafError(BusinessError):
         )
 
 
+class CategoryInactiveError(BusinessError):
+    """运营建商品挂到停用品类(专区专用类目)下。"""
+    def __init__(self, category_code: str):
+        super().__init__(
+            status.HTTP_400_BAD_REQUEST, 40219,
+            f"Category '{category_code}' is inactive; public products cannot be filed under it",
+            message_key=MessageKey.PRODUCT_CATEGORY_INACTIVE,
+            message_params={"category_code": category_code},
+        )
+
+
 class ProductRangeInvalidError(BusinessError):
     def __init__(self, min_field: str, max_field: str):
         super().__init__(

@@ -71,6 +71,7 @@ class MessageKey:
     PRODUCT_REQUIRED_ATTR_MISSING = "error.product.required_attr_missing"
     PRODUCT_ATTR_SCOPE_MISMATCH = "error.product.attr_scope_mismatch"
     PRODUCT_CATEGORY_NOT_LEAF = "error.product.category_not_leaf"
+    PRODUCT_CATEGORY_INACTIVE = "error.product.category_inactive"
     PRODUCT_INVALID_RANGE = "error.product.invalid_range"
     PRODUCT_IMAGE_NOT_OWNED = "error.product.image_not_owned"
 

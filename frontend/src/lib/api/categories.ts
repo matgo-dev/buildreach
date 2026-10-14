@@ -15,6 +15,7 @@ export interface CategoryNode {
   parent_code: string | null;
   sort_order: number;
   is_leaf: boolean;
+  is_active: boolean;
 }
 
 export interface CategoryTreeNode {
@@ -27,6 +28,8 @@ export interface CategoryTreeNode {
   level: number;
   /** 无 active 子节点时为 true（后端维护，不要靠 children.length 判断叶子） */
   is_leaf: boolean;
+  /** 默认树全为 true;include_inactive=true 时停用节点为 false,UI 必须标出来 */
+  is_active: boolean;
   children: CategoryTreeNode[];
 }
 
@@ -49,7 +52,7 @@ export const categoriesApi = {
   },
   /** L1 品类缩略图(移动端宫格入口) */
   thumbnails: () => api.get<CategoryThumbnail[]>("/api/v1/categories/thumbnails"),
-  /** 嵌套树;is_active 默认 true, include_inactive=true 返回启用+停用(运营选择器用), max_depth 限制层级深度。 */
+  /** 嵌套树;is_active 默认 true, include_inactive=true 返回启用+停用(运营列表筛选用,需 zone:manage), max_depth 限制层级深度。 */
   tree: (params?: { is_active?: boolean; include_inactive?: boolean; max_depth?: number }) => {
     const qs = new URLSearchParams();
     if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active));

@@ -256,8 +256,10 @@ async def list_zone_products(
     filters = [
         Product.status == ProductStatus.ACTIVE,
         Product.deleted_at.is_(None),
-        _zone_membership(zone.id),
     ]
+    if zone_category_code is None and scene_code is None:
+        # 带类目/场景筛选时,下面的 EXISTS 已蕴含"属于该专区",不再叠一个基础成员 EXISTS
+        filters.append(_zone_membership(zone.id))
     if zone_category_code is not None:
         cat_id = await _resolve_zone_category_id(db, zone, zone_category_code, ZONE_CATEGORY_KIND_CATEGORY)
         if cat_id is None:
