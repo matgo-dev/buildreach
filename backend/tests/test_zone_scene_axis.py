@@ -97,3 +97,66 @@ async def test_zone_categories_returns_scene_kind(client: AsyncClient, db_sessio
     r = await client.get(f"/api/v1/zones/{zone.code}/categories", headers=headers)
     kinds = {i["code"]: i["kind"] for i in r.json()["data"]}
     assert kinds == {"C01": "CATEGORY", "S01": "SCENE"}
+
+
+async def _scene_fixture(client: AsyncClient, db_session, zone_code: str):
+    """1 大类 C01 + 2 场景 S01/S02;商品 A 挂 C01+S01+S02,商品 B 挂 C01+S02。"""
+    zone = await _make_zone(db_session, zone_code)
+    c01 = await _make_zc(db_session, zone, "C01", ZONE_CATEGORY_KIND_CATEGORY, "劳保", 0)
+    s01 = await _make_zc(db_session, zone, "S01", ZONE_CATEGORY_KIND_SCENE, "浮选厂", 1)
+    s02 = await _make_zc(db_session, zone, "S02", ZONE_CATEGORY_KIND_SCENE, "井下", 2)
+    a = await _make_product(db_session, f"{zone_code}-A", "帆布手套")
+    b = await _make_product(db_session, f"{zone_code}-B", "安全帽")
+    for zc in (c01, s01, s02):
+        await _attach(db_session, zone, zc, a)
+    for zc in (c01, s02):
+        await _attach(db_session, zone, zc, b)
+    headers = await _grant(client, db_session, zone)
+    return zone, headers, a, b
+
+
+@pytest.mark.asyncio
+async def test_zone_products_multi_attach_listed_once(client: AsyncClient, db_session):
+    """多挂商品在无筛选列表里只出现一次,total 也只计一次。"""
+    zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-ONCE")
+    r = await client.get(f"/api/v1/zones/{zone.code}/products", headers=headers)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["total"] == 2
+    assert sorted(i["id"] for i in data["items"]) == sorted([a.id, b.id])
+
+
+@pytest.mark.asyncio
+async def test_zone_products_scene_filter(client: AsyncClient, db_session):
+    zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-FILTER")
+    r = await client.get(f"/api/v1/zones/{zone.code}/products?scene_code=S01", headers=headers)
+    assert [i["id"] for i in r.json()["data"]["items"]] == [a.id]
+    assert r.json()["data"]["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_zone_products_scene_and_category_stack(client: AsyncClient, db_session):
+    zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-STACK")
+    r = await client.get(
+        f"/api/v1/zones/{zone.code}/products?scene_code=S02&zone_category_code=C01", headers=headers,
+    )
+    assert sorted(i["id"] for i in r.json()["data"]["items"]) == sorted([a.id, b.id])
+    assert r.json()["data"]["total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_zone_products_scene_code_wrong_kind_is_empty(client: AsyncClient, db_session):
+    """scene_code 给了大类 code(kind 不对)或不存在的 code → 空列表,不是 500。"""
+    zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-WRONG")
+    for bad in ("C01", "S99"):
+        r = await client.get(f"/api/v1/zones/{zone.code}/products?scene_code={bad}", headers=headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["data"] == {"items": [], "total": 0, "page": 1, "size": 20, "pages": 0}
+
+
+@pytest.mark.asyncio
+async def test_zone_products_category_code_wrong_kind_is_empty(client: AsyncClient, db_session):
+    """zone_category_code 给了场景 code → 空列表(两轴参数各自只认自己的 kind)。"""
+    zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-WRONG2")
+    r = await client.get(f"/api/v1/zones/{zone.code}/products?zone_category_code=S01", headers=headers)
+    assert r.json()["data"]["total"] == 0
