@@ -252,6 +252,14 @@ function ZoneProductDetailContent() {
                   {tMall("detail.brand")}: <span className="font-medium text-ink">{product.brand}</span>
                 </span>
               )}
+              {product.zone_categories?.some((z) => z.kind === "SCENE") && (
+                <span>
+                  {t("scenes")}:{" "}
+                  <span className="font-medium text-ink">
+                    {product.zone_categories.filter((z) => z.kind === "SCENE").map((z) => z.name).join(", ")}
+                  </span>
+                </span>
+              )}
             </div>
 
             {selectedSku?.sku_code && (
