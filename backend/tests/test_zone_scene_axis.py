@@ -160,3 +160,13 @@ async def test_zone_products_category_code_wrong_kind_is_empty(client: AsyncClie
     zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-WRONG2")
     r = await client.get(f"/api/v1/zones/{zone.code}/products?zone_category_code=S01", headers=headers)
     assert r.json()["data"]["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_zone_product_detail_returns_zone_categories(client: AsyncClient, db_session):
+    zone, headers, a, b = await _scene_fixture(client, db_session, "ZONE-SC-DETAIL")
+    r = await client.get(f"/api/v1/zones/{zone.code}/products/{a.id}", headers=headers)
+    assert r.status_code == 200, r.text
+    zcs = r.json()["data"]["zone_categories"]
+    assert [(z["kind"], z["code"]) for z in zcs] == [("CATEGORY", "C01"), ("SCENE", "S01"), ("SCENE", "S02")]
+    assert zcs[1]["name"] == "浮选厂"

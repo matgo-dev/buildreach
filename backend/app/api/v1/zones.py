@@ -375,4 +375,16 @@ async def get_zone_product(
         for s in skus
     ]
 
+    # 本专区内该商品的归属(大类 + 场景),详情页「适用场景」行用。
+    zc_rows = await db.execute(
+        select(ZoneCategory)
+        .join(ZoneProduct, ZoneProduct.zone_category_id == ZoneCategory.id)
+        .where(ZoneProduct.zone_id == zone.id, ZoneProduct.spu_id == p.id)
+        .order_by(ZoneCategory.sort_order, ZoneCategory.id)
+    )
+    detail["zone_categories"] = [
+        {"kind": zc.kind, "code": zc.code, "name": get_localized(zc, "name")}
+        for zc in zc_rows.scalars().all()
+    ]
+
     return success(detail)
