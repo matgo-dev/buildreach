@@ -140,6 +140,14 @@ def _cell(v) -> str:
     return str(v).strip() if v not in (None, "") else ""
 
 
+_NOISE_RE = re.compile(r"^(待核|待定|合计|小计)|(方案|服务)$")
+
+
+def is_noise_name(name: str) -> bool:
+    """表里混着的占位/服务行(「待核数量」「5台挖机方案」「车辆拖救服务」),不是商品。"""
+    return bool(_NOISE_RE.search(name))
+
+
 def load_source_rows(src_dir: Path) -> list[SourceRow]:
     """读目录下 6 个 xlsx 的商品行。表头 = 含「编号」单元格的那一行;列按表头关键字定位。"""
     rows: list[SourceRow] = []
@@ -181,7 +189,7 @@ def load_source_rows(src_dir: Path) -> list[SourceRow]:
                     return _cell(r[i]) if i is not None and i < len(r) else ""
 
                 rid, name = at(i_id), at(i_name)
-                if not rid or not name or len(name) > 60:
+                if not rid or not name or len(name) > 60 or is_noise_name(name):
                     continue
                 rows.append(SourceRow(
                     file_key=key, sheet=ws.title, row_id=rid,
@@ -230,10 +238,12 @@ def _rule_scope_matches(rule: Rule, row: SourceRow) -> bool:
 
 
 def match_rule(row: SourceRow, rules: list[Rule]) -> Rule | None:
-    """关键词规则优先(按文件顺序第一条命中),再退到无关键词规则。"""
-    for rule in rules:
-        if rule.keyword and rule.keyword in row.name and _rule_scope_matches(rule, row):
-            return rule
+    """优先级:文件专属关键词规则 > 通配(*)关键词规则 > 无关键词规则;同级按文件顺序第一条命中。"""
+    keyword_rules = [r for r in rules if r.keyword]
+    for specific in (True, False):
+        for rule in keyword_rules:
+            if (rule.file_key != "*") is specific and rule.keyword in row.name and _rule_scope_matches(rule, row):
+                return rule
     for rule in rules:
         if not rule.keyword and _rule_scope_matches(rule, row):
             return rule

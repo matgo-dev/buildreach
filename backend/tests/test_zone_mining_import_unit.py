@@ -155,3 +155,30 @@ def test_build_spus_unmatched_row_has_no_zone_cat():
     rows = [SourceRow("03", "两法共用", "LAB-1", "器皿", "烧杯", "", "个", "")]
     spus = build_spus(rows, {}, _rules_default())
     assert spus[0].zone_cat is None and spus[0].category_code is None
+
+
+def test_load_source_rows_skips_non_product_noise_rows(tmp_path: Path):
+    """「待核数量」「xx方案」「xx服务」这类占位/服务行不是商品,解析时丢弃。"""
+    _write_book(tmp_path / "05_露天.xlsx", {
+        "油品及运行耗材": [
+            ["编号", "类别", "设备、配件及易耗品", "参考型号/规格", "单位"],
+            ["OP-O001", "油品", "柴油机油", "按厂家规格", "桶"],
+            ["OP-X001", "3台挖机方案", "5台挖机方案", "", ""],
+            ["OP-X002", "待核数量", "待核数量", "", ""],
+            ["OP-X003", "救援", "车辆拖救服务", "", "次"],
+        ],
+    })
+    rows = load_source_rows(tmp_path)
+    assert [r.name for r in rows] == ["柴油机油"]
+
+
+def test_match_rule_file_specific_keyword_beats_wildcard_keyword():
+    """同为关键词规则时,写了 file_key 的比 * 的优先,不管谁在前(化验室的「pH计」不能被全局「仪/计」抢走)。"""
+    rules = [
+        Rule("*", "*", "*", "计", "C06", "14"),
+        Rule("03", "*", "*", "计", "C11", "35.001"),
+    ]
+    lab = SourceRow("03", "两法共用", "LAB-1", "仪器", "实验室pH计", "", "台", "")
+    site = SourceRow("04", "回收及公辅", "R-1", "", "流量计", "", "台", "")
+    assert match_rule(lab, rules).zone_cat == "C11"
+    assert match_rule(site, rules).zone_cat == "C06"
