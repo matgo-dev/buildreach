@@ -27,6 +27,7 @@ function ZoneContent() {
   const { tree: categoryTree } = useCategoryTree();
 
   const urlCat = searchParams.get("cat") || "";
+  const urlScene = searchParams.get("scene") || "";
   const urlKeyword = searchParams.get("keyword") || "";
   const urlPage = parseInt(searchParams.get("page") || "1", 10) || 1;
 
@@ -46,6 +47,13 @@ function ZoneContent() {
   const handleCategorySelect = useCallback(
     (code: string) => {
       updateParams({ cat: code || undefined, page: undefined });
+    },
+    [updateParams]
+  );
+
+  const handleSceneSelect = useCallback(
+    (code: string) => {
+      updateParams({ scene: code || undefined, page: undefined });
     },
     [updateParams]
   );
@@ -73,10 +81,11 @@ function ZoneContent() {
     isLoading: productsLoading,
     mutate: refetchProducts,
   } = useSWR<ProductListResponse>(
-    `/api/v1/zones/${zoneCode}/products?cat=${urlCat}&keyword=${urlKeyword}&page=${urlPage}&locale=${locale}`,
+    `/api/v1/zones/${zoneCode}/products?cat=${urlCat}&scene=${urlScene}&keyword=${urlKeyword}&page=${urlPage}&locale=${locale}`,
     () =>
       zonesApi.products(zoneCode, {
         zone_category_code: urlCat || undefined,
+        scene_code: urlScene || undefined,
         keyword: urlKeyword || undefined,
         page: urlPage,
         size: PAGE_SIZE,
@@ -84,7 +93,11 @@ function ZoneContent() {
     { revalidateOnFocus: false }
   );
 
-  const clearAll = () => updateParams({ cat: undefined, keyword: undefined, page: undefined });
+  const clearAll = () => updateParams({ cat: undefined, scene: undefined, keyword: undefined, page: undefined });
+
+  // 两条轴:场景行(kind=SCENE,可多挂)在上,大类行(kind=CATEGORY)在下;没有场景的专区(常用材料)不渲染场景行。
+  const scenes = useMemo(() => (categories ?? []).filter((c) => c.kind === "SCENE"), [categories]);
+  const cats = useMemo(() => (categories ?? []).filter((c) => c.kind !== "SCENE"), [categories]);
 
   const productHref = useMemo(
     () => (productId: number) => `/zone/${zoneCode}/products/${productId}`,
@@ -94,10 +107,20 @@ function ZoneContent() {
   return (
     <PublicLayout>
       <div className="space-y-4">
-        {/* 大类导航 */}
-        {!categoriesLoading && categories && categories.length > 0 && (
+        {/* 场景导航(第二条轴) */}
+        {!categoriesLoading && scenes.length > 0 && (
           <ZoneCategoryNav
-            categories={categories}
+            categories={scenes}
+            activeCode={urlScene}
+            allLabel={t("allScenes")}
+            onSelect={handleSceneSelect}
+          />
+        )}
+
+        {/* 大类导航 */}
+        {!categoriesLoading && cats.length > 0 && (
+          <ZoneCategoryNav
+            categories={cats}
             activeCode={urlCat}
             allLabel={t("allCategories")}
             onSelect={handleCategorySelect}

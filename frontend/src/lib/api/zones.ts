@@ -7,9 +7,13 @@
 import { api } from "../api";
 import type { ProductListResponse, ProductPublicDetail } from "./products";
 
+export type ZoneCategoryKind = "CATEGORY" | "SCENE";
+
 export interface ZoneCategory {
   id: number;
   code: string;
+  /** CATEGORY=商品类型轴(一件商品一个);SCENE=应用场景轴(一件商品可多个) */
+  kind: ZoneCategoryKind;
   /** 后端按 Accept-Language 填充的本地化名称 */
   name: string;
   name_zh: string;
@@ -19,15 +23,25 @@ export interface ZoneCategory {
 
 export interface ZoneProductListParams {
   zone_category_code?: string;
+  /** 应用场景(kind=SCENE)code,可与 zone_category_code 叠加 */
+  scene_code?: string;
   keyword?: string;
   spec?: string;
   page?: number;
   size?: number;
 }
 
+export interface ZoneCategoryRef {
+  kind: ZoneCategoryKind;
+  code: string;
+  name: string;
+}
+
 /** 专区商品详情 — 公开详情字段集合 + SKU 变体(供换购用) */
 export interface ZoneProductDetail extends ProductPublicDetail {
   skus: NonNullable<ProductPublicDetail["skus"]>;
+  /** 本专区内的归属:1 个 CATEGORY + N 个 SCENE */
+  zone_categories: ZoneCategoryRef[];
 }
 
 export const zonesApi = {
@@ -39,6 +53,7 @@ export const zonesApi = {
   products: (zoneCode: string, params: ZoneProductListParams = {}) => {
     const qs = new URLSearchParams();
     if (params.zone_category_code) qs.set("zone_category_code", params.zone_category_code);
+    if (params.scene_code) qs.set("scene_code", params.scene_code);
     if (params.keyword) qs.set("keyword", params.keyword);
     if (params.spec) qs.set("spec", params.spec);
     if (params.page) qs.set("page", String(params.page));
