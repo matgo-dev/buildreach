@@ -306,3 +306,270 @@ def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rul
         us = units[k]
         out[k].unit = collections.Counter(us).most_common(1)[0][0] if us else "PCS"
     return [out[k] for k in order]
+
+
+# ── DB 落库 ───────────────────────────────────────────────
+
+from sqlalchemy import func, select  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
+
+from app.db.models.category import Category  # noqa: E402
+from app.db.models.product import Product, ProductStatus, ProductVisibility  # noqa: E402
+from app.db.models.product_attr import ProductAttr  # noqa: E402
+from app.db.models.product_sku import ProductSku, SkuStatus  # noqa: E402
+from app.db.models.zone import (  # noqa: E402
+    ZONE_CATEGORY_KIND_CATEGORY,
+    ZONE_CATEGORY_KIND_SCENE,
+    Zone,
+    ZoneCategory,
+    ZoneProduct,
+)
+
+
+async def ensure_platform_categories(db: AsyncSession, stats: collections.Counter) -> None:
+    """建 33/34/35 子树,整棵 is_active=False。code 已被别的名字占用则中止(跨环境 code 不一致防线)。"""
+    codes = [c[0] for c in PLATFORM_CATEGORIES]
+    existing = {c.code: c for c in (await db.execute(select(Category).where(Category.code.in_(codes)))).scalars().all()}
+    l1_sort = (await db.execute(select(func.max(Category.sort_order)).where(Category.level == 1))).scalar() or 0
+    for i, (code, zh, en, sw, parent) in enumerate(PLATFORM_CATEGORIES):
+        cur = existing.get(code)
+        if cur is not None:
+            if cur.name_zh != zh:
+                raise RuntimeError(f"品类 code {code} 已存在且名称不同:{cur.name_zh!r} ≠ {zh!r},请先人工处理")
+            stats["platform_categories_existing"] += 1
+            continue
+        level = 1 if parent is None else 2
+        db.add(Category(
+            code=code, name_zh=zh, name_en=en, name_sw=sw,
+            level=level, parent_code=parent,
+            sort_order=(l1_sort + 1 + i) if level == 1 else i,
+            is_active=False, is_leaf=(level == 2), source_lang="zh",
+            trans_meta={"name_zh": "src", "name_en": "manual", "name_sw": "manual"},
+        ))
+        stats["platform_categories_created"] += 1
+    await db.flush()
+
+
+async def validate_category_codes(db: AsyncSession, spus: list[SpuRow]) -> None:
+    codes = sorted({s.category_code for s in spus if s.category_code})
+    found = {c for (c,) in (await db.execute(select(Category.code).where(Category.code.in_(codes)))).all()}
+    missing = [c for c in codes if c not in found]
+    if missing:
+        raise RuntimeError(f"rules.csv 里的 category_code 在 categories 表不存在,FK 会失败:{missing}")
+
+
+async def get_or_create_zone(db: AsyncSession, stats: collections.Counter) -> Zone:
+    zone = (await db.execute(select(Zone).where(Zone.code == ZONE_CODE))).scalar_one_or_none()
+    if zone is None:
+        zone = Zone(code=ZONE_CODE, name_zh=ZONE_NAME[0], name_en=ZONE_NAME[1], name_sw=ZONE_NAME[2], status="ACTIVE")
+        db.add(zone)
+        await db.flush()
+        stats["zone_created"] += 1
+    return zone
+
+
+async def upsert_zone_categories(db: AsyncSession, zone: Zone, stats: collections.Counter) -> dict[str, ZoneCategory]:
+    out: dict[str, ZoneCategory] = {}
+    specs = [(c, zh, en, sw, ZONE_CATEGORY_KIND_CATEGORY) for c, zh, en, sw in ZONE_CATEGORIES]
+    specs += [(c, zh, en, sw, ZONE_CATEGORY_KIND_SCENE) for c, zh, en, sw in ZONE_SCENES]
+    for i, (code, zh, en, sw, kind) in enumerate(specs):
+        zc = (await db.execute(
+            select(ZoneCategory).where(ZoneCategory.zone_id == zone.id, ZoneCategory.code == code)
+        )).scalar_one_or_none()
+        if zc is None:
+            zc = ZoneCategory(zone_id=zone.id, code=code, name_zh=zh, name_en=en, name_sw=sw, kind=kind, sort_order=i)
+            db.add(zc)
+            stats["zone_categories_created"] += 1
+        else:
+            zc.name_zh, zc.name_en, zc.name_sw, zc.kind, zc.sort_order = zh, en, sw, kind, i
+            stats["zone_categories_updated"] += 1
+        await db.flush()
+        out[code] = zc
+    return out
+
+
+def _spu_attrs(s: SpuRow) -> list[tuple[str, str, str]]:
+    """SPU 级非可选属性 (key_zh, key_en, value)。"""
+    attrs = []
+    if s.section:
+        attrs.append(("环节/类别", "section", s.section))
+    if s.generic:
+        attrs.append(("是否通用", "interchangeable", s.generic))
+    if s.applicable_model:
+        attrs.append(("适用机型", "applicable_model", s.applicable_model))
+    return attrs
+
+
+async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter) -> Product:
+    product = (await db.execute(
+        select(Product).where(Product.spu_code == s.spu_code, Product.deleted_at.is_(None))
+    )).scalar_one_or_none()
+    if product is not None:
+        product.name_zh = s.name
+        product.description_zh = s.description or None
+        product.category_code = s.category_code
+        product.moq_unit = s.unit
+        product.visibility = ProductVisibility.ZONE_ONLY
+        product.status = ProductStatus.ACTIVE
+        stats["products_updated"] += 1
+        await db.flush()
+        return product
+
+    product = Product(
+        spu_code=s.spu_code, name_zh=s.name, description_zh=s.description or None,
+        category_code=s.category_code,
+        status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
+        unit="PCS", moq=1, moq_unit=s.unit, source=SOURCE,
+        source_meta={"batch": BATCH_ID, "source_ids": s.source_ids, "scenes": s.scenes},
+    )
+    db.add(product)
+    await db.flush()
+
+    if len(s.specs) >= 2:
+        stats["products_variant"] += 1
+        for i, spec in enumerate(s.specs):
+            sku = ProductSku(
+                product_id=product.id, sku_code=mining_sku_code(s.spu_code, spec),
+                name_zh=f"{s.name} {spec}", moq=1, is_default=(i == 0), status=SkuStatus.ACTIVE,
+            )
+            db.add(sku)
+            await db.flush()
+            db.add(ProductAttr(
+                product_id=product.id, sku_id=sku.id,
+                attr_key_zh="规格", attr_key_en="spec",
+                attr_value_zh=spec, attr_value_en=spec,
+                selectable=True, sort_order=i,
+            ))
+        stats["skus_created"] += len(s.specs)
+    else:
+        stats["products_simple"] += 1
+        db.add(ProductSku(
+            product_id=product.id, sku_code=mining_sku_code(s.spu_code, None),
+            name_zh=s.name, moq=1, is_default=True, status=SkuStatus.ACTIVE,
+        ))
+        stats["skus_created"] += 1
+
+    for i, (kz, ke, v) in enumerate(_spu_attrs(s)):
+        db.add(ProductAttr(
+            product_id=product.id, sku_id=None,
+            attr_key_zh=kz, attr_key_en=ke, attr_value_zh=v, selectable=False, sort_order=i,
+        ))
+    await db.flush()
+    return product
+
+
+async def upsert_zone_product(
+    db: AsyncSession, zone: Zone, zc: ZoneCategory, product: Product, sort_order: int, stats: collections.Counter,
+) -> None:
+    zp = (await db.execute(
+        select(ZoneProduct).where(
+            ZoneProduct.zone_id == zone.id, ZoneProduct.spu_id == product.id, ZoneProduct.zone_category_id == zc.id,
+        )
+    )).scalar_one_or_none()
+    if zp is not None:
+        if (zp.sort_order, zp.source, zp.source_batch_id) != (sort_order, SOURCE, BATCH_ID):
+            zp.sort_order, zp.source, zp.source_batch_id = sort_order, SOURCE, BATCH_ID
+            stats["zone_products_updated"] += 1
+            await db.flush()
+        else:
+            stats["zone_products_existing"] += 1
+        return
+    db.add(ZoneProduct(
+        zone_id=zone.id, spu_id=product.id, zone_category_id=zc.id,
+        sort_order=sort_order, source=SOURCE, source_batch_id=BATCH_ID,
+    ))
+    stats["zone_products_created"] += 1
+    await db.flush()
+
+
+def write_audit(spus: list[SpuRow], path: Path) -> None:
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "环节", "是否通用", "适用机型", "来源编号", "冲突", "采购说明"])
+        for s in spus:
+            w.writerow([
+                s.spu_code, s.name, " / ".join(s.specs), s.unit, " / ".join(s.scenes),
+                s.zone_cat or "【未命中】", s.category_code or "", s.section, s.generic, s.applicable_model or "",
+                " / ".join(s.source_ids), " | ".join(s.conflicts), s.description,
+            ])
+
+
+async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool) -> dict:
+    stats: collections.Counter = collections.Counter()
+    rows = load_source_rows(src_dir)
+    spus = build_spus(rows, load_merge_map(MERGE_CSV), load_rules(RULES_CSV))
+    stats["source_rows"], stats["spus"] = len(rows), len(spus)
+    unmatched = [s for s in spus if s.zone_cat is None]
+    conflicted = [s for s in spus if s.conflicts]
+    stats["unmatched"], stats["conflicts"] = len(unmatched), len(conflicted)
+    if dry_run:
+        write_audit(spus, AUDIT_CSV)
+    if unmatched or conflicted:
+        msg = f"规则未命中 {len(unmatched)} 个、大类冲突 {len(conflicted)} 个,见 {AUDIT_CSV}"
+        if not dry_run:
+            raise RuntimeError("拒绝落库:" + msg)
+        print("警告:" + msg)
+
+    await ensure_platform_categories(db, stats)
+    await validate_category_codes(db, spus)
+    zone = await get_or_create_zone(db, stats)
+    zcs = await upsert_zone_categories(db, zone, stats)
+
+    sort_counters: dict[str, int] = collections.defaultdict(int)
+    for s in spus:
+        if s.zone_cat is None:
+            continue
+        product = await upsert_product(db, s, stats)
+        await upsert_zone_product(db, zone, zcs[s.zone_cat], product, sort_counters[s.zone_cat], stats)
+        sort_counters[s.zone_cat] += 1
+        for scene in s.scenes:
+            await upsert_zone_product(db, zone, zcs[scene], product, sort_counters[scene], stats)
+            sort_counters[scene] += 1
+    return dict(stats)
+
+
+async def _execute(src_dir: Path, dry_run: bool) -> None:
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from app.core.config import settings
+
+    if (
+        not dry_run
+        and "162.19.98.142" in (settings.DATABASE_URL or "")
+        and os.environ.get("ALLOW_ZONE_IMPORT_PROD") != "1"
+    ):
+        raise SystemExit("拒绝执行:DATABASE_URL 指向 OVH 生产库。先备份并 dry-run,确认后设 ALLOW_ZONE_IMPORT_PROD=1 再 --commit。")
+
+    engine = create_async_engine(settings.DATABASE_URL)
+    Session = async_sessionmaker(engine, expire_on_commit=False)
+    async with Session() as db:
+        stats = await run_import(db, src_dir, dry_run)
+        if dry_run:
+            await db.rollback()
+        else:
+            await db.commit()
+    await engine.dispose()
+
+    print("=" * 64)
+    print(f"矿业专区导入 {'[DRY-RUN 未落库]' if dry_run else '[已落库 COMMIT]'}  batch={BATCH_ID}")
+    print("=" * 64)
+    for k in ("source_rows", "spus", "unmatched", "conflicts", "platform_categories_created", "platform_categories_existing",
+              "zone_created", "zone_categories_created", "zone_categories_updated",
+              "products_simple", "products_variant", "products_updated", "skus_created",
+              "zone_products_created", "zone_products_updated", "zone_products_existing"):
+        print(f"{k:32s} {stats.get(k, 0)}")
+    if dry_run:
+        print(f"\n审核 CSV:{AUDIT_CSV}\n这是干跑,数据库未改动。未命中/冲突清零后加 --commit 落库。")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="矿业勘探·开采专区 6 张配货表导入")
+    ap.add_argument("--src", type=Path, required=True, help="6 个 xlsx 所在目录")
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--dry-run", action="store_true")
+    g.add_argument("--commit", action="store_true")
+    args = ap.parse_args()
+    asyncio.run(_execute(args.src, dry_run=args.dry_run))
+
+
+if __name__ == "__main__":
+    main()
