@@ -117,6 +117,7 @@
       "required_attr_missing": "Sifa zinazohitajika hazipo: {keys}",
       "attr_scope_mismatch": "Upeo wa sifa {attr_key} unapaswa kuwa {expected_scope}",
       "category_not_leaf": "Kategoria {category_code} si nodi ya majani; kategoria za kiwango cha 3 peke yake zinaruhusiwa",
+      "category_inactive": "Kategoria {category_code} imezimwa (ya eneo maalum tu); bidhaa za umma haziwezi kuwekwa chini yake",
       "invalid_range": "{min_field} haiwezi kuwa kubwa kuliko {max_field}",
       "illegal_transition": "Haiwezekani kubadilisha kutoka {current} kwenda {target}",
       "image_not_owned": "Picha {image_id} haitakiwi kwenye bidhaa {product_id}",
@@ -266,6 +267,7 @@
     "select_level4": "Chagua kiwango cha 4",
     "select_parent_first": "Chagua mzazi kwanza",
     "load_error": "Imeshindwa kupakia kategoria",
+    "inactive_suffix": " (imezimwa)",
     "no_data": "Hakuna kategoria zinazopatikana, tafadhali wasiliana na msimamizi",
     "has_subcategory": "ina kategoria ndogo"
   },

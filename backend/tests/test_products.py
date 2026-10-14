@@ -2344,3 +2344,60 @@ async def test_operator_list_unknown_zone_empty(client, db_session):
     r = await client.get("/api/v1/operator/products?zone_code=NO-SUCH-ZONE", headers=headers)
     assert r.status_code == 200, r.text
     assert r.json()["data"]["total"] == 0
+
+
+# ── 停用品类(专区专用一级):运营筛选可达 / 运营建 PUBLIC 商品被拒 ────────
+
+async def _seed_inactive_leaf(db_session, l1: str = "97") -> str:
+    """插一个停用的一级 + 停用叶子(专区导入脚本建的那种),返回叶子 code。"""
+    from app.db.models import Category
+    from app.services import category as cs
+
+    leaf = f"{l1}.001"
+    db_session.add_all([
+        Category(code=l1, name_zh="停用一级", level=1, parent_code=None,
+                 sort_order=900, is_active=False, is_leaf=False),
+        Category(code=leaf, name_zh="停用叶子", level=2, parent_code=l1,
+                 sort_order=1, is_active=False, is_leaf=True),
+    ])
+    await db_session.commit()
+    cs.invalidate_category_cache()
+    return leaf
+
+
+@pytest.mark.asyncio
+async def test_operator_list_by_inactive_l1_reaches_zone_products(client, db_session):
+    """运营列表按停用一级筛选,要能走到停用子树下的 ZONE_ONLY 商品;公开列表仍不可达。"""
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+
+    leaf = await _seed_inactive_leaf(db_session, "97")
+    p = Product(spu_code="INACT-ZONE-1", name_zh="停用品类下的专区商品", category_code=leaf,
+                status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS")
+    db_session.add(p)
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+    for code in ("97", leaf):
+        r = await client.get(f"/api/v1/operator/products?category_code={code}", headers=headers)
+        assert r.status_code == 200, r.text
+        assert [i["spu_code"] for i in r.json()["data"]["items"]] == ["INACT-ZONE-1"], code
+
+    r = await client.get("/api/v1/products?category_code=97")
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_create_product_under_inactive_category_rejected(client, db_session):
+    """运营建商品一律 PUBLIC,挂到停用品类下会在商城里静默消失 → 400/40219 直接拒。"""
+    leaf = await _seed_inactive_leaf(db_session, "96")
+    headers = await _login_operator(client)
+    r = await client.post(
+        "/api/v1/operator/products",
+        headers=headers,
+        json={"category_code": leaf, "spu_code": "INACT-CREATE-1", "name": "不该建成",
+              "origin": "中国", "source_lang": "zh"},
+    )
+    assert r.status_code == 400, r.text
+    assert r.json()["code"] == 40219
+    assert r.json()["message_key"] == "error.product.category_inactive"

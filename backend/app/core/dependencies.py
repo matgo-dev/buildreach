@@ -9,7 +9,7 @@ from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AccountDisabledError, NotAuthenticatedError
+from app.core.exceptions import AccountDisabledError, BusinessError, NotAuthenticatedError
 from app.core.security import decode_token
 from app.db.models.buyer_member import BuyerMember
 from app.db.models.buyer_organization import BuyerOrganization
@@ -169,3 +169,19 @@ async def get_current_user(
         organization=org,
         buyer_org_count=buyer_org_count,
     )
+
+
+async def get_optional_user(
+    token: str | None = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUser | None:
+    """公开端点用:带有效 token 则解析出用户,否则返回 None(无效/过期 token 也视作匿名)。
+
+    只给"匿名可用、登录后多一点能力"的端点用,不能替代 require_permission。
+    """
+    if not token:
+        return None
+    try:
+        return await get_current_user(token=token, db=db)
+    except BusinessError:
+        return None

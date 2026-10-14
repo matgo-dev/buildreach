@@ -232,6 +232,16 @@ async def test_api_trace_id_header_present(client):
     assert r.status_code == 200
     assert r.headers.get("x-trace-id"), "X-Trace-Id 响应头缺失"
 
+async def _operator_headers(client) -> dict[str, str]:
+    """运营账号(持 zone:manage);超管种子账号没有业务权限,别用 superadmin_headers。"""
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "operator@platform.local", "password": "Aa123456789"},
+    )
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['data']['access_token']}"}
+
+
 _ACTIVE_PLUS_INACTIVE = [
     ("01", "启用一级", 1, None, 1, True),
     ("01.001", "启用叶子", 2, "01", 1, True),
@@ -242,23 +252,61 @@ _ACTIVE_PLUS_INACTIVE = [
 
 @pytest.mark.asyncio
 async def test_tree_include_inactive_flag(client, db_session):
-    """默认树不含停用一级;include_inactive=true 时停用一级连同其停用叶子一起返回(嵌套,不顶到根)。"""
+    """默认树不含停用一级;include_inactive=true(运营登录态)时停用一级连同其停用叶子
+    一起返回(嵌套,不顶到根),节点带 is_active 供前端标灰/禁选。"""
     await _seed(db_session, _ACTIVE_PLUS_INACTIVE)
     cs.invalidate_category_cache()  # 进程内 TTL 缓存会留着上个测试的树
     r = await client.get("/api/v1/categories/tree")
     assert {n["code"] for n in r.json()["data"]} == {"01"}
 
-    r2 = await client.get("/api/v1/categories/tree?include_inactive=true")
+    r2 = await client.get("/api/v1/categories/tree?include_inactive=true", headers=await _operator_headers(client))
+    assert r2.status_code == 200, r2.text
     roots = {n["code"]: n for n in r2.json()["data"]}
     assert set(roots) == {"01", "98"}
     assert [c["code"] for c in roots["98"]["children"]] == ["98.001"]
+    assert roots["01"]["is_active"] is True
+    assert roots["98"]["is_active"] is False
+    assert roots["98"]["children"][0]["is_active"] is False
 
 
 @pytest.mark.asyncio
 async def test_list_include_inactive_flag(client, db_session):
     await _seed(db_session, _ACTIVE_PLUS_INACTIVE)
     cs.invalidate_category_cache()
-    r = await client.get("/api/v1/categories?include_inactive=true&level=1")
+    r = await client.get("/api/v1/categories?include_inactive=true&level=1", headers=await _operator_headers(client))
+    assert r.status_code == 200, r.text
     assert {n["code"] for n in r.json()["data"]} == {"01", "98"}
     r2 = await client.get("/api/v1/categories?level=1")
     assert {n["code"] for n in r2.json()["data"]} == {"01"}
+
+
+@pytest.mark.asyncio
+async def test_include_inactive_requires_login(client, db_session):
+    """停用类目是刻意对公众隐藏的专区类目:匿名带 include_inactive=true 一律 401,
+    默认请求照常 200(公开接口不受影响)。"""
+    await _seed(db_session, _ACTIVE_PLUS_INACTIVE)
+    cs.invalidate_category_cache()
+    for path in ("/api/v1/categories/tree?include_inactive=true",
+                 "/api/v1/categories?include_inactive=true&level=1"):
+        r = await client.get(path)
+        assert r.status_code == 401, (path, r.text)
+    # 无效 token 也当匿名
+    r = await client.get("/api/v1/categories/tree?include_inactive=true",
+                         headers={"Authorization": "Bearer not-a-token"})
+    assert r.status_code == 401
+    assert (await client.get("/api/v1/categories/tree")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_include_inactive_requires_zone_manage(client, db_session):
+    """登录但没有 zone:manage(买家,虽有 product:read)→ 403。"""
+    await _seed(db_session, _ACTIVE_PLUS_INACTIVE)
+    cs.invalidate_category_cache()
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "buyer@cscec3b.local", "password": "Aa123456789"},
+    )
+    assert r.status_code == 200, r.text
+    headers = {"Authorization": f"Bearer {r.json()['data']['access_token']}"}
+    r = await client.get("/api/v1/categories/tree?include_inactive=true", headers=headers)
+    assert r.status_code == 403, r.text
