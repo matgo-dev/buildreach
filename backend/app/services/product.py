@@ -63,6 +63,7 @@ from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.supplier_organization import SupplierOrganization
+from app.core.i18n import get_localized
 from app.db.models.zone import Zone, ZoneProduct
 from app.db.base import _utcnow
 from app.audit.constants import AuditAction, AuditResourceType
@@ -681,6 +682,15 @@ async def batch_zone_codes(db: AsyncSession, product_ids: list[int]) -> dict[int
     for v in out.values():
         v.sort()
     return out
+
+
+async def zone_refs_for_product(db: AsyncSession, product_id: int) -> list[dict]:
+    """单个商品所属专区(code + 本地化名),按 code 排序。运营详情用。"""
+    rows = (await db.execute(
+        select(Zone).join(ZoneProduct, ZoneProduct.zone_id == Zone.id)
+        .where(ZoneProduct.spu_id == product_id).distinct().order_by(Zone.code)
+    )).scalars().all()
+    return [{"code": z.code, "name": get_localized(z, "name") or z.name_zh} for z in rows]
 
 
 async def list_products_public(

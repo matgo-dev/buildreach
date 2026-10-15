@@ -1,13 +1,13 @@
 "use client";
 
 import { Suspense, useCallback, useMemo } from "react";
+import { X } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { RouteGuard } from "@/components/auth/RouteGuard";
-import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { zonesApi, type ZoneCategory } from "@/lib/api/zones";
 import type { ProductListResponse } from "@/lib/api/products";
 import { ZoneCategoryNav } from "@/components/zone/ZoneCategoryNav";
@@ -24,7 +24,9 @@ function ZoneContent() {
   const t = useTranslations("zone");
   const zoneCode = String(params.zoneCode);
 
-  const { tree: categoryTree } = useCategoryTree();
+  // 专区卡片不显示平台品类标签:专区有自己的大类轴,平台品类是粗占位(机电/手动工具)或停用的专区专用品类,
+  // 公开树里查不到 → 有的卡片有标签有的没有,既不一致也没信息量。
+  const noCategoryTree = useMemo(() => [], []);
 
   const urlCat = searchParams.get("cat") || "";
   const urlScene = searchParams.get("scene") || "";
@@ -99,6 +101,16 @@ function ZoneContent() {
   const scenes = useMemo(() => (categories ?? []).filter((c) => c.kind === "SCENE"), [categories]);
   const cats = useMemo(() => (categories ?? []).filter((c) => c.kind !== "SCENE"), [categories]);
 
+  const activeChips = useMemo(() => {
+    const out: { key: string; axis: string; label: string; clear: () => void }[] = [];
+    const scene = scenes.find((c) => c.code === urlScene);
+    if (scene) out.push({ key: "scene", axis: t("sceneChipAxis"), label: scene.name, clear: () => handleSceneSelect("") });
+    const cat = cats.find((c) => c.code === urlCat);
+    if (cat) out.push({ key: "cat", axis: t("categoryChipAxis"), label: cat.name, clear: () => handleCategorySelect("") });
+    if (urlKeyword) out.push({ key: "kw", axis: t("keywordChipAxis"), label: urlKeyword, clear: () => updateParams({ keyword: undefined, page: undefined }) });
+    return out;
+  }, [scenes, cats, urlScene, urlCat, urlKeyword, handleSceneSelect, handleCategorySelect, updateParams, t]);
+
   const productHref = useMemo(
     () => (productId: number) => `/zone/${zoneCode}/products/${productId}`,
     [zoneCode]
@@ -113,6 +125,7 @@ function ZoneContent() {
             categories={scenes}
             activeCode={urlScene}
             allLabel={t("allScenes")}
+            label={t("sceneRowLabel")}
             onSelect={handleSceneSelect}
           />
         )}
@@ -123,14 +136,46 @@ function ZoneContent() {
             categories={cats}
             activeCode={urlCat}
             allLabel={t("allCategories")}
+            label={t("categoryRowLabel")}
             onSelect={handleCategorySelect}
           />
+        )}
+
+        {/* 结果计数 + 已选条件:两轴叠加后用户要知道筛了什么、剩多少,并能一键清掉 */}
+        {productData && (
+          <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-2" aria-live="polite">
+            <span className="font-semibold text-ink">{t("resultCount", { total: productData.total })}</span>
+            {activeChips.length > 0 && (
+              <>
+                <span className="text-muted">· {t("activeFilters")}</span>
+                {activeChips.map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={chip.clear}
+                    aria-label={`${t("clearFilters")}: ${chip.axis} ${chip.label}`}
+                    className="inline-flex h-7 items-center gap-1 rounded-full bg-teal-50 px-3 font-medium text-teal-900 hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                  >
+                    {/* 轴名前缀:两条轴的已选值并排时,只写名字会看成同一种东西 */}
+                    <span className="font-normal text-muted">{chip.axis}：</span>
+                    {chip.label}
+                    <X className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                ))}
+                {activeChips.length > 1 && (
+                  <button type="button" onClick={clearAll} className="font-medium text-teal-700 underline-offset-2 hover:underline">
+                    {t("clearFilters")}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         )}
 
         {/* 商品网格 */}
         <ProductGrid
           products={productData?.items ?? []}
-          categoryTree={categoryTree}
+          categoryTree={noCategoryTree}
           isLoading={productsLoading}
           error={productError}
           onRetry={() => refetchProducts()}

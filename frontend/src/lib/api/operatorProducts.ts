@@ -247,6 +247,12 @@ export interface ProductOperatorDetail {
   volume_cbm: number | null;
   can_consolidate: boolean;
   cargo_type: string | null;
+  /** PUBLIC | ZONE_ONLY;老后端无此字段按 PUBLIC 处理 */
+  visibility?: string;
+  /** 所属专区(code + 本地化名) */
+  zones?: { code: string; name: string }[];
+  /** 采购备注(导入源表的采购说明),仅运营可见 */
+  purchase_note?: string | null;
   status: string;
   created_by_name: string;
   skus: SkuOperatorDetail[];

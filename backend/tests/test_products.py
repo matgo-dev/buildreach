@@ -2339,6 +2339,49 @@ async def test_operator_list_zone_code_filter_and_badges(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_operator_detail_returns_visibility_and_zones(client, db_session):
+    """运营详情带可见范围 + 所属专区(含名字),从列表点进来不丢「仅专区可见 / 哪个专区」的上下文。"""
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+    from app.db.models.zone import Zone, ZoneCategory, ZoneProduct
+
+    zone = Zone(code="ZONE-OPDET", name_zh="详情测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.flush()
+    a = ZoneCategory(zone_id=zone.id, code="C01", name_zh="大类")
+    s1 = ZoneCategory(zone_id=zone.id, code="S01", name_zh="场景", kind="SCENE")
+    db_session.add_all([a, s1])
+    await db_session.flush()
+    inside = Product(spu_code="OPDET-IN", name_zh="专区商品", category_code="04.001",
+                     status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS",
+                     source_meta={"batch": "t", "purchase_note": "预算示例：约150毫米"})
+    outside = Product(spu_code="OPDET-OUT", name_zh="公开商品", category_code="04.001",
+                      status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC, moq=1, unit="PCS")
+    db_session.add_all([inside, outside])
+    await db_session.flush()
+    # 一个商品在同一专区挂两行(大类+场景),zones 只出现一次
+    db_session.add_all([
+        ZoneProduct(zone_id=zone.id, spu_id=inside.id, zone_category_id=a.id),
+        ZoneProduct(zone_id=zone.id, spu_id=inside.id, zone_category_id=s1.id),
+    ])
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+    r = await client.get(f"/api/v1/operator/products/{inside.id}", headers=headers)
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["visibility"] == "ZONE_ONLY"
+    assert d["zones"] == [{"code": "ZONE-OPDET", "name": "详情测试专区"}]
+    assert d["purchase_note"] == "预算示例：约150毫米"
+    # 买家接口绝不带采购备注
+    rb = await client.get(f"/api/v1/products/{inside.id}")
+    assert "purchase_note" not in rb.text and "预算示例" not in rb.text
+
+    r = await client.get(f"/api/v1/operator/products/{outside.id}", headers=headers)
+    d = r.json()["data"]
+    assert (d["visibility"], d["zones"], d["purchase_note"]) == ("PUBLIC", [], None)
+
+
+@pytest.mark.asyncio
 async def test_operator_list_unknown_zone_empty(client, db_session):
     headers = await _login_operator(client)
     r = await client.get("/api/v1/operator/products?zone_code=NO-SUCH-ZONE", headers=headers)
