@@ -11,8 +11,7 @@
 from __future__ import annotations
 
 import io
-
-import io
+from datetime import datetime
 
 import pytest
 from httpx import AsyncClient
@@ -320,3 +319,45 @@ async def test_pdf_content_no_cost_supplier_fields(client: AsyncClient, db_sessi
     assert b"gross_margin" not in pdf_lower
     assert b"supplier_unit_price" not in pdf_lower
     assert b"freight_cost_alloc" not in pdf_lower
+
+@pytest.mark.asyncio
+async def test_export_html_uses_org_name_and_quoted_at(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch
+):
+    """接线:收件方公司取买方组织名、签发日期取报价时间(拦截渲染,不依赖 weasyprint)。"""
+    from app.db.models.buyer_organization import BuyerOrganization
+    from app.db.models.rfq import Rfq
+    from app.db.models.rfq_quote import RfqQuote
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(quote_export, "_read_cached_pdf", lambda key: None)
+    monkeypatch.setattr(quote_export, "_write_cached_pdf", lambda key, data: None)
+    monkeypatch.setattr(
+        quote_export, "_render_pdf", lambda html: captured.setdefault("html", html).encode()
+    )
+
+    bh = await _buyer_headers(client)
+    op = await _op_headers(client)
+    rfq_id = await _create_quoted_rfq(client, bh, op, db_session)
+
+    rfq = await db_session.get(Rfq, rfq_id)
+    # 询价日改到很早,确保断言区分得出"报价时间"和"询价时间"
+    rfq.created_at = datetime(2020, 1, 1)
+    await db_session.flush()
+    org_name = await db_session.scalar(
+        select(BuyerOrganization.name).where(BuyerOrganization.id == rfq.buyer_org_id)
+    )
+    quoted_at = await db_session.scalar(
+        select(RfqQuote.quoted_at).where(
+            RfqQuote.rfq_id == rfq_id, RfqQuote.quote_status == "ACTIVE"
+        )
+    )
+    assert quoted_at is not None
+
+    r = await client.get(f"/api/v1/rfqs/{rfq_id}/quote/export", headers=bh)
+    assert r.status_code == 200, r.text
+
+    html = captured["html"]
+    assert org_name in html
+    assert html.count("Test Buyer") == 1
+    assert quoted_at.strftime("%Y-%m-%d") in html

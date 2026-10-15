@@ -146,6 +146,7 @@ class RfqQuoteBuyerPublic(BaseModel):
     """买方可见报价。无 cost/supplier_*/quoted_by/版本历史。"""
     id: int
     quote_no: str
+    quoted_at: datetime | None = None
     trade_term: str | None = None
     named_place: str | None = None
     currency: str | None = None

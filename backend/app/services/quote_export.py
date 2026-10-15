@@ -22,6 +22,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.exceptions import RfqNoQuoteToExportError, RfqNotFoundError
 from app.db.base import _utcnow
+from app.db.models.buyer_organization import BuyerOrganization
 from app.db.models.product_image import ImageType, ProductImage
 from app.db.models.quote_document import QuoteDocument
 from app.schemas.quote import RfqQuoteBuyerPublic
@@ -45,10 +46,14 @@ _jinja_env = Environment(
     autoescape=True,
 )
 
-# 平台静态抬头(发出方)
+# 平台静态抬头(发出方),取值逐字来自品牌物料包 content.js 的 identity/contacts。
+# 品牌名只用拉丁字母:en/sw 出现中文会触发 fontconfig 回退加载 CJK 字体(实测 +3~5s/份)。
 _PLATFORM_INFO = {
-    "name": "BuildLink East Africa",
-    "address": "",
+    "name": "MATGO",
+    "legal_name": "MATMART COMPANY LIMITED",
+    "address": "Mikocheni A, Kinondoni, Dar es Salaam, Tanzania",
+    "postal": "P.O. Box 21077, Kinondoni, Dar es Salaam, Tanzania",
+    "phone": "+255 725 511 111",
     "email": settings.CONTACT_EMAIL,
 }
 
@@ -70,6 +75,59 @@ def _format_date(dt: datetime | str | None, locale: str) -> str:
         except (ValueError, TypeError):
             return str(dt)
     return dt.strftime("%Y-%m-%d")
+
+
+async def _load_buyer_org_name(db: AsyncSession, buyer_org_id: int) -> str:
+    """收件方公司名 = RFQ 所属买方组织名(主键查询)。"""
+    name = await db.scalar(
+        select(BuyerOrganization.name).where(BuyerOrganization.id == buyer_org_id)
+    )
+    return name or ""
+
+
+def _font_family(locale: str) -> str:
+    # CJK 字体 ~18MB，weasyprint 每次加载子集化需 3s+；en/sw 纯拉丁字母无需 CJK
+    if locale == "zh":
+        return '"Noto Sans CJK SC", "Noto Sans", "Helvetica Neue", Arial, sans-serif'
+    return '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
+
+def _template_context(
+    *,
+    rfq: object,
+    quote: RfqQuoteBuyerPublic,
+    buyer_org_name: str,
+    image_map: dict[int, str],
+    locale: str,
+    now: datetime,
+) -> dict[str, object]:
+    """报价单模板上下文。下载导出与产物预生成共用,保证两条路径口径一致。"""
+    product_items = [i for i in quote.items if i.line_type == "PRODUCT"]
+    fee_items = [i for i in quote.items if i.line_type == "FEE"]
+    return {
+        "font_family": _font_family(locale),
+        "L": get_labels(locale),
+        "locale": locale,
+        "rfq": rfq,
+        "quote": quote,
+        "platform": _PLATFORM_INFO,
+        "buyer_org": buyer_org_name,
+        "product_items": product_items,
+        "image_map": image_map,
+        "fee_items": fee_items,
+        "subtotal_products": sum(
+            (i.line_amount or Decimal("0")) for i in product_items
+        ),
+        "subtotal_fees": sum((i.line_amount or Decimal("0")) for i in fee_items),
+        # 签发日期 = 报价时间,不是询价创建时间
+        "issue_date": _format_date(quote.quoted_at, locale),
+        "valid_until": _format_date(quote.valid_until, locale),
+        "expected_delivery_date": _format_date(
+            getattr(rfq, "expected_delivery_date", None), locale
+        ),
+        "generated_at": now.strftime("%Y-%m-%d %H:%M UTC"),
+        "format_amount": _format_amount,
+    }
 
 
 def _image_key_to_file_uri(image_key: str | None) -> str | None:
@@ -199,6 +257,7 @@ def _quote_cache_payload(
     *,
     rfq: object,
     quote: RfqQuoteBuyerPublic,
+    buyer_org_name: str,
     locale: str,
     cache_date: str,
     image_keys: dict[int, str],
@@ -212,6 +271,7 @@ def _quote_cache_payload(
         "template": _file_signature(_TEMPLATE_DIR / "quote.html"),
         "labels": _file_signature(_TEMPLATE_DIR / "labels.py"),
         "platform": _PLATFORM_INFO,
+        "buyer_org_name": buyer_org_name,
         "rfq": {
             "id": getattr(rfq, "id", None),
             "rfq_no": getattr(rfq, "rfq_no", None),
@@ -328,9 +388,8 @@ async def generate_quote_pdf(
     # load_quote_for_rfq_detail 非运营模式返回 RfqQuoteBuyerPublic 或 None
     quote: RfqQuoteBuyerPublic = quote_data  # type: ignore[assignment]
 
-    # 分离商品行和费用行
     product_items = [i for i in quote.items if i.line_type == "PRODUCT"]
-    fee_items = [i for i in quote.items if i.line_type == "FEE"]
+    buyer_org_name = await _load_buyer_org_name(db, rfq.buyer_org_id)
 
     # 批量查商品主图 key。缩略图生成放到缓存未命中之后,避免命中缓存时仍做图片 I/O。
     product_ids = [i.product_id for i in product_items if i.product_id]
@@ -348,22 +407,12 @@ async def generate_quote_pdf(
             if key:
                 image_keys[pid] = key
 
-    subtotal_products = sum(
-        (i.line_amount or Decimal("0")) for i in product_items
-    )
-    subtotal_fees = sum(
-        (i.line_amount or Decimal("0")) for i in fee_items
-    )
-
-    # 买方显示名:用 RFQ 联系人姓名,不额外查组织表
-    buyer_org = rfq.contact_name or ""
-
-    labels = get_labels(locale)
     now = datetime.utcnow()
     cache_date = now.strftime("%Y-%m-%d")
     cache_payload = _quote_cache_payload(
         rfq=rfq,
         quote=quote,
+        buyer_org_name=buyer_org_name,
         locale=locale,
         cache_date=cache_date,
         image_keys=image_keys,
@@ -389,32 +438,15 @@ async def generate_quote_pdf(
         if src:
             image_map[pid] = src
 
-    # CJK 字体 ~18MB，weasyprint 每次加载子集化需 3s+；en/sw 纯拉丁字母无需 CJK
-    if locale == "zh":
-        font_family = '"Noto Sans CJK SC", "Noto Sans", "Helvetica Neue", Arial, sans-serif'
-    else:
-        font_family = '"Helvetica Neue", Helvetica, Arial, sans-serif'
-
-    template = _jinja_env.get_template("quote.html")
-    html_str = template.render(
-        font_family=font_family,
-        L=labels,
-        locale=locale,
-        rfq=rfq,
-        quote=quote,
-        platform=_PLATFORM_INFO,
-        buyer_org=buyer_org,
-        product_items=product_items,
-        image_map=image_map,
-        fee_items=fee_items,
-        subtotal_products=subtotal_products,
-        subtotal_fees=subtotal_fees,
-        # RfqQuoteBuyerPublic 无 created_at,用 rfq.created_at 作签发日期
-        issue_date=_format_date(rfq.created_at, locale),
-        valid_until=_format_date(quote.valid_until, locale),
-        expected_delivery_date=_format_date(rfq.expected_delivery_date, locale),
-        generated_at=now.strftime("%Y-%m-%d %H:%M UTC"),
-        format_amount=_format_amount,
+    html_str = _jinja_env.get_template("quote.html").render(
+        **_template_context(
+            rfq=rfq,
+            quote=quote,
+            buyer_org_name=buyer_org_name,
+            image_map=image_map,
+            locale=locale,
+            now=now,
+        )
     )
 
     # weasyprint 是 CPU 密集同步操作，放线程池避免阻塞事件循环
@@ -487,7 +519,6 @@ async def _render_quote_pdf_bytes(
     quote_view: RfqQuoteBuyerPublic = quote_data  # type: ignore[assignment]
 
     product_items = [i for i in quote_view.items if i.line_type == "PRODUCT"]
-    fee_items = [i for i in quote_view.items if i.line_type == "FEE"]
 
     product_ids = [i.product_id for i in product_items if i.product_id]
     image_map: dict[int, str] = {}
@@ -505,41 +536,15 @@ async def _render_quote_pdf_bytes(
             if src:
                 image_map[pid] = src
 
-    subtotal_products = sum(
-        (i.line_amount or Decimal("0")) for i in product_items
-    )
-    subtotal_fees = sum(
-        (i.line_amount or Decimal("0")) for i in fee_items
-    )
-
-    buyer_org = rfq.contact_name or ""
-    labels = get_labels(locale)
-    now = datetime.utcnow()
-
-    if locale == "zh":
-        font_family = '"Noto Sans CJK SC", "Noto Sans", "Helvetica Neue", Arial, sans-serif'
-    else:
-        font_family = '"Helvetica Neue", Helvetica, Arial, sans-serif'
-
-    template = _jinja_env.get_template("quote.html")
-    html_str = template.render(
-        font_family=font_family,
-        L=labels,
-        locale=locale,
-        rfq=rfq,
-        quote=quote_view,
-        platform=_PLATFORM_INFO,
-        buyer_org=buyer_org,
-        product_items=product_items,
-        image_map=image_map,
-        fee_items=fee_items,
-        subtotal_products=subtotal_products,
-        subtotal_fees=subtotal_fees,
-        issue_date=_format_date(rfq.created_at, locale),
-        valid_until=_format_date(quote_view.valid_until, locale),
-        expected_delivery_date=_format_date(rfq.expected_delivery_date, locale),
-        generated_at=now.strftime("%Y-%m-%d %H:%M UTC"),
-        format_amount=_format_amount,
+    html_str = _jinja_env.get_template("quote.html").render(
+        **_template_context(
+            rfq=rfq,
+            quote=quote_view,
+            buyer_org_name=await _load_buyer_org_name(db, rfq.buyer_org_id),
+            image_map=image_map,
+            locale=locale,
+            now=datetime.utcnow(),
+        )
     )
 
     pdf_bytes = await asyncio.get_event_loop().run_in_executor(
