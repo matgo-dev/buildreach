@@ -144,7 +144,7 @@ export function ProductCard({
   return (
     <Link
       href={detailHref}
-      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-mall-lg shadow-mall-sm"
+      className="group flex h-full flex-col rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-mall-lg shadow-mall-sm"
     >
       {/* 图片区 — 撑满，窄边距 */}
       <div
@@ -173,7 +173,7 @@ export function ProductCard({
       </div>
 
       {/* 信息区 */}
-      <div className="p-2.5 sm:p-3.5 space-y-1.5 sm:space-y-2">
+      <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
         <h3 className="min-h-[40px] sm:min-h-[46px] text-[13px] sm:text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
           {product.supply_mode === "PLATFORM_STOCK" ? (
             <span className="inline-flex items-center rounded bg-teal-700 px-1.5 py-px text-[10px] font-bold text-white mr-1 align-text-top">
@@ -190,11 +190,10 @@ export function ProductCard({
           )}
         </h3>
 
-        {product.description && (
-          <p className="text-xs text-muted leading-relaxed line-clamp-2">
-            {product.description}
-          </p>
-        )}
+        {/* 描述位固定两行高(无描述也占位):同一行卡片的 MOQ/按钮行才对得齐 */}
+        <p className="min-h-[39px] text-xs text-muted leading-relaxed line-clamp-2">
+          {product.description}
+        </p>
 
         <div className="flex flex-wrap gap-1.5">
           {categoryLabel && (
@@ -219,12 +218,16 @@ export function ProductCard({
           </p>
         )}
 
-        {product.sku_count != null && product.sku_count > 0 && (
-          <p className="text-xs text-muted">{t("specCount", { count: product.sku_count })}</p>
-        )}
+        {/* 只有多规格才提示(「1种规格」是噪声):用户要知道的是"点进去还有得选"。
+            专区列表回 sku_count(带数量),商城列表只回 has_variants(布尔),两种都认。 */}
+        {(product.sku_count ?? 0) > 1 ? (
+          <p className="text-xs font-semibold text-teal-800">{t("specCount", { count: product.sku_count! })}</p>
+        ) : product.has_variants ? (
+          <p className="text-xs font-semibold text-teal-800">{t("multiSpec")}</p>
+        ) : null}
 
-        {/* 底部操作 */}
-        <div className="flex gap-2 pt-1">
+        {/* 底部操作:mt-auto 钉在卡片底,同一行卡片的按钮对齐(有无描述/标签高度不同) */}
+        <div className="mt-auto flex gap-2 pt-1">
           <MallButton
             variant="outline"
             size="md"
