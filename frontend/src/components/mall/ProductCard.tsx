@@ -190,66 +190,70 @@ export function ProductCard({
           )}
         </h3>
 
-        {/* 描述位固定两行高(无描述也占位):同一行卡片的 MOQ/按钮行才对得齐 */}
-        <p className="min-h-[39px] text-xs text-muted leading-relaxed line-clamp-2">
-          {product.description}
-        </p>
-
-        <div className="flex flex-wrap gap-1.5">
-          {categoryLabel && (
-            <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">
-              {categoryLabel}
-            </span>
-          )}
-          {product.certifications?.map((cert) => (
-            <span
-              key={cert}
-              className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-extrabold text-sea whitespace-nowrap"
-            >
-              {cert}
-            </span>
-          ))}
-        </div>
-
-        {product.moq != null && (
-          <p className="text-xs text-muted">
-            <span className="font-extrabold text-navy">MOQ:</span>{" "}
-            {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
-          </p>
+        {/* 可选内容有才显示、不预留高度;对齐靠下面的底部组 mt-auto(整行都没描述时卡片直接变矮,不留空带) */}
+        {product.description && (
+          <p className="text-xs text-muted leading-relaxed line-clamp-2">{product.description}</p>
         )}
 
-        {/* 只有多规格才提示(「1种规格」是噪声):用户要知道的是"点进去还有得选"。
-            专区列表回 sku_count(带数量),商城列表只回 has_variants(布尔),两种都认。 */}
-        {(product.sku_count ?? 0) > 1 ? (
-          <p className="text-xs font-semibold text-teal-800">{t("specCount", { count: product.sku_count! })}</p>
-        ) : product.has_variants ? (
-          <p className="text-xs font-semibold text-teal-800">{t("multiSpec")}</p>
-        ) : null}
+        {(categoryLabel || (product.certifications?.length ?? 0) > 0) && (
+          <div className="flex flex-wrap gap-1.5">
+            {categoryLabel && (
+              <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">
+                {categoryLabel}
+              </span>
+            )}
+            {product.certifications?.map((cert) => (
+              <span
+                key={cert}
+                className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-extrabold text-sea whitespace-nowrap"
+              >
+                {cert}
+              </span>
+            ))}
+          </div>
+        )}
 
-        {/* 底部操作:mt-auto 钉在卡片底,同一行卡片的按钮对齐(有无描述/标签高度不同) */}
-        <div className="mt-auto flex gap-2 pt-1">
-          <MallButton
-            variant="outline"
-            size="md"
-            className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
-            onClick={(e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              router.push(rfqHref);
-            }}
-          >
-            {t("startInquiry")}
-          </MallButton>
-          <button
-            ref={btnRef}
-            type="button"
-            onClick={handleAddToCart}
-            disabled={adding}
-            className="h-10 w-10 shrink-0 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={t("addToInquiryCart")}
-          >
-            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-          </button>
+        {/* 底部组:MOQ + 规格提示 + 操作整体钉在卡片底,同一行卡片底部信息对齐 */}
+        <div className="mt-auto flex flex-col gap-1.5 pt-1 sm:gap-2">
+          {product.moq != null && (
+            <p className="text-xs text-muted">
+              <span className="font-extrabold text-navy">MOQ:</span>{" "}
+              {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
+            </p>
+          )}
+
+          {/* 只有多规格才提示(「1种规格」是噪声):用户要知道的是"点进去还有得选"。
+              专区列表回 sku_count(带数量),商城列表只回 has_variants(布尔),两种都认。 */}
+          {(product.sku_count ?? 0) > 1 ? (
+            <p className="text-xs font-semibold text-teal-800">{t("specCount", { count: product.sku_count! })}</p>
+          ) : product.has_variants ? (
+            <p className="text-xs font-semibold text-teal-800">{t("multiSpec")}</p>
+          ) : null}
+
+          <div className="flex gap-2">
+            <MallButton
+              variant="outline"
+              size="md"
+              className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(rfqHref);
+              }}
+            >
+              {t("startInquiry")}
+            </MallButton>
+            <button
+              ref={btnRef}
+              type="button"
+              onClick={handleAddToCart}
+              disabled={adding}
+              className="h-10 w-10 shrink-0 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("addToInquiryCart")}
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </div>
     </Link>
