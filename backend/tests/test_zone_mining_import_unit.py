@@ -11,7 +11,6 @@ from scripts.import_zone_mining import (
     Rule,
     SourceRow,
     build_spus,
-    extract_applicable_model,
     hard,
     load_merge_map,
     load_rules,
@@ -102,16 +101,6 @@ def test_load_rules_reads_csv(tmp_path: Path):
     assert rules == [Rule("01", "*", "*", "", "C10", "01")]
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("按凿岩机/气腿品牌型号及零件号核样", "凿岩机/气腿品牌型号"),
-    ("按斗齿系统、销孔、斗号和机型", "斗齿系统、销孔、斗号和机型"),
-    ("示例:玻璃100mL,单只", None),
-    ("", None),
-])
-def test_extract_applicable_model(text, expected):
-    assert extract_applicable_model(text) == expected
-
-
 def _rules_default():
     return [
         Rule("01", "*", "*", "", "C10", "01"),
@@ -134,7 +123,7 @@ def test_build_spus_merges_sizes_into_skus_and_unions_scenes():
     assert s.spu_code == mining_spu_code("绳卡")
     assert s.specs == ["φ8", "φ15"]
     assert s.scenes == ["S01", "S02"]
-    assert s.description == "原文φ8"
+    assert s.purchase_note == "原文φ8"
     assert s.source_ids == ["01:A-1", "01:A-2", "02:B-1"]
     assert s.zone_cat == "C09" and s.category_code == "04"
     assert s.conflicts == []
@@ -270,9 +259,9 @@ def test_build_spus_fills_empty_attr_from_later_row():
 
 def test_expected_sku_codes_variant_vs_simple():
     from scripts.import_zone_mining import SpuRow, expected_sku_codes, mining_sku_code
-    simple = SpuRow(name="活板", spu_code="MG-PX", description="", specs=["20寸"])
+    simple = SpuRow(name="活板", spu_code="MG-PX", purchase_note="", specs=["20寸"])
     assert expected_sku_codes(simple) == {mining_sku_code("MG-PX", None)}
-    variant = SpuRow(name="活板", spu_code="MG-PX", description="", specs=["20寸", "24寸"])
+    variant = SpuRow(name="活板", spu_code="MG-PX", purchase_note="", specs=["20寸", "24寸"])
     assert expected_sku_codes(variant) == {mining_sku_code("MG-PX", "20寸"), mining_sku_code("MG-PX", "24寸")}
 
 
@@ -302,3 +291,39 @@ def test_normalize_source_key_shared_by_both_zone_scripts():
     for raw in ("ＡＢＣ 12 3", " 螺纹钢\t", None, 42):
         assert hard(raw) == _hard(raw) == normalize_source_key(raw)
     assert normalize_source_key(None) == ""
+
+
+def test_clean_spec_text_drops_placeholder():
+    """源表规格列的「未列」是"没填",不能当商品描述展示;NTW/HTW 是真实钻具口径,保留。"""
+    from scripts.import_zone_mining import clean_spec_text
+    assert clean_spec_text("未列") == "" and clean_spec_text(" 未列 ") == ""
+    assert clean_spec_text("原PDF未列规格") == ""
+    assert clean_spec_text("NTW") == "NTW" and clean_spec_text("按钻机型号") == "按钻机型号"
+
+
+def test_clean_generic_drops_placeholder_and_spu_gets_no_attr():
+    from scripts.import_zone_mining import _spu_attrs, clean_generic
+    assert clean_generic("待确认") == "" and clean_generic("是") == "是"
+    rows = [SourceRow("02", "井下", "D-1", "耗材", "起爆器", "", "个", clean_generic("待确认"))]
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "起爆器", "C10", "01")])
+    assert [k for k, _, _ in _spu_attrs(s)] == ["环节/类别"]
+
+
+def test_spu_attrs_never_emit_applicable_model():
+    """「适用机型」曾从「按XX型号核对」里抽指令片段(颚破型号/确定机型),不是型号,已整体去掉。"""
+    from scripts.import_zone_mining import _spu_attrs
+    rows = [SourceRow("01", "破碎", "A-1", "备件", "颚板", "按颚破型号核对", "块", "否")]
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "C01", "33.001")])
+    assert "适用机型" not in [k for k, _, _ in _spu_attrs(s)]
+
+
+def test_purchase_note_goes_to_source_meta_not_description():
+    """采购说明是写给采购员的(按…核对/预算示例/待核),只进运营可见的 source_meta.purchase_note。"""
+    from scripts.import_zone_mining import _source_meta
+    rows = [SourceRow("01", "破碎", "A-1", "备件", "颚板", "预算示例：按颚破型号核对", "块", "否")]
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "C01", "33.001")])
+    assert s.purchase_note == "预算示例：按颚破型号核对"
+    assert _source_meta(s)["purchase_note"] == "预算示例：按颚破型号核对"
+    rows[0] = SourceRow("01", "破碎", "A-1", "备件", "颚板", "", "块", "否")
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "C01", "33.001")])
+    assert "purchase_note" not in _source_meta(s)

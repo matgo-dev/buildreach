@@ -145,6 +145,19 @@ def _cell(v) -> str:
 _NOISE_RE = re.compile(r"^(待核|待定|合计|小计)|(方案|服务|报表)$")
 
 
+# 源表里表示"没填"的占位值,当空处理,不能展示给买家。导入后按字段 distinct 扫描发现新的就加进来。
+_SPEC_PLACEHOLDERS = frozenset({"未列", "原PDF未列规格"})   # 规格/说明列 → 商品描述
+_GENERIC_PLACEHOLDERS = frozenset({"待确认"})             # 是否通用列 → SPU 属性
+
+
+def clean_spec_text(v: str) -> str:
+    return "" if v.strip() in _SPEC_PLACEHOLDERS else v
+
+
+def clean_generic(v: str) -> str:
+    return "" if v.strip() in _GENERIC_PLACEHOLDERS else v
+
+
 def is_noise_name(name: str) -> bool:
     """表里混着的占位/服务行(「待核数量」「5台挖机方案」「车辆拖救服务」),不是商品。"""
     return bool(_NOISE_RE.search(name))
@@ -221,8 +234,8 @@ def load_source_rows(src_dir: Path, dropped: list[DroppedRow] | None = None) -> 
                     continue
                 rows.append(SourceRow(
                     file_key=key, sheet=ws.title, row_id=rid,
-                    section=at(i_sec), name=name, spec_text=at(i_spec),
-                    unit=at(i_unit), generic=at(i_gen),
+                    section=at(i_sec), name=name, spec_text=clean_spec_text(at(i_spec)),
+                    unit=at(i_unit), generic=clean_generic(at(i_gen)),
                 ))
         wb.close()
     return rows
@@ -278,37 +291,30 @@ def match_rule(row: SourceRow, rules: list[Rule]) -> Rule | None:
     return None
 
 
-_MODEL_RE = re.compile(r"按(.{2,30}?(?:型号|机型))")
-
-
-def extract_applicable_model(spec_text: str) -> str | None:
-    """从采购说明里抽「按 XX 型号/机型」作为适用机型属性;抽不到返回 None。"""
-    m = _MODEL_RE.search(spec_text or "")
-    return m.group(1) if m else None
 
 
 @dataclass
 class SpuRow:
     name: str
     spu_code: str
-    description: str
+    # 源表「参考型号/规格」列 = 写给采购员的说明(按…核对/预算示例/待核),只进运营可见的采购备注,不当商品描述
+    purchase_note: str
     specs: list[str] = field(default_factory=list)
     unit: str = ""
     section: str = ""
     generic: str = ""
-    applicable_model: str | None = None
     scenes: list[str] = field(default_factory=list)
     zone_cat: str | None = None
     category_code: str | None = None
     source_ids: list[str] = field(default_factory=list)
     conflicts: list[str] = field(default_factory=list)   # 大类/品类冲突:阻断落库
-    attr_diffs: list[str] = field(default_factory=list)  # 环节/是否通用/适用机型跨行不一致:只记审核,不阻断
+    attr_diffs: list[str] = field(default_factory=list)  # 环节/是否通用跨行不一致:只记审核,不阻断
     rule_desc: str = ""   # 命中规则 file/sheet/section/keyword,审核 CSV 用
 
 
 def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rules: list[Rule]) -> list[SpuRow]:
     """源行 → SPU:按合并表改名/取规格,按归一化品名聚合;场景取并集;大类取第一次命中,不一致记 conflicts;
-    环节/是否通用/适用机型取第一个非空值,后续行给出不同的非空值记 attr_diffs(审核可见,不阻断)。"""
+    环节/是否通用取第一个非空值,后续行给出不同的非空值记 attr_diffs(审核可见,不阻断)。"""
     out: dict[str, SpuRow] = {}
     order: list[str] = []
     units: dict[str, list[str]] = collections.defaultdict(list)
@@ -321,15 +327,13 @@ def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rul
         s = out.get(k)
         if s is None:
             s = SpuRow(
-                name=name, spu_code=mining_spu_code(name), description=r.spec_text,
+                name=name, spu_code=mining_spu_code(name), purchase_note=r.spec_text,
                 section=r.section, generic=r.generic,
-                applicable_model=extract_applicable_model(r.spec_text),
             )
             out[k] = s
             order.append(k)
         else:
-            model = extract_applicable_model(r.spec_text)
-            for label, attr, new in (("环节", "section", r.section), ("是否通用", "generic", r.generic), ("适用机型", "applicable_model", model)):
+            for label, attr, new in (("环节", "section", r.section), ("是否通用", "generic", r.generic)):
                 cur = getattr(s, attr)
                 if not new:
                     continue
@@ -477,8 +481,6 @@ def _spu_attrs(s: SpuRow) -> list[tuple[str, str, str]]:
         attrs.append(("环节/类别", "section", s.section))
     if s.generic:
         attrs.append(("是否通用", "interchangeable", s.generic))
-    if s.applicable_model:
-        attrs.append(("适用机型", "applicable_model", s.applicable_model))
     return attrs
 
 
@@ -490,7 +492,10 @@ def expected_sku_codes(s: SpuRow) -> set[str]:
 
 
 def _source_meta(s: SpuRow) -> dict:
-    return {"batch": BATCH_ID, "source_ids": s.source_ids, "scenes": s.scenes}
+    meta = {"batch": BATCH_ID, "source_ids": s.source_ids, "scenes": s.scenes}
+    if s.purchase_note:
+        meta["purchase_note"] = s.purchase_note   # 运营详情读这个键(operator_products.get_product)
+    return meta
 
 
 async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter, sku_mismatches: list[str]) -> Product:
@@ -499,7 +504,8 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
     )).scalar_one_or_none()
     if product is not None:
         product.name_zh = s.name
-        product.description_zh = s.description or None
+        # 描述留空(含旧译文),等正式商品描述(九云/运营)再补;采购说明已移到 source_meta.purchase_note
+        product.description_zh = product.description_en = product.description_sw = None
         product.category_code = s.category_code
         product.moq_unit = s.unit
         product.visibility = ProductVisibility.ZONE_ONLY
@@ -524,7 +530,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         return product
 
     product = Product(
-        spu_code=s.spu_code, name_zh=s.name, description_zh=s.description or None,
+        spu_code=s.spu_code, name_zh=s.name, description_zh=None,
         category_code=s.category_code,
         status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
         unit="PCS", moq=1, moq_unit=s.unit, source=SOURCE,
@@ -659,12 +665,12 @@ async def soft_delete_orphans(db: AsyncSession, zone: Zone, orphans: list[Orphan
 def write_audit(spus: list[SpuRow], path: Path) -> None:
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "命中规则", "环节", "是否通用", "适用机型", "来源编号", "冲突", "属性差异", "采购说明"])
+        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "命中规则", "环节", "是否通用", "来源编号", "冲突", "属性差异", "采购说明"])
         for s in spus:
             w.writerow([
                 s.spu_code, s.name, " / ".join(s.specs), s.unit, " / ".join(s.scenes),
-                s.zone_cat or "【未命中】", s.category_code or "", s.rule_desc, s.section, s.generic, s.applicable_model or "",
-                " / ".join(s.source_ids), " | ".join(s.conflicts), " | ".join(s.attr_diffs), s.description,
+                s.zone_cat or "【未命中】", s.category_code or "", s.rule_desc, s.section, s.generic,
+                " / ".join(s.source_ids), " | ".join(s.conflicts), " | ".join(s.attr_diffs), s.purchase_note,
             ])
 
 
