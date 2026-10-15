@@ -177,7 +177,10 @@
   <div class="party">
     <h3>{{ L.from_title }}</h3>
     <p><strong>{{ platform.name }}</strong></p>
-    {% if platform.address %}<p>{{ platform.address }}</p>{% endif %}
+    <p>{{ platform.legal_name }}</p>
+    <p>{{ platform.address }}</p>
+    <p>{{ platform.postal }}</p>
+    <p>{{ platform.phone }}</p>
     {% if platform.email %}<p>{{ platform.email }}</p>{% endif %}
   </div>
   <div class="party">
