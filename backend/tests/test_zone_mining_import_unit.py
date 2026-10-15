@@ -20,6 +20,10 @@ from scripts.import_zone_mining import (
 )
 
 
+# 单测用的平台品类 → 专区大类对照(与 zone_category_map.csv 同形)
+CMAP = {"01": "C10", "04": "C09", "14": "C06", "33.001": "C01", "34": "C04", "35": "C11"}
+
+
 def _write_book(path: Path, sheets: dict[str, list[list]]) -> None:
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -80,31 +84,31 @@ def test_load_merge_map_and_blank_spec_is_alias(tmp_path: Path):
 
 def test_match_rule_keyword_rules_win_over_sheet_defaults():
     rules = [
-        Rule("01", "药剂及钢球", "*", "", "C04", "34.001"),
-        Rule("01", "药剂及钢球", "*", "钢球", "C01", "33.001"),
-        Rule("01", "*", "劳保", "", "C10", "01"),
+        Rule("01", "药剂及钢球", "*", "", "34.001"),
+        Rule("01", "药剂及钢球", "*", "钢球", "33.001"),
+        Rule("01", "*", "劳保", "", "01"),
     ]
     ball = SourceRow("01", "药剂及钢球", "X-1", "", "研磨钢球", "", "吨", "")
     agent = SourceRow("01", "药剂及钢球", "X-2", "", "捕收剂", "", "kg", "")
     glove = SourceRow("01", "浮选现场配套", "X-3", "劳保", "帆布手套", "", "双", "")
     other = SourceRow("02", "井下设备备件", "X-4", "", "钎杆", "", "根", "")
-    assert match_rule(ball, rules).zone_cat == "C01"
-    assert match_rule(agent, rules).zone_cat == "C04"
-    assert match_rule(glove, rules).zone_cat == "C10"
+    assert match_rule(ball, rules).category_code == "33.001"
+    assert match_rule(agent, rules).category_code == "34.001"
+    assert match_rule(glove, rules).category_code == "01"
     assert match_rule(other, rules) is None
 
 
 def test_load_rules_reads_csv(tmp_path: Path):
     p = tmp_path / "rules.csv"
-    p.write_text("file_key,sheet,section,keyword,zone_cat,category_code,note\n01,*,*,,C10,01,x\n", encoding="utf-8")
+    p.write_text("file_key,sheet,section,keyword,category_code,note\n01,*,*,,01,x\n", encoding="utf-8")
     rules = load_rules(p)
-    assert rules == [Rule("01", "*", "*", "", "C10", "01")]
+    assert rules == [Rule("01", "*", "*", "", "01")]
 
 
 def _rules_default():
     return [
-        Rule("01", "*", "*", "", "C10", "01"),
-        Rule("02", "*", "*", "", "C09", "04"),
+        Rule("01", "*", "*", "", "01"),
+        Rule("02", "*", "*", "", "04"),
     ]
 
 
@@ -115,8 +119,8 @@ def test_build_spus_merges_sizes_into_skus_and_unions_scenes():
         SourceRow("02", "井下设备备件", "B-1", "耗材", "8φ绳卡", "原文φ8", "个", "限同制式或接口"),
     ]
     merge = {hard("8φ绳卡"): ("绳卡", "φ8"), hard("15φ绳卡"): ("绳卡", "φ15")}
-    rules = [Rule("*", "*", "*", "", "C09", "04")]
-    spus = build_spus(rows, merge, rules)
+    rules = [Rule("*", "*", "*", "", "04")]
+    spus = build_spus(rows, merge, rules, CMAP)
     assert len(spus) == 1
     s = spus[0]
     assert s.name == "绳卡"
@@ -134,15 +138,15 @@ def test_build_spus_reports_category_conflict():
         SourceRow("01", "浮选现场配套", "A-1", "劳保", "帆布手套", "", "双", ""),
         SourceRow("02", "全矿共用维修工具", "B-9", "工具", "帆布手套", "", "双", ""),
     ]
-    spus = build_spus(rows, {}, _rules_default())
+    spus = build_spus(rows, {}, _rules_default(), CMAP)
     assert len(spus) == 1
-    assert spus[0].zone_cat == "C10"      # 第一次命中为准
-    assert spus[0].conflicts == ["02:B-9 → C09/04 ≠ C10/01"]
+    assert spus[0].category_code == "01" and spus[0].zone_cat == "C10"      # 第一次命中为准,大类由品类推导
+    assert spus[0].conflicts == ["02:B-9 → 04 ≠ 01"]
 
 
 def test_build_spus_unmatched_row_has_no_zone_cat():
     rows = [SourceRow("03", "两法共用", "LAB-1", "器皿", "烧杯", "", "个", "")]
-    spus = build_spus(rows, {}, _rules_default())
+    spus = build_spus(rows, {}, _rules_default(), CMAP)
     assert spus[0].zone_cat is None and spus[0].category_code is None
 
 
@@ -164,13 +168,13 @@ def test_load_source_rows_skips_non_product_noise_rows(tmp_path: Path):
 def test_match_rule_file_specific_keyword_beats_wildcard_keyword():
     """同为关键词规则时,写了 file_key 的比 * 的优先,不管谁在前(化验室的「pH计」不能被全局「仪/计」抢走)。"""
     rules = [
-        Rule("*", "*", "*", "计", "C06", "14"),
-        Rule("03", "*", "*", "计", "C11", "35.001"),
+        Rule("*", "*", "*", "计", "14"),
+        Rule("03", "*", "*", "计", "35.001"),
     ]
     lab = SourceRow("03", "两法共用", "LAB-1", "仪器", "实验室pH计", "", "台", "")
     site = SourceRow("04", "回收及公辅", "R-1", "", "流量计", "", "台", "")
-    assert match_rule(lab, rules).zone_cat == "C11"
-    assert match_rule(site, rules).zone_cat == "C06"
+    assert match_rule(lab, rules).category_code == "35.001"
+    assert match_rule(site, rules).category_code == "14"
 
 
 @pytest.mark.asyncio
@@ -210,8 +214,8 @@ def test_noise_filter_drops_report_forms():
 
 def test_build_spus_records_matched_rule_for_audit():
     rows = [SourceRow("01", "药剂及钢球", "X-1", "", "研磨钢球", "", "吨", "")]
-    rules = [Rule("*", "*", "*", "钢球", "C01", "33.001")]
-    assert build_spus(rows, {}, rules)[0].rule_desc == "*/*/*/钢球"
+    rules = [Rule("*", "*", "*", "钢球", "33.001")]
+    assert build_spus(rows, {}, rules, CMAP)[0].rule_desc == "*/*/*/钢球"
 
 
 def test_load_source_rows_records_dropped_rows_with_reason(tmp_path: Path):
@@ -235,25 +239,25 @@ def test_load_source_rows_records_dropped_rows_with_reason(tmp_path: Path):
 
 def test_build_spus_records_attr_diffs_across_files_without_blocking():
     """同一 SPU 在两个文件里环节不同:记 attr_diffs 供审核,取第一个非空值,不算大类冲突。"""
-    rules = [Rule("*", "*", "*", "手套", "C10", "01")]
+    rules = [Rule("*", "*", "*", "手套", "01")]
     rows = [
         SourceRow("01", "劳保", "A-1", "劳保", "帆布手套", "", "双", "是"),
         SourceRow("02", "工具", "B-7", "工具", "帆布手套", "", "双", ""),
         SourceRow("05", "耗材", "E-2", "", "帆布手套", "", "双", "限同制式"),
     ]
-    (s,) = build_spus(rows, {}, rules)
+    (s,) = build_spus(rows, {}, rules, CMAP)
     assert s.section == "劳保" and s.generic == "是"
     assert s.attr_diffs == ["02:B-7 环节 工具 ≠ 劳保", "05:E-2 是否通用 限同制式 ≠ 是"]
     assert s.conflicts == []
 
 
 def test_build_spus_fills_empty_attr_from_later_row():
-    rules = [Rule("*", "*", "*", "手套", "C10", "01")]
+    rules = [Rule("*", "*", "*", "手套", "01")]
     rows = [
         SourceRow("01", "劳保", "A-1", "", "帆布手套", "", "双", ""),
         SourceRow("02", "工具", "B-7", "工具", "帆布手套", "", "双", "是"),
     ]
-    (s,) = build_spus(rows, {}, rules)
+    (s,) = build_spus(rows, {}, rules, CMAP)
     assert (s.section, s.generic, s.attr_diffs) == ("工具", "是", [])
 
 
@@ -305,7 +309,7 @@ def test_clean_generic_drops_placeholder_and_spu_gets_no_attr():
     from scripts.import_zone_mining import _spu_attrs, clean_generic
     assert clean_generic("待确认") == "" and clean_generic("是") == "是"
     rows = [SourceRow("02", "井下", "D-1", "耗材", "起爆器", "", "个", clean_generic("待确认"))]
-    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "起爆器", "C10", "01")])
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "起爆器", "01")], CMAP)
     assert [k for k, _, _ in _spu_attrs(s)] == ["环节/类别"]
 
 
@@ -313,7 +317,7 @@ def test_spu_attrs_never_emit_applicable_model():
     """「适用机型」曾从「按XX型号核对」里抽指令片段(颚破型号/确定机型),不是型号,已整体去掉。"""
     from scripts.import_zone_mining import _spu_attrs
     rows = [SourceRow("01", "破碎", "A-1", "备件", "颚板", "按颚破型号核对", "块", "否")]
-    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "C01", "33.001")])
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "33.001")], CMAP)
     assert "适用机型" not in [k for k, _, _ in _spu_attrs(s)]
 
 
@@ -321,9 +325,51 @@ def test_purchase_note_goes_to_source_meta_not_description():
     """采购说明是写给采购员的(按…核对/预算示例/待核),只进运营可见的 source_meta.purchase_note。"""
     from scripts.import_zone_mining import _source_meta
     rows = [SourceRow("01", "破碎", "A-1", "备件", "颚板", "预算示例：按颚破型号核对", "块", "否")]
-    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "C01", "33.001")])
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "33.001")], CMAP)
     assert s.purchase_note == "预算示例：按颚破型号核对"
     assert _source_meta(s)["purchase_note"] == "预算示例：按颚破型号核对"
     rows[0] = SourceRow("01", "破碎", "A-1", "备件", "颚板", "", "块", "否")
-    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "C01", "33.001")])
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "33.001")], CMAP)
     assert "purchase_note" not in _source_meta(s)
+
+
+@pytest.mark.parametrize("code,expected", [
+    ("33.001", "C01"), ("33.001.002", "C01"),   # 叶子继承祖先前缀
+    ("34.002", "C04"), ("34", "C04"),
+    ("07.002.002.001", "C06"),                  # 长前缀 07.002 优先于 07
+    ("07.009", "C07"), ("07", "C07"),           # 其余落到 07
+    ("33.00", None),                            # 按段匹配,不按字符:'33.00' 不是 '33.001' 的祖先
+    ("99", None), (None, None), ("", None),
+])
+def test_derive_zone_cat_longest_segment_prefix(code, expected):
+    from scripts.import_zone_mining import derive_zone_cat
+    cmap = {"33.001": "C01", "34": "C04", "07": "C07", "07.002": "C06"}
+    assert derive_zone_cat(code, cmap) == expected
+
+
+def test_load_zone_cat_map_rejects_duplicate_prefix_and_unknown_zone_cat(tmp_path: Path):
+    from scripts.import_zone_mining import load_zone_cat_map
+    p = tmp_path / "m.csv"
+    p.write_text("platform_code_prefix,zone_cat,note\n07,C07,x\n07.002,C06,y\n", encoding="utf-8")
+    assert load_zone_cat_map(p) == {"07": "C07", "07.002": "C06"}
+    p.write_text("platform_code_prefix,zone_cat,note\n07,C07,x\n07,C06,y\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="前缀重复"):
+        load_zone_cat_map(p)
+    p.write_text("platform_code_prefix,zone_cat,note\n07,C99,x\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="未知专区大类"):
+        load_zone_cat_map(p)
+
+
+def test_build_spus_category_without_mapping_leaves_zone_cat_empty():
+    """规则给了平台品类、对照表没覆盖 → zone_cat=None(run_import 计 unmapped_zone_cat 并拒绝落库),不能悄悄归某个大类。"""
+    rows = [SourceRow("01", "x", "A-1", "", "某商品", "", "个", "")]
+    (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "", "99")], CMAP)
+    assert s.category_code == "99" and s.zone_cat is None
+
+
+def test_real_zone_category_map_covers_every_rule_category():
+    """真实规则表里每个平台品类都必须能推出专区大类(否则导入时整批拒绝)。"""
+    from scripts.import_zone_mining import RULES_CSV, ZONE_CAT_MAP_CSV, derive_zone_cat, load_zone_cat_map
+    cmap = load_zone_cat_map(ZONE_CAT_MAP_CSV)
+    missing = sorted({r.category_code for r in load_rules(RULES_CSV) if derive_zone_cat(r.category_code, cmap) is None})
+    assert missing == []

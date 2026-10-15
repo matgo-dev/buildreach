@@ -3,7 +3,8 @@
 输入(目录由 --src 指定,默认仓库外的 矿业专区资料/):
 - 01_浮选厂*.xlsx / 02_井下开采*.xlsx / 03_矿山化验室*.xlsx / 04_金矿CIP_CIL*.xlsx / 05_露天开采*.xlsx / 600型与800型*.xlsx
 - data/zone_import/mining/spu_merge.csv   原品名 → SPU 品名 + 规格(规格留空 = 纯别名)
-- data/zone_import/mining/rules.csv       (file_key, sheet, section, keyword) → (专区大类, 平台品类)
+- data/zone_import/mining/rules.csv       (file_key, sheet, section, keyword) → 平台品类(唯一的分类决策)
+- data/zone_import/mining/zone_category_map.csv  平台品类前缀 → 专区大类(专区大类由平台品类推导,不单独决策)
 
 产出:
 - zone(code=mining)+ 11 个 kind=CATEGORY 大类 + 6 个 kind=SCENE 场景
@@ -49,6 +50,7 @@ BATCH_ID = "zone_mining_v1"
 DATA_DIR = _REPO_ROOT / "data" / "zone_import" / "mining"
 MERGE_CSV = DATA_DIR / "spu_merge.csv"
 RULES_CSV = DATA_DIR / "rules.csv"
+ZONE_CAT_MAP_CSV = DATA_DIR / "zone_category_map.csv"
 AUDIT_CSV = DATA_DIR / "dry_run_audit.csv"
 DROPPED_CSV = DATA_DIR / "dry_run_dropped.csv"
 MAX_NAME_LEN = 60
@@ -255,7 +257,6 @@ class Rule:
     sheet: str
     section: str
     keyword: str
-    zone_cat: str
     category_code: str
 
 
@@ -265,9 +266,40 @@ def load_rules(path: Path) -> list[Rule]:
         for row in csv.DictReader(f):
             rules.append(Rule(
                 row["file_key"].strip(), row["sheet"].strip(), row["section"].strip(),
-                row["keyword"].strip(), row["zone_cat"].strip(), row["category_code"].strip(),
+                row["keyword"].strip(), row["category_code"].strip(),
             ))
     return rules
+
+
+# 平台品类前缀 → 专区大类。专区大类不再由规则单独指定:平台品类是商品"是什么"的唯一决策,
+# 专区导航只是它的分组视图,两处各写一份迟早不一致(审查时发现的 07 机电 / 18 涂料化工 一对多即此类)。
+ZoneCatMap = dict[str, str]
+
+
+def load_zone_cat_map(path: Path) -> ZoneCatMap:
+    out: ZoneCatMap = {}
+    valid = {c for c, *_ in ZONE_CATEGORIES}
+    with path.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            prefix, zc = row["platform_code_prefix"].strip(), row["zone_cat"].strip()
+            if prefix in out:
+                raise ValueError(f"zone_category_map.csv 前缀重复:{prefix}")
+            if zc not in valid:
+                raise ValueError(f"zone_category_map.csv 未知专区大类 {zc}(前缀 {prefix})")
+            out[prefix] = zc
+    return out
+
+
+def derive_zone_cat(category_code: str | None, cmap: ZoneCatMap) -> str | None:
+    """最长前缀匹配(按 code 段,不按字符:'33.00' 不会误中 '33.001')。前缀唯一 → 结果唯一。"""
+    if not category_code:
+        return None
+    parts = category_code.split(".")
+    for n in range(len(parts), 0, -1):
+        zc = cmap.get(".".join(parts[:n]))
+        if zc is not None:
+            return zc
+    return None
 
 
 def _rule_scope_matches(rule: Rule, row: SourceRow) -> bool:
@@ -312,8 +344,11 @@ class SpuRow:
     rule_desc: str = ""   # 命中规则 file/sheet/section/keyword,审核 CSV 用
 
 
-def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rules: list[Rule]) -> list[SpuRow]:
-    """源行 → SPU:按合并表改名/取规格,按归一化品名聚合;场景取并集;大类取第一次命中,不一致记 conflicts;
+def build_spus(
+    rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rules: list[Rule], zone_cat_map: ZoneCatMap,
+) -> list[SpuRow]:
+    """源行 → SPU:按合并表改名/取规格,按归一化品名聚合;场景取并集;平台品类取第一次命中,不一致记 conflicts;
+    专区大类由平台品类按对照表推导;
     环节/是否通用取第一个非空值,后续行给出不同的非空值记 attr_diffs(审核可见,不阻断)。"""
     out: dict[str, SpuRow] = {}
     order: list[str] = []
@@ -351,16 +386,15 @@ def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rul
             units[k].append(r.unit)
         rule = match_rule(r, rules)
         if rule is not None:
-            if s.zone_cat is None:
-                s.zone_cat, s.category_code = rule.zone_cat, rule.category_code
+            if s.category_code is None:
+                s.category_code = rule.category_code
                 s.rule_desc = f"{rule.file_key}/{rule.sheet}/{rule.section or '*'}/{rule.keyword or '-'}"
-            elif (rule.zone_cat, rule.category_code) != (s.zone_cat, s.category_code):
-                s.conflicts.append(
-                    f"{r.file_key}:{r.row_id} → {rule.zone_cat}/{rule.category_code} ≠ {s.zone_cat}/{s.category_code}"
-                )
+            elif rule.category_code != s.category_code:
+                s.conflicts.append(f"{r.file_key}:{r.row_id} → {rule.category_code} ≠ {s.category_code}")
     for k in order:
         us = units[k]
         out[k].unit = collections.Counter(us).most_common(1)[0][0] if us else "PCS"
+        out[k].zone_cat = derive_zone_cat(out[k].category_code, zone_cat_map)
     return [out[k] for k in order]
 
 
@@ -686,19 +720,23 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orpha
     stats: collections.Counter = collections.Counter()
     dropped: list[DroppedRow] = []
     rows = load_source_rows(src_dir, dropped)
-    spus = build_spus(rows, load_merge_map(MERGE_CSV), load_rules(RULES_CSV))
+    spus = build_spus(rows, load_merge_map(MERGE_CSV), load_rules(RULES_CSV), load_zone_cat_map(ZONE_CAT_MAP_CSV))
     stats["source_rows"], stats["spus"], stats["rows_dropped"] = len(rows), len(spus), len(dropped)
-    unmatched = [s for s in spus if s.zone_cat is None]
+    unmatched = [s for s in spus if s.category_code is None]
+    # 规则命中了平台品类、但对照表推不出专区大类:对照表漏了这个品类,不能悄悄丢进某个大类
+    unmapped = [s for s in spus if s.category_code is not None and s.zone_cat is None]
     conflicted = [s for s in spus if s.conflicts]
-    stats["unmatched"], stats["conflicts"] = len(unmatched), len(conflicted)
+    stats["unmatched"], stats["unmapped_zone_cat"], stats["conflicts"] = len(unmatched), len(unmapped), len(conflicted)
     stats["attr_diffs"] = sum(1 for s in spus if s.attr_diffs)
     if dry_run:
         write_audit(spus, AUDIT_CSV)
         write_dropped(dropped, DROPPED_CSV)
     for d in dropped:
         print(f"丢弃行[{d.reason}]: {d.file_key}/{d.sheet}#{d.row_id} {d.name}")
-    if unmatched or conflicted:
-        msg = f"规则未命中 {len(unmatched)} 个、大类冲突 {len(conflicted)} 个,见 {AUDIT_CSV}"
+    for s in unmapped[:20]:
+        print(f"专区大类推不出: {s.spu_code} {s.name} 平台品类 {s.category_code}")
+    if unmatched or unmapped or conflicted:
+        msg = f"规则未命中 {len(unmatched)} 个、专区大类推不出 {len(unmapped)} 个、品类冲突 {len(conflicted)} 个,见 {AUDIT_CSV}"
         if not dry_run:
             raise RuntimeError("拒绝落库:" + msg)
         print("警告:" + msg)
@@ -766,7 +804,7 @@ async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) ->
     print("=" * 64)
     print(f"矿业专区导入 {'[DRY-RUN 未落库]' if dry_run else '[已落库 COMMIT]'}  batch={BATCH_ID}")
     print("=" * 64)
-    for k in ("source_rows", "rows_dropped", "spus", "unmatched", "conflicts", "attr_diffs", "sku_mismatches",
+    for k in ("source_rows", "rows_dropped", "spus", "unmatched", "unmapped_zone_cat", "conflicts", "attr_diffs", "sku_mismatches",
               "platform_categories_created", "platform_categories_existing",
               "zone_created", "zone_categories_created", "zone_categories_updated",
               "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
