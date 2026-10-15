@@ -65,6 +65,13 @@ def _format_amount(value: Decimal | float | None) -> str:
     return f"{Decimal(str(value)):,.2f}"
 
 
+def _format_quantity(value: Decimal | float | None) -> str:
+    """数量格式化:千分位 + 去掉尾随零(1.000→1, 10.500→10.5)。"""
+    if value is None:
+        return "—"
+    return f"{Decimal(str(value)):,.3f}".rstrip("0").rstrip(".")
+
+
 def _format_date(dt: datetime | str | None, locale: str) -> str:
     """日期格式化。"""
     if dt is None:
@@ -127,6 +134,7 @@ def _template_context(
         ),
         "generated_at": now.strftime("%Y-%m-%d %H:%M UTC"),
         "format_amount": _format_amount,
+        "format_quantity": _format_quantity,
     }
 
 

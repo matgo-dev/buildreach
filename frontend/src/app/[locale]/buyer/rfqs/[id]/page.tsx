@@ -28,7 +28,7 @@ import {
   listBuyerQuotes, acceptRfq, rejectRfq,
   type RfqQuoteBuyerPublic, type QuoteItemBuyerPublic,
 } from "@/lib/api/quotes";
-import { formatDate, formatCurrency } from "@/lib/formatters";
+import { formatDate, formatCurrency, formatQuantity } from "@/lib/formatters";
 import { imageUrl } from "@/lib/env";
 
 // 需要拉报价的状态集合
@@ -762,7 +762,7 @@ function RfqItemsCard({ rfq }: { rfq: RfqBuyerPublic }) {
                   {item.variant_display || t("noSpec")}
                 </td>
                 <td className={`px-5 py-3 text-right align-top font-semibold ${unavailable ? "text-muted" : "text-ink"}`}>
-                  {item.quantity} {item.uom_snapshot ?? ""}
+                  {formatQuantity(item.quantity)} {item.uom_snapshot ?? ""}
                 </td>
               </tr>
               );
@@ -991,7 +991,7 @@ function QuoteLineRow({
               <div className="mt-1 space-y-0.5 text-left">
                 {[...qi.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, idx, sorted) => {
                   const next = sorted[idx + 1];
-                  const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                  const label = next ? `${formatQuantity(tier.min_qty)}~${formatQuantity(next.min_qty - 1)}` : `≥${formatQuantity(tier.min_qty)}`;
                   return (
                     <div key={idx} className="text-[10px] text-muted">
                       <span className="inline-block w-16">{label}</span>
@@ -1005,7 +1005,7 @@ function QuoteLineRow({
         )}
       </td>
       <td className="px-4 py-3 text-right text-ink-2">
-        {qi.moq != null ? Number(qi.moq) : "—"}
+        {formatQuantity(qi.moq)}
       </td>
       <td className="px-4 py-3 text-right text-ink-2">
         {qi.cbm_per_unit != null ? Number(qi.cbm_per_unit) : "—"}

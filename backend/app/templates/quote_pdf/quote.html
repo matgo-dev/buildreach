@@ -244,7 +244,7 @@
         </div>
       </td>
       <td>{{ item.variant_display or "—" }}</td>
-      <td class="text-center">{{ item.quantity or "—" }}</td>
+      <td class="text-center">{{ format_quantity(item.quantity) }}</td>
       <td class="text-center">{{ item.uom or "—" }}</td>
       <td class="text-right">{{ format_amount(item.unit_price) }}</td>
       <td class="text-right">{{ format_amount(item.line_amount) }}</td>
@@ -257,7 +257,7 @@
           <thead><tr><th>{{ L.tier_min_qty }}</th><th class="text-right">{{ L.col_unit_price }}</th></tr></thead>
           <tbody>
             {% for tier in item.tiers %}
-            <tr><td>≥ {{ tier.min_qty }}</td><td class="text-right">{{ format_amount(tier.unit_price) }}</td></tr>
+            <tr><td>≥ {{ format_quantity(tier.min_qty) }}</td><td class="text-right">{{ format_amount(tier.unit_price) }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
