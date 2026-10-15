@@ -47,7 +47,7 @@ _jinja_env = Environment(
 )
 
 # 平台静态抬头(发出方),取值逐字来自品牌物料包 content.js 的 identity/contacts。
-# 品牌名只用拉丁字母:en/sw PDF 不加载 CJK 字体,"筑达"会渲染成方块。
+# 品牌名只用拉丁字母:en/sw 出现中文会触发 fontconfig 回退加载 CJK 字体(实测 +3~5s/份)。
 _PLATFORM_INFO = {
     "name": "MATGO",
     "legal_name": "MATMART COMPANY LIMITED",
