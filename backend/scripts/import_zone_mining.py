@@ -9,15 +9,16 @@
 - zone(code=mining)+ 11 个 kind=CATEGORY 大类 + 6 个 kind=SCENE 场景
 - 平台一级 33/34/35 及其叶子(整棵 is_active=false)
 - 每个 SPU:products(ZONE_ONLY/ACTIVE)+ SKU(多规格走变体)+ SPU 级属性 + 1 行 CATEGORY zone_product + N 行 SCENE zone_product
-- --dry-run 写审核 CSV:data/zone_import/mining/dry_run_audit.csv(不提交到 git)
+- --dry-run 写审核 CSV:data/zone_import/mining/dry_run_audit.csv + 丢弃行 dry_run_dropped.csv(不提交到 git)
 
 幂等:zone/zone_category 按 code upsert;product 按 spu_code;zone_product 按三元组;已存在商品只更新可变字段、不动 SKU。
+规格变更(spu_merge.csv 加/删规格)不会自动增删 SKU:脚本对比库内 SKU 与期望集合,不一致就拒绝落库,需人工处理。
 
 用法:
     cd backend
     python scripts/import_zone_mining.py --src "/path/矿业专区资料" --dry-run
     python scripts/import_zone_mining.py --src "/path/矿业专区资料" --commit
-生产(OVH)须 ALLOW_ZONE_IMPORT_PROD=1。
+--commit 且 DB 不在本机(staging/生产容器)须 ALLOW_ZONE_IMPORT_PROD=1。
 """
 from __future__ import annotations
 
@@ -25,10 +26,8 @@ import argparse
 import asyncio
 import collections
 import csv
-import os
 import re
 import sys
-import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -38,7 +37,8 @@ _REPO_ROOT = _BACKEND_ROOT.parent
 
 import openpyxl  # noqa: E402
 
-from app.services.product_code import platform_spu_code, platform_sku_code  # noqa: E402
+from app.services.product_code import normalize_source_key, platform_spu_code, platform_sku_code  # noqa: E402
+from scripts._zone_import_common import guard_commit  # noqa: E402
 
 ZONE_CODE = "mining"
 ZONE_NAME = ("矿业勘探·开采", "Mining Exploration & Extraction", "Uchunguzi na Uchimbaji wa Madini")
@@ -50,6 +50,8 @@ DATA_DIR = _REPO_ROOT / "data" / "zone_import" / "mining"
 MERGE_CSV = DATA_DIR / "spu_merge.csv"
 RULES_CSV = DATA_DIR / "rules.csv"
 AUDIT_CSV = DATA_DIR / "dry_run_audit.csv"
+DROPPED_CSV = DATA_DIR / "dry_run_dropped.csv"
+MAX_NAME_LEN = 60
 
 # 不导入的 sheet(汇总/依据/重复)
 SKIP_SHEETS = {
@@ -103,8 +105,8 @@ PLATFORM_CATEGORIES = [
 # ── 纯函数 ────────────────────────────────────────────────
 
 def hard(s: str) -> str:
-    """硬归一化:NFKC(全角→半角)+ 去所有空白。join key 与稳定 code 派生都用它。"""
-    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(s or "")))
+    """硬归一化(与央企脚本共用 product_code.normalize_source_key)。join key 与稳定 code 派生都用它。"""
+    return normalize_source_key(s)
 
 
 def mining_spu_code(name: str) -> str:
@@ -148,8 +150,29 @@ def is_noise_name(name: str) -> bool:
     return bool(_NOISE_RE.search(name))
 
 
-def load_source_rows(src_dir: Path) -> list[SourceRow]:
-    """读目录下 6 个 xlsx 的商品行。表头 = 含「编号」单元格的那一行;列按表头关键字定位。"""
+@dataclass
+class DroppedRow:
+    """被过滤掉的源行。丢弃必须留痕(计数 + CSV),否则真商品被误判成噪声没人知道。"""
+    file_key: str
+    sheet: str
+    row_id: str
+    name: str
+    reason: str   # noise / too_long
+
+
+def drop_reason(name: str) -> str | None:
+    if len(name) > MAX_NAME_LEN:
+        return "too_long"
+    if is_noise_name(name):
+        return "noise"
+    return None
+
+
+def load_source_rows(src_dir: Path, dropped: list[DroppedRow] | None = None) -> list[SourceRow]:
+    """读目录下 6 个 xlsx 的商品行。表头 = 含「编号」单元格的那一行;列按表头关键字定位。
+
+    dropped 传 list 时,被噪声/超长规则过滤的行会追加进去(编号或品名为空的空行不算)。
+    """
     rows: list[SourceRow] = []
     for path in sorted(src_dir.glob("*.xlsx")):
         key = _file_key(path)
@@ -189,7 +212,12 @@ def load_source_rows(src_dir: Path) -> list[SourceRow]:
                     return _cell(r[i]) if i is not None and i < len(r) else ""
 
                 rid, name = at(i_id), at(i_name)
-                if not rid or not name or len(name) > 60 or is_noise_name(name):
+                if not rid or not name:
+                    continue
+                reason = drop_reason(name)
+                if reason is not None:
+                    if dropped is not None:
+                        dropped.append(DroppedRow(key, ws.title, rid, name, reason))
                     continue
                 rows.append(SourceRow(
                     file_key=key, sheet=ws.title, row_id=rid,
@@ -273,12 +301,14 @@ class SpuRow:
     zone_cat: str | None = None
     category_code: str | None = None
     source_ids: list[str] = field(default_factory=list)
-    conflicts: list[str] = field(default_factory=list)
+    conflicts: list[str] = field(default_factory=list)   # 大类/品类冲突:阻断落库
+    attr_diffs: list[str] = field(default_factory=list)  # 环节/是否通用/适用机型跨行不一致:只记审核,不阻断
     rule_desc: str = ""   # 命中规则 file/sheet/section/keyword,审核 CSV 用
 
 
 def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rules: list[Rule]) -> list[SpuRow]:
-    """源行 → SPU:按合并表改名/取规格,按归一化品名聚合;场景取并集;大类取第一次命中,不一致记 conflicts。"""
+    """源行 → SPU:按合并表改名/取规格,按归一化品名聚合;场景取并集;大类取第一次命中,不一致记 conflicts;
+    环节/是否通用/适用机型取第一个非空值,后续行给出不同的非空值记 attr_diffs(审核可见,不阻断)。"""
     out: dict[str, SpuRow] = {}
     order: list[str] = []
     units: dict[str, list[str]] = collections.defaultdict(list)
@@ -297,6 +327,16 @@ def build_spus(rows: list[SourceRow], merge_map: dict[str, tuple[str, str]], rul
             )
             out[k] = s
             order.append(k)
+        else:
+            model = extract_applicable_model(r.spec_text)
+            for label, attr, new in (("环节", "section", r.section), ("是否通用", "generic", r.generic), ("适用机型", "applicable_model", model)):
+                cur = getattr(s, attr)
+                if not new:
+                    continue
+                if not cur:
+                    setattr(s, attr, new)
+                elif new != cur:
+                    s.attr_diffs.append(f"{r.file_key}:{r.row_id} {label} {new} ≠ {cur}")
         if spec and spec not in s.specs:
             s.specs.append(spec)
         scene = SCENE_BY_FILE_KEY[r.file_key]
@@ -336,43 +376,36 @@ from app.db.models.zone import (  # noqa: E402
     ZoneCategory,
     ZoneProduct,
 )
-from app.core.i18n_write import _get_meta, _set_meta, _set_pending_at  # noqa: E402
+from app.core.i18n_write import apply_i18n_create, apply_i18n_prefilled  # noqa: E402
+from app.core.locale import SUPPORTED_LOCALES  # noqa: E402
 
-_LOCALES = ("zh", "en", "sw")
-
-
-def _mark(obj, field: str, *, neutral: bool = False) -> None:
-    """给一个字段打翻译记账:zh=src;en/sw = pending(待翻)或 manual(语言中性值,不翻)。"""
-    meta = _get_meta(obj)
-    meta[f"{field}_zh"] = "src"
-    for loc in _LOCALES[1:]:
-        meta[f"{field}_{loc}"] = "manual" if neutral else "pending"
-    _set_meta(obj, meta)
-    if not neutral:
-        _set_pending_at(obj)
+SOURCE_LANG = "zh"
 
 
-def mark_product_i18n(product: Product) -> None:
-    """脚本建的商品不会经过 API 的 apply_i18n_create,这里补同样的记账,
+async def mark_product_i18n(product: Product) -> None:
+    """脚本建的商品不会经过 API,这里走同一套 i18n 入口记账,
     让生产的定时扫描器(sweep_pending 按 i18n_pending_at)和 backfill_translations 自动补 en/sw。"""
-    if hasattr(product, "source_lang"):
-        product.source_lang = "zh"
-    _mark(product, "name")
+    product.source_lang = SOURCE_LANG
+    await apply_i18n_create(product, "name", product.name_zh, SOURCE_LANG)
     if product.description_zh:
-        _mark(product, "description")
+        await apply_i18n_create(product, "description", product.description_zh, SOURCE_LANG)
 
 
-def mark_sku_i18n(sku: ProductSku) -> None:
-    if hasattr(sku, "source_lang"):
-        sku.source_lang = "zh"
-    _mark(sku, "name")
+async def mark_sku_i18n(sku: ProductSku) -> None:
+    sku.source_lang = SOURCE_LANG
+    await apply_i18n_create(sku, "name", sku.name_zh, SOURCE_LANG)
 
 
-def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = False) -> None:
-    if hasattr(attr, "source_lang"):
-        attr.source_lang = "zh"
-    _mark(attr, "attr_key")
-    _mark(attr, "attr_value", neutral=value_language_neutral)
+async def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = False) -> None:
+    """attr_key 的 en/sw 固定用内部键(spec/section/...),标 manual 不翻:购物车变体指纹按 attr_key_en 算,
+    被机器翻成 Specification 会把同一商品的规格维度拆散。attr_value 规格值语言中性也标 manual;其余待翻。"""
+    attr.source_lang = SOURCE_LANG
+    key_en = attr.attr_key_en or attr.attr_key_zh
+    apply_i18n_prefilled(attr, "attr_key", {"zh": attr.attr_key_zh, "en": key_en, "sw": key_en}, SOURCE_LANG)
+    if value_language_neutral:
+        apply_i18n_prefilled(attr, "attr_value", {loc: attr.attr_value_zh for loc in SUPPORTED_LOCALES}, SOURCE_LANG)
+    else:
+        await apply_i18n_create(attr, "attr_value", attr.attr_value_zh, SOURCE_LANG)
 
 
 async def ensure_platform_categories(db: AsyncSession, stats: collections.Counter) -> None:
@@ -388,13 +421,13 @@ async def ensure_platform_categories(db: AsyncSession, stats: collections.Counte
             stats["platform_categories_existing"] += 1
             continue
         level = 1 if parent is None else 2
-        db.add(Category(
-            code=code, name_zh=zh, name_en=en, name_sw=sw,
-            level=level, parent_code=parent,
+        cat = Category(
+            code=code, level=level, parent_code=parent,
             sort_order=(l1_sort + 1 + i) if level == 1 else i,
-            is_active=False, is_leaf=(level == 2), source_lang="zh",
-            trans_meta={"name_zh": "src", "name_en": "manual", "name_sw": "manual"},
-        ))
+            is_active=False, is_leaf=(level == 2), source_lang=SOURCE_LANG,
+        )
+        apply_i18n_prefilled(cat, "name", {"zh": zh, "en": en, "sw": sw}, SOURCE_LANG)
+        db.add(cat)
         stats["platform_categories_created"] += 1
     await db.flush()
 
@@ -449,7 +482,18 @@ def _spu_attrs(s: SpuRow) -> list[tuple[str, str, str]]:
     return attrs
 
 
-async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter) -> Product:
+def expected_sku_codes(s: SpuRow) -> set[str]:
+    """一个 SPU 按当前合并表应有的 SKU code 集合(≥2 个规格走变体,否则单默认 SKU)。"""
+    if len(s.specs) >= 2:
+        return {mining_sku_code(s.spu_code, spec) for spec in s.specs}
+    return {mining_sku_code(s.spu_code, None)}
+
+
+def _source_meta(s: SpuRow) -> dict:
+    return {"batch": BATCH_ID, "source_ids": s.source_ids, "scenes": s.scenes}
+
+
+async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter, sku_mismatches: list[str]) -> Product:
     product = (await db.execute(
         select(Product).where(Product.spu_code == s.spu_code, Product.deleted_at.is_(None))
     )).scalar_one_or_none()
@@ -460,10 +504,18 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         product.moq_unit = s.unit
         product.visibility = ProductVisibility.ZONE_ONLY
         product.status = ProductStatus.ACTIVE
-        if not product.name_en and not _get_meta(product):
+        product.source_meta = _source_meta(s)
+        if not product.name_en and not (product.trans_meta or {}):
             # 早期导入未打翻译标记的行:补标记一次(已有 en 或已有记账的不动,避免重复翻译)
-            mark_product_i18n(product)
+            await mark_product_i18n(product)
             stats["products_marked_for_i18n"] += 1
+        # 更新路径不动 SKU/属性。规格集合变了(合并表加/删规格)就不是"幂等重跑",必须让人看到而不是报成功。
+        live = set((await db.execute(
+            select(ProductSku.sku_code).where(ProductSku.product_id == product.id, ProductSku.deleted_at.is_(None))
+        )).scalars().all())
+        expected = expected_sku_codes(s)
+        if live != expected:
+            sku_mismatches.append(f"{s.spu_code} {s.name}: 库内 {len(live)} 个 SKU ≠ 期望 {len(expected)} 个(规格 {s.specs})")
         stats["products_updated"] += 1
         await db.flush()
         return product
@@ -473,9 +525,9 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         category_code=s.category_code,
         status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
         unit="PCS", moq=1, moq_unit=s.unit, source=SOURCE,
-        source_meta={"batch": BATCH_ID, "source_ids": s.source_ids, "scenes": s.scenes},
+        source_meta=_source_meta(s),
     )
-    mark_product_i18n(product)
+    await mark_product_i18n(product)
     db.add(product)
     await db.flush()
 
@@ -486,7 +538,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
                 product_id=product.id, sku_code=mining_sku_code(s.spu_code, spec),
                 name_zh=f"{s.name} {spec}", moq=1, is_default=(i == 0), status=SkuStatus.ACTIVE,
             )
-            mark_sku_i18n(sku)
+            await mark_sku_i18n(sku)
             db.add(sku)
             await db.flush()
             spec_attr = ProductAttr(
@@ -495,7 +547,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
                 attr_value_zh=spec, attr_value_en=spec, attr_value_sw=spec,
                 selectable=True, sort_order=i,
             )
-            mark_attr_i18n(spec_attr, value_language_neutral=True)
+            await mark_attr_i18n(spec_attr, value_language_neutral=True)
             db.add(spec_attr)
         stats["skus_created"] += len(s.specs)
     else:
@@ -504,7 +556,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
             product_id=product.id, sku_code=mining_sku_code(s.spu_code, None),
             name_zh=s.name, moq=1, is_default=True, status=SkuStatus.ACTIVE,
         )
-        mark_sku_i18n(sku)
+        await mark_sku_i18n(sku)
         db.add(sku)
         stats["skus_created"] += 1
 
@@ -513,7 +565,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
             product_id=product.id, sku_id=None,
             attr_key_zh=kz, attr_key_en=ke, attr_value_zh=v, selectable=False, sort_order=i,
         )
-        mark_attr_i18n(attr)
+        await mark_attr_i18n(attr)
         db.add(attr)
     await db.flush()
     return product
@@ -557,26 +609,46 @@ async def prune_stale_zone_products(db: AsyncSession, zone: Zone, product: Produ
     return res.rowcount or 0
 
 
-async def find_orphan_products(db: AsyncSession, computed_spu_codes: set[str]) -> list[Product]:
-    """本批次以前导入、但这次按合并表算不出来的商品(典型:spu_merge.csv 改了品名 → spu_code 变了)。"""
+@dataclass(frozen=True)
+class OrphanRef:
+    id: int
+    spu_code: str
+    name_zh: str
+
+
+async def find_orphan_products(db: AsyncSession, computed_spu_codes: set[str]) -> list[OrphanRef]:
+    """本批次以前导入、但这次按合并表算不出来的商品(典型:spu_merge.csv 改了品名 → spu_code 变了)。
+
+    只取 id/spu_code/name_zh;先用带索引的 visibility + source 把候选压到专区导入商品,再做 JSON 比对,
+    不让 17 万 XFS SPU 跟着全表扫。
+    """
     rows = (await db.execute(
-        select(Product).where(
+        select(Product.id, Product.spu_code, Product.name_zh).where(
             Product.deleted_at.is_(None),
+            Product.visibility == ProductVisibility.ZONE_ONLY,
+            Product.source == SOURCE,
             Product.source_meta["batch"].as_string() == BATCH_ID,
         ).order_by(Product.spu_code)
-    )).scalars().all()
-    return [p for p in rows if p.spu_code not in computed_spu_codes]
+    )).all()
+    return [OrphanRef(i, c, n) for i, c, n in rows if c not in computed_spu_codes]
 
 
-async def soft_delete_orphans(db: AsyncSession, zone: Zone, orphans: list[Product]) -> int:
-    """--prune-orphans:孤儿商品软删 + 清其专区挂载(SKU/属性随商品不可见,不动,避免破坏已有引用)。"""
-    from sqlalchemy import delete
+async def soft_delete_orphans(db: AsyncSession, zone: Zone, orphans: list[OrphanRef]) -> int:
+    """--prune-orphans:孤儿商品及其 SKU 一起软删 + 清其专区挂载。
+
+    SKU 必须跟着软删:sku_code 由 spu_code+规格确定,留着活的 SKU,以后改回品名重导同一商品时
+    会撞 uq_product_skus_sku_code_active。属性无 deleted_at,随商品不可见,不动。
+    """
+    from sqlalchemy import delete, update
     if not orphans:
         return 0
-    ids = [p.id for p in orphans]
+    ids = [o.id for o in orphans]
+    now = func.now()
     await db.execute(delete(ZoneProduct).where(ZoneProduct.zone_id == zone.id, ZoneProduct.spu_id.in_(ids)))
-    for p in orphans:
-        p.deleted_at = func.now()
+    await db.execute(
+        update(ProductSku).where(ProductSku.product_id.in_(ids), ProductSku.deleted_at.is_(None)).values(deleted_at=now)
+    )
+    await db.execute(update(Product).where(Product.id.in_(ids)).values(deleted_at=now))
     await db.flush()
     return len(ids)
 
@@ -584,25 +656,38 @@ async def soft_delete_orphans(db: AsyncSession, zone: Zone, orphans: list[Produc
 def write_audit(spus: list[SpuRow], path: Path) -> None:
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "命中规则", "环节", "是否通用", "适用机型", "来源编号", "冲突", "采购说明"])
+        w.writerow(["spu_code", "品名", "规格", "单位", "场景", "专区大类", "平台品类", "命中规则", "环节", "是否通用", "适用机型", "来源编号", "冲突", "属性差异", "采购说明"])
         for s in spus:
             w.writerow([
                 s.spu_code, s.name, " / ".join(s.specs), s.unit, " / ".join(s.scenes),
                 s.zone_cat or "【未命中】", s.category_code or "", s.rule_desc, s.section, s.generic, s.applicable_model or "",
-                " / ".join(s.source_ids), " | ".join(s.conflicts), s.description,
+                " / ".join(s.source_ids), " | ".join(s.conflicts), " | ".join(s.attr_diffs), s.description,
             ])
+
+
+def write_dropped(dropped: list[DroppedRow], path: Path) -> None:
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["file_key", "sheet", "编号", "品名", "丢弃原因"])
+        for d in dropped:
+            w.writerow([d.file_key, d.sheet, d.row_id, d.name, d.reason])
 
 
 async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orphans: bool = False) -> dict:
     stats: collections.Counter = collections.Counter()
-    rows = load_source_rows(src_dir)
+    dropped: list[DroppedRow] = []
+    rows = load_source_rows(src_dir, dropped)
     spus = build_spus(rows, load_merge_map(MERGE_CSV), load_rules(RULES_CSV))
-    stats["source_rows"], stats["spus"] = len(rows), len(spus)
+    stats["source_rows"], stats["spus"], stats["rows_dropped"] = len(rows), len(spus), len(dropped)
     unmatched = [s for s in spus if s.zone_cat is None]
     conflicted = [s for s in spus if s.conflicts]
     stats["unmatched"], stats["conflicts"] = len(unmatched), len(conflicted)
+    stats["attr_diffs"] = sum(1 for s in spus if s.attr_diffs)
     if dry_run:
         write_audit(spus, AUDIT_CSV)
+        write_dropped(dropped, DROPPED_CSV)
+    for d in dropped:
+        print(f"丢弃行[{d.reason}]: {d.file_key}/{d.sheet}#{d.row_id} {d.name}")
     if unmatched or conflicted:
         msg = f"规则未命中 {len(unmatched)} 个、大类冲突 {len(conflicted)} 个,见 {AUDIT_CSV}"
         if not dry_run:
@@ -626,10 +711,11 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orpha
             raise RuntimeError(f"拒绝落库:{len(orphans)} 个孤儿商品(上批导入、本次不在清单内)。确认后加 --prune-orphans 软删,或改回品名。")
 
     sort_counters: dict[str, int] = collections.defaultdict(int)
+    sku_mismatches: list[str] = []
     for s in spus:
         if s.zone_cat is None:
             continue
-        product = await upsert_product(db, s, stats)
+        product = await upsert_product(db, s, stats, sku_mismatches)
         expected: set[int] = set()
         await upsert_zone_product(db, zone, zcs[s.zone_cat], product, sort_counters[s.zone_cat], stats)
         expected.add(zcs[s.zone_cat].id)
@@ -640,6 +726,15 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orpha
             sort_counters[scene] += 1
         # 规则改动后重跑:清掉本批次写入但已不在期望集合里的挂载
         stats["zone_products_removed"] += await prune_stale_zone_products(db, zone, product, expected)
+
+    stats["sku_mismatches"] = len(sku_mismatches)
+    if sku_mismatches:
+        for m in sku_mismatches[:20]:
+            print(f"SKU 不一致: {m}")
+        msg = f"{len(sku_mismatches)} 个已存在商品的规格集合变了,脚本不自动增删 SKU(会动已有引用),需人工处理"
+        if not dry_run:
+            raise RuntimeError("拒绝落库:" + msg)
+        print("警告:" + msg)
     return dict(stats)
 
 
@@ -647,12 +742,7 @@ async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) ->
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from app.core.config import settings
 
-    if (
-        not dry_run
-        and "162.19.98.142" in (settings.DATABASE_URL or "")
-        and os.environ.get("ALLOW_ZONE_IMPORT_PROD") != "1"
-    ):
-        raise SystemExit("拒绝执行:DATABASE_URL 指向 OVH 生产库。先备份并 dry-run,确认后设 ALLOW_ZONE_IMPORT_PROD=1 再 --commit。")
+    guard_commit(settings.DATABASE_URL, dry_run=dry_run)
 
     engine = create_async_engine(settings.DATABASE_URL)
     Session = async_sessionmaker(engine, expire_on_commit=False)
@@ -667,14 +757,15 @@ async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) ->
     print("=" * 64)
     print(f"矿业专区导入 {'[DRY-RUN 未落库]' if dry_run else '[已落库 COMMIT]'}  batch={BATCH_ID}")
     print("=" * 64)
-    for k in ("source_rows", "spus", "unmatched", "conflicts", "platform_categories_created", "platform_categories_existing",
+    for k in ("source_rows", "rows_dropped", "spus", "unmatched", "conflicts", "attr_diffs", "sku_mismatches",
+              "platform_categories_created", "platform_categories_existing",
               "zone_created", "zone_categories_created", "zone_categories_updated",
               "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
               "zone_products_created", "zone_products_updated", "zone_products_existing", "zone_products_removed",
               "orphan_products", "orphans_soft_deleted"):
         print(f"{k:32s} {stats.get(k, 0)}")
     if dry_run:
-        print(f"\n审核 CSV:{AUDIT_CSV}\n这是干跑,数据库未改动。未命中/冲突清零后加 --commit 落库。")
+        print(f"\n审核 CSV:{AUDIT_CSV}\n丢弃行 CSV:{DROPPED_CSV}\n这是干跑,数据库未改动。未命中/冲突/SKU 不一致清零后加 --commit 落库。")
 
 
 def main() -> None:

@@ -184,27 +184,33 @@ def test_match_rule_file_specific_keyword_beats_wildcard_keyword():
     assert match_rule(site, rules).zone_cat == "C06"
 
 
-def test_mark_i18n_sets_pending_for_translatable_fields_and_manual_for_spec():
+@pytest.mark.asyncio
+async def test_mark_i18n_sets_pending_for_translatable_fields_and_manual_for_spec():
     """导入行必须打翻译标记,否则生产的定时扫描器(sweep_pending 按 i18n_pending_at)永远不会补 en/sw。"""
     from app.db.models.product import Product
     from app.db.models.product_attr import ProductAttr
     from scripts.import_zone_mining import mark_attr_i18n, mark_product_i18n
 
     p = Product(spu_code="X", name_zh="绳卡", description_zh="按钢丝绳直径核对", category_code="04.001")
-    mark_product_i18n(p)
+    await mark_product_i18n(p)
+    assert p.source_lang == "zh"
     assert p.trans_meta["name_zh"] == "src" and p.trans_meta["name_en"] == "pending" and p.trans_meta["name_sw"] == "pending"
     assert p.trans_meta["description_en"] == "pending"
     assert p.i18n_pending_at is not None
 
     spec = ProductAttr(attr_key_zh="规格", attr_key_en="spec", attr_value_zh="φ8", attr_value_en="φ8", selectable=True)
-    mark_attr_i18n(spec, value_language_neutral=True)
-    assert spec.trans_meta["attr_key_en"] == "pending"          # 键翻译
-    assert spec.trans_meta["attr_value_en"] == "manual"         # 规格值语言中性,不翻
-    assert spec.trans_meta["attr_value_sw"] == "manual"
+    await mark_attr_i18n(spec, value_language_neutral=True)
+    # 键的 en/sw 是内部键(购物车变体指纹按 attr_key_en 算),绝不能进翻译队列
+    assert spec.trans_meta["attr_key_en"] == "manual" and spec.attr_key_en == "spec"
+    assert spec.trans_meta["attr_key_sw"] == "manual" and spec.attr_key_sw == "spec"
+    assert spec.trans_meta["attr_value_en"] == "manual" and spec.attr_value_sw == "φ8"   # 规格值语言中性,不翻
+    assert spec.i18n_pending_at is None
 
-    plain = ProductAttr(attr_key_zh="是否通用", attr_value_zh="否（机型专用）", selectable=False)
-    mark_attr_i18n(plain)
+    plain = ProductAttr(attr_key_zh="是否通用", attr_key_en="interchangeable", attr_value_zh="否（机型专用）", selectable=False)
+    await mark_attr_i18n(plain)
+    assert plain.trans_meta["attr_key_en"] == "manual"
     assert plain.trans_meta["attr_value_en"] == "pending"
+    assert plain.i18n_pending_at is not None
 
 
 def test_noise_filter_drops_report_forms():
@@ -217,3 +223,82 @@ def test_build_spus_records_matched_rule_for_audit():
     rows = [SourceRow("01", "药剂及钢球", "X-1", "", "研磨钢球", "", "吨", "")]
     rules = [Rule("*", "*", "*", "钢球", "C01", "33.001")]
     assert build_spus(rows, {}, rules)[0].rule_desc == "*/*/*/钢球"
+
+
+def test_load_source_rows_records_dropped_rows_with_reason(tmp_path: Path):
+    """噪声/超长行不能静默消失:计数 + 原因,dry-run 写进丢弃 CSV 给人复核。"""
+    from scripts.import_zone_mining import DroppedRow
+    long_name = "高压油管总成" * 12
+    _write_book(tmp_path / "01_浮选厂.xlsx", {"药剂": [
+        ["编号", "易耗品名称", "单位"],
+        ["1", "研磨钢球", "吨"],
+        ["2", "车辆拖救服务", "次"],
+        ["3", long_name, "套"],
+        ["", "", ""],
+    ]})
+    dropped: list[DroppedRow] = []
+    rows = load_source_rows(tmp_path, dropped)
+    assert [r.name for r in rows] == ["研磨钢球"]
+    assert [(d.row_id, d.reason) for d in dropped] == [("2", "noise"), ("3", "too_long")]
+    # 不传 dropped 也照常工作
+    assert len(load_source_rows(tmp_path)) == 1
+
+
+def test_build_spus_records_attr_diffs_across_files_without_blocking():
+    """同一 SPU 在两个文件里环节不同:记 attr_diffs 供审核,取第一个非空值,不算大类冲突。"""
+    rules = [Rule("*", "*", "*", "手套", "C10", "01")]
+    rows = [
+        SourceRow("01", "劳保", "A-1", "劳保", "帆布手套", "", "双", "是"),
+        SourceRow("02", "工具", "B-7", "工具", "帆布手套", "", "双", ""),
+        SourceRow("05", "耗材", "E-2", "", "帆布手套", "", "双", "限同制式"),
+    ]
+    (s,) = build_spus(rows, {}, rules)
+    assert s.section == "劳保" and s.generic == "是"
+    assert s.attr_diffs == ["02:B-7 环节 工具 ≠ 劳保", "05:E-2 是否通用 限同制式 ≠ 是"]
+    assert s.conflicts == []
+
+
+def test_build_spus_fills_empty_attr_from_later_row():
+    rules = [Rule("*", "*", "*", "手套", "C10", "01")]
+    rows = [
+        SourceRow("01", "劳保", "A-1", "", "帆布手套", "", "双", ""),
+        SourceRow("02", "工具", "B-7", "工具", "帆布手套", "", "双", "是"),
+    ]
+    (s,) = build_spus(rows, {}, rules)
+    assert (s.section, s.generic, s.attr_diffs) == ("工具", "是", [])
+
+
+def test_expected_sku_codes_variant_vs_simple():
+    from scripts.import_zone_mining import SpuRow, expected_sku_codes, mining_sku_code
+    simple = SpuRow(name="活板", spu_code="MG-PX", description="", specs=["20寸"])
+    assert expected_sku_codes(simple) == {mining_sku_code("MG-PX", None)}
+    variant = SpuRow(name="活板", spu_code="MG-PX", description="", specs=["20寸", "24寸"])
+    assert expected_sku_codes(variant) == {mining_sku_code("MG-PX", "20寸"), mining_sku_code("MG-PX", "24寸")}
+
+
+@pytest.mark.parametrize("url,needs", [
+    ("postgresql+asyncpg://u:p@localhost:5433/x", False),
+    ("postgresql+asyncpg://u:p@127.0.0.1/x", False),
+    ("postgresql+asyncpg://u:p@db:5432/x", True),            # OVH/ECS 容器里的 compose 服务名
+    ("postgresql+asyncpg://u:p@162.19.98.142/x", True),
+    ("", True),
+])
+def test_commit_guard_requires_opt_in_for_any_non_local_db(url, needs, monkeypatch):
+    from scripts._zone_import_common import OPT_IN_ENV, commit_needs_opt_in, guard_commit
+    assert commit_needs_opt_in(url) is needs
+    monkeypatch.delenv(OPT_IN_ENV, raising=False)
+    guard_commit(url, dry_run=True)   # dry-run 永远放行
+    if needs:
+        with pytest.raises(SystemExit):
+            guard_commit(url, dry_run=False)
+        monkeypatch.setenv(OPT_IN_ENV, "1")
+    guard_commit(url, dry_run=False)
+
+
+def test_normalize_source_key_shared_by_both_zone_scripts():
+    """两个专区脚本的 hash 输入必须走同一份归一化,否则同名商品在两边算出不同 code。"""
+    from app.services.product_code import normalize_source_key
+    from scripts.import_zone_soe_materials import _hard
+    for raw in ("ＡＢＣ 12 3", " 螺纹钢\t", None, 42):
+        assert hard(raw) == _hard(raw) == normalize_source_key(raw)
+    assert normalize_source_key(None) == ""
