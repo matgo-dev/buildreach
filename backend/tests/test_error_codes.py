@@ -76,6 +76,8 @@ def _instantiate(cls: type[BusinessError]) -> BusinessError:
         return cls("test_key", "SPU")
     if name == "CategoryNotLeafError":
         return cls("01")
+    if name == "CategoryInactiveError":
+        return cls("01")
     if name == "ProductNotEditableError":
         return cls("ACTIVE")
     if name == "IllegalTransitionError":
@@ -293,3 +295,6 @@ def test_product_error_codes():
 
     from app.core.exceptions import CategoryNotLeafError
     assert CategoryNotLeafError("01").biz_code == 40216
+
+    from app.core.exceptions import CategoryInactiveError
+    assert CategoryInactiveError("01").biz_code == 40219
