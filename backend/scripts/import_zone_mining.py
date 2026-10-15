@@ -515,7 +515,10 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         )).scalars().all())
         expected = expected_sku_codes(s)
         if live != expected:
-            sku_mismatches.append(f"{s.spu_code} {s.name}: 库内 {len(live)} 个 SKU ≠ 期望 {len(expected)} 个(规格 {s.specs})")
+            # 数量可能相等但集合不同(改了某个规格文字),所以报缺/多的 code 数而不是总数
+            sku_mismatches.append(
+                f"{s.spu_code} {s.name}: 库内 SKU 缺 {len(expected - live)} 个、多 {len(live - expected)} 个(当前规格 {s.specs})"
+            )
         stats["products_updated"] += 1
         await db.flush()
         return product
