@@ -12,6 +12,8 @@ import { zonesApi, type ZoneCategory } from "@/lib/api/zones";
 import type { ProductListResponse } from "@/lib/api/products";
 import { ZoneCategoryNav } from "@/components/zone/ZoneCategoryNav";
 import { ProductGrid } from "@/components/mall/ProductGrid";
+import { useAuthStore } from "@/stores/authStore";
+import { zoneDisplayName } from "@/lib/zoneName";
 import { Pagination } from "@/components/mall/Pagination";
 
 const PAGE_SIZE = 20;
@@ -23,6 +25,9 @@ function ZoneContent() {
   const searchParams = useSearchParams();
   const t = useTranslations("zone");
   const zoneCode = String(params.zoneCode);
+  // 专区名取登录信息里的授权专区(RouteGuard 已保证有权访问),与导航同一口径
+  const zone = useAuthStore((st) => st.user?.zones?.find((z) => z.code === zoneCode));
+  const zoneName = zone ? zoneDisplayName(zone, locale) : "";
 
   // 专区卡片不显示平台品类标签:专区有自己的大类轴,平台品类是粗占位(机电/手动工具)或停用的专区专用品类,
   // 公开树里查不到 → 有的卡片有标签有的没有,既不一致也没信息量。
@@ -119,6 +124,9 @@ function ZoneContent() {
   return (
     <PublicLayout>
       <div className="space-y-4">
+        {/* 页头:只放专区名(进来要知道自己在哪个专区);商品数已在筛选下方,不重复 */}
+        {zoneName && <h1 className="text-[20px] font-extrabold leading-tight text-ink sm:text-[22px]">{zoneName}</h1>}
+
         {/* 场景导航(第二条轴) */}
         {!categoriesLoading && scenes.length > 0 && (
           <ZoneCategoryNav

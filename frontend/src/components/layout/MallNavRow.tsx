@@ -2,9 +2,10 @@
 
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/stores/authStore";
+import { ZoneNavMenu } from "./ZoneNavMenu";
 
 /** Mall 导航行 — 白底,底线暖金色。参考 HTML .nav-row */
 
@@ -33,7 +34,6 @@ export function MallNavRow() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations("mall");
-  const locale = useLocale();
   // 专区入口:仅对被授权买家显示(me.zones 非空)—— 纯权限门,公开/未授权用户看不到
   const user = useAuthStore((s) => s.user);
   const zones = user?.zones ?? [];
@@ -44,8 +44,6 @@ export function MallNavRow() {
   // 收紧内边距(px-2/sm:px-3),让整排双语项 + 专区一行装下不横滑。
   const itemBase =
     "relative self-stretch inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 transition-colors -mb-px";
-  const zoneItemBase =
-    "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px] font-extrabold transition-colors";
 
   const renderNavLink = (link: NavLink) => {
     // href 可能带 query(如 /mall?procurement=local),按路径 + query 双匹配高亮。
@@ -88,45 +86,21 @@ export function MallNavRow() {
     );
   };
 
-  const renderZoneLink = (z: {
-    code: string;
-    name_zh: string;
-    name_en: string | null;
-  }) => {
-    const href = `/zone/${z.code}`;
-    const active = pathname === href || pathname.startsWith(href + "/");
-    // 中文用 name_zh,其它语种(en/sw)优先 name_en,缺失回退中文
-    const label = locale === "zh" ? z.name_zh : z.name_en || z.name_zh;
-    return (
-      <Link
-        key={z.code}
-        href={href}
-        className={`${zoneItemBase} ${
-          active
-            ? "border-lime bg-lime/30 text-teal-900"
-            : "border-line bg-teal-50 text-teal-900 hover:border-teal-200 hover:bg-teal-100"
-        }`}
-      >
-        {label}
-      </Link>
-    );
-  };
-
   return (
     <nav
       className="sticky top-0 md:top-[82px] z-[70] bg-white border-b border-line"
       style={{ boxShadow: "0 1px 2px rgba(18,59,50,.04)" }}
     >
-      <div className="mx-auto flex min-h-[44px] max-w-mall items-center justify-between gap-4 overflow-x-auto px-3 scrollbar-hide sm:min-h-[50px] sm:px-6">
-        <div className="flex min-w-max items-stretch self-stretch gap-0">
-          {navLinks.map(renderNavLink)}
+      <div className="mx-auto flex min-h-[44px] max-w-mall items-center gap-4 px-3 sm:min-h-[50px] sm:px-6">
+        {/* 只有链接区横向滚动;专区入口在滚动区外,链接放不下时也始终可见 */}
+        <div className="min-w-0 flex-1 self-stretch overflow-x-auto scrollbar-hide">
+          <div className="flex h-full min-w-max items-stretch gap-0">
+            {navLinks.map(renderNavLink)}
+          </div>
         </div>
         {zones.length > 0 && (
-          <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-line pl-4">
-            <span className="hidden text-[11px] font-semibold text-muted lg:inline">
-              {t("navExclusiveZone")}
-            </span>
-            {zones.map(renderZoneLink)}
+          <div className="flex shrink-0 items-center border-l border-line pl-4">
+            <ZoneNavMenu zones={zones} />
           </div>
         )}
       </div>
