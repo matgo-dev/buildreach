@@ -24,6 +24,7 @@ import ProductSearchModal, {
 } from "@/components/rfq/ProductSearchModal";
 import AttachmentUploader from "@/components/rfq/AttachmentUploader";
 import type { AttachmentPublic } from "@/lib/api/attachments";
+import { formatQuantity } from "@/lib/formatters";
 
 const CURRENCIES = ["USD", "KES", "CNY"];
 
@@ -245,7 +246,7 @@ function RfqEditContent() {
                   </td>
                   <td className="px-5 py-3 text-right">
                     {unavailable ? (
-                      <span className="text-sm text-gray-300">{item.quantity} {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
+                      <span className="text-sm text-gray-300">{formatQuantity(item.quantity)} {tMall(`unit_${item.unit ?? "PCS"}` as Parameters<typeof tMall>[0])}</span>
                     ) : (
                     <div className="inline-flex items-center gap-1.5">
                       <input type="number" value={item.quantity}
