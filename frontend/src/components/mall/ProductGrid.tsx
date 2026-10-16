@@ -5,6 +5,7 @@ import { Search, AlertCircle, RefreshCw } from "lucide-react";
 
 import type { ProductPublic } from "@/lib/api/products";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { Link } from "@/i18n/navigation";
 import { ProductCard } from "./ProductCard";
 import { MallButton } from "./MallButton";
 
@@ -15,6 +16,8 @@ interface Props {
   error: Error | undefined;
   onRetry: () => void;
   onClearFilters: () => void;
+  /** 当前搜索词;有词且无结果时引导提交询价 */
+  keyword?: string;
   /** 每张卡片的详情页链接;不传则用 ProductCard 默认的 `/mall/products/{id}` */
   productHref?: (productId: number) => string;
 }
@@ -40,6 +43,7 @@ export function ProductGrid({
   error,
   onRetry,
   onClearFilters,
+  keyword,
   productHref,
 }: Props) {
   const t = useTranslations("mall");
@@ -63,6 +67,24 @@ export function ProductGrid({
           <RefreshCw className="h-3.5 w-3.5" />
           {t("retry")}
         </MallButton>
+      </div>
+    );
+  }
+
+  if (products.length === 0 && keyword) {
+    return (
+      <div className="rounded-xl border border-line bg-white py-20 text-center shadow-mall-sm">
+        <Search className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+        <p className="text-sm font-extrabold text-navy">{t("noResultsForKeyword", { keyword })}</p>
+        <p className="mt-1 text-xs text-muted">{t("noResultsInquiryHint")}</p>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <Link href="/buyer/rfqs/create">
+            <MallButton variant="teal" size="sm">{t("submitInquiry")}</MallButton>
+          </Link>
+          <MallButton variant="outline" size="sm" onClick={onClearFilters}>
+            {t("clearFilters")}
+          </MallButton>
+        </div>
       </div>
     );
   }

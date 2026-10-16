@@ -93,6 +93,8 @@ function MallContent() {
   } = useSWR<ProductListResponse>(swrKey, () => listProducts(apiParams), {
     revalidateOnFocus: false,
   });
+  // 关键词检索总数后端封顶,显示「5,000+」
+  const totalLabel = data?.total_capped ? `${data.total.toLocaleString("en-US")}+` : undefined;
 
   // 品类不算筛选条件（面包屑管品类），只有品牌/关键词/精选/供应模式/排序才是筛选
   const hasActiveFilters = !!(urlKeyword || urlBrand || urlFeatured || urlSupplyMode || urlSort !== "newest");
@@ -123,6 +125,7 @@ function MallContent() {
           supplyMode={urlSupplyMode}
           brand={urlBrand}
           total={data?.total ?? 0}
+          totalLabel={totalLabel}
           activeCategoryCode={urlCat}
           categoryTree={categoryTree}
           onSortChange={(s) => updateFilters({ sort: s !== "newest" ? s : undefined })}
@@ -141,6 +144,7 @@ function MallContent() {
           error={error}
           onRetry={() => mutate()}
           onClearFilters={clearAll}
+          keyword={urlKeyword || undefined}
         />
 
         {/* 分页 */}
@@ -149,6 +153,7 @@ function MallContent() {
             page={data.page}
             pages={data.pages}
             total={data.total}
+            totalLabel={totalLabel}
             size={data.size}
             onPageChange={handlePageChange}
           />

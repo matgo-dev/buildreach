@@ -12,8 +12,10 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    JSON, Boolean, DECIMAL, DateTime, ForeignKey, Index, Integer, String, Text,
+    DDL, JSON, Boolean, Computed, DECIMAL, DateTime, ForeignKey, Index, Integer, String, Text,
+    event, text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from typing import TYPE_CHECKING
@@ -62,6 +64,30 @@ class ProductVisibility:
     ALL = (PUBLIC, ZONE_ONLY)
 
 
+# 关键词检索派生列(services/product_search.py)。改表达式须同步写迁移重建列。
+# zh_ngrams:中文单字 + 双字 n-gram,让 1~2 字中文词也能走 GIN 索引(pg_trgm 需 ≥3 字符)。
+ZH_NGRAMS_FUNCTION_SQL = """
+CREATE OR REPLACE FUNCTION zh_ngrams(t text) RETURNS text[]
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+  SELECT coalesce(array_agg(DISTINCT g), '{}') FROM (
+    SELECT substr(t, i, 1) AS g FROM generate_series(1, length(t)) AS i
+    UNION ALL
+    SELECT substr(t, i, 2) FROM generate_series(1, length(t) - 1) AS i
+  ) s
+  -- 按码点判断 CJK 统一汉字 U+4E00..U+9FFF(与 product_search._CJK_RE 一致),不依赖库 locale
+  WHERE ascii(substr(g, 1, 1)) BETWEEN 19968 AND 40959
+    AND (length(g) = 1 OR ascii(substr(g, 2, 1)) BETWEEN 19968 AND 40959)
+$$
+"""
+SEARCH_TSV_EXPR = (
+    "setweight(to_tsvector('english'::regconfig, coalesce(name_en, '')), 'A') || "
+    "setweight(to_tsvector('simple'::regconfig, coalesce(name_sw, '')), 'A') || "
+    "setweight(to_tsvector('english'::regconfig, coalesce(brand_en, '')), 'B') || "
+    "setweight(to_tsvector('simple'::regconfig, coalesce(manufacturer_model, '')), 'C')"
+)
+SEARCH_ZH_EXPR = "zh_ngrams(coalesce(name_zh, '')) || zh_ngrams(coalesce(brand_zh, ''))"
+
+
 class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     __tablename__ = "products"
     __table_args__ = (
@@ -74,6 +100,14 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
             "spu_code",
             unique=True,
             postgresql_where="deleted_at IS NULL",
+        ),
+        Index(
+            "ix_products_search_tsv", "search_tsv",
+            postgresql_using="gin", postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_products_search_zh", "search_zh",
+            postgresql_using="gin", postgresql_where=text("deleted_at IS NULL"),
         ),
     )
 
@@ -167,6 +201,14 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
         nullable=True,
     )
 
+    # 关键词检索派生列:DB 计算、只读;deferred 避免普通查询把它们读回来
+    search_tsv: Mapped[str | None] = mapped_column(
+        TSVECTOR, Computed(SEARCH_TSV_EXPR, persisted=True), deferred=True,
+    )
+    search_zh: Mapped[list[str] | None] = mapped_column(
+        ARRAY(Text), Computed(SEARCH_ZH_EXPR, persisted=True), deferred=True,
+    )
+
     # relationships
     skus: Mapped[list["ProductSku"]] = relationship(
         "ProductSku", back_populates="product", cascade="all, delete-orphan",
@@ -178,3 +220,7 @@ class Product(Base, TimestampUpdateMixin, I18nMixin, SoftDeleteMixin):
     attrs: Mapped[list["ProductAttr"]] = relationship(
         "ProductAttr", back_populates="product", cascade="all, delete-orphan",
     )
+
+
+# 测试用 metadata.create_all 建表(不走迁移),生成列依赖的函数须先于表创建
+event.listen(Product.__table__, "before_create", DDL(ZH_NGRAMS_FUNCTION_SQL))

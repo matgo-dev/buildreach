@@ -53,6 +53,8 @@ export interface ProductListParams {
 export interface ProductListResponse {
   items: ProductPublic[];
   total: number;
+  /** 关键词检索总数已封顶(后端最多数到上限),显示为「N+」 */
+  total_capped?: boolean;
   page: number;
   size: number;
   pages: number;

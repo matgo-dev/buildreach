@@ -61,6 +61,12 @@ from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.supplier_organization import SupplierOrganization
+from app.services.product_search import (
+    SEARCH_COUNT_CAP,
+    SEARCH_MAX_RESULTS,
+    build_keyword_filter,
+    parse_keyword,
+)
 from app.db.base import _utcnow
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
@@ -652,7 +658,8 @@ async def list_products_public(
     sort: str = "newest",
     page: int = 1,
     size: int = 20,
-) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
+) -> tuple[list[Product], int, bool, dict[int, tuple[str, str]]]:
+    """返回 (商品, 总数, 总数是否已封顶, 主图)。关键词检索口径见 services/product_search.py。"""
     # 列表不加载图片关系，主图由 _batch_main_images 批量查
     q = select(Product).where(public_visible())
     count_q = select(func.count(Product.id)).where(public_visible())
@@ -693,10 +700,25 @@ async def list_products_public(
         )
         q = q.where(cert_filter)
         count_q = count_q.where(cert_filter)
+    keyword = (keyword or "").strip()
+    rank = None
+    total_capped = False
     if keyword:
-        kf = _build_keyword_filter(keyword)
+        kf, rank = build_keyword_filter(parse_keyword(keyword))
         q = q.where(kf)
-        count_q = count_q.where(kf)
+        # 总数封顶:最多数 SEARCH_COUNT_CAP+1 行,宽泛词不再全量计数
+        capped_ids = count_q.with_only_columns(Product.id).where(kf).limit(SEARCH_COUNT_CAP + 1)
+        count_q = select(func.count()).select_from(capped_ids.subquery())
+
+    total = (await db.execute(count_q)).scalar() or 0
+    offset, limit = (page - 1) * size, size
+    if keyword:
+        total_capped = total > SEARCH_COUNT_CAP
+        total = min(total, SEARCH_COUNT_CAP)
+        # 关键词结果最多翻到 SEARCH_MAX_RESULTS 条
+        if offset >= SEARCH_MAX_RESULTS:
+            return [], total, total_capped, {}
+        limit = min(size, SEARCH_MAX_RESULTS - offset)
 
     # 排序分支
     if sort in ("price_asc", "price_desc"):
@@ -716,15 +738,17 @@ async def list_products_public(
         else:
             q = q.order_by(price_sub.c.min_price.desc().nulls_last())
     else:
+        if rank is not None and not total_capped:
+            # 关键词默认排序 = 相关度优先;命中超过封顶数的宽泛词不打分(打分行数有上限),退回按上架时间走索引
+            q = q.order_by(rank.desc())
         # 默认按上架时间倒序，未上架的（published_at=NULL）排最后
         q = q.order_by(Product.published_at.desc().nulls_last(), Product.id.desc())
 
-    total = (await db.execute(count_q)).scalar() or 0
-    q = q.offset((page - 1) * size).limit(size)
+    q = q.offset(offset).limit(limit)
     rows = (await db.execute(q)).scalars().all()
     products = list(rows)
     main_image_map = await _batch_main_images(db, [p.id for p in products])
-    return products, total, main_image_map
+    return products, total, total_capped, main_image_map
 
 
 async def sample_home_floor_products(

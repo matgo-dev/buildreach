@@ -32,6 +32,7 @@ from app.schemas.product import (
     VariantSkuOption,
 )
 from app.services import product as product_svc
+from app.services.product_search import SEARCH_MAX_RESULTS
 from app.services._buyer_utils import thumb_url_from_image_key
 from app.services.purchase_target import default_sku_variant_display
 
@@ -292,7 +293,7 @@ async def list_products(
     authorization: str | None = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total, img_map = await product_svc.list_products_public(
+    items, total, total_capped, img_map = await product_svc.list_products_public(
         db, category_code=category_code,
         featured=featured, supply_mode=supply_mode,
         certification=certification,
@@ -326,9 +327,11 @@ async def list_products(
     return success({
         "items": out,
         "total": total,
+        # 关键词检索总数封顶(product_search.SEARCH_COUNT_CAP),前端显示「N+」
+        "total_capped": total_capped,
         "page": page,
         "size": size,
-        "pages": math.ceil(total / size) if size else 0,
+        "pages": math.ceil((min(total, SEARCH_MAX_RESULTS) if keyword else total) / size) if size else 0,
     })
 
 

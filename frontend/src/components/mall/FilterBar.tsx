@@ -85,6 +85,8 @@ interface Props {
   featured: boolean;
   supplyMode: string;
   total: number;
+  /** 总数展示文案(封顶时为「5,000+」);不传则显示 total */
+  totalLabel?: string;
   activeCategoryCode: string;
   categoryTree: CategoryTreeNode[];
   brand: string;
@@ -108,6 +110,7 @@ export function FilterBar({
   featured,
   supplyMode,
   total,
+  totalLabel,
   activeCategoryCode,
   categoryTree,
   brand,
@@ -289,7 +292,7 @@ export function FilterBar({
 
         {/* 商品总数 */}
         <span className="text-[12px] text-muted font-medium whitespace-nowrap">
-          {t("totalProducts", { count: total })}
+          {t("totalProducts", { count: totalLabel ?? total })}
         </span>
       </div>
     </div>

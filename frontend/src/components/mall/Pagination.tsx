@@ -8,11 +8,13 @@ interface Props {
   page: number;
   pages: number;
   total: number;
+  /** 总数展示文案(封顶时为「5,000+」);不传则显示 total */
+  totalLabel?: string;
   size: number;
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({ page, pages, total, size, onPageChange }: Props) {
+export function Pagination({ page, pages, total, totalLabel, size, onPageChange }: Props) {
   const t = useTranslations("pagination");
   const [jumpInput, setJumpInput] = useState("");
 
@@ -45,7 +47,7 @@ export function Pagination({ page, pages, total, size, onPageChange }: Props) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3 shadow-mall-sm">
       <span className="text-xs text-muted">
-        {t("showing", { start, end, total })}
+        {t("showing", { start, end, total: totalLabel ?? total })}
       </span>
 
       <div className="flex items-center gap-1">
