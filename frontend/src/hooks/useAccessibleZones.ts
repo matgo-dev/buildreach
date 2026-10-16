@@ -14,9 +14,10 @@ export function useAccessibleZones(): { zones: ZoneBriefForUser[]; loaded: boole
   const user = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
   const anonymous = authLoaded && !user;
-  const { data, error } = useSWR(anonymous ? "zones:accessible:anonymous" : null, () => zonesApi.list());
+  const { data } = useSWR(anonymous ? "zones:accessible:anonymous" : null, () => zonesApi.list());
 
   if (!authLoaded) return { zones: [], loaded: false };
   if (user) return { zones: user.zones, loaded: true };
-  return { zones: data ?? [], loaded: data !== undefined || error !== undefined };
+  // 请求失败不算"已加载":当成空列表会让专区门禁把访客踢去登录页;SWR 默认会自动重试
+  return { zones: data ?? [], loaded: data !== undefined };
 }

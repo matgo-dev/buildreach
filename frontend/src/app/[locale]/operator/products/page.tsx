@@ -102,9 +102,9 @@ function ProductListInner() {
   const router = useRouter();
   const locale = useLocale();
   const { hasPermission } = usePermissions();
-  // 专区相关能力(停用品类树 / 专区列表)都要 zone:manage;没有的角色不发请求,免得每次加载吃 403
+  // 专区列表要 zone:manage;没有的角色不发请求,免得每次加载吃 403
   const canManageZones = hasPermission(Permissions.ZONE_MANAGE);
-  const { tree: categoryTree } = useCategoryTree({ includeInactive: canManageZones });
+  const { tree: categoryTree } = useCategoryTree();
 
   const catMap = useMemo(() => buildCategoryMap(categoryTree), [categoryTree]);
 

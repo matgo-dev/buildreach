@@ -388,7 +388,7 @@ class CategoryNotLeafError(BusinessError):
 
 
 class CategoryInactiveError(BusinessError):
-    """运营建商品挂到停用品类(专区专用类目)下。"""
+    """运营建商品挂到停用品类下。"""
     def __init__(self, category_code: str):
         super().__init__(
             status.HTTP_400_BAD_REQUEST, 40219,
