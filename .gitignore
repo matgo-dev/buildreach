@@ -78,3 +78,4 @@ data/zone_import/raw/
 data/zone_import/working/
 data/zone_import/mining/dry_run_audit.csv
 data/zone_import/mining/dry_run_dropped.csv
+data/zone_import/mining/*.xlsx
