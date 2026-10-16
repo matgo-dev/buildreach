@@ -30,6 +30,11 @@ def test_digit_keyword_must_not_follow_digit_or_decimal():
     assert not _hit("5mm", "Crystal board 1.5mm")
     assert _hit("20mm", "PE管 20mm")
     assert _hit("4.5", "φ110*4.5*4000mm")
+    # 点/逗号前不是数字 → 是分隔符,不是数字的一部分
+    assert _hit("20mm", "Size 16mm,20mm,25mm")
+    assert _hit("304", "Art.No.304 valve")
+    assert _hit("200", "KLC-S N.20005")
+    assert _hit("5mm", ".5mm foil")
 
 
 def test_prefix_still_allowed():
@@ -44,7 +49,8 @@ def test_no_boundary_for_cjk_symbol_start_or_short():
     assert rx("PE") is None   # <3 字符走不了索引,保持纯子串
     assert rx("m8") is None
     assert rx(" PE ") is None  # 按去空白后的长度判断
-    assert rx(" cement") == "(^|[^A-Za-z]) cement"  # 分支看去空白后的首字符,字面保留原串
+    assert rx(" cement") is None  # 前导空白:ILIKE '% cement%' 已是词首,再加正则会误杀 Portland cement
+    assert rx("cement ") == "(^|[^A-Za-z])cement "  # 尾部空白照常
 
 
 def test_regex_specials_are_escaped():

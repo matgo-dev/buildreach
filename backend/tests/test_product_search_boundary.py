@@ -43,6 +43,7 @@ async def test_latin_fields_require_word_start(client: AsyncClient, db_session: 
         {"spu_code": "SWB-SWMID", "name_zh": "工具", "name_sw": "Kisaruji kifaa"},
     ])
     assert await _codes(client, "cement") == {"SWB-C1"}
+    assert await _codes(client, " cement") == {"SWB-C1"}   # 前导空格:不能把 Portland Cement 杀掉
     assert await _codes(client, "tee") == {"SWB-T2"}
     assert await _codes(client, "PE") == {"SWB-P1", "SWB-H1"}   # <3 字符不约束,与现状一致
     assert await _codes(client, "saruji") == {"SWB-SW"}
@@ -56,10 +57,13 @@ async def test_digits_and_specs_in_chinese_names(client: AsyncClient, db_session
         {"spu_code": "SWB-D1", "name_zh": "搜界球阀DN20", "name_en": None},
         {"spu_code": "SWB-B1", "name_zh": "板材", "name_en": "Panel 600*120mm"},
         {"spu_code": "SWB-B2", "name_zh": "管材", "name_en": "PE pipe 20mm"},
+        {"spu_code": "SWB-B3", "name_zh": "管材", "name_en": "Size 16mm,20mm,25mm"},
+        {"spu_code": "SWB-X2", "name_zh": "阀", "name_en": "Art.No.304 valve"},
+        {"spu_code": "SWB-X3", "name_zh": "件", "name_en": "Qty 1,304 pcs"},
     ])
-    assert await _codes(client, "304") == {"SWB-S1"}
+    assert await _codes(client, "304") == {"SWB-S1", "SWB-X2"}   # 点前非数字 → 分隔;1,304 仍不命中
     assert await _codes(client, "DN20") == {"SWB-D1"}   # 中文名字段不加约束,照常子串命中
-    assert await _codes(client, "20mm") == {"SWB-B2"}
+    assert await _codes(client, "20mm") == {"SWB-B2", "SWB-B3"}  # 逗号分隔的规格列表照常命中
 
 
 @pytest.mark.asyncio

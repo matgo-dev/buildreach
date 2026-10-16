@@ -604,21 +604,25 @@ def keyword_word_boundary_regex(keyword: str) -> str | None:
 
     规则:命中处的前一个字符不能与关键词首字符同类 ——
       字母开头:前面不能是 ASCII 字母。cement 命中 Portland Cement,不命中 Displacement
-      数字开头:前面不能是数字、小数点、千分位逗号。304 命中 SUS304,不命中 1304 / 1,304;
-                20mm 不命中 120mm;5mm 不命中 1.5mm
+      数字开头:前面不能是数字;小数点 / 千分位逗号只在其前面也是数字时算数字的一部分。
+                304 命中 SUS304 / Art.No.304,不命中 1304 / 1,304;
+                20mm 命中 16mm,20mm,25mm,不命中 120mm;5mm 不命中 1.5mm
     汉字和其他符号都算分隔:DN20 命中 球阀DN20,750V 命中 450/750V。
     不约束的情况:首字符既非 ASCII 字母也非数字(含中文);或去空白后短于 3 字符 ——
     pg_trgm 要 ≥3 字符才能走索引,否则全表扫描时正则会逐行执行(100 万行实测 3s→19s),
     这类输入(PE、m8)保持纯子串,与现状一致。
+    前导空白(" cement"):ILIKE '% cement%' 本身已要求命中前是空格,词首已成立;
+    若再加正则会变成要求「空格前也非字母」,把 Portland cement 误杀 → 不约束。
     """
-    stripped = keyword.strip()
-    if len(stripped) < 3:
+    if len(keyword.strip()) < 3:
         return None
-    first = stripped[0]  # 前后空白不参与分支判断;正则字面仍用原串,与 ILIKE 模式一致
+    first = keyword[0]
+    if first.isspace():
+        return None
     if first.isascii() and first.isalpha():
         boundary = "(^|[^A-Za-z])"
     elif first.isascii() and first.isdigit():
-        boundary = "(^|[^0-9.,])"
+        boundary = "(^|[^0-9.,]|(^|[^0-9])[.,])"
     else:
         return None
     literal = "".join(f"\\{c}" if c in _REGEX_SPECIALS else c for c in keyword)
