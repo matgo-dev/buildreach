@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import UploadFile
 from sqlalchemy import (
+    and_,
     bindparam,
     delete as sa_delete,
     func,
@@ -586,17 +587,68 @@ async def batch_active_sku_counts(
     return {pid: cnt for pid, cnt in rows.all()}
 
 
-def _build_keyword_filter(keyword: str):
-    """keyword 搜索过滤：名称/品牌全语言匹配 + 型号 + SPU 编码。"""
-    kw = f"%{keyword}%"
+_LIKE_SPECIALS = ("\\", "%", "_")
+_REGEX_SPECIALS = set("\\.^$|()[]{}*+?")
+
+
+def _like_literal(keyword: str) -> str:
+    """%关键词% 子串模式,关键词按字面匹配(\\ % _ 转义;配合 escape="\\")。"""
+    escaped = keyword
+    for ch in _LIKE_SPECIALS:
+        escaped = escaped.replace(ch, "\\" + ch)
+    return f"%{escaped}%"
+
+
+def keyword_word_boundary_regex(keyword: str) -> str | None:
+    """拉丁文「词首」匹配正则(纯函数,PostgreSQL ARE,配合 ~*)。None = 不约束,纯子串。
+
+    规则:命中处的前一个字符不能与关键词首字符同类 ——
+      字母开头:前面不能是 ASCII 字母。cement 命中 Portland Cement,不命中 Displacement
+      数字开头:前面不能是数字、小数点、千分位逗号。304 命中 SUS304,不命中 1304 / 1,304;
+                20mm 不命中 120mm;5mm 不命中 1.5mm
+    汉字和其他符号都算分隔:DN20 命中 球阀DN20,750V 命中 450/750V。
+    不约束的情况:首字符既非 ASCII 字母也非数字(含中文);或去空白后短于 3 字符 ——
+    pg_trgm 要 ≥3 字符才能走索引,否则全表扫描时正则会逐行执行(100 万行实测 3s→19s),
+    这类输入(PE、m8)保持纯子串,与现状一致。
+    """
+    stripped = keyword.strip()
+    if len(stripped) < 3:
+        return None
+    first = stripped[0]  # 前后空白不参与分支判断;正则字面仍用原串,与 ILIKE 模式一致
+    if first.isascii() and first.isalpha():
+        boundary = "(^|[^A-Za-z])"
+    elif first.isascii() and first.isdigit():
+        boundary = "(^|[^0-9.,])"
+    else:
+        return None
+    literal = "".join(f"\\{c}" if c in _REGEX_SPECIALS else c for c in keyword)
+    return boundary + literal
+
+
+def _build_keyword_filter(keyword: str, *, word_boundary: bool = False):
+    """keyword 搜索过滤:名称/品牌全语言 + 型号 + SPU 编码,关键词按字面子串匹配。
+
+    word_boundary=True(商城公开列表):英文名/斯语名/英文品牌三个拉丁文字段要求词首命中
+    (keyword_word_boundary_regex),避免 cement 命中 displacement;ILIKE 保留以走 trigram
+    索引,正则只做过滤。中文/型号/编码始终纯子串。运营列表 word_boundary=False。
+    """
+    kw = _like_literal(keyword)
+    regex = keyword_word_boundary_regex(keyword) if word_boundary else None
+
+    def sub(col):
+        return col.ilike(kw, escape="\\")
+
+    def latin(col):
+        return sub(col) if regex is None else and_(sub(col), col.op("~*")(regex))
+
     return or_(
-        Product.name_zh.ilike(kw),
-        Product.name_en.ilike(kw),
-        Product.name_sw.ilike(kw),
-        Product.brand_zh.ilike(kw),
-        Product.brand_en.ilike(kw),
-        Product.manufacturer_model.ilike(kw),
-        Product.spu_code.ilike(kw),
+        sub(Product.name_zh),
+        latin(Product.name_en),
+        latin(Product.name_sw),
+        sub(Product.brand_zh),
+        latin(Product.brand_en),
+        sub(Product.manufacturer_model),
+        sub(Product.spu_code),
     )
 
 
@@ -694,7 +746,7 @@ async def list_products_public(
         q = q.where(cert_filter)
         count_q = count_q.where(cert_filter)
     if keyword:
-        kf = _build_keyword_filter(keyword)
+        kf = _build_keyword_filter(keyword, word_boundary=True)
         q = q.where(kf)
         count_q = count_q.where(kf)
 
