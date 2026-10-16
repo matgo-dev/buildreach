@@ -2,6 +2,7 @@
 
 禁止任何 route / service 直接操作 trans_meta,统一走这里的入口:
 - apply_i18n_create: 创建时写源列 + 标 pending(不内联翻译)
+- apply_i18n_prefilled: 各 locale 的值已给定(人工译文 / 语言中性值),写列 + 标 manual,不排队翻译
 - apply_i18n_edit: 编辑某个 locale 列
 - process_pending_translations: 后台任务/CLI 调用,处理 pending/failed 翻译
 - retranslate_pending_or_failed: 单行补偿重试(兼容旧调用)
@@ -94,6 +95,29 @@ async def apply_i18n_create(
 
     _set_meta(obj, meta)
     _set_pending_at(obj)
+
+
+def apply_i18n_prefilled(
+    obj: object,
+    field: str,
+    values: dict[str, str | None],
+    source_lang: str,
+) -> None:
+    """导入脚本/种子用:每个 locale 的值已经确定(人工译文,或规格值这类语言中性文本),
+    写列 + 源 locale 标 src、其余标 manual,不进翻译队列。
+
+    values 必须覆盖全部 SUPPORTED_LOCALES,缺一个就是调用方漏给译文,直接报错而不是悄悄标 manual 留空。
+    """
+    missing = SUPPORTED_LOCALES - set(values)
+    if missing:
+        raise ValueError(f"apply_i18n_prefilled({field}): 缺 locale {sorted(missing)}")
+    if source_lang not in SUPPORTED_LOCALES:
+        raise ValueError(f"unsupported source_lang {source_lang!r}")
+    meta = _get_meta(obj)
+    for locale in SUPPORTED_LOCALES:
+        setattr(obj, f"{field}_{locale}", values[locale])
+        meta[f"{field}_{locale}"] = "src" if locale == source_lang else "manual"
+    _set_meta(obj, meta)
 
 
 # ---------------------------------------------------------------------------

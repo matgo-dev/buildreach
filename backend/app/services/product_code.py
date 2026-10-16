@@ -10,8 +10,18 @@
 from __future__ import annotations
 
 import hashlib
+import re
+import unicodedata
 
 CODE_HASH_LENGTH = 12
+
+
+def normalize_source_key(s: object) -> str:
+    """自建来源(材料表/配货表)的稳定键归一化:NFKC(全角→半角)+ 去所有空白。
+
+    进 hash 的文本必须经过它,两个专区脚本共用同一份,规则一旦分叉同名商品就会算出不同 code。
+    """
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(s if s is not None else "")))
 
 
 def _hash_prefix(identity: str, *, length: int = CODE_HASH_LENGTH) -> str:

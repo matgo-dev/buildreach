@@ -41,10 +41,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import collections
-import os
-import re
 import sys
-import unicodedata
 from pathlib import Path
 
 # 允许 `python scripts/import_zone_soe_materials.py` 直接运行
@@ -63,7 +60,8 @@ from app.db.models.product import Product, ProductStatus, ProductVisibility  # n
 from app.db.models.product_attr import ProductAttr  # noqa: E402
 from app.db.models.product_sku import ProductSku, SkuStatus  # noqa: E402
 from app.db.models.zone import Zone, ZoneCategory, ZoneProduct  # noqa: E402
-from app.services.product_code import platform_spu_code, platform_sku_code  # noqa: E402
+from app.services.product_code import normalize_source_key, platform_spu_code, platform_sku_code  # noqa: E402
+from scripts._zone_import_common import guard_commit  # noqa: E402
 
 ZONE_CODE = "common-materials"
 ZSOE_SOURCE = "ZSOE"  # 统一 code 规则里,央企材料表作为"来源 X"
@@ -98,8 +96,8 @@ _NAME_TO_CODE = {name_zh: code for code, name_zh, _ in ZONE_CATEGORIES}
 
 
 def _hard(s: str) -> str:
-    """硬归一化:NFKC(全角→半角)+ 去所有空白。用于 join key 与稳定 code 派生。"""
-    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(s)))
+    """硬归一化(与矿业脚本共用一份实现,见 product_code.normalize_source_key)。"""
+    return normalize_source_key(s)
 
 
 def _norm(v) -> str:
@@ -543,15 +541,7 @@ async def _execute(dry_run: bool) -> None:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from app.core.config import settings
 
-    if (
-        not dry_run
-        and "162.19.98.142" in (settings.DATABASE_URL or "")
-        and os.environ.get("ALLOW_ZONE_IMPORT_PROD") != "1"
-    ):
-        raise SystemExit(
-            "拒绝执行:DATABASE_URL 指向 OVH 生产库。生产落库前请先完成备份并 dry-run, "
-            "确认后设置 ALLOW_ZONE_IMPORT_PROD=1 再执行 --commit。"
-        )
+    guard_commit(settings.DATABASE_URL, dry_run=dry_run)
 
     engine = create_async_engine(settings.DATABASE_URL)
     Session = async_sessionmaker(engine, expire_on_commit=False)
