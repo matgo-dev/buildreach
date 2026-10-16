@@ -7,12 +7,12 @@ import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { RouteGuard } from "@/components/auth/RouteGuard";
+import { ZoneGate } from "@/components/zone/ZoneGate";
 import { zonesApi, type ZoneCategory } from "@/lib/api/zones";
 import type { ProductListResponse } from "@/lib/api/products";
 import { ZoneCategoryNav } from "@/components/zone/ZoneCategoryNav";
 import { ProductGrid } from "@/components/mall/ProductGrid";
-import { useAuthStore } from "@/stores/authStore";
+import { useAccessibleZones } from "@/hooks/useAccessibleZones";
 import { zoneDisplayName } from "@/lib/zoneName";
 import { Pagination } from "@/components/mall/Pagination";
 
@@ -25,8 +25,8 @@ function ZoneContent() {
   const searchParams = useSearchParams();
   const t = useTranslations("zone");
   const zoneCode = String(params.zoneCode);
-  // 专区名取登录信息里的授权专区(RouteGuard 已保证有权访问),与导航同一口径
-  const zone = useAuthStore((st) => st.user?.zones?.find((z) => z.code === zoneCode));
+  // 专区名取可访问专区列表(ZoneGate 已保证在列表内),与导航同一口径
+  const zone = useAccessibleZones().zones.find((z) => z.code === zoneCode);
   const zoneName = zone ? zoneDisplayName(zone, locale) : "";
 
   // 专区卡片不显示平台品类标签:专区有自己的大类轴,平台品类是粗占位(机电/手动工具)或停用的专区专用品类,
@@ -102,7 +102,7 @@ function ZoneContent() {
 
   const clearAll = () => updateParams({ cat: undefined, scene: undefined, keyword: undefined, page: undefined });
 
-  // 两条轴:场景行(kind=SCENE,可多挂)在上,大类行(kind=CATEGORY)在下;没有场景的专区(常用材料)不渲染场景行。
+  // 两条轴:场景行(kind=SCENE,可多挂)在上,大类行(kind=CATEGORY)在下;没有场景的专区(央企常用材料)不渲染场景行。
   const scenes = useMemo(() => (categories ?? []).filter((c) => c.kind === "SCENE"), [categories]);
   const cats = useMemo(() => (categories ?? []).filter((c) => c.kind !== "SCENE"), [categories]);
 
@@ -209,9 +209,9 @@ function ZoneContentGated() {
   const params = useParams();
   const zoneCode = String(params.zoneCode);
   return (
-    <RouteGuard requireZone={zoneCode}>
+    <ZoneGate zoneCode={zoneCode}>
       <ZoneContent />
-    </RouteGuard>
+    </ZoneGate>
   );
 }
 

@@ -102,11 +102,17 @@ function Inner() {
           {zones.length === 0 && <option value="">暂无专区</option>}
           {zones.map((z) => (
             <option key={z.id} value={z.code}>
-              {z.name_zh}（{z.code}）{z.status !== "ACTIVE" ? " · 已停用" : ""}
+              {z.name_zh}（{z.code}）{z.is_public ? " · 公开" : ""}{z.status !== "ACTIVE" ? " · 已停用" : ""}
             </option>
           ))}
         </select>
       </div>
+
+      {currentZone?.is_public && (
+        <div className="rounded-lg border-l-4 border-teal-500 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          公开专区：所有人（含未登录）都能进入，授权不影响访问。
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">

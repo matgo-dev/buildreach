@@ -1,11 +1,12 @@
 // 央企/客户专区(Zone)买家侧只读 API client。
 //
 // 后端契约: backend/app/api/v1/zones.py
-// 全部端点要求:已登录 + 持有该 zone 的 ZoneGrant,否则 403(不区分"不存在"/"未授权")。
+// 公开专区(is_public)所有人可访问(含未登录);非公开专区须持有 ZoneGrant,未登录 401、无授权 403。
 // 列表/详情复用公开商品序列化,类型直接借用 lib/api/products.ts 里的公开商品类型。
 
 import { api } from "../api";
 import type { ProductListResponse, ProductPublicDetail } from "./products";
+import type { ZoneBriefForUser } from "../zoneName";
 
 export type ZoneCategoryKind = "CATEGORY" | "SCENE";
 
@@ -45,6 +46,9 @@ export interface ZoneProductDetail extends ProductPublicDetail {
 }
 
 export const zonesApi = {
+  /** 当前访问者可进的专区(未登录只含公开专区) */
+  list: () => api.get<ZoneBriefForUser[]>("/api/v1/zones"),
+
   /** 专区客户视角大类导航 */
   categories: (zoneCode: string) =>
     api.get<ZoneCategory[]>(`/api/v1/zones/${zoneCode}/categories`),

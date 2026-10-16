@@ -174,7 +174,7 @@ export function ProductCard({
 
       {/* 信息区 */}
       <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
-        <h3 className="min-h-[40px] sm:min-h-[46px] text-[13px] sm:text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
+        <h3 className="text-[13px] sm:text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
           {product.supply_mode === "PLATFORM_STOCK" ? (
             <span className="inline-flex items-center rounded bg-teal-700 px-1.5 py-px text-[10px] font-bold text-white mr-1 align-text-top">
               {t("supplyModePlatformStock")}

@@ -10,7 +10,7 @@ import { zoneDisplayName, type ZoneBriefForUser } from "@/lib/zoneName";
 /**
  * 导航行的专区入口。账号能看到的专区数从 1 到很多都要成立:
  * - 1 个:直接是一个带专区名的入口(下拉里只有一项等于多点一次);名字过长截断 + title 显示全名。
- * - ≥2 个:固定宽度的「专属专区 ▾」按钮 + 浮层列表;浮层限高、内部滚动,长名换行不截断。
+ * - ≥2 个:固定宽度的「专区 ▾」按钮 + 浮层列表;浮层限高、内部滚动,长名换行不截断。
  *
  * 为什么不平铺:导航行宽度有上限(max-w-mall),实测 3 个专区时中文溢出 226px、
  * 2 个专区也会溢出,行内又是 overflow-x-auto + 隐藏滚动条,溢出的专区直接看不见。
@@ -99,7 +99,7 @@ export function ZoneNavMenu({ zones }: { zones: ZoneBriefForUser[] }) {
         onClick={() => setOpen((v) => !v)}
         className={chipCls(!!activeCode)}
       >
-        {t("navExclusiveZone")}
+        {t("navZones")}
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {open && pos && (
