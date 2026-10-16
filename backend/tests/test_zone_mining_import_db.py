@@ -21,7 +21,7 @@ async def _zone(db_session, code="ZONE-MINING-T"):
 
 async def _product(db_session, spu_code, batch=BATCH_ID):
     p = Product(spu_code=spu_code, name_zh=spu_code, category_code="04.001", status=ProductStatus.ACTIVE,
-                visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS", source="IMPORT",
+                visibility=ProductVisibility.PUBLIC, moq=1, unit="PCS", source="IMPORT",
                 source_meta={"batch": batch})
     db_session.add(p)
     await db_session.flush()
@@ -45,10 +45,14 @@ async def test_prune_removes_batch_rows_not_in_expected_set_and_keeps_manual(db_
 
 @pytest.mark.asyncio
 async def test_find_orphan_products_reports_batch_products_missing_from_computed_set(db_session):
+    zone, a, _b = await _zone(db_session, "ZONE-MINING-FIND")
     old = await _product(db_session, "ORPHAN-OLD")
     keep = await _product(db_session, "ORPHAN-KEEP")
-    await _product(db_session, "OTHER-BATCH", batch="something_else")
-    orphans = await find_orphan_products(db_session, computed_spu_codes={"ORPHAN-KEEP", "ORPHAN-NEW"})
+    other = await _product(db_session, "OTHER-BATCH", batch="something_else")
+    for p in (old, keep, other):
+        db_session.add(ZoneProduct(zone_id=zone.id, spu_id=p.id, zone_category_id=a.id, source="IMPORT", source_batch_id=BATCH_ID))
+    await db_session.flush()
+    orphans = await find_orphan_products(db_session, zone, computed_spu_codes={"ORPHAN-KEEP", "ORPHAN-NEW"})
     assert [(o.id, o.spu_code, o.name_zh) for o in orphans] == [(old.id, "ORPHAN-OLD", "ORPHAN-OLD")]
 
 
@@ -66,7 +70,7 @@ async def test_soft_delete_orphans_removes_zone_rows_and_soft_deletes_product_an
     db_session.add(ZoneProduct(zone_id=zone.id, spu_id=old.id, zone_category_id=a.id, source="IMPORT", source_batch_id=BATCH_ID))
     await db_session.flush()
 
-    orphans = await find_orphan_products(db_session, computed_spu_codes=set())
+    orphans = await find_orphan_products(db_session, zone, computed_spu_codes=set())
     n = await soft_delete_orphans(db_session, zone, orphans)
     assert n == 1
     assert (await db_session.execute(select(ZoneProduct.id).where(ZoneProduct.spu_id == old.id))).scalars().all() == []
@@ -82,11 +86,12 @@ async def test_soft_delete_orphans_removes_zone_rows_and_soft_deletes_product_an
 
 
 @pytest.mark.asyncio
-async def test_find_orphans_ignores_public_and_non_import_products(db_session):
-    """候选先按 visibility/source 收口:PUBLIC 或非 IMPORT 的商品即便 batch 相同也不算本脚本的孤儿。"""
-    p = await _product(db_session, "ORPHAN-PUB")
-    p.visibility = ProductVisibility.PUBLIC
+async def test_find_orphans_ignores_unmounted_and_non_import_products(db_session):
+    """候选先按本专区挂载收口:没挂在本专区的、或非 IMPORT 的商品,即便 batch 相同也不算本脚本的孤儿。"""
+    zone, a, _b = await _zone(db_session, "ZONE-MINING-IGN")
+    await _product(db_session, "ORPHAN-UNMOUNTED")
     q = await _product(db_session, "ORPHAN-MANUAL")
     q.source = "MANUAL"
+    db_session.add(ZoneProduct(zone_id=zone.id, spu_id=q.id, zone_category_id=a.id, source="MANUAL", source_batch_id=None))
     await db_session.flush()
-    assert await find_orphan_products(db_session, computed_spu_codes=set()) == []
+    assert await find_orphan_products(db_session, zone, computed_spu_codes=set()) == []

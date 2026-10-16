@@ -28,6 +28,6 @@
 
 生产:镜像不含 data/,先把源表 + 本目录拷到主机,再 docker cp 进容器(脚本按仓库相对路径读 data/zone_import/mining/*.csv,容器内需放到 /app/data/zone_import/mining/);--commit 时只要 DATABASE_URL 的主机不是本机(容器里是 compose 服务名 db,staging 和生产都算)就必须 ALLOW_ZONE_IMPORT_PROD=1,守卫在 scripts/_zone_import_common.py,央企脚本同一份。
 
-2026-10-15 本地落库计数:763 SPU(25 个多规格,共 799 SKU)、1609 条 zone_products(763 大类 + 846 场景)、平台品类 33/34/35 子树 15 个节点(全部停用)。
+2026-10-15 本地落库计数:763 SPU(25 个多规格,共 799 SKU)、1609 条 zone_products(763 大类 + 846 场景)、平台品类 33/34/35 子树 15 个节点(全部启用,一级带导航短名 矿山/化学/实验)。商品全部 PUBLIC(商城也可见),mining 专区公开(所有人含未登录可进)。
 
 **采购说明不当描述**:源表「参考型号/规格」列是写给采购员的(按…核对/预算示例/待核),导入存到 `products.source_meta.purchase_note`,只在运营商品详情显示为「采购备注」;买家端描述留空。占位值(未列/原PDF未列规格/待确认)在解析层当空,新发现的加进脚本里的占位集合。

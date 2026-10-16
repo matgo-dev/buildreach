@@ -1,4 +1,4 @@
-"""矿业勘探·开采专区(mining)商品导入:6 张配货表 → 专区 + 平台商品(ZONE_ONLY)。
+"""矿业勘探·开采专区(mining)商品导入:6 张配货表 → 公开专区 + 平台公开商品(PUBLIC)。
 
 输入(目录由 --src 指定,默认仓库外的 矿业专区资料/):
 - 01_浮选厂*.xlsx / 02_井下开采*.xlsx / 03_矿山化验室*.xlsx / 04_金矿CIP_CIL*.xlsx / 05_露天开采*.xlsx / 600型与800型*.xlsx
@@ -7,9 +7,9 @@
 - data/zone_import/mining/zone_category_map.csv  平台品类前缀 → 专区大类(专区大类由平台品类推导,不单独决策)
 
 产出:
-- zone(code=mining)+ 11 个 kind=CATEGORY 大类 + 6 个 kind=SCENE 场景
-- 平台一级 33/34/35 及其叶子(整棵 is_active=false)
-- 每个 SPU:products(ZONE_ONLY/ACTIVE)+ SKU(多规格走变体)+ SPU 级属性 + 1 行 CATEGORY zone_product + N 行 SCENE zone_product
+- zone(code=mining,新建时 is_public=true,所有人含未登录可进)+ 11 个 kind=CATEGORY 大类 + 6 个 kind=SCENE 场景
+- 平台一级 33/34/35 及其叶子(启用,随商品一起出现在商城导航)
+- 每个 SPU:products(PUBLIC/ACTIVE,商城也可见)+ SKU(多规格走变体)+ SPU 级属性 + 1 行 CATEGORY zone_product + N 行 SCENE zone_product
 - --dry-run 写审核 CSV:data/zone_import/mining/dry_run_audit.csv + 丢弃行 dry_run_dropped.csv(不提交到 git)
 
 幂等:zone/zone_category 按 code upsert;product 按 spu_code;zone_product 按三元组;已存在商品只更新可变字段、不动 SKU。
@@ -86,7 +86,13 @@ ZONE_SCENES = [
     ("S05", "矿山化验室", "Mine Laboratory", "Maabara ya Mgodi"),
     ("S06", "勘探钻机", "Exploration Drill Rig", "Mashine ya Uchimbaji wa Utafiti"),
 ]
-# (code, zh, en, sw, parent_code)  整棵 is_active=false
+# 一级的导航短名(首页/商城侧栏每行 3~4 个短名;没有短名前端会截成「矿山…」),对齐其它一级的两字惯例
+PLATFORM_L1_SHORT_NAMES = {
+    "33": ("矿山", "Mining", "Madini"),
+    "34": ("化学", "Chemicals", "Kemikali"),
+    "35": ("实验", "Lab", "Maabara"),
+}
+# (code, zh, en, sw, parent_code)  整棵启用(2026-10-15 专区与商品改公开)
 PLATFORM_CATEGORIES = [
     ("33", "矿山与钻探机械", "Mining & Drilling Machinery", "Mitambo ya Uchimbaji", None),
     ("33.001", "破碎与磨矿", "Crushing & Grinding", "Kusaga na Kuponda", "33"),
@@ -449,7 +455,7 @@ async def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = Fa
 
 
 async def ensure_platform_categories(db: AsyncSession, stats: collections.Counter) -> None:
-    """建 33/34/35 子树,整棵 is_active=False。code 已被别的名字占用则中止(跨环境 code 不一致防线)。"""
+    """建 33/34/35 子树并保证启用(早期导入建成停用的就地启用)。code 已被别的名字占用则中止(跨环境 code 不一致防线)。"""
     codes = [c[0] for c in PLATFORM_CATEGORIES]
     existing = {c.code: c for c in (await db.execute(select(Category).where(Category.code.in_(codes)))).scalars().all()}
     l1_sort = (await db.execute(select(func.max(Category.sort_order)).where(Category.level == 1))).scalar() or 0
@@ -458,14 +464,21 @@ async def ensure_platform_categories(db: AsyncSession, stats: collections.Counte
         if cur is not None:
             if cur.name_zh != zh:
                 raise RuntimeError(f"品类 code {code} 已存在且名称不同:{cur.name_zh!r} ≠ {zh!r},请先人工处理")
+            if not cur.is_active:
+                cur.is_active = True
+                stats["platform_categories_activated"] += 1
+            if code in PLATFORM_L1_SHORT_NAMES and not cur.short_name_zh:
+                cur.short_name_zh, cur.short_name_en, cur.short_name_sw = PLATFORM_L1_SHORT_NAMES[code]
             stats["platform_categories_existing"] += 1
             continue
         level = 1 if parent is None else 2
         cat = Category(
             code=code, level=level, parent_code=parent,
             sort_order=(l1_sort + 1 + i) if level == 1 else i,
-            is_active=False, is_leaf=(level == 2), source_lang=SOURCE_LANG,
+            is_active=True, is_leaf=(level == 2), source_lang=SOURCE_LANG,
         )
+        if code in PLATFORM_L1_SHORT_NAMES:
+            cat.short_name_zh, cat.short_name_en, cat.short_name_sw = PLATFORM_L1_SHORT_NAMES[code]
         apply_i18n_prefilled(cat, "name", {"zh": zh, "en": en, "sw": sw}, SOURCE_LANG)
         db.add(cat)
         stats["platform_categories_created"] += 1
@@ -483,7 +496,7 @@ async def validate_category_codes(db: AsyncSession, spus: list[SpuRow]) -> None:
 async def get_or_create_zone(db: AsyncSession, stats: collections.Counter) -> Zone:
     zone = (await db.execute(select(Zone).where(Zone.code == ZONE_CODE))).scalar_one_or_none()
     if zone is None:
-        zone = Zone(code=ZONE_CODE, name_zh=ZONE_NAME[0], name_en=ZONE_NAME[1], name_sw=ZONE_NAME[2], status="ACTIVE")
+        zone = Zone(code=ZONE_CODE, name_zh=ZONE_NAME[0], name_en=ZONE_NAME[1], name_sw=ZONE_NAME[2], status="ACTIVE", is_public=True)
         db.add(zone)
         await db.flush()
         stats["zone_created"] += 1
@@ -544,7 +557,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         product.description_zh = product.description_en = product.description_sw = None
         product.category_code = s.category_code
         product.moq_unit = s.unit
-        product.visibility = ProductVisibility.ZONE_ONLY
+        product.visibility = ProductVisibility.PUBLIC
         product.status = ProductStatus.ACTIVE
         product.source_meta = _source_meta(s)
         if not product.name_en and not (product.trans_meta or {}):
@@ -568,7 +581,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
     product = Product(
         spu_code=s.spu_code, name_zh=s.name, description_zh=None,
         category_code=s.category_code,
-        status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY,
+        status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC,
         unit="PCS", moq=1, moq_unit=s.unit, source=SOURCE,
         source_meta=_source_meta(s),
     )
@@ -661,16 +674,17 @@ class OrphanRef:
     name_zh: str
 
 
-async def find_orphan_products(db: AsyncSession, computed_spu_codes: set[str]) -> list[OrphanRef]:
+async def find_orphan_products(db: AsyncSession, zone: Zone, computed_spu_codes: set[str]) -> list[OrphanRef]:
     """本批次以前导入、但这次按合并表算不出来的商品(典型:spu_merge.csv 改了品名 → spu_code 变了)。
 
-    只取 id/spu_code/name_zh;先用带索引的 visibility + source 把候选压到专区导入商品,再做 JSON 比对,
-    不让 17 万 XFS SPU 跟着全表扫。
+    只取 id/spu_code/name_zh;候选先按专区挂载(ix_zone_product_zone_spu)收口到本专区商品,再做 source/batch 比对,
+    不让 17 万公开 SPU 跟着全表扫(商品已是 PUBLIC,visibility 不再能收口)。
     """
+    in_zone = select(ZoneProduct.spu_id).where(ZoneProduct.zone_id == zone.id)
     rows = (await db.execute(
         select(Product.id, Product.spu_code, Product.name_zh).where(
+            Product.id.in_(in_zone),
             Product.deleted_at.is_(None),
-            Product.visibility == ProductVisibility.ZONE_ONLY,
             Product.source == SOURCE,
             Product.source_meta["batch"].as_string() == BATCH_ID,
         ).order_by(Product.spu_code)
@@ -749,7 +763,7 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orpha
     zcs = await upsert_zone_categories(db, zone, stats)
 
     # 孤儿守卫:上次导入过、这次算不出来的商品(合并表改名会触发)。不处理就会在专区里留下重复/过期商品。
-    orphans = await find_orphan_products(db, {s.spu_code for s in spus})
+    orphans = await find_orphan_products(db, zone, {s.spu_code for s in spus})
     stats["orphan_products"] = len(orphans)
     if orphans:
         for p in orphans[:20]:
@@ -807,7 +821,7 @@ async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) ->
     print(f"矿业专区导入 {'[DRY-RUN 未落库]' if dry_run else '[已落库 COMMIT]'}  batch={BATCH_ID}")
     print("=" * 64)
     for k in ("source_rows", "rows_dropped", "spus", "unmatched", "unmapped_zone_cat", "conflicts", "attr_diffs", "sku_mismatches",
-              "platform_categories_created", "platform_categories_existing",
+              "platform_categories_created", "platform_categories_existing", "platform_categories_activated",
               "zone_created", "zone_categories_created", "zone_categories_updated",
               "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
               "zone_products_created", "zone_products_updated", "zone_products_existing", "zone_products_removed",
