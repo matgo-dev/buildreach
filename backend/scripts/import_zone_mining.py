@@ -51,6 +51,7 @@ DATA_DIR = _REPO_ROOT / "data" / "zone_import" / "mining"
 MERGE_CSV = DATA_DIR / "spu_merge.csv"
 RULES_CSV = DATA_DIR / "rules.csv"
 ZONE_CAT_MAP_CSV = DATA_DIR / "zone_category_map.csv"
+SPEC_I18N_CSV = DATA_DIR / "spec_i18n.csv"
 AUDIT_CSV = DATA_DIR / "dry_run_audit.csv"
 DROPPED_CSV = DATA_DIR / "dry_run_dropped.csv"
 MAX_NAME_LEN = 60
@@ -265,6 +266,24 @@ def load_merge_map(path: Path) -> dict[str, tuple[str, str]]:
     return out
 
 
+SpecI18n = dict[str, tuple[str, str]]   # 规格中文值 → (en, sw)
+
+
+def load_spec_i18n(path: Path) -> SpecI18n:
+    """规格值人工译文覆盖表:机翻把「4分/2匹/14号」这类短值译错,列在这里的按人工值落库标 manual,
+    不在表里的照常送机翻。sw 留空 = 抄 en(单位/型号/数字这类本来不用翻)。"""
+    out: SpecI18n = {}
+    with path.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            zh, en, sw = row["规格"].strip(), row["en"].strip(), (row.get("sw") or "").strip()
+            if not zh or not en:
+                raise ValueError(f"spec_i18n.csv 规格/en 不能为空:{row!r}")
+            if zh in out:
+                raise ValueError(f"spec_i18n.csv 规格重复:{zh!r}")
+            out[zh] = (en, sw or en)
+    return out
+
+
 @dataclass(frozen=True)
 class Rule:
     file_key: str
@@ -459,15 +478,24 @@ def _pin_spec_key_en(attr: ProductAttr) -> None:
     attr.trans_meta = {**(attr.trans_meta or {}), "attr_key_en": "manual"}
 
 
-async def mark_attr_i18n(attr: ProductAttr) -> None:
+async def mark_attr_i18n(attr: ProductAttr, *, value_i18n: tuple[str, str] | None = None) -> None:
     """属性键按中文源走翻译队列,买家看到的是译名。例外:可选规格的 attr_key_en 是变体的交易键
     (购物车指纹/询价快照按它算),固定为 SPEC_KEY_EN 不机翻,免得同一商品的规格维度被翻译拆散。
-    attr_value 一律待翻(规格值里有「扬程150米/4分/41码」这类中文,英文买家在规格按钮上要看译文)。"""
+    attr_value 待翻(规格值里有「扬程150米/4分/41码」这类中文,英文买家在规格按钮上要看译文);
+    value_i18n=(en, sw) 给了就按人工译文落、标 manual(spec_i18n.csv 里机翻译错的短值)。"""
     attr.source_lang = SOURCE_LANG
     await apply_i18n_create(attr, "attr_key", attr.attr_key_zh, SOURCE_LANG)
     if attr.selectable:
         _pin_spec_key_en(attr)
-    await apply_i18n_create(attr, "attr_value", attr.attr_value_zh, SOURCE_LANG)
+    if value_i18n:
+        _apply_spec_override(attr, value_i18n)
+    else:
+        await apply_i18n_create(attr, "attr_value", attr.attr_value_zh, SOURCE_LANG)
+
+
+def _apply_spec_override(attr: ProductAttr, value_i18n: tuple[str, str]) -> None:
+    en, sw = value_i18n
+    apply_i18n_prefilled(attr, "attr_value", {"zh": attr.attr_value_zh, "en": en, "sw": sw}, SOURCE_LANG)
 
 
 def _spec_value_was_prefilled(a: ProductAttr) -> bool:
@@ -567,9 +595,9 @@ async def _add_spu_attr(db: AsyncSession, product: Product, key_zh: str, value: 
     db.add(attr)
 
 
-async def sync_attrs(db: AsyncSession, product: Product, s: SpuRow, stats: collections.Counter) -> None:
+async def sync_attrs(db: AsyncSession, product: Product, s: SpuRow, stats: collections.Counter, spec_i18n: SpecI18n) -> None:
     """重跑时对齐属性:SPU 级属性按 (键, 值) 增删到与源表一致(旧版本写入的废属性会被清掉);
-    可选规格的英文交易键统一成 SPEC_KEY_EN。SKU 本身不动(见 sku_mismatches)。"""
+    可选规格的英文交易键统一成 SPEC_KEY_EN,规格值按覆盖表对齐。SKU 本身不动(见 sku_mismatches)。"""
     attrs = (await db.execute(select(ProductAttr).where(ProductAttr.product_id == product.id))).scalars().all()
     expected = _spu_attrs(s)
     spu_level = {(a.attr_key_zh, a.attr_value_zh): a for a in attrs if a.sku_id is None and not a.selectable}
@@ -589,7 +617,13 @@ async def sync_attrs(db: AsyncSession, product: Product, s: SpuRow, stats: colle
             if a.selectable:
                 _pin_spec_key_en(a)
             stats["attrs_updated"] += 1
-        if _spec_value_was_prefilled(a):
+        override = spec_i18n.get(a.attr_value_zh) if a.selectable else None
+        if override is not None:
+            # 覆盖表里的规格值以人工译文为准(机翻的、旧版抄中文的都冲掉);一致就不动,保证重跑幂等
+            if (a.attr_value_en, a.attr_value_sw) != override:
+                _apply_spec_override(a, override)
+                stats["attrs_updated"] += 1
+        elif _spec_value_was_prefilled(a):
             # 规格值从「抄中文标 manual」改回待翻。购物车指纹含 attr_value_en,译文落下后指纹会变:
             # 只能在该商品还没有加购/询价行引用时做(生产在首次导入前合入此版本即可)。
             a.attr_value_en = a.attr_value_sw = None
@@ -617,7 +651,9 @@ def _source_meta(s: SpuRow) -> dict:
     return meta
 
 
-async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter, sku_mismatches: list[str]) -> Product:
+async def upsert_product(
+    db: AsyncSession, s: SpuRow, stats: collections.Counter, sku_mismatches: list[str], spec_i18n: SpecI18n,
+) -> Product:
     product = (await db.execute(
         select(Product).where(Product.spu_code == s.spu_code, Product.deleted_at.is_(None))
     )).scalar_one_or_none()
@@ -631,7 +667,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
             # 早期导入未打翻译标记的行:补标记一次(已有 en 或已有记账的不动,避免重复翻译)
             await mark_product_i18n(product)
             stats["products_marked_for_i18n"] += 1
-        await sync_attrs(db, product, s, stats)
+        await sync_attrs(db, product, s, stats, spec_i18n)
         # 更新路径不动 SKU。规格集合变了(合并表加/删规格)就不是"幂等重跑",必须让人看到而不是报成功。
         live = set((await db.execute(
             select(ProductSku.sku_code).where(ProductSku.product_id == product.id, ProductSku.deleted_at.is_(None))
@@ -672,7 +708,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
                 attr_key_zh="规格", attr_value_zh=spec,
                 selectable=True, sort_order=i,
             )
-            await mark_attr_i18n(spec_attr)
+            await mark_attr_i18n(spec_attr, value_i18n=spec_i18n.get(spec))
             db.add(spec_attr)
         stats["skus_created"] += len(s.specs)
     else:
@@ -799,6 +835,7 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orpha
     dropped: list[DroppedRow] = []
     rows = load_source_rows(src_dir, dropped)
     spus = build_spus(rows, load_merge_map(MERGE_CSV), load_rules(RULES_CSV), load_zone_cat_map(ZONE_CAT_MAP_CSV))
+    spec_i18n = load_spec_i18n(SPEC_I18N_CSV)
     stats["source_rows"], stats["spus"], stats["rows_dropped"] = len(rows), len(spus), len(dropped)
     unmatched = [s for s in spus if s.category_code is None]
     # 规则命中了平台品类、但对照表推不出专区大类:对照表漏了这个品类,不能悄悄丢进某个大类
@@ -840,7 +877,7 @@ async def run_import(db: AsyncSession, src_dir: Path, dry_run: bool, prune_orpha
     for s in spus:
         if s.zone_cat is None:
             continue
-        product = await upsert_product(db, s, stats, sku_mismatches)
+        product = await upsert_product(db, s, stats, sku_mismatches, spec_i18n)
         expected: set[int] = set()
         await upsert_zone_product(db, zone, zcs[s.zone_cat], product, sort_counters[s.zone_cat], stats)
         expected.add(zcs[s.zone_cat].id)
