@@ -12,7 +12,9 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.rbac.constants import Permissions
 from app.rbac.guards import require_permission
-from app.schemas.user import AdminUserCreateIn, AdminUserListOut, AdminUserOut, AdminUserUpdateIn
+from app.schemas.user import (
+    AdminResetPasswordIn, AdminUserCreateIn, AdminUserListOut, AdminUserOut, AdminUserUpdateIn,
+)
 from app.services import session_service, user_service
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
@@ -183,3 +185,23 @@ async def force_logout(
     )
     await db.commit()
     return success(None)
+
+
+@router.post("/{user_id}/reset-password", summary="重置密码(ADMIN 直设;目标首次登录强制改密,旧 token 全失效)")
+async def reset_password_route(
+    body: AdminResetPasswordIn,
+    user_id: int = Path(..., ge=1),
+    request: Request = None,  # type: ignore[assignment]
+    current: CurrentUser = Depends(require_permission(Permissions.USER_MANAGE)),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await user_service.reset_password(
+        db,
+        target_user_id=user_id,
+        actor_user_id=current.id,
+        actor_user_email=current.email,
+        new_password=body.new_password,
+        request=request,
+    )
+    roles = await _load_roles_of(db, user.id)
+    return success(_user_to_out(user, roles).model_dump())

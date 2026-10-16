@@ -49,3 +49,16 @@ class AdminUserUpdateIn(BaseModel):
 class AdminUserListOut(BaseModel):
     items: list[AdminUserOut]
     total: int
+
+
+class AdminResetPasswordIn(BaseModel):
+    """ADMIN 直设新密码;目标账号 must_change_password 置 True,旧 token 全失效。"""
+
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _check(cls, v: str) -> str:
+        if not validate_password_strength(v):
+            raise ValueError(PASSWORD_RULE_MESSAGE)
+        return v

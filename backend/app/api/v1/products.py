@@ -337,7 +337,13 @@ async def brand_options(
     category_code: str | None = Query(None, description="按品类缩小范围"),
     db: AsyncSession = Depends(get_db),
 ):
-    """按商品数量降序返回 Top 50 品牌，结果缓存 10 分钟。"""
+    """按商品数量降序返回 Top 50 品牌，结果缓存 10 分钟。
+
+    缓存键含客户端传入的 category_code:只对真实存在的品类查询/缓存,不存在的直接返回空、不写缓存,
+    否则公开接口被随机参数刷时缓存会无界增长。条目上限 = 品类数 × 语种数。
+    """
+    if category_code and not await product_svc.category_exists(db, category_code):
+        return success([])
     locale = get_current_locale()
     cache_key = f"{locale}:{category_code or '__all__'}"
     now = monotonic()

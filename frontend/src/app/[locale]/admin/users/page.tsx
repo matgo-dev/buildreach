@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Pencil, Plus, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, Pencil, Plus, X } from "lucide-react";
 
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ function Inner() {
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AdminUserOut | null>(null);
+  const [resetTarget, setResetTarget] = useState<AdminUserOut | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -165,6 +166,13 @@ function Inner() {
                       >
                         <Pencil className="inline h-3 w-3 mr-1" />编辑
                       </button>
+                      <button
+                        disabled={busyId === u.id}
+                        onClick={() => setResetTarget(u)}
+                        className="rounded border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                      >
+                        <KeyRound className="inline h-3 w-3 mr-1" />重置密码
+                      </button>
                       {u.status === "ACTIVE" ? (
                         <button
                           disabled={busyId === u.id}
@@ -250,6 +258,98 @@ function Inner() {
           }}
         />
       )}
+
+      {resetTarget && (
+        <ResetPasswordModal
+          user={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onDone={async () => {
+            setResetTarget(null);
+            await load(page);
+            showToast("ok", "已重置,该用户下次登录需修改密码");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ResetPasswordModal({
+  user,
+  onClose,
+  onDone,
+}: {
+  user: AdminUserOut;
+  onClose: () => void;
+  onDone: () => Promise<void>;
+}) {
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState("");
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pwErr = validatePassword(password);
+    if (pwErr) return setErr(pwErr);
+    setErr("");
+    setSubmitting(true);
+    try {
+      await adminUsersApi.resetPassword(user.id, password);
+      await onDone();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "重置失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">重置密码 · {user.email ?? user.name}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {err && (
+          <div className="mb-3 flex items-center gap-2 rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4" /> {err}
+          </div>
+        )}
+        <form onSubmit={onSubmit} className="space-y-3" noValidate>
+          <Field id="reset-password" label="新密码 *">
+            <input
+              id="reset-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputCls(!!err)}
+            />
+            <p className="mt-1 text-xs text-slate-400">{PASSWORD_RULE_MESSAGE}</p>
+          </Field>
+          <p className="text-xs text-slate-500">
+            重置后该用户所有已登录会话立即失效,下次登录必须修改密码。
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex h-9 items-center gap-2 rounded-lg bg-[#003366] px-4 text-sm font-semibold text-white hover:bg-[#002244] disabled:opacity-60"
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              重置
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

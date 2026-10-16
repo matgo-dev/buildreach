@@ -52,4 +52,6 @@ export const adminUsersApi = {
     api.post<AdminUserOut>(`/api/v1/admin/users/${userId}/enable`),
   update: (userId: number, body: AdminUserUpdateIn) =>
     api.put<AdminUserOut>(`/api/v1/admin/users/${userId}`, body),
+  resetPassword: (userId: number, new_password: string) =>
+    api.post<AdminUserOut>(`/api/v1/admin/users/${userId}/reset-password`, { new_password }),
 };

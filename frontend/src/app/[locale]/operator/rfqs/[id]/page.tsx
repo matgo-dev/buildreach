@@ -29,7 +29,7 @@ import {
 } from "@/lib/api/quotes";
 import { operatorProductsApi, type ProductOperatorItem } from "@/lib/api/operatorProducts";
 import { getProduct, type AttrItem } from "@/lib/api/products";
-import { formatDate, formatCurrency } from "@/lib/formatters";
+import { formatDate, formatCurrency, formatQuantity } from "@/lib/formatters";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 
 // ---------- 行内数量编辑组件 ----------
@@ -80,7 +80,7 @@ function EditableQuantity({
   if (!editable) {
     return (
       <span className="font-semibold text-gray-800">
-        {item.quantity} {item.uom_snapshot ?? ""}
+        {formatQuantity(item.quantity)} {item.uom_snapshot ?? ""}
       </span>
     );
   }
@@ -93,7 +93,7 @@ function EditableQuantity({
         className="font-semibold text-blue-600 hover:underline"
         title={t("editQuantity")}
       >
-        {item.quantity} {item.uom_snapshot ?? ""}
+        {formatQuantity(item.quantity)} {item.uom_snapshot ?? ""}
       </button>
     );
   }
@@ -992,7 +992,7 @@ function OperatorRfqDetailContent() {
                           {qItem.unit_price != null ? Number(qItem.unit_price).toFixed(2) : "—"}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {qItem.moq != null ? Number(qItem.moq) : "—"}
+                          {formatQuantity(qItem.moq)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
                           {qItem.cbm_per_unit != null ? Number(qItem.cbm_per_unit) : "—"}
@@ -1005,7 +1005,7 @@ function OperatorRfqDetailContent() {
                             <div className="text-xs">
                               {[...qItem.tiers].sort((a, b) => a.min_qty - b.min_qty).map((tier, i, sorted) => {
                                 const next = sorted[i + 1];
-                                const label = next ? `${tier.min_qty}~${next.min_qty - 1}` : `≥${tier.min_qty}`;
+                                const label = next ? `${formatQuantity(tier.min_qty)}~${formatQuantity(next.min_qty - 1)}` : `≥${formatQuantity(tier.min_qty)}`;
                                 return <div key={i}>{label}: {Number(tier.unit_price).toFixed(2)}</div>;
                               })}
                             </div>

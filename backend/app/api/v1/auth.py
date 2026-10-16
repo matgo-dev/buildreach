@@ -39,7 +39,10 @@ from app.schemas.auth import (
     SupplierRegisterIn,
     TokenOut,
 )
-from app.schemas.me import ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, OrgUpdateIn, ProfileUpdateIn
+from app.schemas.me import (
+    ChangeEmailIn, ChangePhoneIn, ChangeUsernameIn, MemberCreateIn, MemberOut,
+    MemberResetPasswordIn, MemberUpdateIn, OrgUpdateIn, ProfileUpdateIn,
+)
 from app.services import auth_service, me_service, session_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
@@ -850,6 +853,9 @@ async def update_my_organization(
         user_email=current.email,
         name=body.name,
         unified_social_credit_code=body.unified_social_credit_code,
+        address=body.address,
+        tin=body.tin,
+        brela_no=body.brela_no,
         request=request,
     )
     return success({
@@ -857,9 +863,136 @@ async def update_my_organization(
         "id": org.id,
         "name": org.name,
         "unified_social_credit_code": org.unified_social_credit_code,
+        "address": org.address,
+        "tin": org.tin,
+        "brela_no": org.brela_no,
         "status": org.status,
         "is_owner": True,
     })
+
+
+# ----- 组织成员管理(仅买方组织 owner) -----
+
+def _member_payload(user: User, member: BuyerMember) -> dict:
+    return MemberOut(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        phone=user.phone,
+        status=user.status,
+        is_owner=member.is_owner,
+        created_at=member.created_at,
+    ).model_dump(mode="json")
+
+
+@router.get(
+    "/me/organization/members",
+    summary="本组织成员列表(仅 owner)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def list_my_members(
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await me_service.list_members(db, user_id=current.id)
+    return success([_member_payload(u, m) for u, m in rows])
+
+
+@router.post(
+    "/me/organization/members",
+    summary="建子账号(仅 owner;首次登录强制改密)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def create_my_member(
+    body: MemberCreateIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.create_member(
+        db,
+        owner_user_id=current.id,
+        owner_email=current.email,
+        name=body.name,
+        email=body.email,
+        password=body.password,
+        request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.post(
+    "/me/organization/members/{user_id}/disable",
+    summary="停用本组织成员(仅 owner)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def disable_my_member(
+    user_id: int,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.set_member_status(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, enabled=False, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.post(
+    "/me/organization/members/{user_id}/enable",
+    summary="启用本组织成员(仅 owner)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def enable_my_member(
+    user_id: int,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.set_member_status(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, enabled=True, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.patch(
+    "/me/organization/members/{user_id}",
+    summary="改本组织成员姓名/邮箱(仅 owner;子账号归组织)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def update_my_member(
+    user_id: int,
+    body: MemberUpdateIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.update_member(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, name=body.name, email=body.email, request=request,
+    )
+    return success(_member_payload(user, member))
+
+
+@router.post(
+    "/me/organization/members/{user_id}/reset-password",
+    summary="重置本组织成员密码(仅 owner;成员首次登录强制改密,旧 token 全失效)",
+    dependencies=[Depends(block_if_must_change_password)],
+)
+async def reset_my_member_password(
+    user_id: int,
+    body: MemberResetPasswordIn,
+    request: Request,
+    current: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user, member = await me_service.reset_member_password(
+        db, owner_user_id=current.id, owner_email=current.email,
+        target_user_id=user_id, new_password=body.new_password, request=request,
+    )
+    return success(_member_payload(user, member))
 
 
 @router.post(

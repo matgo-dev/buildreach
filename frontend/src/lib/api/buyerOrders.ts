@@ -6,14 +6,24 @@ import { api } from "../api";
 
 export type BindingState = "NO_ORG" | "AMBIGUOUS_ORG" | "ORG_DISABLED" | "NOT_BOUND";
 
-// 契约 §4.3:订单级全序 CONFIRMED < RECEIVED < LOADED < CLEARED < IN_TRANSIT < ARRIVED,CANCELLED 独立;
-// 柜级全序 LOADED < CLEARED < IN_TRANSIT < ARRIVED。展示侧所有按阶段映射的表都用 Record<…> 键这两个联合,
-// 履约新增阶段时先在这里补值,编译期即挡住漏项;运行期仍对不认识的值灰底兜底。
-export type OrderStage = "CONFIRMED" | "RECEIVED" | "LOADED" | "CLEARED" | "IN_TRANSIT" | "ARRIVED" | "CANCELLED";
+// 契约 §4.3 v5:订单级按整单事实六态——未发货 / 部分发运 / 全部发运 / 部分到港 / 全部到港 + 已取消,
+// 「发运」= 货装进柜(ISSUED 出库),与行级 shipped_qty 同口径;柜级递进链 LOADED < CLEARED < IN_TRANSIT < ARRIVED。
+// 展示侧所有按阶段映射的表都用 Record<…> 键这两个联合,履约新增阶段时先在这里补值,编译期即挡住漏项;
+// 运行期仍对不认识的值灰底兜底。
+export type OrderStage = "NOT_SHIPPED" | "PARTIALLY_SHIPPED" | "SHIPPED" | "PARTIALLY_ARRIVED" | "ARRIVED" | "CANCELLED";
 export type ShipmentStage = "LOADED" | "CLEARED" | "IN_TRANSIT" | "ARRIVED";
 export type MilestoneType = "DEPARTED" | "TRANSSHIPMENT" | "ARRIVED";
 /** 柜的报关状态:履约 customs_service.derive_status 单一源头派生,门户不重算。 */
 export type CustomsStatus = "NONE" | "DECLARED" | "RELEASED";
+
+/** 整单按货值的五段(契约 §4.2 v5):币种 = 订单 currency;占比按五段之和算(履约逐行乘积求和后 quantize)。 */
+export interface PortalValueSegments {
+  arrived: string;
+  in_transit: string;
+  loaded: string;
+  in_warehouse: string;
+  not_received: string;
+}
 
 export interface PortalOrderListItem {
   no: string;
@@ -23,6 +33,9 @@ export interface PortalOrderListItem {
   total_amount: string;
   stage: OrderStage;
   line_count: number;
+  shipment_count: number;        // ISSUED 链上的柜数(= 详情 shipments.length;列表项没有 shipments)
+  next_eta: string | null;       // 尚未到港的柜里最早的 ETA(YYYY-MM-DD);全部到港 / 无 ETA → null
+  value_segments: PortalValueSegments;
 }
 
 export interface PortalOrderLine {
@@ -33,6 +46,8 @@ export interface PortalOrderLine {
   qty: string;
   received_qty: string;          // 已入仓(库存入库 − 处置,履约派生);恒 ≥ shipped_qty
   shipped_qty: string;
+  pending_qty: string;           // 待装柜 = max(qty − shipped, 0)(履约派生,前端不做 decimal 减法)
+  in_warehouse_qty: string;      // 在仓待装 = min(received − shipped, pending)
   unit_price: string;
   line_total: string;
   sort_order: number;
@@ -42,6 +57,16 @@ export interface PortalMilestone {
   type: MilestoneType;
   event_at: string;              // YYYY-MM-DD(纯日期,履约侧 date)
   location: string | null;
+}
+
+/** 柜内行(契约 §4.2 v5):本单装进这只柜的货。无价——价格在订单行,柜上不重复给。 */
+export interface PortalShipmentLine {
+  name_snapshot: string;
+  spec_text_snapshot: string | null;
+  unit_code: string;
+  unit_label: string;
+  qty: string;
+  sort_order: number;
 }
 
 export interface PortalShipment {
@@ -60,6 +85,7 @@ export interface PortalShipment {
   port_of_loading: string | null;
   port_of_discharge: string | null;
   milestones: PortalMilestone[];
+  lines: PortalShipmentLine[];
 }
 
 export interface PortalOrderDetail extends PortalOrderListItem {

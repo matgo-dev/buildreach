@@ -34,6 +34,9 @@ class OrganizationInfo:
     is_owner: bool
     status: str | None = None
     unified_social_credit_code: str | None = None
+    address: str | None = None
+    tin: str | None = None
+    brela_no: str | None = None
 
 
 @dataclass
@@ -99,6 +102,7 @@ async def _load_organization(
                 type="BUYER_ORG", id=org.id, name=org.name,
                 is_owner=member.is_owner, status=org.status,
                 unified_social_credit_code=org.unified_social_credit_code,
+                address=org.address, tin=org.tin, brela_no=org.brela_no,
             ), len(rows)
     if "SUPPLIER" in role_codes:
         row = await db.execute(

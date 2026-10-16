@@ -590,6 +590,7 @@ def _serialize_quote_buyer(
     return RfqQuoteBuyerPublic(
         id=quote.id,
         quote_no=quote.quote_no,
+        quoted_at=quote.quoted_at,
         trade_term=quote.trade_term,
         named_place=quote.named_place,
         currency=quote.currency,

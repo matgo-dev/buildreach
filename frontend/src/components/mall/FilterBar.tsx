@@ -7,6 +7,7 @@ import useSWR from "swr";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { listBrands } from "@/lib/api/products";
+import { categoryOptions } from "./categoryOptions";
 import { FilterPanel } from "./FilterPanel";
 
 /** 移动端筛选行 — 默认一行溢出隐藏，展开后固定高度可滚动 */
@@ -121,10 +122,10 @@ export function FilterBar({
 }: Props) {
   const t = useTranslations("mall");
 
-  // 品牌列表 — 全平台 Top 50，不按品类筛选
+  // 品牌列表 — 当前品类(含子树)下的 Top 50;全站品牌放在这里点下去多半 0 件
   const { data: brands = [] } = useSWR<string[]>(
-    "/api/v1/products/brands",
-    () => listBrands(),
+    `/api/v1/products/brands?cat=${activeCategoryCode}`,
+    () => listBrands(activeCategoryCode || undefined),
     { revalidateOnFocus: false },
   );
 
@@ -153,10 +154,10 @@ export function FilterBar({
     onBrandChange(keys.join(","));
   };
 
-  // L1 品类列表
+  // 品类行:往下细分一级(未选→一级;选了有子类→其子类;选到叶子→同级兄弟,当前项高亮)
   const categoryItems = useMemo(
-    () => categoryTree.map((c) => ({ key: c.code, label: c.name })),
-    [categoryTree],
+    () => categoryOptions(categoryTree, activeCategoryCode).map((c) => ({ key: c.code, label: c.name })),
+    [categoryTree, activeCategoryCode],
   );
 
   const handleCategorySelect = (code: string) => {

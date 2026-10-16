@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Container,
   FileCheck,
-  MapPin,
   Package,
   Ship,
   Warehouse,
@@ -21,11 +20,21 @@ import {
   type BindingState,
   type OrdersSource,
   type PortalOrderDetail,
+  type PortalOrderLine,
   type PortalShipment,
 } from "@/lib/api/buyerOrders";
-import { CustomsPill, LoadingSkeleton, Money, StagePill, StatePanel, useDay, useDayTime } from "./buyerOrdersShared";
-import { RouteVisualization } from "./orderTrackingVisuals";
-import { FULFILLMENT_NODES, countReceivedLines, litNodes, stageProgress, type NodeKey } from "./orderProgress";
+import {
+  CustomsPill,
+  KeyDateLine,
+  LoadingSkeleton,
+  Money,
+  StagePill,
+  StatePanel,
+  ValueSegmentBar,
+  useDay,
+  useDayTime,
+} from "./buyerOrdersShared";
+import { FULFILLMENT_NODES, countReceivedLines, lineInWarehouse, litNodes, pendingLines, type NodeKey } from "./orderProgress";
 
 type DetailState =
   | { kind: "loading" }
@@ -87,19 +96,25 @@ export function BuyerOrderDetail({
   );
 }
 
+/** tab 身份:柜按下标,「待装柜」固定一个。 */
+type Tab = { kind: "shipment"; index: number } | { kind: "pending" };
+
 function DetailBody({ order }: { order: PortalOrderDetail }) {
   const t = useTranslations("orderTracking");
   const day = useDay();
-  const [active, setActive] = useState(0);
   const shipments = order.shipments;
   const lines = [...order.lines].sort((a, b) => a.sort_order - b.sort_order);
-  const activeShipment = shipments[Math.min(active, Math.max(0, shipments.length - 1))];
-  const progress = stageProgress(order.stage);
+  const pending = pendingLines(order.lines);
   const cancelled = order.stage === "CANCELLED";
+  // 柜 tab 在前,「待装柜」并列在后(仅当还有未装柜的货);默认停在第一个 tab
+  const [tab, setTab] = useState<Tab>(shipments.length > 0 ? { kind: "shipment", index: 0 } : { kind: "pending" });
+  const activeShipment =
+    tab.kind === "shipment" ? shipments[Math.min(tab.index, Math.max(0, shipments.length - 1))] ?? null : null;
+  const showTabs = shipments.length + (pending.length > 0 ? 1 : 0) > 1;
 
   return (
     <>
-      {/* 概览 */}
+      {/* 概览:徽标 + 关键日期行 + 按货值分段条(契约 §5.3 v5) */}
       <div className="rounded-xl border border-line bg-white overflow-hidden">
         <div
           className="px-6 py-5"
@@ -123,22 +138,19 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
               <Money amount={order.total_amount} currency={order.currency} className="text-xl font-bold text-navy" />
             </div>
           </div>
-          {cancelled && <p className="mt-3 text-sm text-muted">{t("cancelledNote")}</p>}
-          {progress !== null && (
-            <div className="mt-4">
-              <div className="h-2.5 rounded-full bg-white/60 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-teal-600 to-teal-400 transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-muted">{t("overallProgress")}: {progress}%</p>
+          {cancelled ? (
+            <p className="mt-3 text-sm text-muted">{t("cancelledNote")}</p>
+          ) : (
+            <div className="mt-4 space-y-2">
+              <KeyDateLine shipmentCount={order.shipment_count} nextEta={order.next_eta} stage={order.stage} />
+              <p className="text-xs text-muted">{t("valueProgress")}</p>
+              <ValueSegmentBar segments={order.value_segments} legend />
             </div>
           )}
         </div>
       </div>
 
-      {/* 物流:按柜各自时间线 */}
+      {/* 物流:柜 tab(柜头 + 六节点时间线 + 本柜货物)/「待装柜」tab(时间线 + 待装行) */}
       <div className="rounded-xl border border-line bg-white overflow-hidden">
         <div className="px-6 py-4 border-b border-line">
           <h3 className="text-lg font-semibold text-navy flex items-center gap-2">
@@ -150,54 +162,44 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
         {cancelled ? (
           // 取消单不画进度
           <p className="px-6 py-8 text-sm text-muted text-center">{t("cancelledNote")}</p>
-        ) : shipments.length === 0 ? (
-          // 尚无柜:节点 1–2 按订单事实点亮,3–6 全灭
-          <NodeTimeline order={order} shipment={null} note={t("noShipmentYet")} />
         ) : (
           <>
-            {shipments.length > 1 && (
+            {showTabs && (
               <div className="px-6 pt-3 flex gap-2 border-b border-line overflow-x-auto">
                 {shipments.map((s, i) => (
-                  <button
+                  <TabButton
                     key={`${s.container_no}-${i}`}
-                    type="button"
-                    onClick={() => setActive(i)}
-                    className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                      i === active
-                        ? "border-teal-700 text-teal-700 bg-teal-50"
-                        : "border-transparent text-muted hover:text-navy"
-                    }`}
+                    active={tab.kind === "shipment" && tab.index === i}
+                    onClick={() => setTab({ kind: "shipment", index: i })}
                   >
                     <span className="font-mono">{s.container_no ?? t("containerPending")}</span>
                     {s.container_type && <span className="ml-2 text-xs text-muted">({s.container_type})</span>}
-                  </button>
+                  </TabButton>
                 ))}
+                {pending.length > 0 && (
+                  <TabButton active={tab.kind === "pending"} onClick={() => setTab({ kind: "pending" })}>
+                    <Warehouse className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+                    {t("pendingTab")}
+                    <span className="ml-1.5 text-xs text-muted">({pending.length})</span>
+                  </TabButton>
+                )}
               </div>
             )}
-            {activeShipment && (
+            {activeShipment ? (
               <>
                 <ShipmentHeader shipment={activeShipment} />
                 <NodeTimeline order={order} shipment={activeShipment} />
+                <ShipmentLinesTable shipment={activeShipment} />
+              </>
+            ) : (
+              <>
+                <NodeTimeline order={order} shipment={null} />
+                <PendingLinesTable lines={pending} />
               </>
             )}
           </>
         )}
       </div>
-
-      {/* 路线示意:当前位置由订单 stage 驱动(契约 §5.3) */}
-      {!cancelled && (
-        <div className="rounded-xl border border-line bg-white overflow-hidden">
-          <div className="px-6 py-4 border-b border-line">
-            <h3 className="text-lg font-semibold text-navy flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-teal-700" />
-              {t("routeMap")}
-            </h3>
-          </div>
-          <div className="p-6">
-            <RouteVisualization stage={order.stage} />
-          </div>
-        </div>
-      )}
 
       {/* 行明细 */}
       <div className="rounded-xl border border-line bg-white overflow-hidden">
@@ -251,6 +253,20 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
   );
 }
 
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+        active ? "border-teal-700 text-teal-700 bg-teal-50" : "border-transparent text-muted hover:text-navy"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 /* ── 柜头:柜号 / 航线 / 船名航次 / 报关状态 ── */
 
 function ShipmentHeader({ shipment }: { shipment: PortalShipment }) {
@@ -300,6 +316,89 @@ function ShipmentHeader({ shipment }: { shipment: PortalShipment }) {
   );
 }
 
+/* ── 本柜货物:品名 / 规格 / 数量 单位(无价,契约 §4.2 v5) ── */
+
+function ShipmentLinesTable({ shipment }: { shipment: PortalShipment }) {
+  const t = useTranslations("orderTracking");
+  const rows = [...shipment.lines].sort((a, b) => a.sort_order - b.sort_order);
+  return (
+    <div className="border-t border-line">
+      <h4 className="px-6 pt-4 pb-2 text-sm font-semibold text-navy flex items-center gap-2">
+        <Package className="h-4 w-4 text-teal-700" />
+        {t("containerGoods")}
+        <span className="font-normal text-muted">({t("lineCount", { count: rows.length })})</span>
+      </h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-left">
+            <th className="px-6 py-2 font-medium text-muted">{t("colProduct")}</th>
+            <th className="px-6 py-2 font-medium text-muted text-right whitespace-nowrap">{t("colQty")}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((line, i) => (
+            <tr key={`${line.sort_order}-${i}`}>
+              <td className="px-6 py-2.5">
+                <p className="font-medium text-navy">{line.name_snapshot}</p>
+                {line.spec_text_snapshot && <p className="text-xs text-muted">{line.spec_text_snapshot}</p>}
+              </td>
+              <td className="px-6 py-2.5 text-right text-navy whitespace-nowrap">
+                {formatDecimalString(line.qty)} <span className="text-xs text-muted">{line.unit_label}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── 待装柜:品名 / 待装数量 / 入仓情况(已入仓 / 未到齐 · 在仓 a) ── */
+
+function PendingLinesTable({ lines }: { lines: PortalOrderLine[] }) {
+  const t = useTranslations("orderTracking");
+  if (lines.length === 0) return null;
+  return (
+    <div className="border-t border-line">
+      <p className="px-6 pt-4 pb-2 text-sm text-muted">{t("pendingNote")}</p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-left">
+            <th className="px-6 py-2 font-medium text-muted">{t("colProduct")}</th>
+            <th className="px-4 py-2 font-medium text-muted text-right whitespace-nowrap">{t("colPendingQty")}</th>
+            <th className="px-6 py-2 font-medium text-muted text-right whitespace-nowrap">{t("colWarehouseStatus")}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {lines.map((line, i) => {
+            const ready = lineInWarehouse(line);
+            return (
+              <tr key={`${line.sort_order}-${i}`}>
+                <td className="px-6 py-2.5">
+                  <p className="font-medium text-navy">{line.name_snapshot}</p>
+                  {line.spec_text_snapshot && <p className="text-xs text-muted">{line.spec_text_snapshot}</p>}
+                </td>
+                <td className="px-4 py-2.5 text-right text-navy whitespace-nowrap">
+                  {formatDecimalString(line.pending_qty)} <span className="text-xs text-muted">{line.unit_label}</span>
+                </td>
+                <td className="px-6 py-2.5 text-right whitespace-nowrap">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                      ready ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {ready ? t("inWarehouse") : t("notFullyReceived", { qty: formatDecimalString(line.in_warehouse_qty) })}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /* ── 六节点时间线:逐节点按事实点亮(orderProgress.litNodes),不按序号补亮 ── */
 
 const NODE_ICONS: Record<NodeKey, React.ElementType> = {
@@ -319,15 +418,7 @@ type Row = {
   detail: string | null;
 };
 
-function NodeTimeline({
-  order,
-  shipment,
-  note,
-}: {
-  order: PortalOrderDetail;
-  shipment: PortalShipment | null;
-  note?: string;
-}) {
+function NodeTimeline({ order, shipment }: { order: PortalOrderDetail; shipment: PortalShipment | null }) {
   const t = useTranslations("orderTracking");
   const day = useDay();
   const dayTime = useDayTime();
@@ -343,6 +434,7 @@ function NodeTimeline({
       case "msOrderConfirmed":
         return null;
       case "msWarehouseReceipt":
+        // 订单级副文案:柜视图里节点按本柜点亮,这行说明整单还备齐了几行
         return t("receivedLines", { done: countReceivedLines(order.lines), total: order.lines.length });
       case "msConsolidation":
         return isLit && shipment ? at(shipment.loaded_at) : null;
@@ -391,7 +483,6 @@ function NodeTimeline({
 
   return (
     <div className="p-6">
-      {note && <p className="mb-5 text-sm text-muted">{note}</p>}
       <div className="relative">
         {rows.map((row, i) => {
           const Icon = row.icon;

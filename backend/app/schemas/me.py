@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.email import NormalizedEmailStr
+from app.core.security import PASSWORD_RULE_MESSAGE, validate_password_strength
 
 # 与 schemas/auth.py 中的 USERNAME_REGEX 保持一致
 USERNAME_REGEX = re.compile(r"^(?![0-9]+$)[A-Za-z0-9_\-]{3,50}$")
@@ -38,11 +40,15 @@ class OrgUpdateIn(BaseModel):
 
     PATCH 语义:不传 = 不修改。
     - name 传入即必须非空(组织名 NOT NULL,不允许清空)。
-    - unified_social_credit_code 传空字符串 = 清空(该字段可空且唯一)。
+    - 其余字段传空字符串 = 清空(均可空)。
+    - unified_social_credit_code 唯一;坦桑字段(address/tin/brela_no)不做唯一约束。
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     unified_social_credit_code: str | None = Field(default=None, max_length=18)
+    address: str | None = Field(default=None, max_length=255)
+    tin: str | None = Field(default=None, max_length=50)
+    brela_no: str | None = Field(default=None, max_length=50)
 
 
 class ChangeEmailIn(BaseModel):
@@ -85,3 +91,66 @@ class ChangePhoneIn(BaseModel):
     new_phone: str | None = Field(default=None, max_length=30)
     phone_region: str | None = Field(default=None, max_length=2)
     current_password: str = Field(..., min_length=1)
+
+
+class MemberCreateIn(BaseModel):
+    """Owner 建子账号。手机号不在此填,成员登录后在账户页自助维护。"""
+
+    name: str = Field(..., max_length=100)
+    email: NormalizedEmailStr
+    password: str
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("姓名不能为空")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def _check(cls, v: str) -> str:
+        if not validate_password_strength(v):
+            raise ValueError(PASSWORD_RULE_MESSAGE)
+        return v
+
+
+class MemberUpdateIn(BaseModel):
+    """Owner 改成员资料(子账号归组织)。PATCH 语义:不传 = 不改。"""
+
+    name: str | None = Field(default=None, max_length=100)
+    email: NormalizedEmailStr | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            raise ValueError("姓名不能为空")
+        return v
+
+
+class MemberResetPasswordIn(BaseModel):
+    """Owner 重置成员密码;目标 must_change_password 置 True,旧 token 全失效。"""
+
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _check(cls, v: str) -> str:
+        if not validate_password_strength(v):
+            raise ValueError(PASSWORD_RULE_MESSAGE)
+        return v
+
+
+class MemberOut(BaseModel):
+    id: int
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    status: str
+    is_owner: bool
+    created_at: datetime
