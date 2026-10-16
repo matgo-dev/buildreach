@@ -30,6 +30,7 @@ import {
 } from "@/lib/api/quotes";
 import { getProduct, type AttrItem } from "@/lib/api/products";
 import { operatorProductsApi, type ProductOperatorItem } from "@/lib/api/operatorProducts";
+import { formatQuantity } from "@/lib/formatters";
 
 // ── sessionStorage 草稿 ─────────────────────────────────
 
@@ -63,7 +64,7 @@ function QuoteTierModal({ tiers: initial, moq, onConfirm, onCancel, t }: {
         <div className="mb-3 space-y-2">
           {tiers.map((tier, idx) => {
             const next = tiers[idx + 1];
-            const hint = next && next.min_qty > 0 ? `${tier.min_qty || "?"} ~ ${next.min_qty - 1}` : tier.min_qty > 0 ? `≥ ${tier.min_qty}` : "";
+            const hint = next && next.min_qty > 0 ? `${tier.min_qty ? formatQuantity(tier.min_qty) : "?"} ~ ${formatQuantity(next.min_qty - 1)}` : tier.min_qty > 0 ? `≥ ${formatQuantity(tier.min_qty)}` : "";
             return (
               <div key={idx} className="rounded-md bg-slate-50 p-3">
                 {hint && <div className="mb-1.5 text-[10px] font-medium text-slate-400">{hint}</div>}
@@ -707,7 +708,7 @@ function QuoteBackfillContent() {
                   <tr key={item.id} className="border-t border-gray-100 even:bg-slate-50/50">
                     <td className="px-4 py-2.5 font-medium text-gray-800">{item.product_name_snapshot ?? "—"}</td>
                     <td className="px-4 py-2.5 text-gray-500">{item.variant_display ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right text-gray-700">{item.quantity} {item.uom_snapshot}</td>
+                    <td className="px-4 py-2.5 text-right text-gray-700">{formatQuantity(item.quantity)} {item.uom_snapshot}</td>
                   </tr>
                 ))}
               </tbody>
@@ -838,7 +839,7 @@ function QuoteBackfillContent() {
                     <td className="px-3 py-3 text-right">
                       {isFee ? <span className="text-xs text-gray-400">—</span> : line.tiers.length > 0 ? (
                         <span className="inline-block h-8 w-full rounded border border-gray-100 bg-gray-50 px-2 text-right text-xs leading-8 text-gray-500" title={t("moqFromTier")}>
-                          {line.tiers[0].min_qty || "—"}
+                          {line.tiers[0].min_qty ? formatQuantity(line.tiers[0].min_qty) : "—"}
                         </span>
                       ) : (
                         <input type="number" min="0" step="any" value={line.moq}

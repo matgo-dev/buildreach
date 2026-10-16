@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from types import SimpleNamespace
 
 from app.schemas.quote import RfqQuoteBuyerPublic
@@ -75,3 +76,12 @@ def test_recipient_company_is_org_name_not_contact_name():
 def test_recipient_company_empty_does_not_fall_back_to_contact_name():
     html = _html(buyer_org_name="")
     assert html.count("liujj") == 1
+
+
+def test_format_quantity_strips_trailing_zeros():
+    f = quote_export._format_quantity
+    assert f(Decimal("1.000")) == "1"
+    assert f(Decimal("10.500")) == "10.5"
+    assert f(Decimal("0.125")) == "0.125"
+    assert f(Decimal("200000.000")) == "200,000"
+    assert f(None) == "—"

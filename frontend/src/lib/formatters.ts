@@ -134,3 +134,16 @@ export function localizedField(
   if (locale === "en") return enVal || fallback || zhVal || "";
   return fallback || enVal || zhVal || "";
 }
+
+const QUANTITY_FORMAT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 3 });
+
+/**
+ * Format a quantity for display: thousand separators, no trailing zeros.
+ * The API serializes Decimal quantities as strings like "10.000" → "10".
+ * Separator style is fixed (zh/en/sw all use "," and "."), matching the quote PDF.
+ */
+export function formatQuantity(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? QUANTITY_FORMAT.format(n) : String(value);
+}
