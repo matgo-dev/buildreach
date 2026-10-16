@@ -191,17 +191,17 @@ async def test_mark_i18n_sets_pending_for_translatable_fields_and_manual_for_spe
     assert p.trans_meta["description_en"] == "pending"
     assert p.i18n_pending_at is not None
 
-    spec = ProductAttr(attr_key_zh="规格", attr_key_en="spec", attr_value_zh="φ8", attr_value_en="φ8", selectable=True)
+    spec = ProductAttr(attr_key_zh="规格", attr_value_zh="φ8", attr_value_en="φ8", selectable=True)
     await mark_attr_i18n(spec, value_language_neutral=True)
-    # 键的 en/sw 是内部键(购物车变体指纹按 attr_key_en 算),绝不能进翻译队列
-    assert spec.trans_meta["attr_key_en"] == "manual" and spec.attr_key_en == "spec"
-    assert spec.trans_meta["attr_key_sw"] == "manual" and spec.attr_key_sw == "spec"
+    # 可选规格的 en 键是交易键(购物车指纹按 attr_key_en 算):固定、不机翻;sw 只展示,走翻译
+    assert spec.trans_meta["attr_key_en"] == "manual" and spec.attr_key_en == "Specification"
+    assert spec.trans_meta["attr_key_sw"] == "pending"
     assert spec.trans_meta["attr_value_en"] == "manual" and spec.attr_value_sw == "φ8"   # 规格值语言中性,不翻
-    assert spec.i18n_pending_at is None
 
-    plain = ProductAttr(attr_key_zh="是否通用", attr_key_en="interchangeable", attr_value_zh="否（机型专用）", selectable=False)
+    plain = ProductAttr(attr_key_zh="是否通用", attr_value_zh="否（机型专用）", selectable=False)
     await mark_attr_i18n(plain)
-    assert plain.trans_meta["attr_key_en"] == "manual"
+    # 非可选属性的键是展示名,按中文走翻译(买家不能看到内部键)
+    assert plain.trans_meta["attr_key_en"] == "pending" and plain.attr_key_en is None
     assert plain.trans_meta["attr_value_en"] == "pending"
     assert plain.i18n_pending_at is not None
 
@@ -310,7 +310,7 @@ def test_clean_generic_drops_placeholder_and_spu_gets_no_attr():
     assert clean_generic("待确认") == "" and clean_generic("是") == "是"
     rows = [SourceRow("02", "井下", "D-1", "耗材", "起爆器", "", "个", clean_generic("待确认"))]
     (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "起爆器", "01")], CMAP)
-    assert [k for k, _, _ in _spu_attrs(s)] == ["环节/类别"]
+    assert [k for k, _ in _spu_attrs(s)] == ["环节/类别"]
 
 
 def test_spu_attrs_never_emit_applicable_model():
@@ -318,7 +318,7 @@ def test_spu_attrs_never_emit_applicable_model():
     from scripts.import_zone_mining import _spu_attrs
     rows = [SourceRow("01", "破碎", "A-1", "备件", "颚板", "按颚破型号核对", "块", "否")]
     (s,) = build_spus(rows, {}, [Rule("*", "*", "*", "颚板", "33.001")], CMAP)
-    assert "适用机型" not in [k for k, _, _ in _spu_attrs(s)]
+    assert "适用机型" not in [k for k, _ in _spu_attrs(s)]
 
 
 def test_purchase_note_goes_to_source_meta_not_description():
@@ -373,3 +373,26 @@ def test_real_zone_category_map_covers_every_rule_category():
     cmap = load_zone_cat_map(ZONE_CAT_MAP_CSV)
     missing = sorted({r.category_code for r in load_rules(RULES_CSV) if derive_zone_cat(r.category_code, cmap) is None})
     assert missing == []
+
+
+def test_load_merge_map_rejects_duplicate_source_name(tmp_path: Path):
+    p = tmp_path / "m.csv"
+    p.write_text("原品名,SPU品名,规格\n8φ绳卡,绳卡,φ8\n８φ绳卡,绳卡,φ18\n", encoding="utf-8")   # 全角数字归一后同名
+    with pytest.raises(ValueError, match="重复"):
+        load_merge_map(p)
+
+
+def test_build_spus_blocks_single_spec_that_would_be_dropped():
+    rows = [SourceRow("01", "浮选现场配套", "A-1", "耗材", "20φ钢丝绳", "", "米", "")]
+    spus = build_spus(rows, {hard("20φ钢丝绳"): ("钢丝绳", "Φ20")}, [Rule("*", "*", "*", "", "04")], CMAP)
+    assert spus[0].conflicts and "只有一个规格" in spus[0].conflicts[0]
+
+
+def test_load_source_rows_skips_unknown_file_keys(tmp_path: Path):
+    import openpyxl
+    from scripts.import_zone_mining import load_source_rows
+    wb = openpyxl.Workbook()
+    wb.active.append(["编号", "品名"])
+    wb.active.append(["X-1", "绳卡"])
+    wb.save(tmp_path / "06_汇总.xlsx")
+    assert load_source_rows(tmp_path) == []

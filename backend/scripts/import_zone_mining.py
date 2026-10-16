@@ -201,6 +201,9 @@ def load_source_rows(src_dir: Path, dropped: list[DroppedRow] | None = None) -> 
         key = _file_key(path)
         if key is None:
             continue
+        if key not in SCENE_BY_FILE_KEY:
+            print(f"跳过未知源表(不在场景对照里):{path.name}")
+            continue
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
         for ws in wb.worksheets:
             if ws.title in SKIP_SHEETS:
@@ -255,7 +258,10 @@ def load_merge_map(path: Path) -> dict[str, tuple[str, str]]:
     out: dict[str, tuple[str, str]] = {}
     with path.open(encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            out[hard(row["原品名"])] = (row["SPU品名"].strip(), row["规格"].strip())
+            k = hard(row["原品名"])
+            if k in out:
+                raise ValueError(f"spu_merge.csv 原品名重复(归一化后):{row['原品名']!r}")
+            out[k] = (row["SPU品名"].strip(), row["规格"].strip())
     return out
 
 
@@ -403,6 +409,9 @@ def build_spus(
         us = units[k]
         out[k].unit = collections.Counter(us).most_common(1)[0][0] if us else "PCS"
         out[k].zone_cat = derive_zone_cat(out[k].category_code, zone_cat_map)
+        if len(out[k].specs) == 1:
+            # 单规格走默认 SKU,规格文字无处落 → 会被静默丢掉;合并表里要么并入品名,要么补齐 ≥2 个规格
+            out[k].conflicts.append(f"只有一个规格 {out[k].specs[0]!r},落库会丢失")
     return [out[k] for k in order]
 
 
@@ -442,12 +451,23 @@ async def mark_sku_i18n(sku: ProductSku) -> None:
     await apply_i18n_create(sku, "name", sku.name_zh, SOURCE_LANG)
 
 
+SPEC_KEY_EN = "Specification"   # 与商城其它商品「规格」的英文一致
+_LEGACY_INTERNAL_KEYS = frozenset({"spec", "section", "interchangeable"})   # 2026-10-16 前的导入写进展示列的内部键
+
+
+def _pin_spec_key_en(attr: ProductAttr) -> None:
+    attr.attr_key_en = SPEC_KEY_EN
+    attr.trans_meta = {**(attr.trans_meta or {}), "attr_key_en": "manual"}
+
+
 async def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = False) -> None:
-    """attr_key 的 en/sw 固定用内部键(spec/section/...),标 manual 不翻:购物车变体指纹按 attr_key_en 算,
-    被机器翻成 Specification 会把同一商品的规格维度拆散。attr_value 规格值语言中性也标 manual;其余待翻。"""
+    """属性键按中文源走翻译队列,买家看到的是译名。例外:可选规格的 attr_key_en 是变体的交易键
+    (购物车指纹/询价快照按它算),固定为 SPEC_KEY_EN 不机翻,免得同一商品的规格维度被翻译拆散。
+    attr_value 规格值语言中性标 manual;其余待翻。"""
     attr.source_lang = SOURCE_LANG
-    key_en = attr.attr_key_en or attr.attr_key_zh
-    apply_i18n_prefilled(attr, "attr_key", {"zh": attr.attr_key_zh, "en": key_en, "sw": key_en}, SOURCE_LANG)
+    await apply_i18n_create(attr, "attr_key", attr.attr_key_zh, SOURCE_LANG)
+    if attr.selectable:
+        _pin_spec_key_en(attr)
     if value_language_neutral:
         apply_i18n_prefilled(attr, "attr_value", {loc: attr.attr_value_zh for loc in SUPPORTED_LOCALES}, SOURCE_LANG)
     else:
@@ -455,7 +475,7 @@ async def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = Fa
 
 
 async def ensure_platform_categories(db: AsyncSession, stats: collections.Counter) -> None:
-    """建 33/34/35 子树并保证启用(早期导入建成停用的就地启用)。code 已被别的名字占用则中止(跨环境 code 不一致防线)。"""
+    """建 33/34/35 子树(新建即启用;已存在的不动启停,运营停用要尊重)。code 已被别的名字占用则中止(跨环境 code 不一致防线)。"""
     codes = [c[0] for c in PLATFORM_CATEGORIES]
     existing = {c.code: c for c in (await db.execute(select(Category).where(Category.code.in_(codes)))).scalars().all()}
     l1_sort = (await db.execute(select(func.max(Category.sort_order)).where(Category.level == 1))).scalar() or 0
@@ -464,9 +484,6 @@ async def ensure_platform_categories(db: AsyncSession, stats: collections.Counte
         if cur is not None:
             if cur.name_zh != zh:
                 raise RuntimeError(f"品类 code {code} 已存在且名称不同:{cur.name_zh!r} ≠ {zh!r},请先人工处理")
-            if not cur.is_active:
-                cur.is_active = True
-                stats["platform_categories_activated"] += 1
             if code in PLATFORM_L1_SHORT_NAMES and not cur.short_name_zh:
                 cur.short_name_zh, cur.short_name_en, cur.short_name_sw = PLATFORM_L1_SHORT_NAMES[code]
             stats["platform_categories_existing"] += 1
@@ -523,14 +540,47 @@ async def upsert_zone_categories(db: AsyncSession, zone: Zone, stats: collection
     return out
 
 
-def _spu_attrs(s: SpuRow) -> list[tuple[str, str, str]]:
-    """SPU 级非可选属性 (key_zh, key_en, value)。"""
+def _spu_attrs(s: SpuRow) -> list[tuple[str, str]]:
+    """SPU 级非可选属性 (key_zh, value);键名的 en/sw 由翻译补。"""
     attrs = []
     if s.section:
-        attrs.append(("环节/类别", "section", s.section))
+        attrs.append(("环节/类别", s.section))
     if s.generic:
-        attrs.append(("是否通用", "interchangeable", s.generic))
+        attrs.append(("是否通用", s.generic))
     return attrs
+
+
+async def _add_spu_attr(db: AsyncSession, product: Product, key_zh: str, value: str, sort_order: int) -> None:
+    attr = ProductAttr(
+        product_id=product.id, sku_id=None,
+        attr_key_zh=key_zh, attr_value_zh=value, selectable=False, sort_order=sort_order,
+    )
+    await mark_attr_i18n(attr)
+    db.add(attr)
+
+
+async def sync_attrs(db: AsyncSession, product: Product, s: SpuRow, stats: collections.Counter) -> None:
+    """重跑时对齐属性:SPU 级属性按 (键, 值) 增删到与源表一致(旧版本写入的废属性会被清掉);
+    可选规格的英文交易键统一成 SPEC_KEY_EN。SKU 本身不动(见 sku_mismatches)。"""
+    attrs = (await db.execute(select(ProductAttr).where(ProductAttr.product_id == product.id))).scalars().all()
+    expected = _spu_attrs(s)
+    spu_level = {(a.attr_key_zh, a.attr_value_zh): a for a in attrs if a.sku_id is None and not a.selectable}
+    for key, a in spu_level.items():
+        if key not in expected:
+            await db.delete(a)
+            stats["attrs_removed"] += 1
+    for i, (kz, v) in enumerate(expected):
+        if (kz, v) not in spu_level:
+            await _add_spu_attr(db, product, kz, v, i)
+            stats["attrs_created"] += 1
+    for a in attrs:
+        if a.attr_key_en in _LEGACY_INTERNAL_KEYS or a.attr_key_sw in _LEGACY_INTERNAL_KEYS:
+            # 旧版本把内部键写进了 en/sw 展示列:清掉后键名重新按中文源走翻译,可选规格的 en 交易键固定
+            a.attr_key_en = a.attr_key_sw = None
+            await apply_i18n_create(a, "attr_key", a.attr_key_zh, SOURCE_LANG)
+            if a.selectable:
+                _pin_spec_key_en(a)
+            stats["attrs_updated"] += 1
 
 
 def expected_sku_codes(s: SpuRow) -> set[str]:
@@ -552,19 +602,17 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         select(Product).where(Product.spu_code == s.spu_code, Product.deleted_at.is_(None))
     )).scalar_one_or_none()
     if product is not None:
+        # 只覆盖源表决定的字段;描述/上下架/可见性是运营(或九云)之后会改的,重跑不能冲掉
         product.name_zh = s.name
-        # 描述留空(含旧译文),等正式商品描述(九云/运营)再补;采购说明已移到 source_meta.purchase_note
-        product.description_zh = product.description_en = product.description_sw = None
         product.category_code = s.category_code
         product.moq_unit = s.unit
-        product.visibility = ProductVisibility.PUBLIC
-        product.status = ProductStatus.ACTIVE
         product.source_meta = _source_meta(s)
         if not product.name_en and not (product.trans_meta or {}):
             # 早期导入未打翻译标记的行:补标记一次(已有 en 或已有记账的不动,避免重复翻译)
             await mark_product_i18n(product)
             stats["products_marked_for_i18n"] += 1
-        # 更新路径不动 SKU/属性。规格集合变了(合并表加/删规格)就不是"幂等重跑",必须让人看到而不是报成功。
+        await sync_attrs(db, product, s, stats)
+        # 更新路径不动 SKU。规格集合变了(合并表加/删规格)就不是"幂等重跑",必须让人看到而不是报成功。
         live = set((await db.execute(
             select(ProductSku.sku_code).where(ProductSku.product_id == product.id, ProductSku.deleted_at.is_(None))
         )).scalars().all())
@@ -601,7 +649,7 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
             await db.flush()
             spec_attr = ProductAttr(
                 product_id=product.id, sku_id=sku.id,
-                attr_key_zh="规格", attr_key_en="spec",
+                attr_key_zh="规格",
                 attr_value_zh=spec, attr_value_en=spec, attr_value_sw=spec,
                 selectable=True, sort_order=i,
             )
@@ -618,13 +666,8 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
         db.add(sku)
         stats["skus_created"] += 1
 
-    for i, (kz, ke, v) in enumerate(_spu_attrs(s)):
-        attr = ProductAttr(
-            product_id=product.id, sku_id=None,
-            attr_key_zh=kz, attr_key_en=ke, attr_value_zh=v, selectable=False, sort_order=i,
-        )
-        await mark_attr_i18n(attr)
-        db.add(attr)
+    for i, (kz, v) in enumerate(_spu_attrs(s)):
+        await _add_spu_attr(db, product, kz, v, i)
     await db.flush()
     return product
 
@@ -821,9 +864,10 @@ async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) ->
     print(f"矿业专区导入 {'[DRY-RUN 未落库]' if dry_run else '[已落库 COMMIT]'}  batch={BATCH_ID}")
     print("=" * 64)
     for k in ("source_rows", "rows_dropped", "spus", "unmatched", "unmapped_zone_cat", "conflicts", "attr_diffs", "sku_mismatches",
-              "platform_categories_created", "platform_categories_existing", "platform_categories_activated",
+              "platform_categories_created", "platform_categories_existing",
               "zone_created", "zone_categories_created", "zone_categories_updated",
               "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
+              "attrs_created", "attrs_removed", "attrs_updated",
               "zone_products_created", "zone_products_updated", "zone_products_existing", "zone_products_removed",
               "orphan_products", "orphans_soft_deleted"):
         print(f"{k:32s} {stats.get(k, 0)}")

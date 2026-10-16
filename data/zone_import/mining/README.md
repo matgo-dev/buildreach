@@ -13,6 +13,8 @@
 
 **改规则重跑**:`rules.csv` 改大类后直接重跑 `--commit`,脚本会清掉本批次写入、但已不在新结果里的 zone_products 行(手工挂的不动),计数在 `zone_products_removed`。
 
+**重跑覆盖范围**:已存在的商品只按源表更新品名、平台品类、单位、采购说明和 SPU 级属性;描述、上下架状态、可见性不动(运营/九云改过的不会被冲掉);已存在的 33/34/35 品类不改启停。
+
 **改规格不能重跑**:已 `--commit` 过的商品,`spu_merge.csv` 里加/删规格不会自动增删 SKU(会动已有引用)。脚本对比库内活 SKU 与期望集合,不一致记在 `sku_mismatches` 并拒绝落库;要改规格先人工处理该商品的 SKU。
 
 **--prune-orphans** 软删孤儿商品时连其 SKU 一起软删(sku_code 由 spu_code+规格确定,活 SKU 留着会让改回品名后的重导撞唯一索引)。
@@ -26,7 +28,7 @@
     python scripts/import_zone_mining.py --src <目录> --commit    # 幂等,可重跑;有孤儿商品会拒绝,确认后加 --prune-orphans
     python scripts/backfill_translations.py --entity all          # 补 en/sw
 
-生产:镜像不含 data/,先把源表 + 本目录拷到主机,再 docker cp 进容器(脚本按仓库相对路径读 data/zone_import/mining/*.csv,容器内需放到 /app/data/zone_import/mining/);--commit 时只要 DATABASE_URL 的主机不是本机(容器里是 compose 服务名 db,staging 和生产都算)就必须 ALLOW_ZONE_IMPORT_PROD=1,守卫在 scripts/_zone_import_common.py,央企脚本同一份。
+生产:镜像不含 data/,先把源表 + 本目录拷到主机,再 docker cp 进容器(脚本按仓库相对路径读 data/zone_import/mining/*.csv,容器里 `_REPO_ROOT` 是 `/`(脚本在 /app/scripts),所以要放到 **/data/zone_import/mining/**,不是 /app/data;央企专区上线时同一个坑);--commit 时只要 DATABASE_URL 的主机不是本机(容器里是 compose 服务名 db,staging 和生产都算)就必须 ALLOW_ZONE_IMPORT_PROD=1,守卫在 scripts/_zone_import_common.py,央企脚本同一份。
 
 2026-10-15 本地落库计数:763 SPU(25 个多规格,共 799 SKU)、1609 条 zone_products(763 大类 + 846 场景)、平台品类 33/34/35 子树 15 个节点(全部启用,一级带导航短名 矿山/化学/实验)。商品全部 PUBLIC(商城也可见),mining 专区公开(所有人含未登录可进)。
 
