@@ -108,10 +108,10 @@ export function FilterPanel({
           {allLabel && !multiMode && (
             <button
               onClick={onClearAll}
-              className={`h-[28px] rounded-md px-2.5 text-[12px] font-medium transition-all ${
+              className={`h-[28px] max-w-full justify-self-start rounded-full px-3 text-[12px] transition-all ${
                 isAllSelected
-                  ? "text-teal-700 font-bold"
-                  : "text-ink hover:text-teal-700"
+                  ? "bg-lime/40 font-bold text-teal-900 ring-1 ring-inset ring-lime"
+                  : "font-medium text-ink hover:text-teal-700"
               }`}
             >
               {allLabel}
@@ -154,10 +154,11 @@ export function FilterPanel({
               <button
                 key={item.key}
                 onClick={() => onSelect(item.key)}
-                className={`h-[28px] rounded-md px-2.5 text-[12px] font-medium text-left truncate transition-all ${
+                // 选中:贴合文字宽度的浅柠绿胶囊 + 柠绿描边 + 加粗(不只靠颜色区分);单靠 teal-700 字色在现配色下与正文几乎同色
+                className={`h-[28px] max-w-full justify-self-start rounded-full px-3 text-[12px] text-left truncate transition-all ${
                   isSelected
-                    ? "text-teal-700 font-bold"
-                    : "text-ink hover:text-teal-700"
+                    ? "bg-lime/40 font-bold text-teal-900 ring-1 ring-inset ring-lime"
+                    : "font-medium text-ink hover:text-teal-700"
                 }`}
               >
                 {item.label}
