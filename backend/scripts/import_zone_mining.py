@@ -432,7 +432,6 @@ from app.db.models.zone import (  # noqa: E402
     ZoneProduct,
 )
 from app.core.i18n_write import apply_i18n_create, apply_i18n_prefilled  # noqa: E402
-from app.core.locale import SUPPORTED_LOCALES  # noqa: E402
 
 SOURCE_LANG = "zh"
 
@@ -460,18 +459,27 @@ def _pin_spec_key_en(attr: ProductAttr) -> None:
     attr.trans_meta = {**(attr.trans_meta or {}), "attr_key_en": "manual"}
 
 
-async def mark_attr_i18n(attr: ProductAttr, *, value_language_neutral: bool = False) -> None:
+async def mark_attr_i18n(attr: ProductAttr) -> None:
     """属性键按中文源走翻译队列,买家看到的是译名。例外:可选规格的 attr_key_en 是变体的交易键
     (购物车指纹/询价快照按它算),固定为 SPEC_KEY_EN 不机翻,免得同一商品的规格维度被翻译拆散。
-    attr_value 规格值语言中性标 manual;其余待翻。"""
+    attr_value 一律待翻(规格值里有「扬程150米/4分/41码」这类中文,英文买家在规格按钮上要看译文)。"""
     attr.source_lang = SOURCE_LANG
     await apply_i18n_create(attr, "attr_key", attr.attr_key_zh, SOURCE_LANG)
     if attr.selectable:
         _pin_spec_key_en(attr)
-    if value_language_neutral:
-        apply_i18n_prefilled(attr, "attr_value", {loc: attr.attr_value_zh for loc in SUPPORTED_LOCALES}, SOURCE_LANG)
-    else:
-        await apply_i18n_create(attr, "attr_value", attr.attr_value_zh, SOURCE_LANG)
+    await apply_i18n_create(attr, "attr_value", attr.attr_value_zh, SOURCE_LANG)
+
+
+def _spec_value_was_prefilled(a: ProductAttr) -> bool:
+    """2026-10-16 前的导入把规格值当语言中性:en 直接抄中文,标 manual(更早的版本连标记都没打);重跑要改回待翻。
+    只认「en 仍等于中文、且没经过翻译器」的行:运营手改过的英文(en≠zh)不动,翻译器已处理过的(auto/mock,
+    NTW/6205 这类中性值译完仍等于中文)也不动,否则每次重跑都重复送译。"""
+    return bool(
+        a.selectable
+        and a.attr_value_en is not None
+        and a.attr_value_en == a.attr_value_zh
+        and (a.trans_meta or {}).get("attr_value_en") in (None, "manual")
+    )
 
 
 async def ensure_platform_categories(db: AsyncSession, stats: collections.Counter) -> None:
@@ -581,6 +589,18 @@ async def sync_attrs(db: AsyncSession, product: Product, s: SpuRow, stats: colle
             if a.selectable:
                 _pin_spec_key_en(a)
             stats["attrs_updated"] += 1
+        if _spec_value_was_prefilled(a):
+            # 规格值从「抄中文标 manual」改回待翻。购物车指纹含 attr_value_en,译文落下后指纹会变:
+            # 只能在该商品还没有加购/询价行引用时做(生产在首次导入前合入此版本即可)。
+            a.attr_value_en = a.attr_value_sw = None
+            await apply_i18n_create(a, "attr_value", a.attr_value_zh, SOURCE_LANG)
+            stats["attrs_updated"] += 1
+    # 规格值机翻后若两条撞成同一个英文,两个 SKU 的购物车指纹就相同(加购会并成一行):只报不阻断,人工改译文
+    spec_en = [a.attr_value_en for a in attrs if a.selectable and a.attr_value_en]
+    dup = {v for v in spec_en if spec_en.count(v) > 1}
+    if dup:
+        stats["spec_en_collisions"] += len(dup)
+        print(f"规格英文撞车[{product.spu_code} {product.name_zh}]:{sorted(dup)}")
 
 
 def expected_sku_codes(s: SpuRow) -> set[str]:
@@ -649,11 +669,10 @@ async def upsert_product(db: AsyncSession, s: SpuRow, stats: collections.Counter
             await db.flush()
             spec_attr = ProductAttr(
                 product_id=product.id, sku_id=sku.id,
-                attr_key_zh="规格",
-                attr_value_zh=spec, attr_value_en=spec, attr_value_sw=spec,
+                attr_key_zh="规格", attr_value_zh=spec,
                 selectable=True, sort_order=i,
             )
-            await mark_attr_i18n(spec_attr, value_language_neutral=True)
+            await mark_attr_i18n(spec_attr)
             db.add(spec_attr)
         stats["skus_created"] += len(s.specs)
     else:
@@ -867,7 +886,7 @@ async def _execute(src_dir: Path, dry_run: bool, prune_orphans: bool = False) ->
               "platform_categories_created", "platform_categories_existing",
               "zone_created", "zone_categories_created", "zone_categories_updated",
               "products_simple", "products_variant", "products_updated", "products_marked_for_i18n", "skus_created",
-              "attrs_created", "attrs_removed", "attrs_updated",
+              "attrs_created", "attrs_removed", "attrs_updated", "spec_en_collisions",
               "zone_products_created", "zone_products_updated", "zone_products_existing", "zone_products_removed",
               "orphan_products", "orphans_soft_deleted"):
         print(f"{k:32s} {stats.get(k, 0)}")

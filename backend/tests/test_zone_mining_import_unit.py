@@ -191,12 +191,13 @@ async def test_mark_i18n_sets_pending_for_translatable_fields_and_manual_for_spe
     assert p.trans_meta["description_en"] == "pending"
     assert p.i18n_pending_at is not None
 
-    spec = ProductAttr(attr_key_zh="规格", attr_value_zh="φ8", attr_value_en="φ8", selectable=True)
-    await mark_attr_i18n(spec, value_language_neutral=True)
+    spec = ProductAttr(attr_key_zh="规格", attr_value_zh="扬程150米", selectable=True)
+    await mark_attr_i18n(spec)
     # 可选规格的 en 键是交易键(购物车指纹按 attr_key_en 算):固定、不机翻;sw 只展示,走翻译
     assert spec.trans_meta["attr_key_en"] == "manual" and spec.attr_key_en == "Specification"
     assert spec.trans_meta["attr_key_sw"] == "pending"
-    assert spec.trans_meta["attr_value_en"] == "manual" and spec.attr_value_sw == "φ8"   # 规格值语言中性,不翻
+    # 规格值走翻译(「扬程150米」这类中文不能原样给英文买家)
+    assert spec.trans_meta["attr_value_en"] == "pending" and spec.attr_value_en is None and spec.attr_value_sw is None
 
     plain = ProductAttr(attr_key_zh="是否通用", attr_value_zh="否（机型专用）", selectable=False)
     await mark_attr_i18n(plain)
@@ -396,3 +397,29 @@ def test_load_source_rows_skips_unknown_file_keys(tmp_path: Path):
     wb.active.append(["X-1", "绳卡"])
     wb.save(tmp_path / "06_汇总.xlsx")
     assert load_source_rows(tmp_path) == []
+
+
+def test_spec_value_was_prefilled_only_matches_old_neutral_rows():
+    """重跑只把「抄中文标 manual」的旧规格值改回待翻;运营手改过的英文、非可选属性都不动。"""
+    from app.db.models.product_attr import ProductAttr
+    from scripts.import_zone_mining import _spec_value_was_prefilled
+
+    old = ProductAttr(attr_key_zh="规格", attr_value_zh="扬程150米", attr_value_en="扬程150米", selectable=True,
+                      trans_meta={"attr_value_en": "manual"})
+    edited = ProductAttr(attr_key_zh="规格", attr_value_zh="扬程150米", attr_value_en="Head 150 m", selectable=True,
+                         trans_meta={"attr_value_en": "manual"})
+    pending = ProductAttr(attr_key_zh="规格", attr_value_zh="扬程150米", selectable=True, trans_meta={"attr_value_en": "pending"})
+    plain = ProductAttr(attr_key_zh="是否通用", attr_value_zh="否", attr_value_en="否", selectable=False,
+                        trans_meta={"attr_value_en": "manual"})
+    # 更早的本地导入连 attr_value 标记都没打,只抄了 en
+    unmarked = ProductAttr(attr_key_zh="规格", attr_value_zh="扬程150米", attr_value_en="扬程150米", selectable=True,
+                           trans_meta={"attr_key_en": "manual"})
+    # 翻译器处理过的中性值(译完仍等于中文)不能反复送译
+    neutral_done = ProductAttr(attr_key_zh="规格", attr_value_zh="NTW", attr_value_en="NTW", selectable=True,
+                               trans_meta={"attr_value_en": "auto"})
+    assert _spec_value_was_prefilled(old)
+    assert _spec_value_was_prefilled(unmarked)
+    assert not _spec_value_was_prefilled(edited)
+    assert not _spec_value_was_prefilled(pending)
+    assert not _spec_value_was_prefilled(plain)
+    assert not _spec_value_was_prefilled(neutral_done)
