@@ -967,6 +967,11 @@ def _brand_col_by_locale():
     return Product.brand_zh
 
 
+async def category_exists(db: AsyncSession, code: str) -> bool:
+    """按主键查品类是否存在(公开接口校验客户端传入的品类 code 用)。"""
+    return (await db.execute(select(Category.code).where(Category.code == code))).scalar_one_or_none() is not None
+
+
 async def list_brand_options(
     db: AsyncSession,
     *,

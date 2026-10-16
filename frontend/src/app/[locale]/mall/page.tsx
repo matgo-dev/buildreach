@@ -128,7 +128,8 @@ function MallContent() {
           onSortChange={(s) => updateFilters({ sort: s !== "newest" ? s : undefined })}
           onFeaturedToggle={() => updateFilters({ featured: urlFeatured ? undefined : "true" })}
           onSupplyModeChange={(mode) => updateFilters({ supply_mode: mode || undefined })}
-          onCategoryChange={(code) => updateFilters({ cat: code || undefined })}
+          // 换品类时清掉品牌:品牌行按品类取,旧品牌在新品类下可能没有,留着会 0 件且无处取消
+          onCategoryChange={(code) => updateFilters({ cat: code || undefined, brand: undefined })}
           onBrandChange={(b) => updateFilters({ brand: b || undefined })}
           onClearAll={clearAll}
           hasActiveFilters={hasActiveFilters}
