@@ -1,9 +1,12 @@
 """央企/客户专区(Zone)买家侧只读 API — 类目导航 + 商品列表 + 商品详情。
 
-访问门槛:`require_zone_access` 依赖 —— 当前买方须持有该 zone 的 ZoneGrant(经其
-buyer_org),且该 zone 必须 ACTIVE;不满足一律 403,不区分"zone 不存在"/"未授权"/
-"zone 已停用",避免存在性泄露。查询模式与 `GET /me`(auth.py)的 zones 字段一致:
-Zone ⋈ ZoneGrant ⋈ BuyerMember。
+访问门槛:`require_zone_access` 依赖,口径与 `GET /zones`、`GET /me` 的 zones 同源
+(services/zone_access):zone 必须 ACTIVE,且公开(is_public,含未登录)或当前买方机构持有
+ZoneGrant。非公开专区:未登录 401(前端据此去登录),已登录无授权 403;不区分"zone 不存在"/
+"未授权"/"zone 已停用",避免存在性泄露。
+
+公开专区对未登录开放,所以这里的输出口径不能比公开商城多:SKU 价格一律不下发
+(与公开详情"广告牌模式"一致,matgo 不对外标价)。
 
 商品列表/详情尽量复用现有公开商品序列化(app.api.v1.products),使前端
 components/mall/* 可直接复用:
@@ -32,53 +35,63 @@ from app.api.v1.products import (
     _localized_attr,
     _to_public,
 )
-from app.core.exceptions import NotFoundError, PermissionDeniedError, success
+from app.core.exceptions import NotAuthenticatedError, NotFoundError, PermissionDeniedError, success
 from app.core.i18n import get_localized
 from app.core.locale import get_current_locale
-from app.core.dependencies import CurrentUser, get_current_user
-from app.db.models.buyer_member import BuyerMember
+from app.core.dependencies import CurrentUser, get_optional_user
 from app.db.models.product import Product, ProductStatus
 from app.db.models.product_attr import ProductAttr
 from app.db.models.product_sku import ProductSku, SkuStatus
-from app.db.models.zone import Zone, ZoneCategory, ZoneGrant, ZoneProduct
+from app.db.models.zone import (
+    ZONE_CATEGORY_KIND_CATEGORY,
+    ZONE_CATEGORY_KIND_SCENE,
+    Zone,
+    ZoneCategory,
+    ZoneProduct,
+)
 from app.db.session import get_db
 from app.schemas.product import ProductAttrSchema, ProductPublicDetail, SkuPublic
 from app.services import product as product_svc
 from app.services.purchase_target import default_sku_variant_display
+from app.services.zone_access import list_accessible_zones, zone_accessible_clause
 
 router = APIRouter(prefix="/zones", tags=["zones"])
 
 
 async def require_zone_access(
     zone_code: str,
-    current: CurrentUser = Depends(get_current_user),
+    current: CurrentUser | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> Zone:
-    """解析当前买方对 `zone_code` 的访问权限,返回 Zone 行。
-
-    查询模式与 `GET /me`(auth.py)一致:Zone ⋈ ZoneGrant ⋈ BuyerMember,
-    仅 ACTIVE 专区。zone 不存在 / 未授权 / zone 已停用,统一 403,不泄露存在性。
-    """
-    row = await db.execute(
-        select(Zone)
-        .join(ZoneGrant, ZoneGrant.zone_id == Zone.id)
-        .join(BuyerMember, BuyerMember.buyer_org_id == ZoneGrant.buyer_org_id)
-        .where(
-            BuyerMember.user_id == current.id,
-            Zone.code == zone_code,
-            Zone.status == "ACTIVE",
+    """解析当前访问者对 `zone_code` 的访问权限,返回 Zone 行。口径见 services/zone_access。"""
+    zone = (
+        await db.execute(
+            select(Zone).where(
+                Zone.code == zone_code,
+                zone_accessible_clause(current.id if current else None),
+            )
         )
-    )
-    zone = row.scalar_one_or_none()
-    if zone is None:
-        raise PermissionDeniedError("Zone access denied")
-    return zone
+    ).scalar_one_or_none()
+    if zone is not None:
+        return zone
+    if current is None:
+        raise NotAuthenticatedError()
+    raise PermissionDeniedError("Zone access denied")
+
+
+@router.get("", summary="当前访问者可进的专区(公开专区 + 已授权专区;未登录只含公开专区)")
+async def list_zones(
+    current: CurrentUser | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return success(await list_accessible_zones(db, current.id if current else None))
 
 
 def _zone_category_to_public(zc: ZoneCategory) -> dict:
     return {
         "id": zc.id,
         "code": zc.code,
+        "kind": zc.kind,
         "name": get_localized(zc, "name"),
         "name_zh": zc.name_zh,
         "name_en": zc.name_en,
@@ -113,8 +126,9 @@ def _build_sku_public(sku, sku_attrs: list, locale: str) -> dict:
         color=get_localized(sku, "color") or None,
         material=get_localized(sku, "material") or None,
         manufacturer_model=sku.manufacturer_model,
-        price_min=sku.price_min,
-        price_max=sku.price_max,
+        # 公开专区可匿名访问:价格不下发(见模块 docstring)
+        price_min=None,
+        price_max=None,
         moq=sku.moq,
         lead_time_min=sku.lead_time_min,
         lead_time_max=sku.lead_time_max,
@@ -205,53 +219,75 @@ async def list_zone_categories(
 _batch_active_sku_counts = product_svc.batch_active_sku_counts
 
 
+async def _resolve_zone_category_id(db: AsyncSession, zone: Zone, code: str, kind: str) -> int | None:
+    """按 (zone, code, kind) 取类目 id;code 不存在或 kind 不符都返回 None(调用方按空结果处理)。"""
+    row = await db.execute(
+        select(ZoneCategory.id).where(
+            ZoneCategory.zone_id == zone.id,
+            ZoneCategory.code == code,
+            ZoneCategory.kind == kind,
+        )
+    )
+    return row.scalar_one_or_none()
+
+
+def _zone_membership(zone_id: int, zone_category_id: int | None = None):
+    """EXISTS zone_products:商品属于该专区(可选:且挂在某个类目/场景下)。
+
+    一件商品在专区内有 1 行 CATEGORY + N 行 SCENE,主查询不能 join zone_products
+    (会放大行数),一律用 EXISTS 谓词;两个索引
+    ix_zone_product_zone_spu / ix_zone_product_zone_category_sort 分别覆盖两种形态。
+    """
+    conds = [ZoneProduct.zone_id == zone_id, ZoneProduct.spu_id == Product.id]
+    if zone_category_id is not None:
+        conds.append(ZoneProduct.zone_category_id == zone_category_id)
+    return exists(select(ZoneProduct.id).where(*conds))
+
+
+def _empty_page(page: int, size: int) -> dict:
+    return {"items": [], "total": 0, "page": page, "size": size, "pages": 0}
+
+
 @router.get("/{zone_code}/products", summary="专区白名单商品列表")
 async def list_zone_products(
     zone: Zone = Depends(require_zone_access),
-    zone_category_code: str | None = Query(None, description="按客户视角大类筛选"),
+    zone_category_code: str | None = Query(None, description="按客户视角大类筛选(kind=CATEGORY)"),
+    scene_code: str | None = Query(None, description="按应用场景筛选(kind=SCENE),可与大类叠加"),
     keyword: str | None = Query(None, description="关键词:商品名/品牌/型号/SKU/规格/商品编码"),
     spec: str | None = Query(None, description="规格值筛选"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    zone_category_id: int | None = None
-    if zone_category_code is not None:
-        zc_row = await db.execute(
-            select(ZoneCategory.id).where(
-                ZoneCategory.zone_id == zone.id, ZoneCategory.code == zone_category_code,
-            )
-        )
-        zone_category_id = zc_row.scalar_one_or_none()
-        if zone_category_id is None:
-            # 未知/不属于该专区的类目筛选值 → 空结果(不是错误,列表语义)
-            return success({"items": [], "total": 0, "page": page, "size": size, "pages": 0})
-
-    base_filters = [
-        ZoneProduct.zone_id == zone.id,
+    filters = [
         Product.status == ProductStatus.ACTIVE,
         Product.deleted_at.is_(None),
     ]
-    if zone_category_id is not None:
-        base_filters.append(ZoneProduct.zone_category_id == zone_category_id)
+    if zone_category_code is None and scene_code is None:
+        # 带类目/场景筛选时,下面的 EXISTS 已蕴含"属于该专区",不再叠一个基础成员 EXISTS
+        filters.append(_zone_membership(zone.id))
+    if zone_category_code is not None:
+        cat_id = await _resolve_zone_category_id(db, zone, zone_category_code, ZONE_CATEGORY_KIND_CATEGORY)
+        if cat_id is None:
+            # 未知/不属于该专区/kind 不符的筛选值 → 空结果(不是错误,列表语义)
+            return success(_empty_page(page, size))
+        filters.append(_zone_membership(zone.id, cat_id))
+    if scene_code is not None:
+        scene_id = await _resolve_zone_category_id(db, zone, scene_code, ZONE_CATEGORY_KIND_SCENE)
+        if scene_id is None:
+            return success(_empty_page(page, size))
+        filters.append(_zone_membership(zone.id, scene_id))
     if keyword and keyword.strip():
-        base_filters.append(_zone_keyword_filter(keyword))
+        filters.append(_zone_keyword_filter(keyword))
     if spec and spec.strip():
-        base_filters.append(_zone_spec_filter(spec))
+        filters.append(_zone_spec_filter(spec))
 
-    count_q = (
-        select(func.count(ZoneProduct.id))
-        .join(Product, Product.id == ZoneProduct.spu_id)
-        .where(*base_filters)
-    )
-    total = (await db.execute(count_q)).scalar() or 0
+    total = (await db.execute(select(func.count(Product.id)).where(*filters))).scalar() or 0
 
     q = (
         select(Product)
-        .join(ZoneProduct, ZoneProduct.spu_id == Product.id)
-        .where(*base_filters)
-        # 与公开列表(list_products_public)排序口径统一：按上架时间倒序，
-        # 未上架/published_at 被清空的排最后。
+        .where(*filters)
+        # 与公开列表(list_products_public)排序口径统一:按上架时间倒序,未上架排最后。
         .order_by(Product.published_at.desc().nulls_last(), Product.id.desc())
         .offset((page - 1) * size)
         .limit(size)
@@ -299,7 +335,7 @@ async def get_zone_product(
         raise NotFoundError("Product not found")
 
     # 注意:不走 public_visible() —— ZONE_ONLY 商品会被它过滤掉。
-    # 这里的门禁就是"zone 白名单 + grant",不是 public_visible()。
+    # 这里的门禁就是"zone 白名单 + 专区可访问(公开或授权)",不是 public_visible()。
     p = await product_svc.get_product(db, product_id)
     if p.status != ProductStatus.ACTIVE:
         raise NotFoundError("Product not found")
@@ -345,6 +381,18 @@ async def get_zone_product(
     detail["skus"] = [
         _build_sku_public(s, [a for a in p.attrs if a.sku_id == s.id], locale)
         for s in skus
+    ]
+
+    # 本专区内该商品的归属(大类 + 场景),详情页「适用场景」行用。
+    zc_rows = await db.execute(
+        select(ZoneCategory)
+        .join(ZoneProduct, ZoneProduct.zone_category_id == ZoneCategory.id)
+        .where(ZoneProduct.zone_id == zone.id, ZoneProduct.spu_id == p.id)
+        .order_by(ZoneCategory.sort_order, ZoneCategory.id)
+    )
+    detail["zone_categories"] = [
+        {"kind": zc.kind, "code": zc.code, "name": get_localized(zc, "name")}
+        for zc in zc_rows.scalars().all()
     ]
 
     return success(detail)

@@ -144,7 +144,7 @@ export function ProductCard({
   return (
     <Link
       href={detailHref}
-      className="group block rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-mall-lg shadow-mall-sm"
+      className="group flex h-full flex-col rounded-xl border border-line bg-white overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-mall-lg shadow-mall-sm"
     >
       {/* 图片区 — 撑满，窄边距 */}
       <div
@@ -173,8 +173,8 @@ export function ProductCard({
       </div>
 
       {/* 信息区 */}
-      <div className="p-2.5 sm:p-3.5 space-y-1.5 sm:space-y-2">
-        <h3 className="min-h-[40px] sm:min-h-[46px] text-[13px] sm:text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
+      <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
+        <h3 className="text-[13px] sm:text-[14.5px] font-extrabold leading-tight text-navy line-clamp-2 group-hover:text-teal-900">
           {product.supply_mode === "PLATFORM_STOCK" ? (
             <span className="inline-flex items-center rounded bg-teal-700 px-1.5 py-px text-[10px] font-bold text-white mr-1 align-text-top">
               {t("supplyModePlatformStock")}
@@ -190,63 +190,70 @@ export function ProductCard({
           )}
         </h3>
 
+        {/* 可选内容有才显示、不预留高度;对齐靠下面的底部组 mt-auto(整行都没描述时卡片直接变矮,不留空带) */}
         {product.description && (
-          <p className="text-xs text-muted leading-relaxed line-clamp-2">
-            {product.description}
-          </p>
+          <p className="text-xs text-muted leading-relaxed line-clamp-2">{product.description}</p>
         )}
 
-        <div className="flex flex-wrap gap-1.5">
-          {categoryLabel && (
-            <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">
-              {categoryLabel}
-            </span>
+        {(categoryLabel || (product.certifications?.length ?? 0) > 0) && (
+          <div className="flex flex-wrap gap-1.5">
+            {categoryLabel && (
+              <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-900 whitespace-nowrap">
+                {categoryLabel}
+              </span>
+            )}
+            {product.certifications?.map((cert) => (
+              <span
+                key={cert}
+                className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-extrabold text-sea whitespace-nowrap"
+              >
+                {cert}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 底部组:MOQ + 规格提示 + 操作整体钉在卡片底,同一行卡片底部信息对齐 */}
+        <div className="mt-auto flex flex-col gap-1.5 pt-1 sm:gap-2">
+          {product.moq != null && (
+            <p className="text-xs text-muted">
+              <span className="font-extrabold text-navy">MOQ:</span>{" "}
+              {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
+            </p>
           )}
-          {product.certifications?.map((cert) => (
-            <span
-              key={cert}
-              className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-extrabold text-sea whitespace-nowrap"
+
+          {/* 只有多规格才提示(「1种规格」是噪声):用户要知道的是"点进去还有得选"。
+              专区列表回 sku_count(带数量),商城列表只回 has_variants(布尔),两种都认。 */}
+          {(product.sku_count ?? 0) > 1 ? (
+            <p className="text-xs font-semibold text-teal-800">{t("specCount", { count: product.sku_count! })}</p>
+          ) : product.has_variants ? (
+            <p className="text-xs font-semibold text-teal-800">{t("multiSpec")}</p>
+          ) : null}
+
+          <div className="flex gap-2">
+            <MallButton
+              variant="outline"
+              size="md"
+              className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(rfqHref);
+              }}
             >
-              {cert}
-            </span>
-          ))}
-        </div>
-
-        {product.moq != null && (
-          <p className="text-xs text-muted">
-            <span className="font-extrabold text-navy">MOQ:</span>{" "}
-            {product.moq.toLocaleString()} {product.moq_unit || product.unit || ""}
-          </p>
-        )}
-
-        {product.sku_count != null && product.sku_count > 0 && (
-          <p className="text-xs text-muted">{t("specCount", { count: product.sku_count })}</p>
-        )}
-
-        {/* 底部操作 */}
-        <div className="flex gap-2 pt-1">
-          <MallButton
-            variant="outline"
-            size="md"
-            className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
-            onClick={(e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              router.push(rfqHref);
-            }}
-          >
-            {t("startInquiry")}
-          </MallButton>
-          <button
-            ref={btnRef}
-            type="button"
-            onClick={handleAddToCart}
-            disabled={adding}
-            className="h-10 w-10 shrink-0 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={t("addToInquiryCart")}
-          >
-            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-          </button>
+              {t("startInquiry")}
+            </MallButton>
+            <button
+              ref={btnRef}
+              type="button"
+              onClick={handleAddToCart}
+              disabled={adding}
+              className="h-10 w-10 shrink-0 rounded-md border-[1.5px] border-line-strong bg-white grid place-items-center text-teal-900 hover:bg-teal-50 hover:border-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("addToInquiryCart")}
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </div>
     </Link>

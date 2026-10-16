@@ -332,6 +332,8 @@ class ProductOperator(BaseModel):
     main_image: str | None = None
     main_image_thumbnail: str | None = None
     status: str
+    visibility: str = "PUBLIC"
+    zone_codes: list[str] = []
     created_by_name: str = ""
     price_min: Decimal | None = None
     price_max: Decimal | None = None
@@ -340,6 +342,11 @@ class ProductOperator(BaseModel):
     published_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ZoneRef(BaseModel):
+    code: str
+    name: str
 
 
 class ProductOperatorDetail(BaseModel):
@@ -382,6 +389,11 @@ class ProductOperatorDetail(BaseModel):
     can_consolidate: bool = True
     cargo_type: str | None = None
     status: str
+    visibility: str = "PUBLIC"
+    # 所属专区(code + 按 locale 本地化名)。详情直接带名字,不让前端为显示名去调需 zone:manage 的专区列表
+    zones: List["ZoneRef"] = []
+    # 采购备注:导入源表的采购说明(内部指令/预算示例/待核),只给运营看,不当商品描述
+    purchase_note: str | None = None
     created_by_name: str = ""
     skus: List[SkuOperator] = []
     images: List[ProductImageSchema] = []

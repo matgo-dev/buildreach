@@ -166,7 +166,11 @@ def _sku_to_operator(sku) -> dict:
     ).model_dump()
 
 
-def _to_operator(p, creator_name_map: dict | None = None, main_image_urls: tuple[str, str] | None = None) -> dict:
+def _to_operator(
+    p, creator_name_map: dict | None = None,
+    main_image_urls: tuple[str, str] | None = None,
+    zone_codes: list[str] | None = None,
+) -> dict:
     prices = spu_price_range(p)
     active_count = sum(1 for s in p.skus if s.status == SkuStatus.ACTIVE) if p.skus else 0
     created_by_name = ""
@@ -187,6 +191,8 @@ def _to_operator(p, creator_name_map: dict | None = None, main_image_urls: tuple
         main_image=main_url,
         main_image_thumbnail=thumb_url,
         status=p.status,
+        visibility=p.visibility,
+        zone_codes=zone_codes or [],
         created_by_name=created_by_name,
         price_min=prices["price_min"],
         price_max=prices["price_max"],
@@ -206,6 +212,7 @@ async def list_products(
     status: str | None = Query(None),
     supply_mode: str | None = Query(None),
     keyword: str | None = Query(None),
+    zone_code: str | None = Query(None, description="只看某专区的商品(zone code)"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=50),
     current: CurrentUser = Depends(require_permission(Permissions.PRODUCT_READ)),
@@ -213,9 +220,10 @@ async def list_products(
 ):
     items, total, img_map = await product_svc.list_products_operator(
         db, category_code=category_code, status=status,
-        supply_mode=supply_mode, keyword=keyword,
+        supply_mode=supply_mode, keyword=keyword, zone_code=zone_code,
         page=page, size=size,
     )
+    zone_code_map = await product_svc.batch_zone_codes(db, [p.id for p in items])
 
     # 批量查创建人名称，避免 N+1
     creator_ids = {p.created_by for p in items if p.created_by}
@@ -227,7 +235,10 @@ async def list_products(
         creator_name_map = {r.id: r.name for r in rows}
 
     return success({
-        "items": [_to_operator(p, creator_name_map, main_image_urls=img_map.get(p.id)) for p in items],
+        "items": [
+            _to_operator(p, creator_name_map, main_image_urls=img_map.get(p.id), zone_codes=zone_code_map.get(p.id))
+            for p in items
+        ],
         "total": total,
         "page": page,
         "size": size,
@@ -386,6 +397,9 @@ async def get_product(
         can_consolidate=p.can_consolidate,
         cargo_type=p.cargo_type,
         status=p.status,
+        visibility=p.visibility,
+        zones=await product_svc.zone_refs_for_product(db, p.id),
+        purchase_note=(p.source_meta or {}).get("purchase_note"),
         created_by_name=created_by_name,
         skus=skus_data,
         images=[_img_to_dict(img) for img in p.images],

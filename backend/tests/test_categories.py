@@ -231,3 +231,13 @@ async def test_api_trace_id_header_present(client):
     r = await client.get("/api/v1/categories")
     assert r.status_code == 200
     assert r.headers.get("x-trace-id"), "X-Trace-Id 响应头缺失"
+
+@pytest.mark.asyncio
+async def test_api_never_exposes_inactive(client, db_session):
+    """公开接口不提供查看停用品类的开口:带 is_active=false 也只回启用的。"""
+    await _seed(db_session, SAMPLE)
+    cs.invalidate_category_cache()
+    r = await client.get("/api/v1/categories?is_active=false&level=1")
+    assert {n["code"] for n in r.json()["data"]} == {"01", "02"}
+    r = await client.get("/api/v1/categories/tree?is_active=false")
+    assert {n["code"] for n in r.json()["data"]} == {"01", "02"}

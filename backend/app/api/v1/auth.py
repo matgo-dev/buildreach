@@ -46,6 +46,7 @@ from app.schemas.me import (
 from app.services import auth_service, me_service, session_service, verification_service
 from app.services.credit.harvester.harvest_task import harvest_after_register
 from app.services.credit.registration_hook import initialize_credit_for_new_supplier
+from app.services.zone_access import list_accessible_zones
 
 from pydantic import AfterValidator, BaseModel as _BaseModel
 
@@ -65,8 +66,6 @@ from app.constants.country_registration import (
 )
 from app.core.security import PASSWORD_RULE_MESSAGE, validate_password_strength
 from app.db.models.supplier_organization import SupplierOrganization
-from app.db.models.buyer_member import BuyerMember
-from app.db.models.zone import Zone, ZoneGrant
 
 
 # ---- 供应商注册:全量校验(格式 + 业务一次性返回) ----
@@ -610,18 +609,8 @@ async def me(
         if e.strip()
     }
 
-    # 当前用户可见的专区(经 buyer_members → zone_grants → zones,仅 ACTIVE 专区)。
-    # 单条 JOIN 查询,避免 N+1。
-    zone_rows = await db.execute(
-        select(Zone.code, Zone.name_zh, Zone.name_en)
-        .join(ZoneGrant, ZoneGrant.zone_id == Zone.id)
-        .join(BuyerMember, BuyerMember.buyer_org_id == ZoneGrant.buyer_org_id)
-        .where(BuyerMember.user_id == current.id, Zone.status == "ACTIVE")
-    )
-    zones = [
-        {"code": row.code, "name_zh": row.name_zh, "name_en": row.name_en}
-        for row in zone_rows
-    ]
+    # 当前用户可进的专区:公开专区 + 所属买方机构被授权的专区(口径见 zone_access)。
+    zones = await list_accessible_zones(db, current.id)
 
     data = MeOut(
         id=current.id,

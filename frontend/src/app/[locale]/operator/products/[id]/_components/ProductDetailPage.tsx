@@ -549,6 +549,13 @@ export default function ProductDetailPage() {
                   <span className="text-slate-400 text-xs">{t("description")}</span>
                   <p className="mt-1 text-slate-600 text-sm leading-relaxed line-clamp-4">{localized(product.description_zh, product.description_en, product.description) || "—"}</p>
                 </div>
+                {product.purchase_note && (
+                  <div className="sm:col-span-2 rounded-md bg-amber-50 px-3 py-2">
+                    <span className="text-amber-800 text-xs font-semibold">{t("purchaseNote")}</span>
+                    <span className="ml-2 text-amber-700/80 text-[11px]">{t("purchaseNoteHint")}</span>
+                    <p className="mt-1 text-slate-700 text-sm leading-relaxed whitespace-pre-line">{product.purchase_note}</p>
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -682,6 +689,26 @@ export default function ProductDetailPage() {
             <div className="flex items-center gap-2 mb-3">
               <span className={`w-2.5 h-2.5 rounded-full ${status.dot}`} />
               <span className={`text-sm font-medium ${status.text}`}>{t(status.labelKey)}</span>
+            </div>
+            <div className="mb-3 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400">{t("visibility")}</span>
+                {product.visibility === "ZONE_ONLY" ? (
+                  <span className="rounded bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700">{t("visibilityZoneOnly")}</span>
+                ) : (
+                  <span className="font-medium text-slate-700">{t("visibilityPublic")}</span>
+                )}
+              </div>
+              {(product.zones ?? []).length > 0 && (
+                <div className="flex items-start justify-between gap-2">
+                  <span className="shrink-0 text-slate-400">{t("zones")}</span>
+                  <span className="flex flex-wrap justify-end gap-1">
+                    {(product.zones ?? []).map((z) => (
+                      <span key={z.code} className="rounded bg-teal-50 px-1.5 py-0.5 font-medium text-teal-700">{z.name}</span>
+                    ))}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="text-xs text-slate-500 space-y-1.5">
               <div>{t("createdAt")}：{formatTime(product.created_at)}</div>

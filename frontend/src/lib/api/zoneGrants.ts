@@ -8,6 +8,8 @@ export interface ZoneBrief {
   code: string;
   name_zh: string;
   status: string;
+  /** 公开专区:所有人(含未登录)可进,授权不影响访问 */
+  is_public: boolean;
 }
 
 export interface ZoneGrantOut {

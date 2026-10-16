@@ -7,7 +7,7 @@ import useSWR from "swr";
 import { ArrowLeft, AlertCircle, Loader2, MessageCircle, ShoppingCart } from "lucide-react";
 
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { RouteGuard } from "@/components/auth/RouteGuard";
+import { ZoneGate } from "@/components/zone/ZoneGate";
 import { zonesApi, type ZoneProductDetail } from "@/lib/api/zones";
 import { addCartItem } from "@/lib/api/cart";
 import { useToast } from "@/components/ui/Toast";
@@ -26,12 +26,6 @@ import {
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
 import { imageUrl } from "@/lib/env";
-
-function formatPriceRange(min: number | null, max: number | null): string | null {
-  if (min == null && max == null) return null;
-  if (min != null && max != null && min !== max) return `${min} - ${max}`;
-  return `${min ?? max}`;
-}
 
 function ReadonlyCategoryBreadcrumb({
   categoryCode,
@@ -175,9 +169,6 @@ function ZoneProductDetailContent() {
     );
   }
 
-  const priceRange = selectedSku
-    ? formatPriceRange(selectedSku.price_min, selectedSku.price_max)
-    : formatPriceRange(product.price_min ?? null, product.price_max ?? null);
   const moq = selectedSku?.moq ?? product.moq;
   const moqUnit = product.moq_unit || product.unit || "";
 
@@ -230,13 +221,8 @@ function ZoneProductDetailContent() {
               </div>
             )}
 
-            {/* 换购价 / MOQ */}
+            {/* MOQ(专区公开可匿名访问,与公开商城一致不标价) */}
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted">
-              {priceRange && (
-                <span>
-                  {t("price")}: <span className="font-medium text-ink">{priceRange}</span>
-                </span>
-              )}
               {moq != null && (
                 <span>
                   {tMall("detail.moq")}: <span className="font-medium text-ink">{moq.toLocaleString()} {moqUnit}</span>
@@ -250,6 +236,14 @@ function ZoneProductDetailContent() {
               {product.brand && (
                 <span>
                   {tMall("detail.brand")}: <span className="font-medium text-ink">{product.brand}</span>
+                </span>
+              )}
+              {product.zone_categories?.some((z) => z.kind === "SCENE") && (
+                <span>
+                  {t("scenes")}:{" "}
+                  <span className="font-medium text-ink">
+                    {product.zone_categories.filter((z) => z.kind === "SCENE").map((z) => z.name).join(", ")}
+                  </span>
                 </span>
               )}
             </div>
@@ -351,9 +345,9 @@ function ZoneProductDetailGated() {
   const params = useParams();
   const zoneCode = String(params.zoneCode);
   return (
-    <RouteGuard requireZone={zoneCode}>
+    <ZoneGate zoneCode={zoneCode}>
       <ZoneProductDetailContent />
-    </RouteGuard>
+    </ZoneGate>
   );
 }
 

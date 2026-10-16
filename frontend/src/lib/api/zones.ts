@@ -1,15 +1,20 @@
 // 央企/客户专区(Zone)买家侧只读 API client。
 //
 // 后端契约: backend/app/api/v1/zones.py
-// 全部端点要求:已登录 + 持有该 zone 的 ZoneGrant,否则 403(不区分"不存在"/"未授权")。
+// 公开专区(is_public)所有人可访问(含未登录);非公开专区须持有 ZoneGrant,未登录 401、无授权 403。
 // 列表/详情复用公开商品序列化,类型直接借用 lib/api/products.ts 里的公开商品类型。
 
 import { api } from "../api";
 import type { ProductListResponse, ProductPublicDetail } from "./products";
+import type { ZoneBriefForUser } from "../zoneName";
+
+export type ZoneCategoryKind = "CATEGORY" | "SCENE";
 
 export interface ZoneCategory {
   id: number;
   code: string;
+  /** CATEGORY=商品类型轴(一件商品一个);SCENE=应用场景轴(一件商品可多个) */
+  kind: ZoneCategoryKind;
   /** 后端按 Accept-Language 填充的本地化名称 */
   name: string;
   name_zh: string;
@@ -19,18 +24,31 @@ export interface ZoneCategory {
 
 export interface ZoneProductListParams {
   zone_category_code?: string;
+  /** 应用场景(kind=SCENE)code,可与 zone_category_code 叠加 */
+  scene_code?: string;
   keyword?: string;
   spec?: string;
   page?: number;
   size?: number;
 }
 
+export interface ZoneCategoryRef {
+  kind: ZoneCategoryKind;
+  code: string;
+  name: string;
+}
+
 /** 专区商品详情 — 公开详情字段集合 + SKU 变体(供换购用) */
 export interface ZoneProductDetail extends ProductPublicDetail {
   skus: NonNullable<ProductPublicDetail["skus"]>;
+  /** 本专区内的归属:1 个 CATEGORY + N 个 SCENE */
+  zone_categories: ZoneCategoryRef[];
 }
 
 export const zonesApi = {
+  /** 当前访问者可进的专区(未登录只含公开专区) */
+  list: () => api.get<ZoneBriefForUser[]>("/api/v1/zones"),
+
   /** 专区客户视角大类导航 */
   categories: (zoneCode: string) =>
     api.get<ZoneCategory[]>(`/api/v1/zones/${zoneCode}/categories`),
@@ -39,6 +57,7 @@ export const zonesApi = {
   products: (zoneCode: string, params: ZoneProductListParams = {}) => {
     const qs = new URLSearchParams();
     if (params.zone_category_code) qs.set("zone_category_code", params.zone_category_code);
+    if (params.scene_code) qs.set("scene_code", params.scene_code);
     if (params.keyword) qs.set("keyword", params.keyword);
     if (params.spec) qs.set("spec", params.spec);
     if (params.page) qs.set("page", String(params.page));

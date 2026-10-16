@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 
 import { PUBLIC_NAV } from "@/config/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import { useAccessibleZones } from "@/hooks/useAccessibleZones";
 
 /** 公开区主导航:中英双语,顶部 header 中央插槽。公开 layout 和工作台 layout 共用。
  *
@@ -19,8 +20,9 @@ export function PublicNav() {
   const t = useTranslations("nav");
   const locale = useLocale();
   const items = isSupplierOnly ? [] : PUBLIC_NAV;
-  // 专区入口:仅对被授权买家显示(me.zones 非空)—— 纯权限门,公开/未授权用户看不到
-  const zones = isSupplierOnly ? [] : user?.zones ?? [];
+  // 专区入口:当前访问者可进的专区(公开专区所有人可见,含未登录;非公开专区仅被授权买家)
+  const { zones: accessibleZones } = useAccessibleZones();
+  const zones = isSupplierOnly ? [] : accessibleZones;
 
   const linkClass = (active: boolean) =>
     "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 " +

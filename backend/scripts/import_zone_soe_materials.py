@@ -325,7 +325,7 @@ async def _get_or_create_zone(db: AsyncSession) -> Zone:
     zone = (await db.execute(select(Zone).where(Zone.code == ZONE_CODE))).scalar_one_or_none()
     if zone is not None:
         return zone
-    zone = Zone(code=ZONE_CODE, name_zh="常用材料", name_en="Common Materials", name_sw="Vifaa vya Kawaida", status="ACTIVE")
+    zone = Zone(code=ZONE_CODE, name_zh="央企常用材料", name_en="Common Materials", name_sw="Vifaa vya Kawaida", status="ACTIVE")
     db.add(zone)
     await db.flush()
     return zone

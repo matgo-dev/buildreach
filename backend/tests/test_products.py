@@ -2300,3 +2300,147 @@ async def test_home_floor_skips_imageless_product_even_if_newer(client, db_sessi
     product_ids = {p["id"] for p in safety["products"]}
     assert imaged_pid in product_ids, "有图商品应被选中"
     assert imageless_pid not in product_ids, "无图商品即使更新也不应顶替有图商品"
+
+
+# ── 运营列表:专区筛选 + 可见性/所属专区角标 ────────────────
+
+@pytest.mark.asyncio
+async def test_operator_list_zone_code_filter_and_badges(client, db_session):
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+    from app.db.models.zone import Zone, ZoneCategory, ZoneProduct
+
+    zone = Zone(code="ZONE-OPLIST", name_zh="运营列表测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.flush()
+    zc = ZoneCategory(zone_id=zone.id, code="C01", name_zh="大类")
+    db_session.add(zc)
+    await db_session.flush()
+    inside = Product(spu_code="OPLIST-IN", name_zh="专区内商品", category_code="04.001",
+                     status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS")
+    outside = Product(spu_code="OPLIST-OUT", name_zh="专区外商品", category_code="04.001",
+                      status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC, moq=1, unit="PCS")
+    db_session.add_all([inside, outside])
+    await db_session.flush()
+    db_session.add(ZoneProduct(zone_id=zone.id, spu_id=inside.id, zone_category_id=zc.id))
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+    r = await client.get("/api/v1/operator/products?zone_code=ZONE-OPLIST", headers=headers)
+    assert r.status_code == 200, r.text
+    items = r.json()["data"]["items"]
+    assert [i["spu_code"] for i in items] == ["OPLIST-IN"]
+    assert items[0]["visibility"] == "ZONE_ONLY"
+    assert items[0]["zone_codes"] == ["ZONE-OPLIST"]
+
+    r2 = await client.get("/api/v1/operator/products?keyword=OPLIST-OUT", headers=headers)
+    out = r2.json()["data"]["items"][0]
+    assert out["visibility"] == "PUBLIC"
+    assert out["zone_codes"] == []
+
+
+@pytest.mark.asyncio
+async def test_operator_detail_returns_visibility_and_zones(client, db_session):
+    """运营详情带可见范围 + 所属专区(含名字),从列表点进来不丢「仅专区可见 / 哪个专区」的上下文。"""
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+    from app.db.models.zone import Zone, ZoneCategory, ZoneProduct
+
+    zone = Zone(code="ZONE-OPDET", name_zh="详情测试专区", status="ACTIVE")
+    db_session.add(zone)
+    await db_session.flush()
+    a = ZoneCategory(zone_id=zone.id, code="C01", name_zh="大类")
+    s1 = ZoneCategory(zone_id=zone.id, code="S01", name_zh="场景", kind="SCENE")
+    db_session.add_all([a, s1])
+    await db_session.flush()
+    inside = Product(spu_code="OPDET-IN", name_zh="专区商品", category_code="04.001",
+                     status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS",
+                     source_meta={"batch": "t", "purchase_note": "预算示例：约150毫米"})
+    outside = Product(spu_code="OPDET-OUT", name_zh="公开商品", category_code="04.001",
+                      status=ProductStatus.ACTIVE, visibility=ProductVisibility.PUBLIC, moq=1, unit="PCS")
+    db_session.add_all([inside, outside])
+    await db_session.flush()
+    # 一个商品在同一专区挂两行(大类+场景),zones 只出现一次
+    db_session.add_all([
+        ZoneProduct(zone_id=zone.id, spu_id=inside.id, zone_category_id=a.id),
+        ZoneProduct(zone_id=zone.id, spu_id=inside.id, zone_category_id=s1.id),
+    ])
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+    r = await client.get(f"/api/v1/operator/products/{inside.id}", headers=headers)
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["visibility"] == "ZONE_ONLY"
+    assert d["zones"] == [{"code": "ZONE-OPDET", "name": "详情测试专区"}]
+    assert d["purchase_note"] == "预算示例：约150毫米"
+    # 买家接口绝不带采购备注
+    rb = await client.get(f"/api/v1/products/{inside.id}")
+    assert "purchase_note" not in rb.text and "预算示例" not in rb.text
+
+    r = await client.get(f"/api/v1/operator/products/{outside.id}", headers=headers)
+    d = r.json()["data"]
+    assert (d["visibility"], d["zones"], d["purchase_note"]) == ("PUBLIC", [], None)
+
+
+@pytest.mark.asyncio
+async def test_operator_list_unknown_zone_empty(client, db_session):
+    headers = await _login_operator(client)
+    r = await client.get("/api/v1/operator/products?zone_code=NO-SUCH-ZONE", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["total"] == 0
+
+
+# ── 停用品类(专区专用一级):运营筛选可达 / 运营建 PUBLIC 商品被拒 ────────
+
+async def _seed_inactive_leaf(db_session, l1: str = "97") -> str:
+    """插一个停用的一级 + 停用叶子(专区导入脚本建的那种),返回叶子 code。"""
+    from app.db.models import Category
+    from app.services import category as cs
+
+    leaf = f"{l1}.001"
+    db_session.add_all([
+        Category(code=l1, name_zh="停用一级", level=1, parent_code=None,
+                 sort_order=900, is_active=False, is_leaf=False),
+        Category(code=leaf, name_zh="停用叶子", level=2, parent_code=l1,
+                 sort_order=1, is_active=False, is_leaf=True),
+    ])
+    await db_session.commit()
+    cs.invalidate_category_cache()
+    return leaf
+
+
+@pytest.mark.asyncio
+async def test_operator_list_by_inactive_l1_reaches_zone_products(client, db_session):
+    """运营列表按停用一级筛选,要能走到停用子树下的 ZONE_ONLY 商品;公开列表仍不可达。"""
+    from app.db.models.product import Product, ProductStatus, ProductVisibility
+
+    leaf = await _seed_inactive_leaf(db_session, "97")
+    p = Product(spu_code="INACT-ZONE-1", name_zh="停用品类下的专区商品", category_code=leaf,
+                status=ProductStatus.ACTIVE, visibility=ProductVisibility.ZONE_ONLY, moq=1, unit="PCS")
+    db_session.add(p)
+    await db_session.commit()
+
+    headers = await _login_operator(client)
+    for code in ("97", leaf):
+        r = await client.get(f"/api/v1/operator/products?category_code={code}", headers=headers)
+        assert r.status_code == 200, r.text
+        assert [i["spu_code"] for i in r.json()["data"]["items"]] == ["INACT-ZONE-1"], code
+
+    r = await client.get("/api/v1/products?category_code=97")
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_create_product_under_inactive_category_rejected(client, db_session):
+    """运营建商品一律 PUBLIC,挂到停用品类下会在商城里静默消失 → 400/40219 直接拒。"""
+    leaf = await _seed_inactive_leaf(db_session, "96")
+    headers = await _login_operator(client)
+    r = await client.post(
+        "/api/v1/operator/products",
+        headers=headers,
+        json={"category_code": leaf, "spu_code": "INACT-CREATE-1", "name": "不该建成",
+              "origin": "中国", "source_lang": "zh"},
+    )
+    assert r.status_code == 400, r.text
+    assert r.json()["code"] == 40219
+    assert r.json()["message_key"] == "error.product.category_inactive"

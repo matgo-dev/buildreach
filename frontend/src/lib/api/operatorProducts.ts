@@ -247,6 +247,12 @@ export interface ProductOperatorDetail {
   volume_cbm: number | null;
   can_consolidate: boolean;
   cargo_type: string | null;
+  /** PUBLIC | ZONE_ONLY;老后端无此字段按 PUBLIC 处理 */
+  visibility?: string;
+  /** 所属专区(code + 本地化名) */
+  zones?: { code: string; name: string }[];
+  /** 采购备注(导入源表的采购说明),仅运营可见 */
+  purchase_note?: string | null;
   status: string;
   created_by_name: string;
   skus: SkuOperatorDetail[];
@@ -318,6 +324,10 @@ export interface ProductOperatorItem {
   main_image: string | null;
   main_image_thumbnail: string | null;
   status: string;
+  /** PUBLIC=主商城可见;ZONE_ONLY=只在专区可见 */
+  visibility: "PUBLIC" | "ZONE_ONLY";
+  /** 所属专区 code 列表;老后端没有这个字段,渲染时按 [] 处理 */
+  zone_codes?: string[];
   created_by_name: string;
   price_min: number | null;
   price_max: number | null;
@@ -332,6 +342,8 @@ export interface ProductListParams {
   status?: string;
   supply_mode?: string;
   keyword?: string;
+  /** 只看某专区的商品 */
+  zone_code?: string;
   page?: number;
   size?: number;
 }
@@ -438,6 +450,7 @@ export const operatorProductsApi = {
     if (params?.status) qs.set("status", params.status);
     if (params?.supply_mode) qs.set("supply_mode", params.supply_mode);
     if (params?.keyword) qs.set("keyword", params.keyword);
+    if (params?.zone_code) qs.set("zone_code", params.zone_code);
     if (params?.page !== undefined) qs.set("page", String(params.page));
     if (params?.size !== undefined) qs.set("size", String(params.size));
     const q = qs.toString();

@@ -15,6 +15,7 @@ from fastapi import UploadFile
 from sqlalchemy import (
     bindparam,
     delete as sa_delete,
+    exists,
     func,
     or_,
     select,
@@ -43,6 +44,7 @@ from app.core.exceptions import (
     SkuCodeExistsError,
     AttrKeyNotInTemplateError,
     AttrScopeMismatchError,
+    CategoryInactiveError,
     CategoryNotLeafError,
     ProductRangeInvalidError,
     SpuCodeExistsError,
@@ -61,6 +63,8 @@ from app.db.models.product_sku import ProductSku, SkuStatus
 from app.db.models.product_supplier import ProductSupplier
 from app.db.models.sku_price_tier import SkuPriceTier
 from app.db.models.supplier_organization import SupplierOrganization
+from app.core.i18n import get_localized
+from app.db.models.zone import Zone, ZoneProduct
 from app.db.base import _utcnow
 from app.audit.constants import AuditAction, AuditResourceType
 from app.audit.logger import write_audit
@@ -122,7 +126,7 @@ _PREFIX_MAP = {
 
 
 async def _descendant_category_codes(
-    db: AsyncSession, category_code: str,
+    db: AsyncSession, category_code: str, *, include_inactive: bool = False,
 ) -> list[str]:
     """
     递归 CTE 获取指定分类及其所有子孙分类 code。
@@ -130,36 +134,44 @@ async def _descendant_category_codes(
     Args:
         db: 数据库会话
         category_code: 品类业务编码(如 '01', '01.001')
+        include_inactive: 是否连停用节点一起递归。公开列表永远 False;
+            运营列表 True(专区商品挂在停用的一级下,筛选时必须能走到)。
 
     Returns:
         包含自身及所有后代的 code 列表；查询不到时返回空列表。
     """
-    descendants = await _descendant_category_code_map(db, [category_code])
+    descendants = await _descendant_category_code_map(
+        db, [category_code], include_inactive=include_inactive,
+    )
     return descendants.get(category_code, [])
 
 
 async def _descendant_category_code_map(
     db: AsyncSession,
     category_codes: list[str],
+    *,
+    include_inactive: bool = False,
 ) -> dict[str, list[str]]:
     """一次递归 CTE 获取多个根分类的后代 code 映射。"""
     root_codes = tuple(dict.fromkeys(code for code in category_codes if code))
     if not root_codes:
         return {}
 
-    sql = sa_text("""
+    active_clause = "" if include_inactive else "AND is_active = true"
+    child_active_clause = "" if include_inactive else "WHERE c.is_active = true"
+    sql = sa_text(f"""
         WITH RECURSIVE category_tree AS (
           SELECT code AS root_code, code, parent_code
           FROM categories
           WHERE code IN :root_codes
-            AND is_active = true
+            {active_clause}
 
           UNION ALL
 
           SELECT ct.root_code, c.code, c.parent_code
           FROM categories c
           JOIN category_tree ct ON c.parent_code = ct.code
-          WHERE c.is_active = true
+          {child_active_clause}
         )
         SELECT root_code, code
         FROM category_tree
@@ -227,6 +239,10 @@ async def create_product(
         raise NotFoundError("Category not found")
     if not category.is_leaf:
         raise CategoryNotLeafError(data.category_code)
+    if not category.is_active:
+        # 运营建的商品一律 PUBLIC;挂在停用品类下会被公开列表/楼层的
+        # Category.is_active 过滤掉,静默消失。停用品类只给导入脚本的 ZONE_ONLY 商品用。
+        raise CategoryInactiveError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
 
@@ -607,6 +623,7 @@ async def list_products_operator(
     status: str | None = None,
     supply_mode: str | None = None,
     keyword: str | None = None,
+    zone_code: str | None = None,
     page: int = 1,
     size: int = 20,
 ) -> tuple[list[Product], int, dict[int, tuple[str, str]]]:
@@ -617,7 +634,8 @@ async def list_products_operator(
     count_q = select(func.count(Product.id)).where(_not_deleted(Product))
 
     if category_code:
-        codes = await _descendant_category_codes(db, category_code)
+        # 运营视角要能按停用的一级(专区类目)筛到 ZONE_ONLY 商品
+        codes = await _descendant_category_codes(db, category_code, include_inactive=True)
         q = q.where(Product.category_code.in_(codes))
         count_q = count_q.where(Product.category_code.in_(codes))
     if status:
@@ -630,6 +648,15 @@ async def list_products_operator(
         kf = _build_keyword_filter(keyword)
         q = q.where(kf)
         count_q = count_q.where(kf)
+    if zone_code:
+        # 属于某专区:EXISTS zone_products ⋈ zones(code)。不存在的 code 自然为空。
+        zf = exists(
+            select(ZoneProduct.id)
+            .join(Zone, Zone.id == ZoneProduct.zone_id)
+            .where(ZoneProduct.spu_id == Product.id, Zone.code == zone_code)
+        )
+        q = q.where(zf)
+        count_q = count_q.where(zf)
 
     total = (await db.execute(count_q)).scalar() or 0
     q = q.order_by(Product.created_at.desc()).offset((page - 1) * size).limit(size)
@@ -637,6 +664,33 @@ async def list_products_operator(
     products = list(rows)
     main_image_map = await _batch_main_images(db, [p.id for p in products])
     return products, total, main_image_map
+
+
+async def batch_zone_codes(db: AsyncSession, product_ids: list[int]) -> dict[int, list[str]]:
+    """一页商品 → 各自所属专区 code 列表(去重、按 code 排序)。运营列表角标用,一次查询不 N+1。"""
+    if not product_ids:
+        return {}
+    rows = (await db.execute(
+        select(ZoneProduct.spu_id, Zone.code)
+        .join(Zone, Zone.id == ZoneProduct.zone_id)
+        .where(ZoneProduct.spu_id.in_(product_ids))
+        .distinct()
+    )).all()
+    out: dict[int, list[str]] = {}
+    for spu_id, code in rows:
+        out.setdefault(spu_id, []).append(code)
+    for v in out.values():
+        v.sort()
+    return out
+
+
+async def zone_refs_for_product(db: AsyncSession, product_id: int) -> list[dict]:
+    """单个商品所属专区(code + 本地化名),按 code 排序。运营详情用。"""
+    rows = (await db.execute(
+        select(Zone).join(ZoneProduct, ZoneProduct.zone_id == Zone.id)
+        .where(ZoneProduct.spu_id == product_id).distinct().order_by(Zone.code)
+    )).scalars().all()
+    return [{"code": z.code, "name": get_localized(z, "name") or z.name_zh} for z in rows]
 
 
 async def list_products_public(
@@ -1649,6 +1703,8 @@ async def create_product_aggregate(
         raise NotFoundError("Category not found")
     if not cat.is_leaf:
         raise CategoryNotLeafError(data.category_code)
+    if not cat.is_active:
+        raise CategoryInactiveError(data.category_code)
 
     spu_code = data.spu_code or await _generate_spu_code(db, data.category_code)
     if (await db.execute(

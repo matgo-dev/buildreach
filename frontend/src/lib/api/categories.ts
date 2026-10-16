@@ -38,21 +38,19 @@ export interface CategoryThumbnail {
 }
 
 export const categoriesApi = {
-  /** 扁平列表;is_active 默认 true。 */
-  list: (params?: { level?: 1 | 2 | 3; parent_code?: string; is_active?: boolean }) => {
+  /** 扁平列表,只含启用品类。 */
+  list: (params?: { level?: 1 | 2 | 3; parent_code?: string }) => {
     const qs = new URLSearchParams();
     if (params?.level !== undefined) qs.set("level", String(params.level));
     if (params?.parent_code !== undefined) qs.set("parent_code", params.parent_code);
-    if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active));
     const q = qs.toString();
     return api.get<CategoryNode[]>(`/api/v1/categories${q ? `?${q}` : ""}`);
   },
   /** L1 品类缩略图(移动端宫格入口) */
   thumbnails: () => api.get<CategoryThumbnail[]>("/api/v1/categories/thumbnails"),
-  /** 嵌套树;is_active 默认 true, max_depth 限制层级深度。 */
-  tree: (params?: { is_active?: boolean; max_depth?: number }) => {
+  /** 嵌套树,只含启用品类;max_depth 限制层级深度。 */
+  tree: (params?: { max_depth?: number }) => {
     const qs = new URLSearchParams();
-    if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active));
     if (params?.max_depth !== undefined) qs.set("max_depth", String(params.max_depth));
     const q = qs.toString();
     return api.get<CategoryTreeNode[]>(`/api/v1/categories/tree${q ? `?${q}` : ""}`);
