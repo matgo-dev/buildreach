@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
-import { useTranslations } from "next-intl";
 
 import type { CategoryTreeNode } from "@/lib/api/categories";
 
@@ -19,7 +18,6 @@ interface Props {
  * 支持任意层级深度，hover 展开下级，点击任意节点确认选择。
  */
 export function CategoryCascaderDropdown({ tree, value, onChange, placeholder = "All" }: Props) {
-  const t = useTranslations("category");
   const [open, setOpen] = useState(false);
   // hoverPath[i] 存第 i 层 hover 中的 code
   const [hoverPath, setHoverPath] = useState<string[]>([]);
@@ -58,10 +56,10 @@ export function CategoryCascaderDropdown({ tree, value, onChange, placeholder = 
     for (let i = 1; i <= parts.length; i++) {
       const code = parts.slice(0, i).join(".");
       const node = codeMap.get(code);
-      if (node) labels.push(node.is_active === false ? `${node.name}${t("inactive_suffix")}` : node.name);
+      if (node) labels.push(node.name);
     }
     return labels.join(" / ");
-  }, [value, codeMap, t]);
+  }, [value, codeMap]);
 
   // 根据 hoverPath 计算每列要显示的选项
   const columns = useMemo(() => {
@@ -134,21 +132,16 @@ export function CategoryCascaderDropdown({ tree, value, onChange, placeholder = 
               >
                 {items.map((n) => {
                   const isHovered = hoverPath[colIdx] === n.code;
-                  // 停用节点(专区专用品类,仅运营持 zone:manage 时树里才有):可选作筛选,但要标出来
-                  const inactive = n.is_active === false;
                   return (
                     <li
                       key={n.code}
                       onMouseEnter={() => handleHover(colIdx, n.code)}
                       onClick={() => handleSelect(n.code)}
                       className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm transition-colors ${
-                        isHovered ? "bg-blue-50 text-blue-700" : inactive ? "text-slate-400 hover:bg-slate-50" : "text-slate-700 hover:bg-slate-50"
+                        isHovered ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
                       }`}
                     >
-                      <span className="truncate">
-                        {n.name}
-                        {inactive && <span className="ml-1 text-xs">{t("inactive_suffix")}</span>}
-                      </span>
+                      <span className="truncate">{n.name}</span>
                       {!n.is_leaf && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
                     </li>
                   );

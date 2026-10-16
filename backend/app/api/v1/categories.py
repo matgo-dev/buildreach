@@ -1,47 +1,28 @@
 """商品分类公开 API /api/v1/categories/*(对齐 PRD §5)。
 
-无需登录,不挂权限点。唯一例外:include_inactive=true 会暴露刻意对公众隐藏的
-停用类目(专区专用一级),只对持 zone:manage 的登录用户生效(买家/供应商也有
-product:read,挡不住)。
+无需登录,不挂权限点。只返回启用的品类:停用 = 真停用,不对外暴露,不提供参数开口。
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import CurrentUser, get_optional_user
-from app.core.exceptions import NotAuthenticatedError, PermissionDeniedError, success
+from app.core.exceptions import success
 from app.db.session import get_db
-from app.rbac.constants import Permissions
 from app.services import category as category_service
 
 router = APIRouter(prefix="/categories", tags=["categories"])
-
-
-def _check_include_inactive(include_inactive: bool, current: CurrentUser | None) -> None:
-    """停用类目只给运营看:匿名 401,登录但无 zone:manage 403。"""
-    if not include_inactive:
-        return
-    if current is None:
-        raise NotAuthenticatedError()
-    if Permissions.ZONE_MANAGE not in current.permissions:
-        raise PermissionDeniedError(f"Permission denied: {Permissions.ZONE_MANAGE}")
 
 
 @router.get("", summary="商品分类扁平列表(可按 level / parent_code / is_leaf 过滤)")
 async def list_categories(
     level: int | None = Query(None, ge=1, le=4, description="可选,只返回某一层(1-4)"),
     parent_code: str | None = Query(None, description="可选,只返回某父节点(按 code)的子级"),
-    is_active: bool = Query(True, description="默认只返回启用的"),
-    include_inactive: bool = Query(False, description="true 时忽略 is_active,启用+停用全部返回(运营选择器用;需登录且持 zone:manage)"),
     is_leaf: bool | None = Query(None, description="可选,只返回叶子/非叶子品类"),
     db: AsyncSession = Depends(get_db),
-    current: CurrentUser | None = Depends(get_optional_user),
 ):
-    _check_include_inactive(include_inactive, current)
     rows = await category_service.list_flat(
-        db, level=level, parent_code=parent_code,
-        is_active=None if include_inactive else is_active, is_leaf=is_leaf,
+        db, level=level, parent_code=parent_code, is_active=True, is_leaf=is_leaf
     )
     return success([r.model_dump() for r in rows])
 
@@ -56,14 +37,8 @@ async def get_category_thumbnails(
 
 @router.get("/tree", summary="商品分类嵌套树")
 async def get_categories_tree(
-    is_active: bool = Query(True, description="默认只返回启用的"),
-    include_inactive: bool = Query(False, description="true 时忽略 is_active,启用+停用全部返回(运营选择器用;需登录且持 zone:manage)"),
     max_depth: int | None = Query(None, ge=1, le=4, description="限制返回层级深度(1-4),不传返回全部"),
     db: AsyncSession = Depends(get_db),
-    current: CurrentUser | None = Depends(get_optional_user),
 ):
-    _check_include_inactive(include_inactive, current)
-    tree = await category_service.get_tree(
-        db, is_active=None if include_inactive else is_active, max_depth=max_depth,
-    )
+    tree = await category_service.get_tree(db, is_active=True, max_depth=max_depth)
     return success([n.model_dump() for n in tree])

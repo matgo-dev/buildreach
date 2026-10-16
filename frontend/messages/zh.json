@@ -117,7 +117,7 @@
       "required_attr_missing": "缺少必填属性: {keys}",
       "attr_scope_mismatch": "属性 {attr_key} 的层级应为 {expected_scope}",
       "category_not_leaf": "品类 {category_code} 不是叶子节点,仅允许选择三级品类",
-      "category_inactive": "品类 {category_code} 已停用(专区专用),公开商品不能挂在该品类下",
+      "category_inactive": "品类 {category_code} 已停用,不能挂商品",
       "invalid_range": "{min_field} 不能大于 {max_field}",
       "illegal_transition": "不允许从 {current} 转换到 {target}",
       "image_not_owned": "图片 {image_id} 不属于商品 {product_id}",
@@ -267,7 +267,6 @@
     "select_level4": "请选择四级",
     "select_parent_first": "请先选上级",
     "load_error": "加载分类失败",
-    "inactive_suffix": "（专区专用）",
     "no_data": "暂无分类数据,请联系管理员",
     "has_subcategory": "含子分类"
   },

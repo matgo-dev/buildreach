@@ -64,7 +64,6 @@ export default function ProductDetailPage() {
   const searchParams = useSearchParams();
   const locale = useLocale();
   const t = useTranslations("productDetail");
-  const tCat = useTranslations("category");
   const tList = useTranslations("productList");
   const tError = useTranslations("error");
 
@@ -82,8 +81,7 @@ export default function ProductDetailPage() {
     return err instanceof Error ? err.message : String(err);
   }, [tError]);
   const { hasPermission } = usePermissions();
-  // 专区商品挂在停用的一级下,品类路径要显示出来得连停用树一起拉;后端按 zone:manage 门控
-  const { tree: categoryTree } = useCategoryTree({ includeInactive: hasPermission(Permissions.ZONE_MANAGE) });
+  const { tree: categoryTree } = useCategoryTree();
 
   const productId = Number(params.id);
   const startInEdit = searchParams.get("edit") === "true";
@@ -201,13 +199,9 @@ export default function ProductDetailPage() {
   const categoryName = useMemo(() => {
     if (!product || !categoryTree?.length) return product?.category_code || "";
     const code = product.category_code;
-    let zoneOnly = false;
     const findNode = (nodes: typeof categoryTree, target: string): string | null => {
       for (const n of nodes) {
-        if (n.code === target) {
-          if (n.is_active === false) zoneOnly = true;
-          return n.name;
-        }
+        if (n.code === target) return n.name;
         if (n.children) { const f = findNode(n.children, target); if (f) return f; }
       }
       return null;
@@ -220,10 +214,8 @@ export default function ProductDetailPage() {
       const name = findNode(categoryTree, ancestorCode);
       if (name) names.push(name);
     }
-    const path = names.length > 0 ? names.join(" > ") : (findNode(categoryTree, code) || code);
-    // 停用节点 = 专区专用品类:整条路径末尾标一次,免得运营以为品类挂错了
-    return zoneOnly ? `${path}${tCat("inactive_suffix")}` : path;
-  }, [product, categoryTree, tCat]);
+    return names.length > 0 ? names.join(" > ") : (findNode(categoryTree, code) || code);
+  }, [product, categoryTree]);
 
   // 供应商汇总
   const supplierSummary = useMemo(() => {

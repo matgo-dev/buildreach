@@ -57,8 +57,6 @@ export function CategoryCascader({
   className,
 }: CategoryCascaderProps) {
   const t = useTranslations("category");
-  // 表单选择器只给启用类目:运营建的商品一律 PUBLIC,挂到停用(专区专用)品类下
-  // 会被商城过滤掉静默消失,后端 create 也会 40219 拒绝。
   const { tree, isLoading, error } = useCategoryTree();
 
   // 计算每级的选项列表
