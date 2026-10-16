@@ -24,7 +24,10 @@ _SEARCH_TSV_EXPR = (
     "setweight(to_tsvector('english'::regconfig, coalesce(name_en, '')), 'A') || "
     "setweight(to_tsvector('simple'::regconfig, coalesce(name_sw, '')), 'A') || "
     "setweight(to_tsvector('english'::regconfig, coalesce(brand_en, '')), 'B') || "
-    "setweight(to_tsvector('simple'::regconfig, coalesce(manufacturer_model, '')), 'C')"
+    "setweight(to_tsvector('simple'::regconfig, coalesce(manufacturer_model, '')), 'C') || "
+    # 中文名/品牌里的拉丁文规格型号(DN20、PPR、800W)也要能被拉丁词搜到
+    "setweight(to_tsvector('simple'::regconfig, coalesce(name_zh, '')), 'A') || "
+    "setweight(to_tsvector('simple'::regconfig, coalesce(brand_zh, '')), 'B')"
 )
 _SEARCH_ZH_EXPR = "zh_ngrams(coalesce(name_zh, '')) || zh_ngrams(coalesce(brand_zh, ''))"
 

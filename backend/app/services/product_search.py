@@ -52,10 +52,18 @@ class SearchTerms:
     code: str | None = None  # 整串编码/型号子串匹配
 
 
+_CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
+
+
 def _cjk_grams(word: str) -> tuple[str, ...]:
-    if len(word) == 1:
-        return (word,)
-    return tuple(sorted({word[i:i + 2] for i in range(len(word) - 1)}))
+    """按连续中文片段取 n-gram(与 zh_ngrams 只拼相邻汉字一致):单字片段取单字,其余取双字。"""
+    grams: set[str] = set()
+    for run in _CJK_RUN_RE.findall(word):
+        if len(run) == 1:
+            grams.add(run)
+        else:
+            grams.update(run[i:i + 2] for i in range(len(run) - 1))
+    return tuple(sorted(grams))
 
 
 def parse_keyword(keyword: str) -> SearchTerms:
@@ -65,9 +73,8 @@ def parse_keyword(keyword: str) -> SearchTerms:
     cjk: list[CjkWord] = []
     for word in stripped.split()[:_MAX_WORDS]:
         if _CJK_RE.search(word):
-            # 中英混写的词(如「PPR管」)按中文处理:ILIKE 核对整词,n-gram 只取中文部分粗筛
-            han = "".join(_CJK_RE.findall(word))
-            cjk.append(CjkWord(text=word, grams=_cjk_grams(han)))
+            # 中英混写的词(如「PPR管」)按中文处理:ILIKE 核对整词,n-gram 只取中文片段粗筛
+            cjk.append(CjkWord(text=word, grams=_cjk_grams(word)))
         else:
             lower = word.lower()
             latin.append(LatinWord(
@@ -84,6 +91,15 @@ def _like_pattern(text: str) -> str:
 
 
 # 检索配置写成 SQL 常量(不走绑定参数),与 search_tsv 生成列表达式一致
+def _code_match(text: str) -> list[ColumnElement]:
+    """SPU 编码 / 厂家型号子串匹配(≥3 字符走 trigram 索引)。"""
+    pattern = _like_pattern(text)
+    return [
+        Product.spu_code.ilike(pattern, escape="\\"),
+        Product.manufacturer_model.ilike(pattern, escape="\\"),
+    ]
+
+
 _EN = literal_column("'english'::regconfig")
 _SIMPLE = literal_column("'simple'::regconfig")
 
@@ -103,10 +119,14 @@ def build_keyword_filter(terms: SearchTerms) -> tuple[ColumnElement, ColumnEleme
         query = _latin_query(word)
         queries.append(query)
         # 英文停用词(for/and…)切词后为空:视为命中,不让它拖垮「全部命中」
-        conds.append(or_(
+        word_conds = [
             func.numnode(func.plainto_tsquery(_EN, word.text)) == 0,
             Product.search_tsv.op("@@")(query),
-        ))
+        ]
+        if len(word.text) >= 3 and re.search(r"\d", word.text):
+            # 带数字的词可能是编码:多词输入(如 "BR-36B 管")里也按 SPU 编码/型号子串匹配
+            word_conds.extend(_code_match(word.text))
+        conds.append(or_(*word_conds))
     if terms.latin and not terms.cjk:
         # 全是停用词(如只搜 "the")时不能退化成全表命中
         conds.append(or_(*(func.numnode(func.plainto_tsquery(_EN, w.text)) > 0 for w in terms.latin)))
@@ -120,19 +140,16 @@ def build_keyword_filter(terms: SearchTerms) -> tuple[ColumnElement, ColumnEleme
 
     where = and_(*conds) if conds else None
     if terms.code:
-        pattern = _like_pattern(terms.code)
-        code_match = or_(
-            Product.spu_code.ilike(pattern, escape="\\"),
-            Product.manufacturer_model.ilike(pattern, escape="\\"),
-        )
+        code_match = or_(*_code_match(terms.code))
         where = code_match if where is None else or_(where, code_match)
     if where is None:  # 只有空白:调用方已判空,兜底不命中
         where = false()
 
     rank = None
     if queries:
+        # 打分用 OR 连接:筛选已保证每个词命中;若用 AND,停用词(for 在向量里被丢弃)会让所有行得 0 分
         combined = queries[0]
         for query in queries[1:]:
-            combined = combined.op("&&")(query)
+            combined = combined.op("||")(query)
         rank = func.ts_rank_cd(Product.search_tsv, combined)
     return where, rank

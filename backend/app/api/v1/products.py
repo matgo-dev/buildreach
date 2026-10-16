@@ -331,7 +331,8 @@ async def list_products(
         "total_capped": total_capped,
         "page": page,
         "size": size,
-        "pages": math.ceil((min(total, SEARCH_MAX_RESULTS) if keyword else total) / size) if size else 0,
+        # 与 service 同口径:去空白后有词才按「最多可翻条数」限页
+        "pages": math.ceil((min(total, SEARCH_MAX_RESULTS) if (keyword or "").strip() else total) / size) if size else 0,
     })
 
 

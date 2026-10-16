@@ -144,7 +144,8 @@ function MallContent() {
           error={error}
           onRetry={() => mutate()}
           onClearFilters={clearAll}
-          keyword={urlKeyword || undefined}
+          // 只有真零结果才引导询价;翻页越过最多可翻条数时 items 为空但 total>0
+          keyword={data?.total === 0 ? urlKeyword || undefined : undefined}
         />
 
         {/* 分页 */}

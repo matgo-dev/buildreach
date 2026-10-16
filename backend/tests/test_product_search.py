@@ -68,6 +68,18 @@ async def test_digit_words_prefix_and_code_substring(client: AsyncClient, db_ses
 
 
 @pytest.mark.asyncio
+async def test_latin_tokens_inside_chinese_name_and_code_in_multi_word(client: AsyncClient, db_session: AsyncSession):
+    await _seed(db_session, [
+        # 只有中文名(name_en 为空),规格型号写在中文名里
+        {"spu_code": "SRCH-ZHONLY-9K", "name_zh": "搜测给水管 DN20 Zqppr", "name_en": None},
+        {"spu_code": "SRCH-MIX", "name_zh": "搜测不锈钢304管"},
+    ])
+    assert _codes(await _search(client, "dn20 zqppr")) == ["SRCH-ZHONLY-9K"]
+    assert _codes(await _search(client, "ZHONLY-9K 给水管")) == ["SRCH-ZHONLY-9K"]  # 多词里的编码
+    assert _codes(await _search(client, "搜测不锈钢304管")) == ["SRCH-MIX"]           # 混写词按片段取 n-gram
+
+
+@pytest.mark.asyncio
 async def test_chinese_short_words_and_multi_word(client: AsyncClient, db_session: AsyncSession):
     await _seed(db_session, [
         {"spu_code": "SRCH-ZH1", "name_zh": "搜测热熔器 800W", "brand_zh": "搜测得力"},
@@ -88,6 +100,18 @@ async def test_name_match_ranks_above_model_only_match(client: AsyncClient, db_s
          "published_at": _NOW - timedelta(days=30)},
     ])
     assert _codes(await _search(client, "zqmortar")) == ["SRCH-NAME", "SRCH-MODEL"]
+
+
+@pytest.mark.asyncio
+async def test_ranking_survives_stopwords(client: AsyncClient, db_session: AsyncSession):
+    """带停用词的多词搜索仍按相关度排(名称命中的旧商品排在只有型号命中的新商品前)。"""
+    await _seed(db_session, [
+        {"spu_code": "SRCH-SW-MODEL", "name_zh": "瓷砖", "name_en": "Ceramic Tile",
+         "manufacturer_model": "zqpipe zqwater", "published_at": _NOW},
+        {"spu_code": "SRCH-SW-NAME", "name_zh": "水管", "name_en": "Zqpipe Zqwater Hose",
+         "published_at": _NOW - timedelta(days=30)},
+    ])
+    assert _codes(await _search(client, "zqpipe for zqwater")) == ["SRCH-SW-NAME", "SRCH-SW-MODEL"]
 
 
 @pytest.mark.asyncio
