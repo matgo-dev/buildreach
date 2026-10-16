@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/stores/authStore";
+import { useAccessibleZones } from "@/hooks/useAccessibleZones";
 import { ZoneNavMenu } from "./ZoneNavMenu";
 
 /** Mall 导航行 — 白底,底线暖金色。参考 HTML .nav-row */
@@ -34,9 +35,9 @@ export function MallNavRow() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations("mall");
-  // 专区入口:仅对被授权买家显示(me.zones 非空)—— 纯权限门,公开/未授权用户看不到
+  // 专区入口:当前访问者可进的专区(公开专区所有人可见,含未登录;非公开专区仅被授权买家)
   const user = useAuthStore((s) => s.user);
-  const zones = user?.zones ?? [];
+  const { zones } = useAccessibleZones();
   // 内部员工(运营/管理员)隐藏买家专属操作(购物车/订单)
   const isStaff = user?.roles?.some((r) => r === "OPERATOR" || r === "ADMIN") ?? false;
   const navLinks = isStaff ? NAV_LINKS.filter((l) => !l.buyerOnly) : NAV_LINKS;

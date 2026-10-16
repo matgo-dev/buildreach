@@ -2,8 +2,8 @@
 
 职责:
 1. 商品可交易性校验：ACTIVE + 未软删（不满足则一律 404 语义拒绝，不泄露存在性）。
-2. 专区授权：ZONE_ONLY 商品要求 buyer_org 持有目标专区的有效 grant，
-   商品在该专区白名单(zone_products)内，且专区自身处于 ACTIVE(停用专区拒绝交易)。
+2. 专区授权：ZONE_ONLY 商品须在某个 ACTIVE 专区白名单(zone_products)内，且该专区公开
+   (is_public)或 buyer_org 持有其有效 grant(停用专区拒绝交易)。
    PUBLIC 商品无需专区校验，但仍受 (1) 约束。
 3. SKU 解析：多 ACTIVE SKU 的商品必须靠 selected_variants 唯一定位到一个 SKU；
    零匹配 / 多匹配一律拒绝，绝不静默挑一个（防止 orphan 绑定）。
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.product import Product, ProductStatus, ProductVisibility
@@ -179,23 +179,29 @@ async def resolve_purchase_target(
         raise ZoneAccessDeniedError("product not available")
 
     if product.visibility == ProductVisibility.ZONE_ONLY:
-        if buyer_org_id is None:
-            raise ZoneAccessDeniedError("zone-only product requires a buyer organization")
+        # 须挂在某个 ACTIVE 专区下,且该专区公开或买方机构持有授权
+        zone_ok = Zone.is_public.is_(True)
+        if buyer_org_id is not None:
+            zone_ok = or_(
+                zone_ok,
+                exists().where(
+                    ZoneGrant.zone_id == Zone.id, ZoneGrant.buyer_org_id == buyer_org_id,
+                ),
+            )
         ok = (
             await db.execute(
                 select(ZoneProduct.id)
-                .join(ZoneGrant, ZoneGrant.zone_id == ZoneProduct.zone_id)
                 .join(Zone, Zone.id == ZoneProduct.zone_id)
                 .where(
                     ZoneProduct.spu_id == product_id,
-                    ZoneGrant.buyer_org_id == buyer_org_id,
                     Zone.status == "ACTIVE",
+                    zone_ok,
                 )
                 .limit(1)
             )
         ).scalar_one_or_none()
         if ok is None:
-            raise ZoneAccessDeniedError("no grant/whitelist/active-zone for zone-only product")
+            raise ZoneAccessDeniedError("zone-only product not in a public or granted active zone")
 
     active_skus = (
         await db.execute(

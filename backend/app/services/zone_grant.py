@@ -17,7 +17,7 @@ async def list_zones(db: AsyncSession) -> list[dict]:
         await db.execute(select(Zone).order_by(Zone.sort_order, Zone.id))
     ).scalars().all()
     return [
-        {"id": z.id, "code": z.code, "name_zh": z.name_zh, "status": z.status}
+        {"id": z.id, "code": z.code, "name_zh": z.name_zh, "status": z.status, "is_public": z.is_public}
         for z in rows
     ]
 

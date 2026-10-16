@@ -28,3 +28,9 @@ def test_zone_category_kind_column_defaults_to_category():
     assert col.server_default.arg == "CATEGORY"
     assert ZONE_CATEGORY_KIND_CATEGORY == "CATEGORY"
     assert ZONE_CATEGORY_KIND_SCENE == "SCENE"
+
+
+def test_zone_is_public_defaults_false():
+    col = Zone.__table__.c.is_public
+    assert col.nullable is False
+    assert col.server_default.arg == "false"

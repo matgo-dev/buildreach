@@ -1,4 +1,4 @@
-/** 登录信息里带的专区摘要(/auth/me 的 zones 项)。 */
+/** 专区摘要(/auth/me 的 zones 项、GET /zones 的列表项)。 */
 export interface ZoneBriefForUser {
   code: string;
   name_zh: string;

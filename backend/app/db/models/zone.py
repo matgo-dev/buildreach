@@ -1,7 +1,8 @@
 """央企专区(Zone)四表:zones / zone_categories / zone_products / zone_grants。
 
 设计要点:
-- zones:专区主表(code / 多语名 / status / sort_order)。
+- zones:专区主表(code / 多语名 / status / is_public / sort_order)。is_public=true 时所有人
+  (含未登录)可进;false 时只有持 zone_grants 授权的买方机构可进。
 - zone_categories:专区自有类目树(区别于全局 categories),`(zone_id, id)` 唯一约束供
   zone_products 的复合外键引用,保证类目必须属于同一 zone。
 - zone_products:专区选品,`zone_category_id` 不直接建单列 FK,而是与 zone_id 一起组成
@@ -11,6 +12,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
@@ -35,6 +37,8 @@ class Zone(Base, TimestampUpdateMixin):
     name_en: Mapped[str | None] = mapped_column(String(128))
     name_sw: Mapped[str | None] = mapped_column(String(128))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ACTIVE")  # ACTIVE/INACTIVE
+    # 公开专区:所有人(含未登录)可进,不查授权;非公开专区仍只认 zone_grants
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
