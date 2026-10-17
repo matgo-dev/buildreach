@@ -423,3 +423,38 @@ def test_spec_value_was_prefilled_only_matches_old_neutral_rows():
     assert not _spec_value_was_prefilled(pending)
     assert not _spec_value_was_prefilled(plain)
     assert not _spec_value_was_prefilled(neutral_done)
+
+
+def test_load_spec_i18n_blank_sw_copies_en_and_rejects_dup(tmp_path: Path):
+    from scripts.import_zone_mining import load_spec_i18n
+
+    p = tmp_path / "spec_i18n.csv"
+    p.write_text('规格,en,sw,note\n4分,"1/2""",,管螺纹\n42码,Size 42,Ukubwa 42,\n', encoding="utf-8")
+    assert load_spec_i18n(p) == {"4分": ('1/2"', '1/2"'), "42码": ("Size 42", "Ukubwa 42")}
+
+    p.write_text("规格,en,sw\n4分,1/2,\n4分,one half,\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="重复"):
+        load_spec_i18n(p)
+    p.write_text("规格,en,sw\n4分,,\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="不能为空"):
+        load_spec_i18n(p)
+
+
+def test_real_spec_i18n_csv_loads():
+    from scripts.import_zone_mining import SPEC_I18N_CSV, load_spec_i18n
+
+    m = load_spec_i18n(SPEC_I18N_CSV)
+    assert m["4分"] == ('1/2"', '1/2"') and m["2匹"] == ("2P", "2P")
+
+
+@pytest.mark.asyncio
+async def test_mark_attr_i18n_override_is_manual_not_pending():
+    """覆盖表里的规格值按人工译文落、标 manual,扫描器不会再去机翻冲掉。"""
+    from app.db.models.product_attr import ProductAttr
+    from scripts.import_zone_mining import mark_attr_i18n
+
+    a = ProductAttr(attr_key_zh="规格", attr_value_zh="2匹", selectable=True)
+    await mark_attr_i18n(a, value_i18n=("2P", "2P"))
+    assert a.attr_value_en == "2P" and a.attr_value_sw == "2P"
+    assert a.trans_meta["attr_value_en"] == "manual" and a.trans_meta["attr_value_sw"] == "manual"
+    assert a.trans_meta["attr_value_zh"] == "src" and a.attr_key_en == "Specification"
