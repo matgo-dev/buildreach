@@ -603,7 +603,20 @@ async def batch_active_sku_counts(
 
 
 def _build_keyword_filter(keyword: str):
-    """keyword 搜索过滤：名称/品牌全语言匹配 + 型号 + SPU 编码。"""
+    """keyword 搜索过滤：名称/品牌全语言匹配 + 型号 + SPU 编码。
+
+    有意保持 ILIKE 子串匹配(ADR-0007,2026-10-16):英文词中间会有噪音(cement 命中
+    displacement),但真实搜索词以中文为主、中文不受影响,改动收益抵不过风险。
+    不要在 PG 里继续手搓分词/相关度/容错(PR #378 四轮审查未收敛,已关闭);
+    备选的「词首边界」最小修复在 PR #380(未合并,已全量验证,无迁移)。
+    下一次动搜索直接上独立搜索引擎,触发任一条即启动选型(详见 docs/adr/ADR-0007):
+      T1 买家搜索量上来且多词/乱序/拼错查询占比上升(buyer_events SEARCH)
+      T2 「搜不到但商品存在」成为反复反馈(同义词/词形/乱序)
+      T3 业务要求按相关度排序
+      T4 商品量级逼近性能拐点:短词(<3 字符)走不了 trigram 索引,100 万行实测 3.5–4.9s,
+         线性外推 20–30 万件接近 1s;到 10 万件主动复测
+      T5 要上中文分词级搜索
+    """
     kw = f"%{keyword}%"
     return or_(
         Product.name_zh.ilike(kw),
