@@ -5,12 +5,17 @@ import pytest
 
 from scripts.import_zone_soe_images_matches import (
     ImageIn,
+    LEDGER_PATH,
+    MatchIn,
+    ZONE_CODE,
     _hard,
     _raw_url,
+    _resolve_ledger_path,
     _run_crawled_at,
     _should_hold_low_res,
     load_decisions,
     load_input_rows,
+    load_zone_inputs,
     resolve_spu_code,
     should_force_replace,
     zsoe_spu_code,
@@ -240,3 +245,30 @@ def test_load_decisions_missing_force_replace_is_empty(tmp_path: Path):
     (tmp_path / "d.json").write_text(json.dumps({"name_overrides": {}}), encoding="utf-8")
     dec = load_decisions(tmp_path / "d.json")
     assert dec.force_replace == set()
+
+
+# ----------------------------- 非央企专区复用(矿业) -----------------------------
+
+def test_load_zone_inputs_skips_soe_table_and_decisions_for_other_zone():
+    # 矿业里 安全帽/雨衣/对讲机 与央企重名但 spu_code 不同;拿央企表校验会误判「spu_code 与材料名不符」。
+    material_index, decisions = load_zone_inputs("mining")
+    assert material_index == {}
+    assert decisions.drops == set() and decisions.name_overrides == {}
+    row = MatchIn(
+        material_name="安全帽", material_category_code=None, material_category_name=None,
+        spu_code="MG-PE3D6EF60742A", offer_id="manual_upload", offer_url=None, listing_title=None,
+        matched_category_path=[], images=[], base_dir=Path("."), source="manual_upload",
+    )
+    got, reason = resolve_spu_code(row, material_index, decisions.name_overrides)
+    assert (got, reason) == ("MG-PE3D6EF60742A", None)
+
+
+def test_resolve_ledger_path_is_per_zone(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("ZONE_SOE_LEDGER_PATH", raising=False)
+    assert _resolve_ledger_path(None, ZONE_CODE) == LEDGER_PATH
+    assert _resolve_ledger_path(None, "mining") == LEDGER_PATH.with_name("mining_image_refresh_ledger.csv")
+    # CLI 指定优先于一切;env 只对央企专区生效,别的专区不能被 env 带进央企台账。
+    assert _resolve_ledger_path(Path("/ledger/x.csv"), "mining") == Path("/ledger/x.csv")
+    monkeypatch.setenv("ZONE_SOE_LEDGER_PATH", "/ledger/soe.csv")
+    assert _resolve_ledger_path(None, ZONE_CODE) == Path("/ledger/soe.csv")
+    assert _resolve_ledger_path(None, "mining") == LEDGER_PATH.with_name("mining_image_refresh_ledger.csv")

@@ -40,6 +40,11 @@ matches.json 为数组,每条至少包含:
 此形态无 offer_id(用 source 兜底做图片来源标记)、无 matched_category_path(不动分类),
 且 source=manual_upload 视同人工确认,不受低清 hold 门槛约束。
 
+其他专区(矿业 `--zone-code mining`)也用这个人工补图形态:SPU 身份只认 platform_code + 专区归属,
+不加载央企材料表和 soe_refresh_decisions.json(见 load_zone_inputs);台账按专区分文件
+(data/zone_import/<zone_code>_image_refresh_ledger.csv)。九云的 matched_category_path 是源站面包屑,
+不是我们的树,矿业一律 --freeze-category 只更图。
+
 也兼容另一种 offer 目录树结构:
 
     run_YYYYMMDD_HHMMSS/
@@ -374,6 +379,15 @@ def load_decisions(path: Path = DECISIONS_PATH) -> Decisions:
     return Decisions(overrides, drops, aliases, detail_cover, force_replace)
 
 
+def load_zone_inputs(zone_code: str) -> tuple[dict[str, list[dict]], Decisions]:
+    """央企材料表与人工决策台账只属于央企专区。别的专区(矿业)数据包用 platform_code 直给 SPU 身份,
+    再拿央企表按名校验只会把重名材料(安全帽/雨衣/对讲机/安全带…)误判成「spu_code 与材料名不符」,
+    央企的 drops/name_overrides 也可能按名误伤。非央企专区一律空表空决策,只靠 platform_code + 专区归属校验。"""
+    if zone_code != ZONE_CODE:
+        return {}, Decisions({}, set(), {}, set(), set())
+    return load_material_index(), load_decisions()
+
+
 def _unique_candidate(candidates: list[dict], cat_code: str | None) -> dict | None:
     """材料名的唯一命中;重名时靠 material_category_code 消歧,消不掉返回 None。"""
     if len(candidates) == 1:
@@ -655,13 +669,16 @@ def make_thumbnail(original_path: Path) -> bool:
 
 # ----------------------------- 台账 -----------------------------
 
-def _resolve_ledger_path(cli_path: Path | None) -> Path:
-    """台账路径优先级:CLI --ledger-path > env ZONE_SOE_LEDGER_PATH > 仓库默认。
+def _resolve_ledger_path(cli_path: Path | None, zone_code: str = ZONE_CODE) -> Path:
+    """台账路径优先级:CLI --ledger-path > env ZONE_SOE_LEDGER_PATH(仅央企专区)> 按专区分开的仓库默认。
 
+    台账按 spu_code upsert,一个专区一份,别的专区(矿业)不能写进央企那份,否则 --report 把两个专区的商品混在一起算。
     生产建议指向 OVH 宿主机持久路径(bind mount),避免容器重部署丢台账。
     """
     if cli_path is not None:
         return cli_path
+    if zone_code != ZONE_CODE:
+        return LEDGER_PATH.with_name(f"{zone_code}_image_refresh_ledger.csv")
     env = os.environ.get("ZONE_SOE_LEDGER_PATH")
     return Path(env) if env else LEDGER_PATH
 
@@ -694,8 +711,7 @@ async def run_import(
     stats: collections.Counter = collections.Counter()
     rows = load_input_rows(source_dir)
     stats["input_rows"] = len(rows)
-    material_index = load_material_index()
-    decisions = load_decisions()
+    material_index, decisions = load_zone_inputs(zone_code)
     zone_codes = await _zone_product_codes(db, zone_code)
     stats["zone_products"] = len(zone_codes)
     ts = await load_category_state(db)
@@ -1002,7 +1018,7 @@ def main() -> None:
     mode = "report" if args.report else ("commit" if args.commit else "dry-run")
     if mode != "report" and args.source_dir is None:
         parser.error("--dry-run/--commit 需要 --source-dir")
-    ledger_path = _resolve_ledger_path(args.ledger_path)
+    ledger_path = _resolve_ledger_path(args.ledger_path, args.zone_code)
     asyncio.run(_execute(mode, args.source_dir, args.zone_code, args.min_cover_side, ledger_path, args.freeze_category))
 
 
