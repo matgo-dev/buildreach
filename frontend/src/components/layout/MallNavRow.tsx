@@ -78,8 +78,8 @@ export function MallNavRow() {
         href={link.href}
         className={`${itemBase} ${
           active
-            ? "rounded-lg text-teal-900 bg-[#FFE07A]"
-            : "rounded-lg text-ink-2 hover:text-teal-900 hover:bg-[#FFF6DC]"
+            ? "text-teal-900 shadow-[inset_0_-3px_0_#FFC20E]"
+            : "text-muted hover:text-teal-900"
         }`}
       >
         {t(link.labelKey)}
