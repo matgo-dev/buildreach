@@ -1,9 +1,13 @@
-"""运营端 — 专区授权管理 API。
+"""运营端 — 专区管理 API。
 
-只管「买家组织 ↔ 专区」授权(列出/新增/撤销);专区选品仍走导入脚本。
+专区开关(启用/停用、公开/不公开)+「买家组织 ↔ 专区」授权(列出/新增/撤销);专区选品仍走导入脚本。
+开关只影响专区入口/专区页(口径见 services/zone_access);专区商品在主商城的可见性由商品
+visibility 决定,不随专区开关变化。
 权限: zone:manage (已授予 OPERATOR 角色)
 """
 from __future__ import annotations
+
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -25,12 +29,48 @@ class GrantCreate(BaseModel):
     buyer_org_id: int
 
 
+class ZoneSettingsUpdate(BaseModel):
+    """None = 不改该字段。"""
+    status: Literal["ACTIVE", "INACTIVE"] | None = None
+    is_public: bool | None = None
+
+
 @router.get("", summary="专区列表")
 async def list_zones(
     db: AsyncSession = Depends(get_db),
     _current: CurrentUser = Depends(require_permission(Permissions.ZONE_MANAGE)),
 ):
     return success(await zone_grant_service.list_zones(db))
+
+
+@router.patch("/{zone_code}", summary="专区开关(启用/停用、公开/不公开)")
+async def update_zone_settings(
+    zone_code: str,
+    payload: ZoneSettingsUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current: CurrentUser = Depends(require_permission(Permissions.ZONE_MANAGE)),
+):
+    zone = await zone_grant_service._get_zone(db, zone_code)
+    if zone is None:
+        raise NotFoundError("专区不存在")
+    changes = await zone_grant_service.update_zone_settings(
+        db, zone, status=payload.status, is_public=payload.is_public
+    )
+    if changes:  # 无变化不审计
+        await write_audit(
+            db,
+            resource_type=AuditResourceType.ZONE,
+            action=AuditAction.UPDATE,
+            user_id=current.id,
+            user_email=current.email,
+            resource_id=zone.id,
+            request=request,
+            extra={"zone_code": zone_code, "changes": changes},
+            commit=False,
+        )
+    await db.commit()
+    return success(zone_grant_service.zone_dict(zone))
 
 
 @router.get("/{zone_code}/grants", summary="某专区已授权的买家组织")

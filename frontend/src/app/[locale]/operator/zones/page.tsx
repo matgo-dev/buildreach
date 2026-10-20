@@ -73,13 +73,31 @@ function Inner() {
 
   const currentZone = zones.find((z) => z.code === zoneCode);
 
+  const [settingBusy, setSettingBusy] = useState(false);
+  const onUpdateSettings = async (
+    patch: { status?: ZoneBrief["status"]; is_public?: boolean },
+    confirmText: string,
+  ) => {
+    if (!currentZone || !confirm(confirmText)) return;
+    setSettingBusy(true);
+    try {
+      const updated = await zoneGrantsApi.updateSettings(currentZone.code, patch);
+      setZones((prev) => prev.map((z) => (z.code === updated.code ? updated : z)));
+      showToast("ok", "已更新专区设置");
+    } catch (e) {
+      showToast("err", e instanceof ApiError ? e.message : "更新失败");
+    } finally {
+      setSettingBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">专区授权</h1>
           <p className="mt-1 text-sm text-slate-500">
-            给买家组织授权访问央企专区。授权后该组织的成员即可浏览并对专区商品发起询价;撤销后立即失效。
+            开关专区、设置是否公开,并给买家组织授权访问。授权后该组织的成员即可浏览并对专区商品发起询价;撤销后立即失效。
           </p>
         </div>
         <button
@@ -108,9 +126,36 @@ function Inner() {
         </select>
       </div>
 
-      {currentZone?.is_public && (
-        <div className="rounded-lg border-l-4 border-teal-500 bg-teal-50 px-4 py-3 text-sm text-teal-800">
-          公开专区：所有人（含未登录）都能进入，授权不影响访问。
+      {currentZone && (
+        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <SettingRow
+            title="启用专区"
+            desc="停用后所有人（含已授权组织）都看不到专区入口，也进不了专区页。专区商品在主商城的展示不受影响。"
+            on={currentZone.status === "ACTIVE"}
+            busy={settingBusy}
+            onToggle={(next) =>
+              onUpdateSettings(
+                { status: next ? "ACTIVE" : "INACTIVE" },
+                next
+                  ? `确定启用「${currentZone.name_zh}」？`
+                  : `确定停用「${currentZone.name_zh}」？\n停用后立即对所有人隐藏（演示站与 matgo 共用，同时生效）。`,
+              )
+            }
+          />
+          <SettingRow
+            title="公开专区"
+            desc="公开：所有人（含未登录）都能进入，授权不影响访问；不公开：只有下方已授权组织可进。"
+            on={currentZone.is_public}
+            busy={settingBusy}
+            onToggle={(next) =>
+              onUpdateSettings(
+                { is_public: next },
+                next
+                  ? `确定公开「${currentZone.name_zh}」？\n公开后所有人（含未登录）都能进入。`
+                  : `确定取消公开「${currentZone.name_zh}」？\n之后只有已授权组织可进入。`,
+              )
+            }
+          />
         </div>
       )}
 
@@ -194,6 +239,48 @@ function Inner() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function SettingRow({
+  title,
+  desc,
+  on,
+  busy,
+  onToggle,
+}: {
+  title: string;
+  desc: string;
+  on: boolean;
+  busy: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-slate-800">{title}</div>
+        <div className="mt-0.5 text-xs text-slate-500">{desc}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={title}
+        disabled={busy}
+        onClick={() => onToggle(!on)}
+        className={
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 " +
+          (on ? "bg-[#003366]" : "bg-slate-300")
+        }
+      >
+        <span
+          className={
+            "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform " +
+            (on ? "translate-x-5" : "translate-x-0.5")
+          }
+        />
+      </button>
     </div>
   );
 }

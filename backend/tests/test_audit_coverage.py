@@ -103,6 +103,8 @@ AUDITED_WRITE_ROUTES: set[tuple[str, str]] = {
     ("POST", "/api/v1/operator/banners/upload"),
     ("PUT", "/api/v1/operator/banners/{banner_id}"),
     ("DELETE", "/api/v1/operator/banners/{banner_id}"),
+    # operator — 专区开关(启用/停用、公开/不公开,决定谁能进专区,写审计)
+    ("PATCH", "/api/v1/operator/zones/{zone_code}"),
     # operator — 专区授权管理(授权/撤销买家组织,安全相关,写审计)
     ("POST", "/api/v1/operator/zones/{zone_code}/grants"),
     ("DELETE", "/api/v1/operator/zones/{zone_code}/grants/{buyer_org_id}"),

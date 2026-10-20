@@ -1136,6 +1136,72 @@ async def test_operator_zone_grants_require_zone_manage(client: AsyncClient, db_
 
 
 @pytest.mark.asyncio
+async def test_operator_zone_toggle_persists_audits_and_gates_storefront(
+    client: AsyncClient, db_session
+):
+    """运营停用/改公开 → 落库 + 审计 + 前台 GET /zones 随之变化;无变化不审计;买方 403。"""
+    from app.db.models.audit_log import AuditLog
+
+    zone = Zone(code="ZONE-OP-TOGGLE", name_zh="开关测试专区", status="ACTIVE", is_public=True)
+    db_session.add(zone)
+    await db_session.commit()
+
+    async def _storefront_codes() -> set[str]:
+        r = await client.get("/api/v1/zones")
+        return {z["code"] for z in r.json()["data"]}
+
+    async def _audit_count() -> int:
+        return len((await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.resource_type == "zone", AuditLog.resource_id == str(zone.id)
+            )
+        )).scalars().all())
+
+    assert zone.code in await _storefront_codes()
+
+    buyer_headers = await _login_default_buyer(client)
+    r = await client.patch(
+        f"/api/v1/operator/zones/{zone.code}", headers=buyer_headers, json={"status": "INACTIVE"}
+    )
+    assert r.status_code == 403, r.text
+
+    headers = await _login_operator(client)
+    r = await client.patch(
+        f"/api/v1/operator/zones/{zone.code}", headers=headers, json={"status": "INACTIVE"}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["status"] == "INACTIVE"
+    await db_session.refresh(zone)
+    assert zone.status == "INACTIVE"
+    assert zone.code not in await _storefront_codes()
+    assert await _audit_count() == 1
+
+    # 重复同值:不改不审计
+    r = await client.patch(
+        f"/api/v1/operator/zones/{zone.code}", headers=headers, json={"status": "INACTIVE"}
+    )
+    assert r.status_code == 200, r.text
+    assert await _audit_count() == 1
+
+    # 重新启用但不公开:匿名仍看不到
+    r = await client.patch(
+        f"/api/v1/operator/zones/{zone.code}",
+        headers=headers, json={"status": "ACTIVE", "is_public": False},
+    )
+    assert r.status_code == 200, r.text
+    assert zone.code not in await _storefront_codes()
+    assert await _audit_count() == 2
+
+    # 非法 status → 422;未知专区 → 404
+    r = await client.patch(
+        f"/api/v1/operator/zones/{zone.code}", headers=headers, json={"status": "DELETED"}
+    )
+    assert r.status_code == 422, r.text
+    r = await client.patch("/api/v1/operator/zones/NOPE-ZONE", headers=headers, json={"status": "ACTIVE"})
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
 async def test_submit_draft_rechecks_zone_grant_after_revoke(client: AsyncClient, db_session):
     """撤权后提交草稿必须被拒(PR#309 Finding#1 回归)。
 
