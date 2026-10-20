@@ -17,6 +17,8 @@ interface Slide {
   src: string;
   alt: string;
   link: string | null;
+  /** 本张停留时长(ms),缺省用 AUTOPLAY_INTERVAL */
+  durationMs?: number;
 }
 
 /** 判断 slide 是否在当前可见窗口内（当前 ± 1），用于按需挂载 DOM */
@@ -28,7 +30,7 @@ function isNearby(index: number, current: number, total: number): boolean {
 }
 
 const OWN_SLIDES: Slide[] = [
-  { src: "/banners/hero-overseas.jpg", alt: "Source China Building Materials for the World", link: null },
+  { src: "/banners/hero-overseas.jpg", alt: "Source China Building Materials for the World", link: null, durationMs: 10_000 },
 ];
 
 /** matgo 的东非绿色主海报(库里 sort_order 0),展示版不放 */
@@ -52,7 +54,7 @@ export function HeroBannerCarousel() {
   );
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const count = slides.length;
 
   const goTo = useCallback(
@@ -62,11 +64,13 @@ export function HeroBannerCarousel() {
   const next = useCallback(() => setCurrent((c) => (count ? (c + 1) % count : 0)), [count]);
   const prev = useCallback(() => setCurrent((c) => (count ? (c - 1 + count) % count : 0)), [count]);
 
+  // 按当前张的停留时长单次计时;切到下一张(含手动切换)时重新计时
+  const currentDuration = slides[current]?.durationMs ?? AUTOPLAY_INTERVAL;
   useEffect(() => {
     if (count <= 1 || isPaused) return;
-    timerRef.current = setInterval(next, AUTOPLAY_INTERVAL);
-    return () => clearInterval(timerRef.current);
-  }, [count, isPaused, next]);
+    timerRef.current = setTimeout(next, currentDuration);
+    return () => clearTimeout(timerRef.current);
+  }, [count, isPaused, next, current, currentDuration]);
 
   // 加载中 / 无数据:保留占位背景,不塌陷布局
   if (count === 0) {
