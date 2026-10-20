@@ -5,8 +5,8 @@ import { Link } from "@/i18n/navigation";
 
 type Variant = "teal" | "lime" | "outline" | "whatsapp";
 
-// 主操作深绿实底白字;lime 为品牌强调(柠绿底必须配深绿字);outline 为次操作。
-export const MALL_BTN_OUTLINE = "border-[1.5px] border-teal-700 text-teal-700 font-bold bg-white hover:bg-teal-50";
+// 主操作明黄实底炭黑字(teal 变体走 mall-btn-primary,与 lime 同色);outline 为次操作。
+export const MALL_BTN_OUTLINE = "border-[1.5px] border-lime text-teal-900 font-bold bg-white hover:bg-[#FFF6DC]";
 
 const STYLES: Record<Variant, string> = {
   teal: "mall-btn-primary font-bold",

@@ -134,8 +134,8 @@ function RfqListContent() {
     const btns: React.ReactNode[] = [];
 
     // 买方前台按钮样式：小型圆角 pill 按钮
-    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700 mall-btn-primary px-3 py-1 text-xs font-medium transition-colors";
-    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700/40 px-3 py-1 text-xs font-medium text-teal-700 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10";
+    const btnPrimary = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-lime mall-btn-primary px-3 py-1 text-xs font-medium transition-colors";
+    const btnOutline = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-lime px-3 py-1 text-xs font-medium text-teal-900 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10";
     const btnDanger = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 active:bg-red-100";
     const btnWarn = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:bg-amber-100";
 
@@ -303,7 +303,7 @@ function RfqListContent() {
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/rfqs/create`)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-4 py-1.5 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full border border-lime mall-btn-primary px-4 py-1.5 text-xs font-medium transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               {t("createRfq")}
@@ -332,7 +332,7 @@ function RfqListContent() {
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/buyer/cart`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full border border-lime mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 {t("goToCart")}

@@ -186,7 +186,7 @@ function CartContent() {
               <button
                 type="button"
                 onClick={() => router.push(`/${locale}/mall`)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-teal-700 mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full border border-lime mall-btn-primary px-5 py-2.5 text-sm font-medium transition-colors"
               >
                 {t("goToMall")}
                 <ArrowRight className="h-4 w-4" />

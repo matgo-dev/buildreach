@@ -417,7 +417,7 @@ export default function ProductSearchModal({
                                       onClick={() => available && pickAxis(p.id, axis.key, v.value)}
                                       className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition-colors ${
                                         active
-                                          ? "border-teal-700 bg-teal-700/10 font-medium text-teal-700"
+                                          ? "border-lime bg-[#FFF6DC] font-medium text-teal-900"
                                           : available
                                             ? "border-gray-200 text-ink-2 hover:border-teal-700/40"
                                             : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"

@@ -8,7 +8,7 @@
     @apply border border-line border-t-[3px] border-t-lime bg-teal-100;
   }
   .mall-btn-primary {
-    @apply bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-mall-sm hover:from-teal-500 hover:to-teal-600;
+    @apply bg-lime text-teal-900 shadow-mall-sm hover:bg-lime-soft;
   }
 }
 @tailwind utilities;

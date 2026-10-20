@@ -300,15 +300,9 @@ function RfqEditContent() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("destinationPort")}</label>
-            <input type="text" list="destination-port-options" value={destinationPort} onChange={(e) => setDestinationPort(e.target.value)}
+            <input type="text" value={destinationPort} onChange={(e) => setDestinationPort(e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
               className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20" />
-            <datalist id="destination-port-options">
-              <option value="Dar es Salaam Port" />
-              <option value="Mombasa Port" />
-              <option value="Zanzibar Port" />
-              <option value="Tanga Port" />
-            </datalist>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">{t("preferredTradeTerm")}</label>
@@ -395,7 +389,7 @@ function RfqEditContent() {
         </button>
         <button type="button" disabled={saving || submitting || !canSubmit} onClick={handleSave}
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
-            saving || submitting || !canSubmit ? "border-gray-200 text-muted cursor-not-allowed" : "border-teal-700 text-teal-700 hover:bg-teal-700/5"
+            saving || submitting || !canSubmit ? "border-gray-200 text-muted cursor-not-allowed" : "border-lime text-teal-900 hover:bg-[#FFF6DC]"
           }`}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           {!saving && <Save className="h-4 w-4" />}

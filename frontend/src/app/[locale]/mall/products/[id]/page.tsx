@@ -152,7 +152,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
                   isSelected
-                    ? "border-teal-700 bg-teal-50 text-teal-700 font-medium"
+                    ? "border-lime bg-[#FFF6DC] text-teal-900 font-medium"
                     : "border-gray-200 bg-white text-ink-2"
                 } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
               >
@@ -639,7 +639,7 @@ function ProductDetailContent() {
               onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "border-b-2 border-teal-700 text-teal-700"
+                  ? "border-b-2 border-lime text-teal-900"
                   : "text-muted hover:text-ink"
               }`}
             >

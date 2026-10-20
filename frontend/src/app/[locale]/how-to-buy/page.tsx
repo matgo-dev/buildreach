@@ -37,7 +37,7 @@ function StepCard({
       <div className="flex">
         {/* 左侧色条 + 序号 */}
         <div
-          className="flex flex-col items-center justify-center w-[56px] flex-shrink-0 bg-teal-100 text-teal-900"
+          className="flex flex-col items-center justify-center w-[56px] flex-shrink-0 bg-[#FFF3CC] text-teal-900"
         >
           <span className="text-lg">{icon}</span>
           <span className="text-xs font-bold mt-0.5">{index + 1}</span>
@@ -208,7 +208,7 @@ function HowToBuyContent() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/mall"
-              className="inline-flex items-center gap-1.5 rounded-lg border-[1.5px] border-teal-700 bg-white px-5 py-2 text-[13px] font-semibold text-teal-700 hover:bg-teal-50 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border-[1.5px] border-lime bg-white px-5 py-2 text-[13px] font-semibold text-teal-900 hover:bg-[#FFF6DC] transition-colors"
             >
               {t("ctaBrowse")}
             </Link>
@@ -255,7 +255,7 @@ function HowToBuyContent() {
               <div className="space-y-3">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="flex gap-2.5 items-start">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-sm">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#FFF3CC] text-teal-900 flex items-center justify-center text-sm">
                       {t(`adv${i}Icon`)}
                     </span>
                     <div>

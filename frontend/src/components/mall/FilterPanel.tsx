@@ -132,12 +132,12 @@ export function FilterPanel({
                   <span
                     className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center transition-all ${
                       isPending
-                        ? "bg-teal-700 border-teal-700"
+                        ? "bg-lime border-lime"
                         : "border-gray-300"
                     }`}
                     onClick={() => togglePending(item.key)}
                   >
-                    {isPending && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                    {isPending && <Check className="h-2.5 w-2.5 text-teal-900" strokeWidth={3} />}
                   </span>
                   <span
                     onClick={() => togglePending(item.key)}

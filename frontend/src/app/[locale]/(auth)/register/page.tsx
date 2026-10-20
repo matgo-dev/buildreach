@@ -756,7 +756,7 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                 type="button"
                 onClick={handleSendCode}
                 disabled={cooldown > 0 || codeSending}
-                className="shrink-0 rounded-lg border border-teal-700 px-3 text-sm font-medium text-teal-700 transition-all hover:bg-teal-700/5 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+                className="shrink-0 rounded-lg border border-lime px-3 text-sm font-medium text-teal-900 transition-all hover:bg-[#FFF6DC] disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
               >
                 {codeSending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -907,13 +907,13 @@ function BuyerForm({ onSubmitted }: BuyerFormProps) {
                         className={
                           "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all " +
                           (selected
-                            ? "border-teal-700 bg-teal-700/5 text-teal-700 font-medium"
+                            ? "border-lime bg-[#FFF6DC] text-teal-900 font-medium"
                             : "border-gray-200 text-ink-2 hover:border-gray-300 hover:bg-gray-50")
                         }
                       >
                         <div className={
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
-                          (selected ? "border-teal-700 bg-teal-700 text-white" : "border-gray-300")
+                          (selected ? "border-lime bg-lime text-teal-900" : "border-gray-300")
                         }>
                           {selected && <Check className="h-3 w-3" />}
                         </div>

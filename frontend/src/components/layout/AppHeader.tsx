@@ -94,7 +94,7 @@ export function AppHeader({
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-teal-900 px-2.5 text-xs font-medium text-white transition-colors hover:bg-teal-950"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-lime px-2.5 text-xs font-medium text-teal-900 transition-colors hover:bg-lime-soft"
               >
                 <Search className="h-3.5 w-3.5" />
               </button>
@@ -144,7 +144,7 @@ export function AppHeader({
           ) : (
             <Link
               href="/login"
-              className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-950"
+              className="rounded-lg bg-lime px-3 py-1.5 text-xs font-semibold text-teal-900 hover:bg-lime-soft"
             >
               登录
             </Link>

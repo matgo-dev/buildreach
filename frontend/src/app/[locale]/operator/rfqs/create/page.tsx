@@ -1136,18 +1136,11 @@ function CreateOnBehalfContent() {
             <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("destinationPort")}</label>
             <input
               type="text"
-              list="op-destination-port-options"
               value={draft.destinationPort}
               onChange={(e) => updateDraft("destinationPort", e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
-            <datalist id="op-destination-port-options">
-              <option value="Dar es Salaam Port" />
-              <option value="Mombasa Port" />
-              <option value="Zanzibar Port" />
-              <option value="Tanga Port" />
-            </datalist>
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-500">{t("preferredTradeTerm")}</label>

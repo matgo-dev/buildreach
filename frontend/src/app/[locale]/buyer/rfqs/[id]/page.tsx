@@ -234,7 +234,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => router.push(`/${locale}/buyer/rfqs/${rfqId}/edit`)}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-teal-700/40 px-4 py-1.5 text-sm font-medium text-teal-700 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-lime px-4 py-1.5 text-sm font-medium text-teal-900 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10"
             >
               <Pencil className="h-3.5 w-3.5" />
               {t("edit")}
@@ -244,7 +244,7 @@ function RfqDetailContent() {
             <button
               type="button"
               onClick={() => setSubmitOpen(true)}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700 mall-btn-primary px-4 py-1.5 text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-lime mall-btn-primary px-4 py-1.5 text-sm font-medium transition-colors"
             >
               {t("submitDraft")}
             </button>
@@ -261,7 +261,7 @@ function RfqDetailContent() {
               <button
                 type="button"
                 onClick={() => setAcceptOpen(true)}
-                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700 mall-btn-primary px-4 py-1.5 text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-lime mall-btn-primary px-4 py-1.5 text-sm font-medium transition-colors"
               >
                 {tQ("accept")}
               </button>
@@ -835,7 +835,7 @@ function QuoteCard({
               type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-teal-700/40 px-3 py-1 text-xs font-medium text-teal-700 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10 disabled:opacity-50"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-lime px-3 py-1 text-xs font-medium text-teal-900 shadow-sm transition-colors hover:bg-teal-700/5 active:bg-teal-700/10 disabled:opacity-50"
             >
               {downloading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />

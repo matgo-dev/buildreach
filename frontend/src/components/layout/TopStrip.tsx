@@ -14,7 +14,7 @@ export function TopStrip() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="bg-teal-700 text-white text-[13px] font-semibold">
+    <div className="bg-gradient-to-r from-teal-700 via-[#2f353c] to-[#4a525b] text-white text-[13px] font-semibold">
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}

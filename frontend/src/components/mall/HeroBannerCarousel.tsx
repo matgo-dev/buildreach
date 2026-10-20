@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import useSWR from "swr";
+import { bannersApi } from "@/lib/api/banners";
+import { imageUrl } from "@/lib/env";
 
 const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
 
 /**
- * 首页轮播 — 展示版与 matgo 共用后端,库里的轮播是 matgo 的东非绿色海报,
- * 所以这里不读 /api/v1/banners,改用前端自带的静态图(public/banners)。
+ * 首页轮播 — 展示版与 matgo 共用后端:前面放前端自带的本品牌海报(public/banners),
+ * 后面接后端轮播(GET /api/v1/banners),但去掉 matgo 自己的东非绿色主海报。
  */
 interface Slide {
   src: string;
@@ -24,12 +27,29 @@ function isNearby(index: number, current: number, total: number): boolean {
   return index === prev || index === next;
 }
 
-const SLIDES: Slide[] = [
+const OWN_SLIDES: Slide[] = [
   { src: "/banners/hero-overseas.jpg", alt: "Source China Building Materials for the World", link: null },
 ];
 
+/** matgo 的东非绿色主海报(库里 sort_order 0),展示版不放 */
+const MATGO_MAIN_BANNER = "/static/banners/bc49ddc06f3a4743b55af006dddebb83.jpg";
+
 export function HeroBannerCarousel() {
-  const slides = SLIDES;
+  // 后端轮播失败时 data 为 undefined → 只放自带海报,不阻塞首页。
+  const { data: rows } = useSWR(
+    "home-banner-carousel",
+    () => bannersApi.list("home_carousel"),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+  const slides: Slide[] = useMemo(
+    () => [
+      ...OWN_SLIDES,
+      ...(rows ?? [])
+        .filter((r) => r.image_url !== MATGO_MAIN_BANNER)
+        .map((r) => ({ src: imageUrl(r.image_url), alt: r.title || "", link: r.link_url })),
+    ],
+    [rows],
+  );
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
