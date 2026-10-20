@@ -1,6 +1,6 @@
-"""专区授权(zone_grants)运营管理 service。
+"""专区运营管理 service:专区开关(status / is_public)+ 授权(zone_grants)。
 
-只覆盖「买家组织 ↔ 专区」的授权关系(列出/新增/撤销);专区选品(zone_products)仍走导入脚本。
+授权只覆盖「买家组织 ↔ 专区」关系(列出/新增/撤销);专区选品(zone_products)仍走导入脚本。
 路由负责 commit,本模块只 flush + 返回 ORM/字典。
 """
 from __future__ import annotations
@@ -16,10 +16,35 @@ async def list_zones(db: AsyncSession) -> list[dict]:
     rows = (
         await db.execute(select(Zone).order_by(Zone.sort_order, Zone.id))
     ).scalars().all()
-    return [
-        {"id": z.id, "code": z.code, "name_zh": z.name_zh, "status": z.status, "is_public": z.is_public}
-        for z in rows
-    ]
+    return [zone_dict(z) for z in rows]
+
+
+def zone_setting_changes(
+    zone: Zone, status: str | None, is_public: bool | None
+) -> dict[str, dict]:
+    """算出请求相对现值的实际变更 {字段: {"from", "to"}};None 表示不改该字段。"""
+    changes: dict[str, dict] = {}
+    if status is not None and status != zone.status:
+        changes["status"] = {"from": zone.status, "to": status}
+    if is_public is not None and is_public != zone.is_public:
+        changes["is_public"] = {"from": zone.is_public, "to": is_public}
+    return changes
+
+
+async def update_zone_settings(
+    db: AsyncSession, zone: Zone, status: str | None, is_public: bool | None
+) -> dict[str, dict]:
+    """应用专区开关变更,返回实际变更(空 = 无变化,不写库)。"""
+    changes = zone_setting_changes(zone, status, is_public)
+    for field, change in changes.items():
+        setattr(zone, field, change["to"])
+    if changes:
+        await db.flush()
+    return changes
+
+
+def zone_dict(z: Zone) -> dict:
+    return {"id": z.id, "code": z.code, "name_zh": z.name_zh, "status": z.status, "is_public": z.is_public}
 
 
 async def _get_zone(db: AsyncSession, zone_code: str) -> Zone | None:
