@@ -78,7 +78,7 @@ export const WORKSPACES: Workspace[] = [
     code: "BUYER",
     label: "采购方工作台",
     pathPrefix: "/buyer",
-    themeColor: "#103d33",
+    themeColor: "#1f2328",
     groups: [
       {
         label: "BUYER 工作台",

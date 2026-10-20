@@ -12,10 +12,10 @@ export const BRAND = {
   nameZh: "筑达",
 
   /** 英文副标题 */
-  nameEn: "China Building Materials for East Africa",
+  nameEn: "China Building Materials for Global Markets",
 
   /** 中文副标题 */
-  nameZhSub: "中国建材直采服务东非市场",
+  nameZhSub: "中国建材直采服务海外市场",
 
   /** 砖标 + 字标组合（v2，intro 色系），页头/页脚/登录页用这个 */
   logoLockup: "/logos/logo-lockup-v2.svg",
@@ -25,14 +25,14 @@ export const BRAND = {
 
   /** 长定位语:平台属性短句(slogan) */
   tagline:
-    "China Building Materials for East Africa · 中国建材直采服务东非市场",
+    "China Building Materials for Global Markets · 中国建材直采服务海外市场",
 
   /** 浏览器 tab 完整 title */
-  fullTitle: "Matgo 筑达 - China Building Materials for East Africa",
+  fullTitle: "Matgo 筑达 - China Building Materials for Global Markets",
 
   /** SEO description meta + 首页 hero 描述段 */
   description:
-    "面向坦桑尼亚本地门店、批发商、承包商和项目客户的 B2B 建材采购平台",
+    "面向海外门店、批发商、承包商和项目客户的 B2B 建材采购平台",
 
   /** 默认交付城市 */
   deliverTo: "Dar es Salaam, TZ",

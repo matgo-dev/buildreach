@@ -39,7 +39,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                 <p className="text-muted text-[12px] font-bold mb-2.5">{t("consultantResponseHint")}</p>
                 <button
                   onClick={() => setExpanded(true)}
-                  className="w-full h-9 rounded-lg bg-lime text-[13px] font-bold text-teal-900 shadow-[0_6px_16px_rgba(151,200,23,.45)] transition-all hover:-translate-y-px hover:bg-lime-soft inline-flex items-center justify-center gap-1.5"
+                  className="w-full h-9 rounded-lg bg-lime text-[13px] font-bold text-teal-900 shadow-[0_6px_16px_rgba(255,194,14,.45)] transition-all hover:-translate-y-px hover:bg-lime-soft inline-flex items-center justify-center gap-1.5"
                 >
                   {t("consultantCta")}
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -115,7 +115,7 @@ export function RightSidebar({ variant = "mall" }: { variant?: "home" | "mall" }
                 { icon: Truck,       title: t("trustDelivery"), desc: t("trustDeliveryDesc") },
               ].map(({ icon: Icon, title, desc }) => (
                 <li key={title} className="grid grid-cols-[18px_1fr] gap-1.5 items-start">
-                  <span className="w-[18px] h-[18px] rounded-full grid place-items-center text-whatsapp shrink-0" style={{ background: "#e5f7ee" }}>
+                  <span className="w-[18px] h-[18px] rounded-full grid place-items-center bg-teal-100 text-teal-700 shrink-0">
                     <Icon className="h-2.5 w-2.5" />
                   </span>
                   <span>

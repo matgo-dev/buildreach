@@ -1,18 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import useSWR from "swr";
-import { bannersApi } from "@/lib/api/banners";
-import { imageUrl } from "@/lib/env";
 
 const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
 
 /**
- * 首页轮播 — 动态从后端读取(GET /api/v1/banners，position="home_carousel")。
- * 播放顺序 = 后端按 sort_order 排序;运营在后台增删改 / 排序 / 上下架。
- * 存量图由 backend/scripts/seed_banners.py 一次性 seed 进库。
+ * 首页轮播 — 展示版与 matgo 共用后端,库里的轮播是 matgo 的东非绿色海报,
+ * 所以这里不读 /api/v1/banners,改用前端自带的静态图(public/banners)。
  */
 interface Slide {
   src: string;
@@ -28,23 +24,12 @@ function isNearby(index: number, current: number, total: number): boolean {
   return index === prev || index === next;
 }
 
+const SLIDES: Slide[] = [
+  { src: "/banners/hero-overseas.jpg", alt: "Source China Building Materials for the World", link: null },
+];
+
 export function HeroBannerCarousel() {
-  // 与首页其他区块一致用 SWR:缓存 + 去重,二次访问首页不再重新拉取闪烁。
-  // 失败时 data 为 undefined → slides 空 → 占位,不阻塞首页。
-  const { data: rows } = useSWR(
-    "home-banner-carousel",
-    () => bannersApi.list("home_carousel"),
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  );
-  const slides: Slide[] = useMemo(
-    () =>
-      (rows ?? []).map((r) => ({
-        src: imageUrl(r.image_url),
-        alt: r.title || "",
-        link: r.link_url,
-      })),
-    [rows],
-  );
+  const slides = SLIDES;
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);

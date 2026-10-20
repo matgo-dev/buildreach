@@ -90,7 +90,7 @@ export function MallNavRow() {
   return (
     <nav
       className="sticky top-0 md:top-[82px] z-[70] bg-white border-b border-line"
-      style={{ boxShadow: "0 1px 2px rgba(18,59,50,.04)" }}
+      style={{ boxShadow: "0 1px 2px rgba(31,35,40,.04)" }}
     >
       <div className="mx-auto flex min-h-[44px] max-w-mall items-center gap-4 px-3 sm:min-h-[50px] sm:px-6">
         {/* 只有链接区横向滚动;专区入口在滚动区外,链接放不下时也始终可见 */}

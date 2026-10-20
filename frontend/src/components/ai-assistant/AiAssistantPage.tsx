@@ -289,7 +289,7 @@ function ChatDialog({ agent, onClose }: { agent: AgentDef; onClose: () => void }
         {/* 顶栏 */}
         <div
           className="flex items-center gap-3 px-4 sm:px-5 py-3.5 text-white"
-          style={{ background: "#073e32" }}
+          style={{ background: "#1d2025" }}
         >
           <button
             onClick={onClose}
@@ -375,7 +375,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="flex justify-end">
         <div
           className="max-w-[85%] rounded-2xl rounded-tr-md px-4 py-3 text-sm leading-relaxed text-white"
-          style={{ background: "#103d33" }}
+          style={{ background: "#1f2328" }}
         >
           {message.content}
         </div>
@@ -458,7 +458,7 @@ function ChatInputBar({
               ? "text-white shadow-sm hover:opacity-90"
               : "bg-slate-200 text-muted")
           }
-          style={canSend ? { background: "#103d33" } : undefined}
+          style={canSend ? { background: "#1f2328" } : undefined}
         >
           <ArrowUp className="h-4 w-4" />
         </button>

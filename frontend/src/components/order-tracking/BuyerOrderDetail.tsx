@@ -118,7 +118,7 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
       <div className="rounded-xl border border-line bg-white overflow-hidden">
         <div
           className="px-6 py-5"
-          style={{ background: "linear-gradient(135deg, #e2edcd 0%, #eef4e6 55%, #eef7dc 100%)" }}
+          style={{ background: "linear-gradient(135deg, #eaebed 0%, #f1f2f4 55%, #f7f8fa 100%)" }}
         >
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>

@@ -19,8 +19,8 @@ import {
   type PriceBasis,
 } from "./costCalculator";
 
-const HEADER_BG = "#073e32";
-const ACCENT_BG = "#103d33";
+const HEADER_BG = "#1d2025";
+const ACCENT_BG = "#1f2328";
 
 const CITY_KEYS = Object.keys(LOCAL_TRANSPORT_TABLE);
 const BASES: PriceBasis[] = ["EXW", "FOB", "CIF"];

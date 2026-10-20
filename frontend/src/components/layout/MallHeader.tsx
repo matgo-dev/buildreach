@@ -98,7 +98,7 @@ export function MallHeader() {
     <header
       className="sticky top-0 z-[80] border-b border-line bg-white"
       style={{
-        boxShadow: "0 1px 2px rgba(18,59,50,.04), 0 6px 20px rgba(18,59,50,.04)",
+        boxShadow: "0 1px 2px rgba(31,35,40,.04), 0 6px 20px rgba(31,35,40,.04)",
       }}
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">

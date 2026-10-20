@@ -51,8 +51,7 @@ export function MallFooter() {
             <h4 className="text-teal-900 text-sm font-bold mb-2.5">{t("footerCompliance")}</h4>
             <div className="space-y-2 text-[13px]">
               <p>PVoC / CoC</p>
-              <p>TBS Standards</p>
-              <p>KEBS Certification</p>
+              <p>Product Certification</p>
               <p>Import Permits</p>
             </div>
           </div>
