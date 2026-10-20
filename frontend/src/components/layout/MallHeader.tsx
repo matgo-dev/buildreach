@@ -114,7 +114,7 @@ export function MallHeader() {
           <img
             src={BRAND.logoLockup}
             alt={BRAND.name}
-            className="h-7 sm:h-9 w-auto shrink-0"
+            className="h-6 sm:h-7 w-auto shrink-0"
           />
         </Link>
 

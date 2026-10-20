@@ -6,10 +6,7 @@
  */
 export const BRAND = {
   /** 短品牌名:Logo 旁、Header、登录页 H1、首页 H1 */
-  name: "Matgo",
-
-  /** 中文品牌名 */
-  nameZh: "筑达",
+  name: "MatDara",
 
   /** 英文副标题 */
   nameEn: "China Building Materials for Global Markets",
@@ -17,18 +14,18 @@ export const BRAND = {
   /** 中文副标题 */
   nameZhSub: "中国建材直采服务海外市场",
 
-  /** 砖标 + 字标组合（v2，intro 色系），页头/页脚/登录页用这个 */
-  logoLockup: "/logos/logo-lockup-v2.svg",
+  /** 字标(取自 mideast.matgo.ai 介绍站,换黑黄色),页头/页脚/登录页用这个 */
+  logoLockup: "/logos/matdara-wordmark.svg",
 
   /** Logo icon 路径(favicon / apple-touch-icon) */
-  logoIcon: "/logos/matgo-icon.png",
+  logoIcon: "/logos/matdara-icon.png",
 
   /** 长定位语:平台属性短句(slogan) */
   tagline:
     "China Building Materials for Global Markets · 中国建材直采服务海外市场",
 
   /** 浏览器 tab 完整 title */
-  fullTitle: "Matgo 筑达 - China Building Materials for Global Markets",
+  fullTitle: "MatDara - China Building Materials for Global Markets",
 
   /** SEO description meta + 首页 hero 描述段 */
   description:

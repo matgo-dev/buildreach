@@ -22,7 +22,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         {/* 品牌区 */}
         <div className="mb-8 text-center">
           <h1>
-            <img src={BRAND.logoLockup} alt={t("name")} className="mx-auto h-12 w-auto" />
+            <img src={BRAND.logoLockup} alt={t("name")} className="mx-auto h-9 w-auto" />
           </h1>
           <p className="mt-3 text-sm text-muted">{t("tagline")}</p>
         </div>

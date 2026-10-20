@@ -70,13 +70,11 @@ export function AppHeader({
         {/* 左:品牌 — 已登录切换侧边栏,未登录跳首页 */}
         {user ? (
           <button onClick={toggleSidebar} className="group flex shrink-0 items-center gap-3 cursor-pointer" aria-label={`${BRAND.name} 菜单`}>
-            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-7 w-auto shrink-0" />
-            <span className="text-lg font-black tracking-tight text-teal-900">{BRAND.nameZh}</span>
+            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-6 w-auto shrink-0" />
           </button>
         ) : (
           <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
-            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-7 w-auto shrink-0" />
-            <span className="text-lg font-black tracking-tight text-teal-900">{BRAND.nameZh}</span>
+            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-6 w-auto shrink-0" />
           </Link>
         )}
 

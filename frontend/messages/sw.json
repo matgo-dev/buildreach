@@ -12,9 +12,9 @@
     "err_email_domain": "Kikoa hiki cha barua pepe hakikubaliki, tafadhali tumia anwani halisi (mfano .com, .cn)"
   },
   "brand": {
-    "name": "Matgo",
+    "name": "MatDara",
     "tagline": "Vifaa vya Ujenzi kutoka China kwa Masoko ya Kimataifa",
-    "full_title": "Matgo - Vifaa vya Ujenzi kutoka China kwa Masoko ya Kimataifa",
+    "full_title": "MatDara - Vifaa vya Ujenzi kutoka China kwa Masoko ya Kimataifa",
     "description": "Jukwaa la ununuzi wa vifaa vya ujenzi B2B kwa maduka, wauzaji wa jumla, wakandarasi na wanunuzi wa miradi wa kimataifa"
   },
   "auth": {
@@ -529,7 +529,7 @@
     "trustPriceDesc": "Moja kwa moja kutoka kiwandani, punguzo la wingi",
     "trustDelivery": "Uwasilishaji wa Haraka",
     "trustDeliveryDesc": "Usafirishaji wa kontena la pamoja moja kwa moja hadi bandari lengwa",
-    "brandName": "Matgo",
+    "brandName": "MatDara",
     "brandNameSub": "Vifaa vya Ujenzi vya China kwa Masoko ya Kimataifa",
     "roleBuyer": "Mnunuzi",
     "roleSupplier": "Msambazaji",
@@ -606,13 +606,13 @@
     "headerRfqCart": "Kikapu cha Maombi",
     "headerMyAccount": "Akaunti Yangu",
     "headerAccountSub": "Akaunti Yangu",
-    "stripAnnouncement": "Matgo | Vifaa vya ujenzi kutoka China, hadi duniani kote.",
+    "stripAnnouncement": "MatDara | Vifaa vya ujenzi kutoka China, hadi duniani kote.",
     "helpCenter": "Kituo cha Msaada",
     "headerLogin": "Ingia",
     "headerRegister": "Jisajili Bure",
     "stripProfile": "Wasifu Wangu",
     "stripPersonalCenter": "Akaunti Yangu",
-    "welcomeGuest": "Karibu Matgo",
+    "welcomeGuest": "Karibu MatDara",
     "welcomeBack": "Karibu tena",
     "registerNow": "Jisajili",
     "signIn": "Ingia",
@@ -705,7 +705,7 @@
     "noMoreProducts": "— Hakuna bidhaa zaidi —",
     "floatWaTitle": "Msaada wa Wateja",
     "floatWaHint": "Majibu ya haraka mtandaoni",
-    "floatWaAgent": "Msaada wa Matgo",
+    "floatWaAgent": "Msaada wa MatDara",
     "floatWaPowered": "Wasiliana nasi kupitia WhatsApp",
     "floatWaTab": "Ongea",
     "floatWaCta": "Tuambie mahitaji yako",
@@ -1435,7 +1435,7 @@
   },
   "howToBuy": {
     "heroTitle": "Jinsi ya Kununua — Mwongozo Kamili wa Ununuzi",
-    "heroDesc": "Matgo inaunganisha wanunuzi wa kimataifa na wasambazaji wa vifaa vya ujenzi kutoka China. Tunashughulikia utafutaji, ukaguzi wa ubora, na usafirishaji wa pamoja — ili uweze kununua vifaa vya ujenzi vya China kwa urahisi.",
+    "heroDesc": "MatDara inaunganisha wanunuzi wa kimataifa na wasambazaji wa vifaa vya ujenzi kutoka China. Tunashughulikia utafutaji, ukaguzi wa ubora, na usafirishaji wa pamoja — ili uweze kununua vifaa vya ujenzi vya China kwa urahisi.",
     "ctaBrowse": "Tembelea Bidhaa",
     "ctaRfq": "Omba Bei Sasa",
     "stepsTitle": "Hatua 7 za Ununuzi wa Kimataifa",
@@ -1460,7 +1460,7 @@
     "step7Title": "Hatua 7: Pokea na Kamilisha",
     "step7Desc": "Lipa salio la 70% kabla ya kufika bandarini. Tunasaidia na forodha ya bandari ya marudio. Thibitisha kupokea ili kukamilisha agizo.",
     "step7Detail": "Unahitaji vibali vya kuagiza (k.m. uthibitisho wa bidhaa wa nchi lengwa)? Tujulishe katika RFQ yako na tunaweza kusaidia kuandaa hati zinazohitajika.",
-    "advantagesTitle": "Kwa nini Matgo?",
+    "advantagesTitle": "Kwa nini MatDara?",
     "adv1Icon": "🏭",
     "adv1Title": "Moja kwa Moja Kiwandani",
     "adv1Desc": "Nunua moja kwa moja kutoka viwanda vya China, ukiondoa wakala wa kati kwa bei za kiwanda",
@@ -1559,7 +1559,7 @@
     "boundaryTitle": "Mipaka ya Huduma",
     "boundaryIncluded": "Imejumuishwa",
     "boundaryExcluded": "Haijajumuishwa",
-    "boundaryDesc": "Matgo inatoa huduma kamili kutoka viwanda vya China hadi bandari lengwa, ikiwa ni pamoja na uchunguzi wa wasambazaji, ununuzi wa pamoja, ukaguzi wa ubora, ujumuishaji, tamko la forodha, usafirishaji wa baharini, na forodha ya marudio. Usafiri wa ndani (bandari hadi tovuti) unapangwa na mnunuzi au lojistiki ya ndani. Jukwaa halitoi mikopo ya kifedha, uwakala wa bima, au huduma nyingine za kifedha."
+    "boundaryDesc": "MatDara inatoa huduma kamili kutoka viwanda vya China hadi bandari lengwa, ikiwa ni pamoja na uchunguzi wa wasambazaji, ununuzi wa pamoja, ukaguzi wa ubora, ujumuishaji, tamko la forodha, usafirishaji wa baharini, na forodha ya marudio. Usafiri wa ndani (bandari hadi tovuti) unapangwa na mnunuzi au lojistiki ya ndani. Jukwaa halitoi mikopo ya kifedha, uwakala wa bima, au huduma nyingine za kifedha."
   },
   "noPermission": {
     "title": "Ufikiaji Umekataliwa",
@@ -1673,8 +1673,8 @@
     "contactUs": "Ongea Sasa",
     "platform_title": "Mwongozo wa Kutumia Jukwaa",
     "platform_subtitle": "Usajili, kuvinjari, ombi la bei, kuagiza na shughuli nyingine za msingi",
-    "platform_q1": "Matgo ni jukwaa la aina gani?",
-    "platform_a1": "Matgo ni jukwaa la ununuzi wa vifaa vya ujenzi kutoka nchi za nje kwa hatua moja. Linaunganisha viwanda bora vya China na wateja wa kimataifa. Jukwaa linatoa huduma za kuvinjari bidhaa, ombi la bei mtandaoni (RFQ), uthibitisho wa bei, uratibu wa nyaraka za kufuata sheria, usafirishaji wa makontena ya pamoja, na zaidi — kukusaidia kukamilisha ununuzi wako wa kimataifa kwa ufanisi na usalama.",
+    "platform_q1": "MatDara ni jukwaa la aina gani?",
+    "platform_a1": "MatDara ni jukwaa la ununuzi wa vifaa vya ujenzi kutoka nchi za nje kwa hatua moja. Linaunganisha viwanda bora vya China na wateja wa kimataifa. Jukwaa linatoa huduma za kuvinjari bidhaa, ombi la bei mtandaoni (RFQ), uthibitisho wa bei, uratibu wa nyaraka za kufuata sheria, usafirishaji wa makontena ya pamoja, na zaidi — kukusaidia kukamilisha ununuzi wako wa kimataifa kwa ufanisi na usalama.",
     "platform_q2": "Jinsi ya kusajili akaunti?",
     "platform_a2": "Unaweza kuvinjari bidhaa zote bila kusajili. Unapotaka kutuma ombi la bei (RFQ), bofya \"Sajili Bure\" kwenye kona ya juu kulia, jaza barua pepe, nambari ya simu na nenosiri — hakuna haja ya kusubiri idhini. Unaweza pia kuwasiliana nasi moja kwa moja kupitia WhatsApp bila kuingia.",
     "platform_q3": "Jinsi ya kutafuta na kuvinjari bidhaa?",
@@ -1867,7 +1867,7 @@
     }
   },
   "aiAssistant": {
-    "heroTitle": "Msaidizi wa AI wa Matgo",
+    "heroTitle": "Msaidizi wa AI wa MatDara",
     "heroDesc": "Kupakia Kontena · Ushauri wa Uzingatiaji · Mipango ya Ununuzi · Kutafuta Bidhaa kwa AI",
     "heroSubDesc": "Ugavi wa vifaa vya ujenzi kwa AI — haraka, bora, na gharama nafuu",
     "online": "Mtandaoni",
@@ -1876,8 +1876,8 @@
     "inputPlaceholder": "Andika swali lako...",
     "inputStreaming": "AI inajibu...",
     "inputHintSend": "Enter kutuma · Shift+Enter mstari mpya",
-    "poweredBy": "Imeendeshwa na Matgo AI",
-    "dialogOnline": "Matgo AI · Mtandaoni",
+    "poweredBy": "Imeendeshwa na MatDara AI",
+    "dialogOnline": "MatDara AI · Mtandaoni",
     "containerTitle": "Msaidizi wa Kupakia Kontena",
     "containerSubtitle": "Mipango bora ya kupakia kontena kwa AI kupunguza gharama",
     "containerTag1": "Aina ya Kontena",
