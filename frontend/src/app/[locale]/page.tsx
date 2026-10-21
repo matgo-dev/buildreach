@@ -17,8 +17,10 @@ export default function HomePage() {
 
   return (
     <PublicLayout>
-      {/* ===== 顶部三栏等高区域(品类 + 轮播 + 信息栏) ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_220px] gap-4 items-stretch mb-5 h-[200px] sm:h-[260px] lg:h-[420px] xl:h-[460px]">
+      {/* ===== 顶部三栏等高区域(品类 + 轮播 + 信息栏) =====
+          lg 以下只有轮播一栏,按主海报 16:9(hero 1920x1071)定高;原固定 200/260px 在宽手机/平板上
+          宽高比超过图片,object-cover 会裁掉海报底部的保障文字。lg 起三栏等高不变。 */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_220px] gap-4 items-stretch mb-5 aspect-[16/9] lg:aspect-auto lg:h-[420px] xl:h-[460px]">
         {/* 左侧品类导航 — home 模式不 sticky */}
         <CategorySidebar variant="home" />
 
