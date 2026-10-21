@@ -5,7 +5,7 @@
 @layer components {
   /* 大块用浅鼠尾草绿平涂(teal-100,取自 intro 实际页面),柠绿只作顶部细线强调 */
   .mall-surface {
-    @apply border border-line border-t-[3px] border-t-lime bg-teal-100;
+    @apply border border-line border-t-[3px] border-t-lime bg-gradient-to-b from-[#FFF6DC] to-white;
   }
   .mall-btn-primary {
     @apply bg-lime text-teal-900 shadow-mall-sm hover:bg-lime-soft;
