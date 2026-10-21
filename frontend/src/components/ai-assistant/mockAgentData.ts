@@ -51,12 +51,12 @@ const containerAgent: AgentDef = {
   id: "container",
   icon: Package,
   color: "bg-teal-100",
-  accentHex: "#103d33",
-  greeting: "你好！我是 Matgo 筑达 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
+  accentHex: "#1f2328",
+  greeting: "你好！我是 MatDara 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
   greetingL10n: {
-    zh: "你好！我是 Matgo 筑达 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
-    en: "Hello! I'm Matgo Container Loading Assistant 🚢\n\nI can help you:\n• Recommend optimal container types based on cargo info\n• Calculate loading rates and freight estimates\n• Compare FCL vs LCL options\n\nTell me about your cargo, or tap a quick question below.",
-    sw: "Habari! Mimi ni Msaidizi wa Kupakia Kontena wa Matgo 🚢\n\nNinaweza kukusaidia:\n• Kupendekeza aina bora ya kontena\n• Kukokotoa kiwango cha upakiaji na makadirio ya nauli\n• Kulinganisha FCL na LCL\n\nNiambie kuhusu mizigo yako, au bonyeza swali hapo chini.",
+    zh: "你好！我是 MatDara 智能拼柜助手 🚢\n\n我可以帮你：\n• 根据货物信息推荐最优柜型\n• 计算装载率和运费估算\n• 对比整柜 vs 拼柜方案\n\n请告诉我你的货物信息，或点击下方快捷问题开始体验。",
+    en: "Hello! I'm MatDara Container Loading Assistant 🚢\n\nI can help you:\n• Recommend optimal container types based on cargo info\n• Calculate loading rates and freight estimates\n• Compare FCL vs LCL options\n\nTell me about your cargo, or tap a quick question below.",
+    sw: "Habari! Mimi ni Msaidizi wa Kupakia Kontena wa MatDara 🚢\n\nNinaweza kukusaidia:\n• Kupendekeza aina bora ya kontena\n• Kukokotoa kiwango cha upakiaji na makadirio ya nauli\n• Kulinganisha FCL na LCL\n\nNiambie kuhusu mizigo yako, au bonyeza swali hapo chini.",
   },
   suggestions: ["我有 500 箱瓷砖要发蒙巴萨", "20GP 和 40HQ 有什么区别？", "帮我计算拼柜费用"],
   suggestionsL10n: {
@@ -210,12 +210,12 @@ const complianceAgent: AgentDef = {
   id: "compliance",
   icon: FileCheck2,
   color: "bg-teal-100",
-  accentHex: "#127b89",
-  greeting: "你好！我是 Matgo 筑达 合规资质顾问 📋\n\n我可以帮你：\n• 查询目的国所需的产品认证和资质\n• 了解 PVOC / COC / SONCAP 等合规要求\n• 获取认证费用、周期和办理流程\n\n请告诉我您要出口的品类和目的国，或点击下方快捷问题。",
+  accentHex: "#414448",
+  greeting: "你好！我是 MatDara 合规资质顾问 📋\n\n我可以帮你：\n• 查询目的国所需的产品认证和资质\n• 了解 PVOC / COC / SONCAP 等合规要求\n• 获取认证费用、周期和办理流程\n\n请告诉我您要出口的品类和目的国，或点击下方快捷问题。",
   greetingL10n: {
-    zh: "你好！我是 Matgo 筑达 合规资质顾问 📋\n\n我可以帮你：\n• 查询目的国所需的产品认证和资质\n• 了解 PVOC / COC / SONCAP 等合规要求\n• 获取认证费用、周期和办理流程\n\n请告诉我您要出口的品类和目的国，或点击下方快捷问题。",
-    en: "Hello! I'm Matgo Compliance Advisor 📋\n\nI can help you:\n• Look up required certifications for your destination country\n• Understand PVOC / COC / SONCAP requirements\n• Get certification costs, timelines and processes\n\nTell me the product category and destination, or tap a quick question.",
-    sw: "Habari! Mimi ni Mshauri wa Uzingatiaji wa Matgo 📋\n\nNinaweza kukusaidia:\n• Kutafuta vyeti vinavyohitajika kwa nchi lengwa\n• Kuelewa mahitaji ya PVOC / COC / SONCAP\n• Kupata gharama, muda na mchakato wa uthibitisho\n\nNiambie aina ya bidhaa na nchi lengwa, au bonyeza swali hapo chini.",
+    zh: "你好！我是 MatDara 合规资质顾问 📋\n\n我可以帮你：\n• 查询目的国所需的产品认证和资质\n• 了解 PVOC / COC / SONCAP 等合规要求\n• 获取认证费用、周期和办理流程\n\n请告诉我您要出口的品类和目的国，或点击下方快捷问题。",
+    en: "Hello! I'm MatDara Compliance Advisor 📋\n\nI can help you:\n• Look up required certifications for your destination country\n• Understand PVOC / COC / SONCAP requirements\n• Get certification costs, timelines and processes\n\nTell me the product category and destination, or tap a quick question.",
+    sw: "Habari! Mimi ni Mshauri wa Uzingatiaji wa MatDara 📋\n\nNinaweza kukusaidia:\n• Kutafuta vyeti vinavyohitajika kwa nchi lengwa\n• Kuelewa mahitaji ya PVOC / COC / SONCAP\n• Kupata gharama, muda na mchakato wa uthibitisho\n\nNiambie aina ya bidhaa na nchi lengwa, au bonyeza swali hapo chini.",
   },
   suggestions: ["瓷砖出口肯尼亚需要什么认证？", "PVOC 是什么？怎么办理？", "坦桑尼亚的建材进口政策"],
   suggestionsL10n: {
@@ -403,12 +403,12 @@ const procurementAgent: AgentDef = {
   id: "procurement",
   icon: Search,
   color: "bg-teal-100",
-  accentHex: "#103d33",
-  greeting: "你好！我是 Matgo 筑达 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
+  accentHex: "#1f2328",
+  greeting: "你好！我是 MatDara 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
   greetingL10n: {
-    zh: "你好！我是 Matgo 筑达 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
-    en: "Hello! I'm Matgo Smart Procurement Assistant 🔍\n\nI can help you:\n• Recommend procurement plans based on project needs\n• Plan optimal logistics routes and shipping methods\n• Match suppliers and provide price references\n\nDescribe your needs, or tap a quick question below.",
-    sw: "Habari! Mimi ni Msaidizi wa Ununuzi wa Akili wa Matgo 🔍\n\nNinaweza kukusaidia:\n• Kupendekeza mipango ya ununuzi kulingana na mradi\n• Kupanga njia bora za usafirishaji\n• Kulinganisha wasambazaji na bei\n\nEleza mahitaji yako, au bonyeza swali hapo chini.",
+    zh: "你好！我是 MatDara 智能采购助手 🔍\n\n我可以帮你：\n• 根据项目需求推荐采购方案\n• 规划最优物流路径和运输方式\n• 提供供应商匹配和价格参考\n\n请描述您的采购需求，或点击下方快捷问题。",
+    en: "Hello! I'm MatDara Smart Procurement Assistant 🔍\n\nI can help you:\n• Recommend procurement plans based on project needs\n• Plan optimal logistics routes and shipping methods\n• Match suppliers and provide price references\n\nDescribe your needs, or tap a quick question below.",
+    sw: "Habari! Mimi ni Msaidizi wa Ununuzi wa Akili wa MatDara 🔍\n\nNinaweza kukusaidia:\n• Kupendekeza mipango ya ununuzi kulingana na mradi\n• Kupanga njia bora za usafirishaji\n• Kulinganisha wasambazaji na bei\n\nEleza mahitaji yako, au bonyeza swali hapo chini.",
   },
   suggestions: ["坦桑尼亚学校项目需要哪些建材？", "宁波到达累斯的物流路线", "建材采购有什么省钱技巧？"],
   suggestionsL10n: {
@@ -507,14 +507,14 @@ const procurementAgent: AgentDef = {
       keywords: ["省钱", "技巧", "降低", "成本"],
       answer: `好的，分享建材采购的省钱实战技巧：
 
-💰 **Matgo 筑达 采购省钱指南**
+💰 **MatDara 采购省钱指南**
 
 🏭 **采购端**
 | 策略 | 节省幅度 | 说明 |
 |------|---------|------|
 | 拼单采购 | 10-20% | 多个项目合并同品类订单，提高议价能力 |
 | 避开旺季 | 5-15% | 3-4 月和 9-10 月是中国建材淡季 |
-| 工厂直采 | 15-25% | 跳过中间贸易商，Matgo 筑达 直连产地 |
+| 工厂直采 | 15-25% | 跳过中间贸易商，MatDara 直连产地 |
 | 替代材料 | 10-30% | 如国产品牌替代进口品牌同等质量 |
 
 🚢 **物流端**
@@ -536,9 +536,9 @@ const procurementAgent: AgentDef = {
     },
     {
       keywords: ["供应商", "推荐", "工厂", "选品"],
-      answer: `好的，为您介绍 Matgo 筑达 的工厂资源：
+      answer: `好的，为您介绍 MatDara 的工厂资源：
 
-🏭 **Matgo 筑达 — 直连中国优质工厂**
+🏭 **MatDara — 直连中国优质工厂**
 
 我们直接对接中国各品类核心产区的优质工厂，确保产品质量和供应稳定。
 
@@ -576,12 +576,12 @@ const finderAgent: AgentDef = {
   id: "finder",
   icon: ShoppingCart,
   color: "bg-teal-100",
-  accentHex: "#127b89",
-  greeting: "你好！我是 Matgo 筑达 AI 找货助手 🛒\n\n告诉我你想找什么，我帮你一键定位：\n• 直接说品类名称，如「劳保手套」「角磨机」\n• 描述你的场景，如「装修需要的水电材料」\n• 说出项目需求，如「学校建设需要什么」\n\n不用自己翻目录，开口就能找到！",
+  accentHex: "#414448",
+  greeting: "你好！我是 MatDara AI 找货助手 🛒\n\n告诉我你想找什么，我帮你一键定位：\n• 直接说品类名称，如「劳保手套」「角磨机」\n• 描述你的场景，如「装修需要的水电材料」\n• 说出项目需求，如「学校建设需要什么」\n\n不用自己翻目录，开口就能找到！",
   greetingL10n: {
-    zh: "你好！我是 Matgo 筑达 AI 找货助手 🛒\n\n告诉我你想找什么，我帮你一键定位：\n• 直接说品类名称，如「劳保手套」「角磨机」\n• 描述你的场景，如「装修需要的水电材料」\n• 说出项目需求，如「学校建设需要什么」\n\n不用自己翻目录，开口就能找到！",
-    en: "Hello! I'm Matgo AI Product Finder 🛒\n\nTell me what you're looking for:\n• Product name, e.g. \"safety gloves\", \"angle grinder\"\n• Your scenario, e.g. \"electrical materials for renovation\"\n• Project needs, e.g. \"what do I need for a school build\"\n\nNo browsing needed — just ask!",
-    sw: "Habari! Mimi ni Mtafutaji wa Bidhaa wa AI wa Matgo 🛒\n\nNiambie unatafuta nini:\n• Jina la bidhaa, mfano \"glavu za usalama\", \"grinder\"\n• Hali yako, mfano \"vifaa vya umeme kwa ukarabati\"\n• Mahitaji ya mradi, mfano \"ninahitaji nini kwa shule\"\n\nHakuna haja ya kutafuta — uliza tu!",
+    zh: "你好！我是 MatDara AI 找货助手 🛒\n\n告诉我你想找什么，我帮你一键定位：\n• 直接说品类名称，如「劳保手套」「角磨机」\n• 描述你的场景，如「装修需要的水电材料」\n• 说出项目需求，如「学校建设需要什么」\n\n不用自己翻目录，开口就能找到！",
+    en: "Hello! I'm MatDara AI Product Finder 🛒\n\nTell me what you're looking for:\n• Product name, e.g. \"safety gloves\", \"angle grinder\"\n• Your scenario, e.g. \"electrical materials for renovation\"\n• Project needs, e.g. \"what do I need for a school build\"\n\nNo browsing needed — just ask!",
+    sw: "Habari! Mimi ni Mtafutaji wa Bidhaa wa AI wa MatDara 🛒\n\nNiambie unatafuta nini:\n• Jina la bidhaa, mfano \"glavu za usalama\", \"grinder\"\n• Hali yako, mfano \"vifaa vya umeme kwa ukarabati\"\n• Mahitaji ya mradi, mfano \"ninahitaji nini kwa shule\"\n\nHakuna haja ya kutafuta — uliza tu!",
   },
   suggestions: ["我想找劳保安防手套", "有没有电动工具？", "装修要用的瓷砖和涂料"],
   suggestionsL10n: {

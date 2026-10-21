@@ -200,9 +200,9 @@ export function SkuSelector({ skus, selection, onSelectionChange }: SkuSelectorP
                   onClick={() => handleChipClick(dim.key, val)}
                   className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-all ${
                     isSelected
-                      ? "border-teal-700 bg-teal-50 font-semibold text-teal-700"
+                      ? "border-lime bg-[#FFF6DC] font-semibold text-teal-900"
                       : available
-                        ? "border-gray-200 bg-white text-ink-2 hover:border-teal-700 hover:text-teal-700"
+                        ? "border-gray-200 bg-white text-ink-2 hover:border-lime hover:text-teal-900"
                         : "cursor-not-allowed border-dashed border-gray-200 text-muted opacity-40"
                   }`}
                   title={!available ? t("detail.unavailable") : undefined}

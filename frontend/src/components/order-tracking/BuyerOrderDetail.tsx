@@ -118,7 +118,7 @@ function DetailBody({ order }: { order: PortalOrderDetail }) {
       <div className="rounded-xl border border-line bg-white overflow-hidden">
         <div
           className="px-6 py-5"
-          style={{ background: "linear-gradient(135deg, #e2edcd 0%, #eef4e6 55%, #eef7dc 100%)" }}
+          style={{ background: "linear-gradient(135deg, #eaebed 0%, #f1f2f4 55%, #f7f8fa 100%)" }}
         >
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
@@ -259,7 +259,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       type="button"
       onClick={onClick}
       className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-        active ? "border-teal-700 text-teal-700 bg-teal-50" : "border-transparent text-muted hover:text-navy"
+        active ? "border-lime text-teal-900 bg-[#FFF6DC]" : "border-transparent text-muted hover:text-navy"
       }`}
     >
       {children}

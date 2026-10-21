@@ -921,18 +921,12 @@ function RfqCreateContent() {
             </label>
             <input
               type="text"
-              list="destination-port-options"
+             
               value={draft.destination_port}
               onChange={(e) => updateDraft("destination_port", e.target.value)}
               placeholder={t("destinationPortPlaceholder")}
               className="h-10 w-full rounded-lg border border-control px-3 text-sm outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/20"
             />
-            <datalist id="destination-port-options">
-              <option value="Dar es Salaam Port" />
-              <option value="Mombasa Port" />
-              <option value="Zanzibar Port" />
-              <option value="Tanga Port" />
-            </datalist>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">
@@ -1026,7 +1020,7 @@ function RfqCreateContent() {
           className={`inline-flex items-center gap-2 rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors ${
             savingDraft || submitting || !canSubmit
               ? "border-gray-200 text-muted cursor-not-allowed"
-              : "border-teal-700 text-teal-700 hover:bg-teal-700/5"
+              : "border-lime text-teal-900 hover:bg-[#FFF6DC]"
           }`}
         >
           {savingDraft && <Loader2 className="h-4 w-4 animate-spin" />}

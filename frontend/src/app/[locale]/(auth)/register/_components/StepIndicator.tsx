@@ -38,10 +38,10 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
                 className={
                   "flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-colors " +
                   (done || active
-                    ? "bg-teal-700 text-white"
+                    ? "bg-lime text-teal-900"
                     : "bg-gray-200 text-muted") +
                   (clickable
-                    ? " cursor-pointer hover:ring-2 hover:ring-teal-700/30"
+                    ? " cursor-pointer hover:ring-2 hover:ring-lime/40"
                     : " cursor-default")
                 }
               >
@@ -59,7 +59,7 @@ export function StepIndicator({ current, reachable, onStepClick }: StepIndicator
             {idx < STEPS.length - 1 && (
               <div
                 className={
-                  "mx-2 h-0.5 flex-1 " + (done ? "bg-teal-700" : "bg-gray-200")
+                  "mx-2 h-0.5 flex-1 " + (done ? "bg-lime" : "bg-gray-200")
                 }
               />
             )}

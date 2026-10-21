@@ -152,7 +152,7 @@ function InlineAttrItem({
                 onClick={() => canSelect && onSelect(item.key, v.value)}
                 className={`rounded-md border-[1.5px] px-3.5 py-1.5 text-xs transition-colors ${
                   isSelected
-                    ? "border-teal-700 bg-teal-50 text-teal-700 font-medium"
+                    ? "border-lime bg-[#FFF6DC] text-teal-900 font-medium"
                     : "border-gray-200 bg-white text-ink-2"
                 } ${canSelect ? "cursor-pointer hover:border-gray-400" : "cursor-default"}`}
               >
@@ -427,7 +427,7 @@ function ProductDetailContent() {
             const ex = er.left + er.width / 2, ey = er.top + er.height / 2;
             const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
             const m = document.createElement("div");
-            m.style.cssText = `position:fixed;z-index:99999;left:${sx}px;top:${sy}px;width:36px;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent 0%,#32bdc9 40%,#b9e46b 100%);box-shadow:0 0 8px rgba(185,228,107,0.6),0 0 16px rgba(50,189,201,0.3);pointer-events:none;transform:rotate(${angle}deg);transform-origin:right center;opacity:0;transition:left 1s cubic-bezier(0.25,0.1,0.25,1),top 1s cubic-bezier(0.25,0.1,0.25,1),opacity 0.3s ease,width 0.8s ease;`;
+            m.style.cssText = `position:fixed;z-index:99999;left:${sx}px;top:${sy}px;width:36px;height:6px;border-radius:3px;background:linear-gradient(90deg,transparent 0%,#ffd34d 40%,#ffc20e 100%);box-shadow:0 0 8px rgba(255,194,14,0.6),0 0 16px rgba(255,211,77,0.3);pointer-events:none;transform:rotate(${angle}deg);transform-origin:right center;opacity:0;transition:left 1s cubic-bezier(0.25,0.1,0.25,1),top 1s cubic-bezier(0.25,0.1,0.25,1),opacity 0.3s ease,width 0.8s ease;`;
             document.body.appendChild(m);
             requestAnimationFrame(() => { m.style.opacity = "1"; requestAnimationFrame(() => { m.style.left = `${ex}px`; m.style.top = `${ey}px`; m.style.width = "12px"; setTimeout(() => { m.style.opacity = "0"; }, 600); }); });
             setTimeout(() => { m.remove(); target.style.transition = "transform 0.3s ease"; target.style.transform = "scale(1.3)"; setTimeout(() => { target.style.transform = "scale(1)"; }, 300); }, 1050);
@@ -639,7 +639,7 @@ function ProductDetailContent() {
               onClick={() => scrollToSection(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "border-b-2 border-teal-700 text-teal-700"
+                  ? "border-b-2 border-lime text-teal-900"
                   : "text-muted hover:text-ink"
               }`}
             >

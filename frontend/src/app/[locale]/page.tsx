@@ -17,8 +17,9 @@ export default function HomePage() {
 
   return (
     <PublicLayout>
-      {/* ===== 顶部三栏等高区域(品类 + 轮播 + 信息栏) ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_220px] gap-4 items-stretch mb-5 h-[200px] sm:h-[260px] lg:h-[420px] xl:h-[460px]">
+      {/* ===== 顶部三栏等高区域(品类 + 轮播 + 信息栏) =====
+          lg 以下按首图 3:2 的比例定高(MatDara 首图是 3:2,原固定高度在手机/平板上会裁掉底部保障条);lg 起三栏等高 */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_220px] gap-4 items-stretch mb-5 aspect-[3/2] lg:aspect-auto lg:h-[420px] xl:h-[460px]">
         {/* 左侧品类导航 — home 模式不 sticky */}
         <CategorySidebar variant="home" />
 

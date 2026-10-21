@@ -169,7 +169,9 @@ export function ContactPopover({
           /* 移动端：底部抽屉 */
           <>
             <div className="fixed inset-0 z-[250] bg-black/30" onClick={close} />
-            <div className="fixed bottom-0 left-0 right-0 z-[251] bg-white rounded-t-2xl shadow-2xl p-4 pb-6 animate-in slide-in-from-bottom duration-200">
+            {/* 必须挂 popoverRef:否则"点击外部关闭"的 mousedown 监听会把抽屉内的点击当成外部,
+                抽屉在 click 触发前就被卸载,微信那行的 onClick 永远走不到(二维码不弹) */}
+            <div ref={popoverRef} className="fixed bottom-0 left-0 right-0 z-[251] bg-white rounded-t-2xl shadow-2xl p-4 pb-6 animate-in slide-in-from-bottom duration-200">
               <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3" />
               {channelList}
             </div>

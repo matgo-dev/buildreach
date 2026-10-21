@@ -24,11 +24,8 @@ export function MallFooter() {
               <img
                 src={BRAND.logoLockup}
                 alt={BRAND.name}
-                className="h-6 w-auto mr-1.5 shrink-0"
+                className="h-6 w-auto shrink-0"
               />
-              <span className="text-teal-900 text-sm font-bold whitespace-nowrap">
-                Material Go 筑达
-              </span>
             </div>
             <p className="text-[13px] leading-relaxed text-ink-2">
               {t("footerDescription")}
@@ -51,8 +48,7 @@ export function MallFooter() {
             <h4 className="text-teal-900 text-sm font-bold mb-2.5">{t("footerCompliance")}</h4>
             <div className="space-y-2 text-[13px]">
               <p>PVoC / CoC</p>
-              <p>TBS Standards</p>
-              <p>KEBS Certification</p>
+              <p>Product Certification</p>
               <p>Import Permits</p>
             </div>
           </div>

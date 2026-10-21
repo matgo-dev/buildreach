@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ChevronDown, MessageCircle } from "lucide-react";
 import type { CategoryTreeNode } from "@/lib/api/categories";
+import { MALL_BTN_OUTLINE } from "@/components/mall/MallButton";
 import { ContactPopover } from "@/components/mall/ContactPopover";
 
 /**
@@ -188,7 +189,7 @@ export function CategoryBreadcrumb({
             <span className="text-[12px] text-sea hidden sm:inline">{t("cantFindHint")}</span>
             <ContactPopover>
               <button
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium transition-colors h-[28px] border-[1.5px] border-teal-700 bg-white text-teal-900 hover:bg-teal-50"
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] transition-colors h-[28px] ${MALL_BTN_OUTLINE}`}
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 {t("contactService")}

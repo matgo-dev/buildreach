@@ -98,7 +98,8 @@ export function MallHeader() {
     <header
       className="sticky top-0 z-[80] border-b border-line bg-white"
       style={{
-        boxShadow: "0 1px 2px rgba(18,59,50,.04), 0 6px 20px rgba(18,59,50,.04)",
+        boxShadow: "0 1px 2px rgba(31,35,40,.04), 0 6px 20px rgba(31,35,40,.04)",
+        background: "url(/images/bg-top.png) center 0 / 1536px 480px no-repeat, #fff",
       }}
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">
@@ -113,14 +114,14 @@ export function MallHeader() {
           <img
             src={BRAND.logoLockup}
             alt={BRAND.name}
-            className="h-7 sm:h-9 w-auto shrink-0"
+            className="h-6 sm:h-7 w-auto shrink-0"
           />
         </Link>
 
         {/* 中:搜索框 — PC 上显示在这一行 */}
         <form onSubmit={handleSearch} className="relative min-w-0 hidden md:block">
           <div
-            className="flex rounded-[10px] overflow-hidden border-2 border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
+            className="flex rounded-lg overflow-hidden border-[1.5px] border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
           >
             <input
               type="search"
@@ -129,14 +130,14 @@ export function MallHeader() {
               onFocus={() => setSearchFocused(true)}
               onClick={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
-              className="flex-1 h-12 px-4 bg-white text-ink text-[14.5px] outline-none min-w-0"
+              className="flex-1 h-10 px-4 bg-white text-ink text-[14.5px] outline-none min-w-0"
             />
             <button
               type="submit"
-              className="w-[60px] bg-lime text-teal-900 hover:bg-lime-soft grid place-items-center transition-colors"
+              className="w-[52px] bg-lime text-teal-900 hover:bg-lime-soft grid place-items-center transition-colors"
               aria-label="Search"
             >
-              <Search className="h-5 w-5" strokeWidth={2.4} />
+              <Search className="h-[18px] w-[18px]" strokeWidth={2.4} />
             </button>
           </div>
           {isBuyer && (

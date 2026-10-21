@@ -96,7 +96,7 @@ function MembersInner() {
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex h-10 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-teal-700/90"
+          className="flex h-10 items-center gap-2 rounded-lg bg-lime px-4 text-sm font-semibold text-teal-900 shadow-sm hover:bg-lime-soft"
         >
           <Plus className="h-4 w-4" /> {t("create")}
         </button>
@@ -330,7 +330,7 @@ function EditMemberModal({ member, onClose, onSaved }: { member: MemberOut; onCl
           <button
             type="submit"
             disabled={submitting}
-            className="flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-700/90 disabled:opacity-60"
+            className="flex h-9 items-center gap-2 rounded-lg bg-lime px-4 text-sm font-semibold text-teal-900 hover:bg-lime-soft disabled:opacity-60"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("actions.save")}
@@ -384,7 +384,7 @@ function ResetMemberPasswordModal({ member, onClose, onDone }: { member: MemberO
           <button
             type="submit"
             disabled={submitting}
-            className="flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-700/90 disabled:opacity-60"
+            className="flex h-9 items-center gap-2 rounded-lg bg-lime px-4 text-sm font-semibold text-teal-900 hover:bg-lime-soft disabled:opacity-60"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("actions.reset")}
@@ -466,7 +466,7 @@ function CreateMemberModal({ onClose, onCreated }: { onClose: () => void; onCrea
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-700/90 disabled:opacity-60"
+              className="flex h-9 items-center gap-2 rounded-lg bg-lime px-4 text-sm font-semibold text-teal-900 hover:bg-lime-soft disabled:opacity-60"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {t("actions.submit")}

@@ -40,7 +40,7 @@ export function CategoryFloorSection({
     <section
       id={config.id}
       className="rounded-xl overflow-hidden border border-line bg-white"
-      style={{ boxShadow: "0 2px 12px rgba(18,59,50,.05)" }}
+      style={{ boxShadow: "0 2px 12px rgba(31,35,40,.05)" }}
     >
       {/* ── 移动端品类标题横条(md 以上由左区背景图代替) ── */}
       <div className="md:hidden px-4 py-3 text-teal-900 font-bold text-sm bg-teal-100">

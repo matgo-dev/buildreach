@@ -70,13 +70,11 @@ export function AppHeader({
         {/* 左:品牌 — 已登录切换侧边栏,未登录跳首页 */}
         {user ? (
           <button onClick={toggleSidebar} className="group flex shrink-0 items-center gap-3 cursor-pointer" aria-label={`${BRAND.name} 菜单`}>
-            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-7 w-auto shrink-0" />
-            <span className="text-lg font-black tracking-tight text-teal-900">{BRAND.nameZh}</span>
+            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-6 w-auto shrink-0" />
           </button>
         ) : (
           <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label={`${BRAND.name} 首页`}>
-            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-7 w-auto shrink-0" />
-            <span className="text-lg font-black tracking-tight text-teal-900">{BRAND.nameZh}</span>
+            <img src={BRAND.logoLockup} alt={BRAND.name} className="h-6 w-auto shrink-0" />
           </Link>
         )}
 
@@ -94,7 +92,7 @@ export function AppHeader({
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-teal-900 px-2.5 text-xs font-medium text-white transition-colors hover:bg-teal-950"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 items-center rounded-md bg-lime px-2.5 text-xs font-medium text-teal-900 transition-colors hover:bg-lime-soft"
               >
                 <Search className="h-3.5 w-3.5" />
               </button>
@@ -144,7 +142,7 @@ export function AppHeader({
           ) : (
             <Link
               href="/login"
-              className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-950"
+              className="rounded-lg bg-lime px-3 py-1.5 text-xs font-semibold text-teal-900 hover:bg-lime-soft"
             >
               登录
             </Link>

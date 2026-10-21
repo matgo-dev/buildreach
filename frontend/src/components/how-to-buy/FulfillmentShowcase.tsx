@@ -32,7 +32,7 @@ const CONSOLIDATION_IMAGES = [
   { src: "warehouse.jpg", alt: "warehouse" },
 ];
 
-const CERT_BADGES = ["PVoC", "CoC", "ISO 9001", "SGS", "TBS", "KEBS"];
+const CERT_BADGES = ["PVoC", "CoC", "ISO 9001", "SGS"];
 
 /* ---------- 子组件 ---------- */
 
@@ -80,7 +80,7 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
           <span className="text-xs text-gray-300">7 ~ 8</span>
         </div>
         {/* 步骤条 */}
-        <div className="flex items-center justify-center gap-0 overflow-x-auto pb-2">
+        <div className="flex items-center justify-center gap-0 overflow-x-auto overflow-y-hidden pt-1.5 pb-2">
           {PROCESS_STEPS.map((step, i) => {
             const isHighlight = step.highlight;
             return (
@@ -93,8 +93,8 @@ function StepperOverview({ t }: { t: ReturnType<typeof useTranslations> }) {
                         : isHighlight
                           ? "bg-lime text-teal-900 ring-2 ring-lime/50"
                           : step.phase === "online"
-                            ? "bg-teal-100 text-teal-900 ring-1 ring-teal-300"
-                            : "bg-ocean/15 text-sea ring-1 ring-ocean/40"
+                            ? "bg-lime text-teal-900 ring-1 ring-lime"
+                            : "bg-[#FFF3CC] text-teal-900 ring-1 ring-lime"
                     }`}
                   >
                     {step.id}
@@ -158,8 +158,8 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                         : isHighlight
                           ? "bg-lime text-teal-900 ring-4 ring-lime/40"
                           : step.phase === "online"
-                            ? "bg-teal-100 text-teal-900 ring-1 ring-teal-300"
-                            : "bg-ocean/15 text-sea ring-1 ring-ocean/40"
+                            ? "bg-lime text-teal-900 ring-1 ring-lime"
+                            : "bg-[#FFF3CC] text-teal-900 ring-1 ring-lime"
                     }`}
                   >
                     {step.id}
@@ -205,8 +205,8 @@ function VerticalTimeline({ t }: { t: ReturnType<typeof useTranslations> }) {
                                 : isHighlight
                                   ? "bg-lime text-teal-900"
                                   : step.phase === "online"
-                                    ? "bg-teal-100 text-teal-900 ring-1 ring-teal-300"
-                                    : "bg-ocean/15 text-sea ring-1 ring-ocean/40"
+                                    ? "bg-lime text-teal-900 ring-1 ring-lime"
+                                    : "bg-[#FFF3CC] text-teal-900 ring-1 ring-lime"
                             }`}
                           >
                             {step.id}
@@ -282,7 +282,7 @@ function ConsolidationSection({ t }: { t: ReturnType<typeof useTranslations> }) 
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-teal-100 text-teal-900 ring-1 ring-teal-300 text-xs font-bold flex items-center justify-center mt-0.5">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-lime text-teal-900 text-xs font-bold flex items-center justify-center mt-0.5">
                     {i}
                   </span>
                   <div>

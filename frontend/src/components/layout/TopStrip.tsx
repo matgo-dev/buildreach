@@ -8,25 +8,25 @@ import { useAuthStore } from "@/stores/authStore";
 import { useLogout } from "@/hooks/useAuth";
 import { workspaceDashboardOf } from "@/config/navigation";
 
-/** 顶部深青公告条 — 公告 + 帮助 + 账号小入口 */
+/** 顶部炭黑公告条 — 公告 + 帮助 + 账号小入口 */
 export function TopStrip() {
   const t = useTranslations("mall");
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="bg-lime text-teal-900 text-[13px] font-semibold">
+    <div className="bg-gradient-to-r from-teal-700 via-[#2f353c] to-[#4a525b] text-white text-[13px] font-semibold">
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}
         </span>
         <div className="flex items-center gap-2 sm:gap-4 text-xs whitespace-nowrap overflow-visible">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2 sm:px-3 py-0.5 text-teal-900 font-extrabold text-[11px] sm:text-xs shrink-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2 sm:px-3 py-0.5 text-white font-extrabold text-[11px] sm:text-xs shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">PVoC / CoC Document Support</span>
             <span className="sm:hidden">PVoC / CoC</span>
           </span>
           <Link href="/help-center" className="hidden sm:inline hover:underline">{t("helpCenter")}</Link>
-          <span className="text-teal-900/30">|</span>
+          <span className="text-white/30">|</span>
           {user ? (
             <UserDropdown />
           ) : (
@@ -34,7 +34,7 @@ export function TopStrip() {
               <Link href="/login" className="hover:underline">
                 {t("headerLogin")}
               </Link>
-              <span className="text-teal-900/30">|</span>
+              <span className="text-white/30">|</span>
               <Link href="/register" className="hover:underline truncate max-w-[120px] sm:max-w-none">
                 {t("headerRegister")}
               </Link>

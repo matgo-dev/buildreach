@@ -237,7 +237,7 @@ function ChatInput({
           className={
             "mb-2 mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors " +
             (canSend
-              ? "bg-teal-700 text-white hover:bg-teal-800"
+              ? "bg-lime text-teal-900 hover:bg-lime-soft"
               : "bg-slate-100 text-muted")
           }
         >

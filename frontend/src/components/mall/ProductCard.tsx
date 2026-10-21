@@ -38,8 +38,8 @@ function flyToCart(startEl: HTMLElement) {
     width: 36px;
     height: 6px;
     border-radius: 3px;
-    background: linear-gradient(90deg, transparent 0%, #32bdc9 40%,#b9e46b 100%);
-    box-shadow: 0 0 8px rgba(185,228,107,0.6), 0 0 16px rgba(50,189,201,0.3);
+    background: linear-gradient(90deg, transparent 0%, #ffd34d 40%,#ffc20e 100%);
+    box-shadow: 0 0 8px rgba(255,194,14,0.6), 0 0 16px rgba(255,211,77,0.3);
     pointer-events: none;
     transform: rotate(${angle}deg);
     transform-origin: right center;
@@ -149,7 +149,7 @@ export function ProductCard({
       {/* 图片区 — 撑满，窄边距 */}
       <div
         className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-line p-2"
-        style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
+        style={{ background: "linear-gradient(135deg, #f1f2f4, #fff)" }}
       >
         {product.main_image ? (
           <img
@@ -234,7 +234,7 @@ export function ProductCard({
             <MallButton
               variant="outline"
               size="md"
-              className="text-[13px] min-w-0 flex-1 group-hover:border-teal-700 group-hover:bg-teal-700 group-hover:text-white"
+              className="text-[13px] min-w-0 flex-1 group-hover:border-lime group-hover:bg-lime group-hover:text-teal-900"
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();

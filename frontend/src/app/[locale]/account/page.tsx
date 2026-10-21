@@ -449,7 +449,7 @@ function Inner() {
                   <div className="px-6 py-4">
                     <Link
                       href="/buyer/members"
-                      className="inline-flex h-9 items-center rounded-lg border border-teal-700 px-4 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                      className="inline-flex h-9 items-center rounded-lg border border-lime px-4 text-sm font-medium text-teal-900 hover:bg-[#FFF6DC]"
                     >
                       {t("actions.manageMembers")}
                     </Link>
@@ -695,7 +695,7 @@ function NameEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-lime px-4 text-sm font-medium text-teal-900 shadow-sm transition-all hover:bg-lime-soft disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -826,7 +826,7 @@ function OrgEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-lime px-4 text-sm font-medium text-teal-900 shadow-sm transition-all hover:bg-lime-soft disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -903,7 +903,7 @@ function EmailEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-lime px-4 text-sm font-medium text-teal-900 shadow-sm transition-all hover:bg-lime-soft disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -1006,7 +1006,7 @@ function PhoneEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-lime px-4 text-sm font-medium text-teal-900 shadow-sm transition-all hover:bg-lime-soft disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -1079,7 +1079,7 @@ function UsernameEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-lime px-4 text-sm font-medium text-teal-900 shadow-sm transition-all hover:bg-lime-soft disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}
@@ -1162,7 +1162,7 @@ function PasswordEditForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-700/90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-lime px-4 text-sm font-medium text-teal-900 shadow-sm transition-all hover:bg-lime-soft disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t("actions.save")}

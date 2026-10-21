@@ -20,7 +20,7 @@ export function ProductCardCompact({ product }: { product: ProductPublic }) {
       {/* 图片区 */}
       <div
         className="relative aspect-square flex items-center justify-center overflow-hidden border-b border-line p-1"
-        style={{ background: "linear-gradient(135deg, #f0faf9, #fff)" }}
+        style={{ background: "linear-gradient(135deg, #f1f2f4, #fff)" }}
       >
         {product.main_image ? (
           <img

@@ -44,7 +44,7 @@ export function MallNavRow() {
 
   // 收紧内边距(px-2/sm:px-3),让整排双语项 + 专区一行装下不横滑。
   const itemBase =
-    "relative self-stretch inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 transition-colors -mb-px";
+    "relative self-stretch inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-3 sm:px-4 transition-colors";
 
   const renderNavLink = (link: NavLink) => {
     // href 可能带 query(如 /mall?procurement=local),按路径 + query 双匹配高亮。
@@ -78,8 +78,8 @@ export function MallNavRow() {
         href={link.href}
         className={`${itemBase} ${
           active
-            ? "text-teal-900 border-b-[3px] border-lime"
-            : "text-ink-2 hover:text-teal-900"
+            ? "text-teal-900 shadow-[inset_0_-3px_0_#FFC20E]"
+            : "text-muted hover:text-teal-900"
         }`}
       >
         {t(link.labelKey)}
@@ -90,7 +90,7 @@ export function MallNavRow() {
   return (
     <nav
       className="sticky top-0 md:top-[82px] z-[70] bg-white border-b border-line"
-      style={{ boxShadow: "0 1px 2px rgba(18,59,50,.04)" }}
+      style={{ boxShadow: "0 1px 2px rgba(31,35,40,.04)", background: "url(/images/bg-top.png) center -97px / 1536px 480px no-repeat, #fff" }}
     >
       <div className="mx-auto flex min-h-[44px] max-w-mall items-center gap-4 px-3 sm:min-h-[50px] sm:px-6">
         {/* 只有链接区横向滚动;专区入口在滚动区外,链接放不下时也始终可见 */}

@@ -77,7 +77,7 @@ export default function Pagination({ current, total, totalItems, onChange, tone 
               onClick={() => onChange(p)}
               className={`min-w-[32px] rounded-lg px-2.5 py-1.5 font-medium ${
                 p === current
-                  ? tone === "mall" ? "bg-teal-700 text-white" : "bg-blue-600 text-white"
+                  ? tone === "mall" ? "bg-lime text-teal-900" : "bg-blue-600 text-white"
                   : "border border-slate-200 hover:bg-slate-50"
               }`}
             >
