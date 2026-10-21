@@ -1,24 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
 import { bannersApi } from "@/lib/api/banners";
 import { imageUrl } from "@/lib/env";
 
-const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
-
 /**
- * 首页轮播 — 展示版与 matgo 共用后端:前面放前端自带的本品牌海报(public/banners),
- * 后面接后端轮播(GET /api/v1/banners),但去掉 matgo 自己的东非绿色主海报。
+ * 首页主视觉 — 前面放前端自带的本品牌海报(public/banners),后面接后端轮播
+ * (GET /api/v1/banners),但去掉 matgo 自己的东非绿色主海报。
+ * 不自动轮播(廖总 2026-10-21 定):默认停在第一张,只能靠圆点/箭头手动切换;
+ * 只有一张时不显示圆点和箭头。
  */
 interface Slide {
   src: string;
   alt: string;
   link: string | null;
-  /** 本张停留时长(ms),缺省用 AUTOPLAY_INTERVAL */
-  durationMs?: number;
 }
 
 /** 判断 slide 是否在当前可见窗口内（当前 ± 1），用于按需挂载 DOM */
@@ -30,7 +28,7 @@ function isNearby(index: number, current: number, total: number): boolean {
 }
 
 const OWN_SLIDES: Slide[] = [
-  { src: "/banners/hero-overseas.jpg", alt: "Source China Building Materials for the World", link: null, durationMs: 10_000 },
+  { src: "/banners/hero-overseas.jpg", alt: "Source China Building Materials for the World", link: null },
 ];
 
 /** matgo 的东非绿色主海报(库里 sort_order 0),展示版不放 */
@@ -53,8 +51,6 @@ export function HeroBannerCarousel() {
     [rows],
   );
   const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const count = slides.length;
 
   const goTo = useCallback(
@@ -64,25 +60,13 @@ export function HeroBannerCarousel() {
   const next = useCallback(() => setCurrent((c) => (count ? (c + 1) % count : 0)), [count]);
   const prev = useCallback(() => setCurrent((c) => (count ? (c - 1 + count) % count : 0)), [count]);
 
-  // 按当前张的停留时长单次计时;切到下一张(含手动切换)时重新计时
-  const currentDuration = slides[current]?.durationMs ?? AUTOPLAY_INTERVAL;
-  useEffect(() => {
-    if (count <= 1 || isPaused) return;
-    timerRef.current = setTimeout(next, currentDuration);
-    return () => clearTimeout(timerRef.current);
-  }, [count, isPaused, next, current, currentDuration]);
-
   // 加载中 / 无数据:保留占位背景,不塌陷布局
   if (count === 0) {
     return <div className="w-full h-full rounded-xl bg-gray-100" />;
   }
 
   return (
-    <div
-      className="relative w-full h-full rounded-xl overflow-hidden group"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
+    <div className="relative w-full h-full rounded-xl overflow-hidden group">
       {slides.map((slide, i) => {
         // 只渲染当前 ± 1 张，其余不挂载 DOM
         if (!isNearby(i, current, count)) return null;
