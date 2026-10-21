@@ -2220,6 +2220,7 @@ async def test_home_floor_safety_products_all_from_fire(client, db_session):
     r = await client.get("/api/v1/products/home-floors")
     assert r.status_code == 200, r.text
     safety = r.json()["data"]["floors"]["floor-safety"]
+    assert safety["bg_image"].startswith("/static/floors/safety.webp"), "楼层须带背景图 URL(指纹见单测)"
 
     product_ids = {p["id"] for p in safety["products"]}
     assert fire_pid in product_ids, "消防器材商品应出现在劳保安防层商品位"

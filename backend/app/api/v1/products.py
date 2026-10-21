@@ -32,6 +32,7 @@ from app.schemas.product import (
     VariantSkuOption,
 )
 from app.services import product as product_svc
+from app.services.floor_image import floor_bg_image_url
 from app.services._buyer_utils import thumb_url_from_image_key
 from app.services.purchase_target import default_sku_variant_display
 
@@ -376,6 +377,8 @@ async def home_floor_products(
             size=HOME_FLOOR_PRODUCT_SIZE,
         )
         floors[config["id"]] = {
+            # 带内容指纹的背景图 URL;随本接口 300s 缓存,换图最多 5 分钟生效
+            "bg_image": floor_bg_image_url(config["id"]),
             "categories": [_floor_category_to_public(category) for category in categories[:10]],
             "products": [
                 _to_public(product, main_image_urls=img_map.get(product.id, (None, None)))

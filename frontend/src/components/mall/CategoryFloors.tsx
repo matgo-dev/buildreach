@@ -9,41 +9,34 @@ import { FloorElevator, type FloorItem } from "./FloorElevator";
 /**
  * 6 个品类楼层的配置。
  * 楼层品类映射由后端按 name_zh 路径解析，前端只负责展示。
- * 展示版与 matgo 共用后端(uploads 卷里是 matgo 的绿色楼层图),
- * 所以 bgImage 走前端自带的 public/images/floors/*.webp(炭黑+明黄色系),换图随部署上线。
+ * 左区背景图由 /home-floors 每层给出 bg_image(/static/floors/*.webp?v=<内容指纹>,图片存 uploads/floors 卷,
+ * 换图替换文件即可,免部署;URL 随内容变,Cloudflare/浏览器缓存自然失效)。
+ * 接口未返回前不铺背景(只有底色),避免先请求一个不带版本号的 URL 再换成带指纹的,首屏图闪两次。
  */
-const floorImg = (name: string) => `/images/floors/${name}.webp`;
-
 const FLOOR_CONFIGS: FloorConfig[] = [
   {
     id: "floor-safety",
     nameKey: "floorSafetyProtection",
-    bgImage: floorImg("safety"),
   },
   {
     id: "floor-decoration",
     nameKey: "floorDecorationBuilding",
-    bgImage: floorImg("decoration"),
   },
   {
     id: "floor-doors",
     nameKey: "floorDoorsWindowsHardware",
-    bgImage: floorImg("doors"),
   },
   {
     id: "floor-electrical",
     nameKey: "floorIndustrialElectrical",
-    bgImage: floorImg("electrical"),
   },
   {
     id: "floor-tools",
     nameKey: "floorToolsConsumables",
-    bgImage: floorImg("tools"),
   },
   {
     id: "floor-fasteners",
     nameKey: "floorFastenersSealing",
-    bgImage: floorImg("fasteners"),
   },
 ];
 
@@ -69,7 +62,7 @@ export function CategoryFloors() {
         {FLOOR_CONFIGS.map((config) => (
           <CategoryFloorSection
             key={config.id}
-            config={config}
+            config={{ ...config, bgImage: data?.floors[config.id]?.bg_image }}
             products={data?.floors[config.id]?.products}
             categories={data?.floors[config.id]?.categories}
             isLoading={isLoading}
