@@ -68,6 +68,8 @@ export interface HomeFloorCategory {
 export interface HomeFloorData {
   categories: HomeFloorCategory[];
   products: ProductPublic[];
+  /** 左区背景图 URL(相对 API base),带内容指纹 ?v=,换图即换 URL,缓存自然失效 */
+  bg_image: string;
 }
 
 export interface HomeFloorProductsResponse {

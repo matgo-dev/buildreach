@@ -9,45 +9,34 @@ import { FloorElevator, type FloorItem } from "./FloorElevator";
 /**
  * 6 个品类楼层的配置。
  * 楼层品类映射由后端按 name_zh 路径解析，前端只负责展示。
- * bgImage 走后端 /static/floors/*.webp（图片存 uploads/floors 卷，换图替换文件即可，免部署）。
- * 楼层数量/文件名固定(跟一级类目绑定)，只有图片内容会偶尔换，故不上 DB。
- *
- * 生产前面有 Cloudflare：边缘会缓存 /static 下的图，并把浏览器缓存改写成数小时，
- * 源站 no-cache 管不到。换图后要么去 Cloudflare 清这几个 URL，要么把下面的版本号改掉随部署上线。
+ * 左区背景图由 /home-floors 每层给出 bg_image(/static/floors/*.webp?v=<内容指纹>,图片存 uploads/floors 卷,
+ * 换图替换文件即可,免部署;URL 随内容变,Cloudflare/浏览器缓存自然失效)。
+ * 接口未返回前不铺背景(只有底色),避免先请求一个不带版本号的 URL 再换成带指纹的,首屏图闪两次。
  */
-const FLOOR_IMG_VERSION = "20261010";
-const floorImg = (name: string) => `/static/floors/${name}.webp?v=${FLOOR_IMG_VERSION}`;
-
 const FLOOR_CONFIGS: FloorConfig[] = [
   {
     id: "floor-safety",
     nameKey: "floorSafetyProtection",
-    bgImage: floorImg("safety"),
   },
   {
     id: "floor-decoration",
     nameKey: "floorDecorationBuilding",
-    bgImage: floorImg("decoration"),
   },
   {
     id: "floor-doors",
     nameKey: "floorDoorsWindowsHardware",
-    bgImage: floorImg("doors"),
   },
   {
     id: "floor-electrical",
     nameKey: "floorIndustrialElectrical",
-    bgImage: floorImg("electrical"),
   },
   {
     id: "floor-tools",
     nameKey: "floorToolsConsumables",
-    bgImage: floorImg("tools"),
   },
   {
     id: "floor-fasteners",
     nameKey: "floorFastenersSealing",
-    bgImage: floorImg("fasteners"),
   },
 ];
 
@@ -73,7 +62,7 @@ export function CategoryFloors() {
         {FLOOR_CONFIGS.map((config) => (
           <CategoryFloorSection
             key={config.id}
-            config={config}
+            config={{ ...config, bgImage: data?.floors[config.id]?.bg_image }}
             products={data?.floors[config.id]?.products}
             categories={data?.floors[config.id]?.categories}
             isLoading={isLoading}

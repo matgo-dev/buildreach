@@ -13,7 +13,7 @@ import { MOCK_FLOOR_PRODUCTS } from "./floorMockData";
 export interface FloorConfig {
   id: string;             // DOM id，供电梯锚点用
   nameKey: string;        // i18n key
-  bgImage: string;        // 左区背景图相对 key（/static/floors/xxx.webp，由后端 serve uploads 卷,渲染时拼 API base）
+  bgImage?: string;       // 左区背景图相对 key（/static/floors/xxx.webp?v=<指纹>,由 /home-floors 给出;渲染时拼 API base;未返回时只铺底色）
 }
 
 export function CategoryFloorSection({
@@ -52,7 +52,7 @@ export function CategoryFloorSection({
         <div
           className="relative hidden w-[220px] shrink-0 self-stretch overflow-hidden rounded-xl border-t-[3px] border-t-lime bg-teal-100 bg-no-repeat md:flex md:flex-col"
           style={{
-            backgroundImage: `url(${imageUrl(config.bgImage)})`,
+            backgroundImage: config.bgImage ? `url(${imageUrl(config.bgImage)})` : undefined,
             backgroundPosition: "center center",
             backgroundSize: "108% 108%",
           }}
