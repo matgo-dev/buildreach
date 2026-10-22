@@ -177,6 +177,7 @@ gh pr create --base release-v0.x.x
 > **内容 tag** `<branch>-<最后一次改到 backend/ 或 frontend/ 的 sha>`,目录没改就不重新构建、tag 不变,
 > 服务器上 compose 看到镜像名没变就不重建那个容器(只改前端不重启后端,反之亦然)。
 > 部署用内容 tag;回滚填运行 tag,两个服务都能找到。
+> 基础镜像(Dockerfile FROM)的安全更新不会触发重建,要吃补丁时 Build & Deploy 勾 `force_rebuild`。
 
 1. GitHub → Actions → **Deploy Only (Re-deploy)** → Run workflow
 2. Branch 选目标 ref(回滚生产选 `release-v*`,OVH 门槛才放行)
