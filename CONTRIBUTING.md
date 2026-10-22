@@ -173,6 +173,11 @@ gh pr create --base release-v0.x.x
 镜像每次构建都按 commit 打了不可变 tag(`<branch>-<sha>`,如 `release-v0.2.0-abc1234`),
 历史版本镜像都留在 GHCR + ACR,可直接回滚、不重新构建:
 
+> 镜像 tag 有两种:**运行 tag** `<branch>-<本次运行的 sha>`,backend/frontend 每次运行都打;
+> **内容 tag** `<branch>-<最后一次改到 backend/ 或 frontend/ 的 sha>`,目录没改就不重新构建、tag 不变,
+> 服务器上 compose 看到镜像名没变就不重建那个容器(只改前端不重启后端,反之亦然)。
+> 部署用内容 tag;回滚填运行 tag,两个服务都能找到。
+
 1. GitHub → Actions → **Deploy Only (Re-deploy)** → Run workflow
 2. Branch 选目标 ref(回滚生产选 `release-v*`,OVH 门槛才放行)
 3. `image_tag` 填要回滚到的历史 tag(如 `release-v0.2.0-abc1234`);留空则部署该分支最新镜像
