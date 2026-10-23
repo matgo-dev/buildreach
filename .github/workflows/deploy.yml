@@ -3,12 +3,6 @@ name: Build & Deploy
 # 手动触发:GitHub 网页 → Actions → "Build & Deploy" → Run workflow
 on:
   workflow_dispatch:
-    inputs:
-      force_rebuild:
-        description: '强制重建两个镜像(忽略内容 tag 已存在;用于吃基础镜像安全更新)'
-        required: false
-        type: boolean
-        default: false
 
 # 同分支新触发时取消旧的，不排队等待（仅限构建阶段）
 concurrency:
@@ -76,7 +70,7 @@ jobs:
           # 只改前端不会重启后端(反之亦然)。
           # 进镜像内容的输入都要进 tag:目录 commit + 影响产物的 build-arg。
           # backend 的 BUILD_COMMIT/BUILD_TIME 等只是元数据,刻意不算(算了就永远重建)。
-          # 基础镜像(FROM 的 tag)更新不在 tag 里,要吃安全补丁用 force_rebuild 输入。
+          # 基础镜像在 Dockerfile 里钉了 digest,更新 digest 就是改到该目录的 commit,自然换 tag。
           BACKEND_SHA=$(git log -1 --format=%h --abbrev=7 -- backend)
           FRONTEND_SHA=$(git log -1 --format=%h --abbrev=7 -- frontend)
           FRONTEND_ARGS_HASH=$(printf '%s' "$FRONTEND_BUILD_ARGS" | sha256sum | cut -c1-6)
@@ -112,16 +106,10 @@ jobs:
         env:
           BACKEND_TAG: ${{ steps.meta.outputs.backend_tag }}
           FRONTEND_TAG: ${{ steps.meta.outputs.frontend_tag }}
-          FORCE_REBUILD: ${{ inputs.force_rebuild }}
         run: |
           # 两个仓库(GHCR 给 OVH,ACR 给 ECS)都有才算存在;缺任一就重新构建推送
           check() {
             local svc="$1" tag="$2"
-            if [ "$FORCE_REBUILD" = "true" ]; then
-              echo "$svc=false" >> "$GITHUB_OUTPUT"
-              echo "$svc:$tag force_rebuild=true,强制构建"
-              return
-            fi
             if docker buildx imagetools inspect "$IMAGE_REGISTRY/$svc:$tag" > /dev/null 2>&1 \
                && docker buildx imagetools inspect "$ACR_IMAGE_REGISTRY/$svc:$tag" > /dev/null 2>&1; then
               echo "$svc=true" >> "$GITHUB_OUTPUT"

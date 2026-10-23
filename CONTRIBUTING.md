@@ -178,7 +178,10 @@ gh pr create --base release-v0.x.x
 > 服务器上 compose 看到镜像名没变就不重建那个容器(只改前端不重启后端,反之亦然)。
 > 部署用内容 tag。整套回滚填运行 tag(两个服务都能找到,但两个容器都会重建);
 > 只回退一个服务填它的内容 tag,另一个留空=不动。
-> 基础镜像(Dockerfile FROM)的安全更新不会触发重建,要吃补丁时 Build & Deploy 勾 `force_rebuild`。
+> 基础镜像在 Dockerfile 里钉 digest(`FROM python:3.11-slim@sha256:…`),Dependabot 每周查 Docker Hub,
+> 同 tag 出新 digest(系统补丁 / 新 patch 版)就开 PR;合并后该目录内容 tag 变,下个 Build & Deploy 只重建那一个服务。
+> 改到 Dockerfile 的 PR 会额外跑 **Docker Build Check**(只构建不推送),Dependabot 的 PR 也靠它验证能构建。
+> 换 Python / Node 大小版本是有意决策,dependabot.yml 里 `ignore` 掉了,要升时改 FROM 的 tag 并同步调整 ignore。
 
 1. GitHub → Actions → **Deploy Only (Re-deploy)** → Run workflow
 2. Branch 选目标 ref(回滚生产选 `release-v*`,OVH 门槛才放行)
