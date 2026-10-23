@@ -5,9 +5,9 @@
 
 # 基础镜像钉 digest(tag 保留给人看):构建输入进版本库,tag 在 Docker Hub 被重建不会悄悄漂移。
 # 更新由 .github/dependabot.yml 开 PR(同一 tag 的新 digest / 新 patch),合并即下个 release 重建本镜像。
-# 两个阶段必须同一个 digest。
+# 两个阶段必须同一个 digest。tag 带 -bookworm 把 Debian 大版本也钉住:裸 3.11-slim 已指向 Debian 13,换系统大版本是有意决策,不随机器人 PR 混进来。
 # ============= builder =============
-FROM python:3.11-slim@sha256:b7a9e5f6a93d6d4a31f129bbd4bdee69efccb6ded0fb230d78aafaf37af98377 AS builder
+FROM python:3.11-slim-bookworm@sha256:f06d01d4ba3f8ad5af45a3ec87df19c1d317d8e8961edc0fabda61811af6f7cf AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -48,7 +48,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 RUN uv sync --frozen --no-install-project
 
 # ============= runtime =============
-FROM python:3.11-slim@sha256:b7a9e5f6a93d6d4a31f129bbd4bdee69efccb6ded0fb230d78aafaf37af98377 AS runtime
+FROM python:3.11-slim-bookworm@sha256:f06d01d4ba3f8ad5af45a3ec87df19c1d317d8e8961edc0fabda61811af6f7cf AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
