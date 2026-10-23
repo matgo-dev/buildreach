@@ -6,20 +6,28 @@
 # 基础镜像钉 digest(tag 保留给人看):构建输入进版本库,tag 在 Docker Hub 被重建不会悄悄漂移。
 # 更新由 .github/dependabot.yml 开 PR(同一 tag 的新 digest / 新 patch),合并即下个 release 重建本镜像。
 # 两个阶段必须同一个 digest。tag 带 -bookworm 把 Debian 大版本也钉住:裸 3.11-slim 已指向 Debian 13,换系统大版本是有意决策,不随机器人 PR 混进来。
+#
+# 包源默认官方:镜像在 GitHub 美国 runner 上构建,官方 CDN 最快(2026-10-23 实测同一批 apt 包官方 39 秒,
+# 阿里云本机 28~55 分钟、GitHub 上 7~70 分钟)。国内本机构建可传:
+#   --build-arg APT_MIRROR=mirrors.aliyun.com --build-arg PYPI_INDEX=https://mirrors.aliyun.com/pypi/simple/
+ARG APT_MIRROR=deb.debian.org
+ARG PYPI_INDEX=https://pypi.org/simple
+
 # ============= builder =============
 FROM python:3.11-slim-bookworm@sha256:f06d01d4ba3f8ad5af45a3ec87df19c1d317d8e8961edc0fabda61811af6f7cf AS builder
+ARG APT_MIRROR
+ARG PYPI_INDEX
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
+    PIP_INDEX_URL=$PYPI_INDEX \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+    UV_DEFAULT_INDEX=$PYPI_INDEX
 
-# Debian 12 (bookworm) 用 DEB822 格式的 sources 文件,sed 替换为阿里云镜像
-# 国内不走阿里云,apt-get install build-essential 可能跑几十分钟
-RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
+# Debian 12 (bookworm) 用 DEB822 格式的 sources 文件(主源和 security 都在 deb.debian.org 下),按 APT_MIRROR 替换
+RUN sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -31,7 +39,7 @@ RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors
         libgdk-pixbuf-2.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 装 uv(从阿里云 PyPI 镜像装,不走 ghcr.io 拉镜像层)
+# 装 uv(从 PYPI_INDEX 装,不走 ghcr.io 拉镜像层)
 RUN pip install --no-cache-dir uv==0.11.7
 
 WORKDIR /app
@@ -49,6 +57,7 @@ RUN uv sync --frozen --no-install-project
 
 # ============= runtime =============
 FROM python:3.11-slim-bookworm@sha256:f06d01d4ba3f8ad5af45a3ec87df19c1d317d8e8961edc0fabda61811af6f7cf AS runtime
+ARG APT_MIRROR
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -58,7 +67,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app
 
 # 运行时只需要 libpq 和 curl(healthcheck 用)
-RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
+RUN sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
