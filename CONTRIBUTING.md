@@ -176,12 +176,16 @@ gh pr create --base release-v0.x.x
 > 镜像 tag 有两种:**运行 tag** `<branch>-<本次运行的 sha>`,backend/frontend 每次运行都打;
 > **内容 tag** `<branch>-<最后一次改到 backend/ 或 frontend/ 的 sha>`,目录没改就不重新构建、tag 不变,
 > 服务器上 compose 看到镜像名没变就不重建那个容器(只改前端不重启后端,反之亦然)。
-> 部署用内容 tag;回滚填运行 tag,两个服务都能找到。
+> 部署用内容 tag。整套回滚填运行 tag(两个服务都能找到,但两个容器都会重建);
+> 只回退一个服务填它的内容 tag,另一个留空=不动。
 > 基础镜像(Dockerfile FROM)的安全更新不会触发重建,要吃补丁时 Build & Deploy 勾 `force_rebuild`。
 
 1. GitHub → Actions → **Deploy Only (Re-deploy)** → Run workflow
 2. Branch 选目标 ref(回滚生产选 `release-v*`,OVH 门槛才放行)
-3. `image_tag` 填要回滚到的历史 tag(如 `release-v0.2.0-abc1234`);留空则部署该分支最新镜像
+3. 三个 tag 输入三选一:
+   - 全留空:部署该分支最新镜像(`<branch>-latest`)
+   - `image_tag` 填运行 tag(如 `release-v0.2.0-abc1234`):整套回滚
+   - `backend_image_tag` / `frontend_image_tag` 填该服务的内容 tag:只换填了的服务,另一个保留当前运行镜像(此时 `image_tag` 必须留空)
 4. `target` 选 `ovh`(或 `ecs`)→ Run,production 需 Approve
 
 > 历史 tag 可在对应的 Build & Deploy 运行日志、或镜像仓库(GHCR/ACR)里查到。

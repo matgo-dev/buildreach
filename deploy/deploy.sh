@@ -52,9 +52,27 @@ set +a
 IMAGE_TAG="${IMAGE_TAG:-${RELEASE_TAG:-latest}}"
 # 按服务的镜像 tag(CI 按目录算,目录没改 tag 不变 → compose 不重建该容器)。
 # 没传就两个服务都用 IMAGE_TAG,手动 SSH 部署/回滚的老用法不变。
+# 传字面值 current = 保留该服务当前运行的镜像不动(单服务回滚用),容器不存在则报错退出。
 BACKEND_IMAGE_TAG="${BACKEND_IMAGE_TAG:-$IMAGE_TAG}"
 FRONTEND_IMAGE_TAG="${FRONTEND_IMAGE_TAG:-$IMAGE_TAG}"
-echo "[deploy] IMAGE_TAG=$IMAGE_TAG (backend=$BACKEND_IMAGE_TAG, frontend=$FRONTEND_IMAGE_TAG)"
+
+running_image_tag() {
+    local svc="$1" cid img
+    cid=$(docker compose -f "$COMPOSE_FILE" ps -q "$svc" 2>/dev/null || true)
+    if [ -z "$cid" ]; then
+        echo "[deploy] ❌ $svc 容器不存在,无法保留当前镜像(current),请显式指定 tag" >&2
+        exit 1
+    fi
+    img=$(docker inspect --format '{{.Config.Image}}' "$cid")
+    echo "${img##*:}"
+}
+if [ "$BACKEND_IMAGE_TAG" = "current" ]; then
+    BACKEND_IMAGE_TAG=$(running_image_tag backend)
+fi
+if [ "$FRONTEND_IMAGE_TAG" = "current" ]; then
+    FRONTEND_IMAGE_TAG=$(running_image_tag frontend)
+fi
+echo "[deploy] 镜像 tag: backend=$BACKEND_IMAGE_TAG, frontend=$FRONTEND_IMAGE_TAG"
 
 # 允许 CI / 手动部署在不改 .env.production 的情况下覆盖本次发布参数
 if [ -n "${DEPLOY_CORS_ORIGINS:-}" ]; then
@@ -229,7 +247,8 @@ docker builder prune -f --keep-storage=500MB 2>&1 | tail -3 | sed 's/^/         
 echo "[deploy] =================================================="
 echo "[deploy] 部署成功 $(date -Iseconds)"
 echo "[deploy]    ref       → $DEPLOY_REF"
-echo "[deploy]    image_tag → $IMAGE_TAG"
+echo "[deploy]    backend tag  → $BACKEND_IMAGE_TAG"
+echo "[deploy]    frontend tag → $FRONTEND_IMAGE_TAG"
 echo "[deploy]    backend   → http://localhost:${BACKEND_HOST_PORT}/healthz"
 echo "[deploy]    frontend  → http://localhost:${FRONTEND_HOST_PORT}"
 echo "[deploy]    public    → ${PUBLIC_ORIGIN}"
