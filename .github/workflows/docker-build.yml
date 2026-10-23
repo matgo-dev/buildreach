@@ -1,0 +1,46 @@
+name: Docker Build Check
+
+# 只在改到 Dockerfile / .dockerignore 的 PR 上跑:把两个镜像真构建一遍,不推送。
+# PR Tests 跑的是 runner 上的 pytest 和 next build,验不了镜像本身;
+# Dependabot 更新基础镜像 digest 的 PR 只改 Dockerfile,这里是它唯一的有效检查。
+on:
+  pull_request:
+    paths:
+      - backend/Dockerfile
+      - backend/.dockerignore
+      - frontend/Dockerfile
+      - frontend/.dockerignore
+      - .github/workflows/docker-build.yml
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: 构建 backend 镜像
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          cache-from: type=gha,scope=backend
+          provenance: false
+
+  frontend:
+    name: 构建 frontend 镜像
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          cache-from: type=gha,scope=frontend
+          provenance: false
