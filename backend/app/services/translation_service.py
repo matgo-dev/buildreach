@@ -15,6 +15,22 @@ from app.services.glossary_cache import GlossaryCache
 logger = logging.getLogger("app.translation")
 
 
+# 最近一次提供方错误原文(如 `403 userRateLimitExceeded`),供 sweeper 判故障时带进告警。
+_last_provider_error: str | None = None
+
+
+def note_provider_error(err: object) -> None:
+    global _last_provider_error
+    _last_provider_error = str(err)[:500]
+
+
+def consume_last_provider_error() -> str | None:
+    """取走并清空,保证告警里的错误是本轮扫描产生的。"""
+    global _last_provider_error
+    err, _last_provider_error = _last_provider_error, None
+    return err
+
+
 def _sanitize(text: str) -> str:
     """清理翻译 API 返回的异常前缀符号（如阿里云偶尔返回的 '* '）。"""
     return text.lstrip("*").strip()
@@ -222,6 +238,7 @@ async def _translate_google_batch(
                     all_results.append({"translated": _sanitize(t["translatedText"]), "status": "nmt"})
             except Exception as e:
                 logger.error("Google 批量翻译失败 (chunk %d-%d): %s", start, start + len(chunk), e)
+                note_provider_error(e)
                 for _ in chunk:
                     all_results.append({"translated": "", "status": "failed"})
 
@@ -349,6 +366,7 @@ async def _translate_aliyun_batch(
 
         except Exception as e:
             logger.error("阿里云批量翻译失败 (%d 条): %s", len(chunk), e)
+            note_provider_error(e)
             # 整片降级逐条重试
             for text in chunk:
                 try:

@@ -1,4 +1,4 @@
-"""轻量 SMTP 邮件发送（注册验证码 + 密码找回验证码）。
+"""轻量 SMTP 邮件发送（注册验证码 + 密码找回验证码 + 系统告警）。
 
 TODO(T-EMAIL-API): 上线前将 SMTP 直连替换为第三方邮件 API 服务（Resend/SendGrid/AWS SES），
 避免邮件头暴露源站 IP。仅需改本文件，对外接口不变。
@@ -78,17 +78,43 @@ This code expires in {expire_minutes} minutes. If you did not request this, plea
     msg.attach(MIMEText(html, "html"))
 
     try:
-        if settings.SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
-        else:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
-            if settings.SMTP_USE_TLS:
-                server.starttls()
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_FROM_EMAIL, to_email, msg.as_string())
-        server.quit()
+        _smtp_send(to_email, msg.as_string())
         logger.info("验证码邮件已发送 to=%s purpose=%s", to_email, purpose)
         return True
     except Exception:
         logger.exception("验证码邮件发送失败 to=%s purpose=%s", to_email, purpose)
+        return False
+
+
+def _smtp_send(to_email: str, payload: str) -> None:
+    if settings.SMTP_PORT == 465:
+        server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
+    else:
+        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
+        if settings.SMTP_USE_TLS:
+            server.starttls()
+    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+    server.sendmail(settings.SMTP_FROM_EMAIL, to_email, payload)
+    server.quit()
+
+
+def send_system_alert_email(subject: str, body: str) -> bool:
+    """系统告警邮件(纯文本)发到 ALERT_EMAIL。未配置 SMTP 或收件人则不发,返回 False。"""
+    to_email = settings.ALERT_EMAIL
+    if not to_email:
+        return False
+    if not _smtp_configured():
+        logger.error("SMTP 未配置,系统告警邮件无法发送: %s", subject)
+        return False
+
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = settings.SMTP_FROM_EMAIL
+    msg["To"] = to_email
+    try:
+        _smtp_send(to_email, msg.as_string())
+        logger.info("系统告警邮件已发送 to=%s subject=%s", to_email, subject)
+        return True
+    except Exception:
+        logger.exception("系统告警邮件发送失败 to=%s subject=%s", to_email, subject)
         return False
