@@ -152,6 +152,8 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@matgo.co.tz"
     SMTP_USE_TLS: bool = True
     EMAIL_DEV_LOG_CODES: bool = False
+    # 系统告警收件人(翻译服务故障等)。空=不发邮件,只记日志+运营端横幅。
+    ALERT_EMAIL: str = ""
 
     # 邮箱验证码
     VERIFICATION_CODE_LENGTH: int = 6

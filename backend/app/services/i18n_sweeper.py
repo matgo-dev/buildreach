@@ -21,7 +21,8 @@ from app.core.i18n_registry import all_registered
 from app.core.i18n_write import process_pending_translations, _get_meta, _set_meta, _clear_pending_at_if_done
 from app.core.locale import SUPPORTED_LOCALES
 from app.db.session import AsyncSessionLocal
-from app.services.translation_service import translate_texts_batch
+from app.services import system_alerts
+from app.services.translation_service import consume_last_provider_error, note_provider_error, translate_texts_batch
 
 logger = logging.getLogger("app.i18n_sweeper")
 
@@ -75,7 +76,7 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
 
                     # 本批全部失败则停止,避免死循环重试同一批
                     if batch_failed == len(rows):
-                        logger.warning("sweep: %s 本批 %d 行全部失败,停止循环", table_name, len(rows))
+                        logger.error("sweep: %s 本批 %d 行全部失败,停止循环", table_name, len(rows))
                         break
 
             except Exception:
@@ -88,6 +89,7 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
         "sweep 完成: scanned=%d translated=%d failed=%d",
         stats["scanned"], stats["translated"], stats["failed"],
     )
+    await system_alerts.record_translation_sweep(stats, consume_last_provider_error())
     return stats
 
 
@@ -197,11 +199,12 @@ async def _batch_translate_rows(
                 getattr(tasks[0][0], "source_lang", "zh"),
                 target_locale,
             )
-        except Exception:
+        except Exception as e:
             logger.error(
                 "sweep: 批量翻译异常 target=%s, %d 条",
                 target_locale, len(texts), exc_info=True,
             )
+            note_provider_error(e)
             # 全部标 failed
             for row, field, meta_key, _ in tasks:
                 meta = _get_meta(row)

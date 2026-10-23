@@ -1258,9 +1258,25 @@
       "joined": "加入时间",
       "actions": "操作"
     },
-    "role": { "owner": "所有者", "member": "成员" },
-    "status": { "ACTIVE": "正常", "DISABLED": "已停用", "DEACTIVATED": "已注销" },
-    "actions": { "disable": "停用", "enable": "启用", "cancel": "取消", "submit": "创建", "edit": "编辑", "resetPassword": "重置密码", "save": "保存", "reset": "重置" },
+    "role": {
+      "owner": "所有者",
+      "member": "成员"
+    },
+    "status": {
+      "ACTIVE": "正常",
+      "DISABLED": "已停用",
+      "DEACTIVATED": "已注销"
+    },
+    "actions": {
+      "disable": "停用",
+      "enable": "启用",
+      "cancel": "取消",
+      "submit": "创建",
+      "edit": "编辑",
+      "resetPassword": "重置密码",
+      "save": "保存",
+      "reset": "重置"
+    },
     "confirmDisable": "确定停用 {email}?停用后该成员立即无法登录。",
     "toast": {
       "created": "成员已创建。请把初始密码告知该成员,其首次登录会被要求修改密码。",
@@ -1623,8 +1639,8 @@
     "customsReleased": "已放行",
     "declaredOn": "申报 {date}",
     "releasedOn": "放行 {date}",
-    "etdOn": "\u9884\u8ba1\u79bb\u6e2f {date}",
-    "etaOn": "\u9884\u8ba1\u5230\u6e2f {date}",
+    "etdOn": "预计离港 {date}",
+    "etaOn": "预计到港 {date}",
     "cancelledNote": "该订单已取消。",
     "orderNotFound": "未找到该订单",
     "bindingNoOrgTitle": "尚未完善公司信息",
@@ -2017,5 +2033,11 @@
     "applyFilter": "筛选",
     "clearSpecFilter": "清除规格筛选",
     "clearSearch": "清除搜索"
+  },
+  "systemAlerts": {
+    "prefix": "系统告警",
+    "translationDown": "翻译服务异常:提供方返回 {detail},{pending} 行待译未完成,自 {since}。",
+    "generic": "{kind}:{detail},自 {since}。",
+    "unknownError": "未知错误"
   }
 }
