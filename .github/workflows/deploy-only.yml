@@ -15,7 +15,17 @@ on:
           - both
         default: both
       image_tag:
-        description: '镜像 tag(留空=部署所选分支的最新 <branch>-latest;回滚填历史 tag,如 release-v0.2.0-abc1234)'
+        description: '两个服务同一个 tag(留空且下面两项也留空=所选分支的 <branch>-latest;整套回滚填运行 tag,如 release-v0.2.0-abc1234,两个容器都会重建)'
+        required: false
+        type: string
+        default: ''
+      backend_image_tag:
+        description: '只换 backend:填内容 tag(Build & Deploy 结果里有);留空=backend 不动。填了就不能再填 image_tag'
+        required: false
+        type: string
+        default: ''
+      frontend_image_tag:
+        description: '只换 frontend:同上'
         required: false
         type: string
         default: ''
@@ -29,27 +39,42 @@ jobs:
     name: 解析镜像 Tag
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.tag.outputs.image_tag }}
+      backend_tag: ${{ steps.tag.outputs.backend_tag }}
+      frontend_tag: ${{ steps.tag.outputs.frontend_tag }}
     steps:
       - name: 计算镜像 Tag
         id: tag
         env:
           RAW_BRANCH: ${{ github.ref_name }}
           INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+          INPUT_BACKEND_TAG: ${{ inputs.backend_image_tag }}
+          INPUT_FRONTEND_TAG: ${{ inputs.frontend_image_tag }}
         run: |
-          if [ -n "$INPUT_IMAGE_TAG" ]; then
-            # 手动指定(用于回滚到历史版本),直接用该 tag,不重新构建
-            IMAGE_TAG="$INPUT_IMAGE_TAG"
-            echo "使用手动指定镜像 Tag(回滚): $IMAGE_TAG"
+          if [ -n "$INPUT_BACKEND_TAG" ] || [ -n "$INPUT_FRONTEND_TAG" ]; then
+            # 单服务回滚:只换填了的那个,没填的传 current 让 deploy.sh 保留当前运行镜像
+            if [ -n "$INPUT_IMAGE_TAG" ]; then
+              echo "::error::image_tag 和 backend_image_tag/frontend_image_tag 不能同时填"
+              exit 1
+            fi
+            BACKEND_TAG="${INPUT_BACKEND_TAG:-current}"
+            FRONTEND_TAG="${INPUT_FRONTEND_TAG:-current}"
+            echo "单服务部署: backend=$BACKEND_TAG, frontend=$FRONTEND_TAG"
+          elif [ -n "$INPUT_IMAGE_TAG" ]; then
+            # 手动指定运行 tag(整套回滚),直接用该 tag,不重新构建
+            BACKEND_TAG="$INPUT_IMAGE_TAG"
+            FRONTEND_TAG="$INPUT_IMAGE_TAG"
+            echo "使用手动指定镜像 Tag(整套回滚): $INPUT_IMAGE_TAG"
           else
             BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
             if [ -z "$BRANCH" ]; then
               BRANCH=ref
             fi
-            IMAGE_TAG="${BRANCH}-latest"
-            echo "使用分支最新镜像 Tag: $IMAGE_TAG"
+            BACKEND_TAG="${BRANCH}-latest"
+            FRONTEND_TAG="${BRANCH}-latest"
+            echo "使用分支最新镜像 Tag: ${BRANCH}-latest"
           fi
-          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "backend_tag=$BACKEND_TAG" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=$FRONTEND_TAG" >> "$GITHUB_OUTPUT"
 
   deploy-ecs:
     name: 部署到 ECS (Staging)
@@ -94,7 +119,8 @@ jobs:
             # 会打到 :80 → 进 fulfillment 那套。OVH 生产走 OVH_PUBLIC_ORIGIN,不受影响。
             DEPLOY_SKIP_CODE_UPDATE=1 \
             DEPLOY_REF="origin/$REF" \
-            IMAGE_TAG=${{ needs.resolve-tag.outputs.image_tag }} \
+            BACKEND_IMAGE_TAG=${{ needs.resolve-tag.outputs.backend_tag }} \
+            FRONTEND_IMAGE_TAG=${{ needs.resolve-tag.outputs.frontend_tag }} \
             IMAGE_REGISTRY=${{ env.ACR_IMAGE_REGISTRY }} \
             DEPLOY_API_BASE_URL=http://${{ secrets.ECS_HOST }}:8080 \
             DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }}:8080 \
@@ -104,7 +130,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ ECS 部署成功 (镜像: ${{ needs.resolve-tag.outputs.image_tag }})"
+            echo "✅ ECS 部署成功 (backend: ${{ needs.resolve-tag.outputs.backend_tag }}, frontend: ${{ needs.resolve-tag.outputs.frontend_tag }})"
           else
             echo "❌ ECS 部署失败"
           fi
@@ -138,7 +164,8 @@ jobs:
             git fetch origin
             git reset --hard "origin/$REF"
             DEPLOY_REF="origin/$REF" \
-            IMAGE_TAG=${{ needs.resolve-tag.outputs.image_tag }} \
+            BACKEND_IMAGE_TAG=${{ needs.resolve-tag.outputs.backend_tag }} \
+            FRONTEND_IMAGE_TAG=${{ needs.resolve-tag.outputs.frontend_tag }} \
             GHCR_TOKEN=${{ secrets.GITHUB_TOKEN }} \
             GHCR_USERNAME=${{ github.actor }} \
             DEPLOY_API_BASE_URL=${{ secrets.OVH_PUBLIC_ORIGIN }} \
@@ -149,7 +176,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ OVH 生产部署成功 (镜像: ${{ needs.resolve-tag.outputs.image_tag }})"
+            echo "✅ OVH 生产部署成功 (backend: ${{ needs.resolve-tag.outputs.backend_tag }}, frontend: ${{ needs.resolve-tag.outputs.frontend_tag }})"
           else
             echo "❌ OVH 生产部署失败"
           fi
