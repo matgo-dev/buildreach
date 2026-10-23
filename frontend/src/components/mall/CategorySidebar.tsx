@@ -3,7 +3,7 @@
 import { useRef, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { LayoutGrid } from "lucide-react";
+import { BrickWall, Droplets, Gauge, HardHat, LayoutGrid, Package, Ruler, ShowerHead, Wrench, Zap, type LucideIcon } from "lucide-react";
 
 import { useCategoryTree } from "@/hooks/useCategoryTree";
 import type { CategoryTreeNode } from "@/lib/api/categories";
@@ -21,6 +21,18 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   }
   return result;
 }
+
+/** 行首图标:按该行第一个一级类目的中文名取(类目 code 跨环境不稳定,不按 code);没配到的用通用图标 */
+const ROW_ICONS: Record<string, LucideIcon> = {
+  劳保: HardHat,
+  气动液压: Gauge,
+  五金丝网: Wrench,
+  电力穿线: Zap,
+  防水: Droplets,
+  土建材料: BrickWall,
+  水暖器材: ShowerHead,
+  量刃具: Ruler,
+};
 
 /** 取品类显示短名: short_name → name 截取(中文2字,英文8字符) */
 function getShortName(cat: CategoryTreeNode, locale: string): string {
@@ -144,6 +156,17 @@ export function CategorySidebar({
                   {(isHovered || hasActiveChild) && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full bg-teal-700" />
                   )}
+
+                  {/* 行首图标 */}
+                  {(() => {
+                    const RowIcon = ROW_ICONS[row[0]?.name_zh] ?? Package;
+                    return (
+                      <RowIcon
+                        className={`mr-2.5 h-5 w-5 shrink-0 ${isHovered || hasActiveChild ? "text-teal-900" : "text-ink-2"}`}
+                        strokeWidth={1.6}
+                      />
+                    );
+                  })()}
 
                   {/* 品类短名 */}
                   <div className="flex-1 min-w-0">
