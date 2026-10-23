@@ -54,6 +54,12 @@ from app.main import app  # noqa: E402
 from app.rbac.sync import sync_rbac  # noqa: E402
 from app.seed import run_all_seeds  # noqa: E402
 from app.services.rate_limit import login_rate_limiter  # noqa: E402
+from app.core.security import _pwd_ctx  # noqa: E402
+
+# bcrypt 默认 12 轮,一次哈希/校验约 250ms,是生产故意要的慢。测试里每个用例都登录,
+# 1200 多个用例累计约 4 分钟全花在算哈希上(本机整套 286s → 49s)。只在这里降到 4 轮:
+# conftest 只有 pytest 加载,镜像不带 tests 目录,生产不受影响。
+_pwd_ctx.update(bcrypt__rounds=4)
 
 # 测试引擎使用 psycopg 驱动（asyncpg 的 task 亲和性限制
 # 导致 Starlette BaseHTTPMiddleware 新 task 中无法复用同一连接，
