@@ -99,6 +99,8 @@ export function MallHeader() {
       className="sticky top-0 z-[80] border-b border-line bg-white"
       style={{
         boxShadow: "0 1px 2px rgba(18,59,50,.04), 0 6px 20px rgba(18,59,50,.04)",
+        // 顶部氛围图(线稿工地,1536x480)分三段拼在 header/nav/main 上,偏移量随各段高度走
+        background: "url(/images/bg-top.webp) center 0 / 1536px 480px no-repeat, #fff",
       }}
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">
