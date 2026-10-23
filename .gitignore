@@ -79,3 +79,4 @@ data/zone_import/working/
 data/zone_import/mining/dry_run_audit.csv
 data/zone_import/mining/dry_run_dropped.csv
 data/zone_import/mining/*.xlsx
+data/zone_import/mining/矿业找图_*
