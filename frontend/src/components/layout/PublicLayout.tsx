@@ -36,7 +36,7 @@ export function PublicLayout({
       <TopStrip />
       <MallHeader />
       <MallNavRow />
-      <main className="flex-1">
+      <main className="flex-1 bg-[url(/images/bg-top.webp)] bg-[length:1536px_480px] bg-[position:center_-148px] bg-no-repeat">
         {noContainer ? children : (
           <div className="mx-auto max-w-mall px-3 sm:px-6 py-4 sm:py-6">
             {children}
