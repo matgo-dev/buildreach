@@ -90,3 +90,27 @@ class TestBuildAlertItems:
     def test_pending_rows_falls_back_to_last_failed(self):
         s = TranslationHealth(down_since=T0, last_failed_rows=100)
         assert build_alert_items(s, None)[0]["pending_rows"] == 100
+
+
+class TestDescribeProviderError:
+    """告警里的错误原文不能带凭据(Google key 在请求 URL 的 query 里)。"""
+
+    def test_http_error_keeps_status_and_body_not_url(self):
+        import httpx
+        from app.services.translation_service import describe_provider_error
+
+        req = httpx.Request("POST", "https://translation.googleapis.com/language/translate/v2?key=AIzaSECRET")
+        resp = httpx.Response(403, request=req, text='{"error": {"message": "userRateLimitExceeded"}}')
+        err = httpx.HTTPStatusError("boom", request=req, response=resp)
+        out = describe_provider_error(err)
+        assert out.startswith("HTTP 403")
+        assert "userRateLimitExceeded" in out
+        assert "AIzaSECRET" not in out
+
+    def test_plain_exception_redacts_credential_params(self):
+        from app.services.translation_service import describe_provider_error
+
+        out = describe_provider_error(RuntimeError("GET https://x/y?key=AIza123&secret=abc failed"))
+        assert "AIza123" not in out and "abc" not in out
+        assert "key=***" in out and "secret=***" in out
+        assert out.startswith("RuntimeError:")

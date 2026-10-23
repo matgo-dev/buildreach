@@ -8,6 +8,7 @@ none:短路返回,status="skipped"(未配置/降级)
 from __future__ import annotations
 
 import logging
+import re
 
 from app.core.config import settings
 from app.services.glossary_cache import GlossaryCache
@@ -19,9 +20,27 @@ logger = logging.getLogger("app.translation")
 _last_provider_error: str | None = None
 
 
+_SECRET_QUERY_RE = re.compile(r"((?:key|secret|token|password|signature)=)[^&\s'\"]+", re.I)
+
+
+def describe_provider_error(err: object) -> str:
+    """把异常压成可以进告警邮件/接口的一句话,不带凭据。
+
+    httpx 的 HTTPStatusError 字符串含完整请求 URL(Google key 在 query 里),
+    所以 HTTP 错误只取状态码 + 响应体前 200 字;其余异常再正则抹掉 key=/secret=/token= 形态的值。
+    """
+    resp = getattr(err, "response", None)
+    if resp is not None and hasattr(resp, "status_code"):
+        body = (getattr(resp, "text", "") or "")[:200]
+        text = f"HTTP {resp.status_code} {body}".strip()
+    else:
+        text = f"{type(err).__name__}: {err}"
+    return _SECRET_QUERY_RE.sub(r"\1***", text)[:500]
+
+
 def note_provider_error(err: object) -> None:
     global _last_provider_error
-    _last_provider_error = str(err)[:500]
+    _last_provider_error = describe_provider_error(err)
 
 
 def consume_last_provider_error() -> str | None:
