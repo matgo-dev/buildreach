@@ -88,6 +88,8 @@ services:
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@matgo.co.tz}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
       EMAIL_DEV_LOG_CODES: ${EMAIL_DEV_LOG_CODES:-false}
+      # 系统告警收件人(翻译故障等),逗号分隔;空=只记日志+运营端横幅
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
       # 邮件中继(SMTP)未就绪前默认关闭;配好 SMTP 后设 true 恢复验证
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
       # 前台互通(履约后台):要么都配,要么都空;只配一项后端拒绝启动
