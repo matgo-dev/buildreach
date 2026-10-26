@@ -22,6 +22,7 @@ from app.api.v1 import (
     operator_banners,
     operator_buyers,
     operator_products,
+    operator_system_alerts,
     operator_zones,
     products,
     public_config,
@@ -48,6 +49,7 @@ api_router.include_router(products.router)
 api_router.include_router(operator_banners.router)
 api_router.include_router(operator_buyers.router)
 api_router.include_router(operator_products.router)
+api_router.include_router(operator_system_alerts.router)
 api_router.include_router(operator_zones.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(buyer_events.router)

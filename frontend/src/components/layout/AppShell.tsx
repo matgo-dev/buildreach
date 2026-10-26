@@ -3,6 +3,7 @@ import { ReactNode, useEffect } from "react";
 
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
+import { SystemAlertBanner } from "./SystemAlertBanner";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { useAuthStore } from "@/stores/authStore";
 import { useSidebarStore } from "@/stores/uiStore";
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <RouteGuard>
       <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
+        <SystemAlertBanner />
         <AppHeader showSearch={isBuyer} showCart={isBuyer} />
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />

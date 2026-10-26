@@ -1258,9 +1258,25 @@
       "joined": "Joined",
       "actions": "Actions"
     },
-    "role": { "owner": "Owner", "member": "Member" },
-    "status": { "ACTIVE": "Active", "DISABLED": "Disabled", "DEACTIVATED": "Deactivated" },
-    "actions": { "disable": "Disable", "enable": "Enable", "cancel": "Cancel", "submit": "Create", "edit": "Edit", "resetPassword": "Reset password", "save": "Save", "reset": "Reset" },
+    "role": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled",
+      "DEACTIVATED": "Deactivated"
+    },
+    "actions": {
+      "disable": "Disable",
+      "enable": "Enable",
+      "cancel": "Cancel",
+      "submit": "Create",
+      "edit": "Edit",
+      "resetPassword": "Reset password",
+      "save": "Save",
+      "reset": "Reset"
+    },
     "confirmDisable": "Disable {email}? They will be signed out immediately.",
     "toast": {
       "created": "Member created. Share the initial password with them; they must change it on first login.",
@@ -2016,5 +2032,11 @@
     "applyFilter": "Apply",
     "clearSpecFilter": "Clear spec filter",
     "clearSearch": "Clear search"
+  },
+  "systemAlerts": {
+    "prefix": "System alert",
+    "translationDown": "Translation service failure: provider returned {detail}; {pending} rows still untranslated since {since}.",
+    "generic": "{kind}: {detail}, since {since}.",
+    "unknownError": "unknown error"
   }
 }

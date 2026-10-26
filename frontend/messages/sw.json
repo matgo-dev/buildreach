@@ -1258,9 +1258,25 @@
       "joined": "Alijiunga",
       "actions": "Vitendo"
     },
-    "role": { "owner": "Mmiliki", "member": "Mwanachama" },
-    "status": { "ACTIVE": "Hai", "DISABLED": "Imezimwa", "DEACTIVATED": "Imefungwa" },
-    "actions": { "disable": "Zima", "enable": "Washa", "cancel": "Ghairi", "submit": "Unda", "edit": "Hariri", "resetPassword": "Weka upya nenosiri", "save": "Hifadhi", "reset": "Weka upya" },
+    "role": {
+      "owner": "Mmiliki",
+      "member": "Mwanachama"
+    },
+    "status": {
+      "ACTIVE": "Hai",
+      "DISABLED": "Imezimwa",
+      "DEACTIVATED": "Imefungwa"
+    },
+    "actions": {
+      "disable": "Zima",
+      "enable": "Washa",
+      "cancel": "Ghairi",
+      "submit": "Unda",
+      "edit": "Hariri",
+      "resetPassword": "Weka upya nenosiri",
+      "save": "Hifadhi",
+      "reset": "Weka upya"
+    },
     "confirmDisable": "Zima {email}? Ataondolewa mara moja.",
     "toast": {
       "created": "Mwanachama ameundwa. Mpe nenosiri la awali; lazima alibadilishe akiingia mara ya kwanza.",
@@ -2016,5 +2032,11 @@
     "applyFilter": "Chuja",
     "clearSpecFilter": "Futa kichujio cha kipimo",
     "clearSearch": "Futa utafutaji"
+  },
+  "systemAlerts": {
+    "prefix": "Tahadhari ya mfumo",
+    "translationDown": "Huduma ya tafsiri imeshindwa: mtoa huduma alirudisha {detail}; safu {pending} bado hazijatafsiriwa tangu {since}.",
+    "generic": "{kind}: {detail}, tangu {since}.",
+    "unknownError": "hitilafu isiyojulikana"
   }
 }
