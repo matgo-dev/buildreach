@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import re
 from typing import Annotated, List
 from urllib.parse import urlsplit
 
@@ -9,6 +10,18 @@ from pydantic import AfterValidator, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.email import normalize_email
+
+
+def parse_email_list(raw: str) -> List[str]:
+    """把 "a@x.com, b@y.com;c@z.com" 解析成去空白、去重(保序)的地址列表。"""
+    seen: set[str] = set()
+    out: List[str] = []
+    for part in re.split(r"[,;]", raw or ""):
+        addr = part.strip()
+        if addr and addr.lower() not in seen:
+            seen.add(addr.lower())
+            out.append(addr)
+    return out
 
 
 class Settings(BaseSettings):
@@ -152,7 +165,7 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@matgo.co.tz"
     SMTP_USE_TLS: bool = True
     EMAIL_DEV_LOG_CODES: bool = False
-    # 系统告警收件人(翻译服务故障等)。空=不发邮件,只记日志+运营端横幅。
+    # 系统告警收件人(翻译服务故障等),多个用逗号分隔。空=不发邮件,只记日志+运营端横幅。
     ALERT_EMAIL: str = ""
 
     # 邮箱验证码
@@ -186,6 +199,11 @@ class Settings(BaseSettings):
         return bool(self.S2S_SHARED_SECRET and self.FULFILLMENT_API_BASE_URL)
 
     @computed_field  # type: ignore[misc]
+    @property
+    def alert_emails(self) -> List[str]:
+        """告警收件人列表:逗号/分号分隔,去空白去重保序。"""
+        return parse_email_list(self.ALERT_EMAIL)
+
     @property
     def smtp_configured(self) -> bool:
         """SMTP 三要素(host/user/password)是否齐备。"""

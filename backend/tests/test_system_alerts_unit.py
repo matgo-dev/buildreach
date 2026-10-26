@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from app.core.config import parse_email_list
+from app.services import email_service
 from app.services.system_alerts import (
     TranslationHealth,
     apply_sweep_result,
@@ -114,3 +116,49 @@ class TestDescribeProviderError:
         assert "AIza123" not in out and "abc" not in out
         assert "key=***" in out and "secret=***" in out
         assert out.startswith("RuntimeError:")
+
+
+class TestParseEmailList:
+    def test_single(self):
+        assert parse_email_list("a@x.com") == ["a@x.com"]
+
+    def test_comma_semicolon_and_spaces(self):
+        assert parse_email_list(" a@x.com , b@y.com;c@z.com ") == ["a@x.com", "b@y.com", "c@z.com"]
+
+    def test_dedupe_case_insensitive_keeps_order(self):
+        assert parse_email_list("A@x.com,b@y.com,a@X.com") == ["A@x.com", "b@y.com"]
+
+    def test_empty_and_only_separators(self):
+        assert parse_email_list("") == []
+        assert parse_email_list(" , ; ") == []
+
+
+class TestSendSystemAlertEmail:
+    def _configure(self, monkeypatch, alert_email: str):
+        monkeypatch.setattr(email_service.settings, "ALERT_EMAIL", alert_email)
+        monkeypatch.setattr(email_service.settings, "SMTP_HOST", "smtp.example.com")
+        monkeypatch.setattr(email_service.settings, "SMTP_USER", "u")
+        monkeypatch.setattr(email_service.settings, "SMTP_PASSWORD", "p")
+        monkeypatch.setattr(email_service.settings, "SMTP_FROM_EMAIL", "no-reply@example.com")
+
+    def test_sends_one_mail_to_all_recipients(self, monkeypatch):
+        self._configure(monkeypatch, "a@x.com, b@y.com")
+        calls: list[tuple] = []
+        monkeypatch.setattr(email_service, "_smtp_send", lambda to, payload: calls.append((to, payload)))
+        assert email_service.send_system_alert_email("subj", "body") is True
+        assert len(calls) == 1
+        to, payload = calls[0]
+        assert to == ["a@x.com", "b@y.com"]
+        assert "To: a@x.com, b@y.com" in payload
+
+    def test_no_recipients_means_no_send(self, monkeypatch):
+        self._configure(monkeypatch, " ; ")
+        monkeypatch.setattr(email_service, "_smtp_send", lambda to, payload: (_ for _ in ()).throw(AssertionError("must not send")))
+        assert email_service.send_system_alert_email("subj", "body") is False
+
+    def test_smtp_failure_returns_false(self, monkeypatch):
+        self._configure(monkeypatch, "a@x.com")
+        def boom(to, payload):
+            raise RuntimeError("smtp down")
+        monkeypatch.setattr(email_service, "_smtp_send", boom)
+        assert email_service.send_system_alert_email("subj", "body") is False

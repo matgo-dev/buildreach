@@ -135,7 +135,7 @@ async def record_translation_sweep(stats: dict[str, int], last_error: str | None
 
     if not should_send_alert(_translation, transition, now):
         return
-    if not settings.ALERT_EMAIL:
+    if not settings.alert_emails:
         return
 
     if transition == "recovered":
