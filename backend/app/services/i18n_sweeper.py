@@ -89,8 +89,16 @@ async def sweep_pending(limit: int | None = None) -> dict[str, int]:
         "sweep 完成: scanned=%d translated=%d failed=%d",
         stats["scanned"], stats["translated"], stats["failed"],
     )
-    await system_alerts.record_translation_sweep(stats, consume_last_provider_error())
+    await _notify_sweep_result(stats)
     return stats
+
+
+async def _notify_sweep_result(stats: dict[str, int]) -> None:
+    """把本轮结果交给系统告警。翻译已落库,告警侧任何异常都只记日志,不能把 sweep 变成失败。"""
+    try:
+        await system_alerts.record_translation_sweep(stats, consume_last_provider_error())
+    except Exception:
+        logger.error("sweep: 记录告警状态异常,已忽略(stats=%s)", stats, exc_info=True)
 
 
 async def _dedup_attr_translations(session: Any, rows: list) -> None:
