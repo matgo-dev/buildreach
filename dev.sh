@@ -168,7 +168,7 @@ info "uv 就绪"
 
 # ---- 4. Node.js + pnpm ----
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
-  # 非交互 shell 不会自动加载 nvm;本地开发优先使用 Node 20+。
+  # 非交互 shell 不会自动加载 nvm;本地开发优先使用 Node 22+。
   # shellcheck source=/dev/null
   . "$HOME/.nvm/nvm.sh"
   nvm use --silent 20 >/dev/null 2>&1 || nvm use --silent --lts >/dev/null 2>&1 || true

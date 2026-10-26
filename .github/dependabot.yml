@@ -20,6 +20,6 @@ updates:
       interval: weekly
     ignore:
       - dependency-name: node
-        versions: [">= 21"]
+        versions: [">= 23"]
     commit-message:
       prefix: "build(frontend)"
