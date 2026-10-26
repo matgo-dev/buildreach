@@ -43,24 +43,46 @@ jobs:
       packages: write
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
+      backend_tag: ${{ steps.meta.outputs.backend_tag }}
+      frontend_tag: ${{ steps.meta.outputs.frontend_tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 按目录算"最后一次改到该目录的 commit"需要完整历史
+          fetch-depth: 0
 
       - name: 计算镜像 Tag
         id: meta
         env:
           RAW_BRANCH: ${{ github.ref_name }}
+          FRONTEND_BUILD_ARGS: NEXT_PUBLIC_DEMO_EMAILS=${{ vars.DEMO_EMAILS }}
         run: |
           BRANCH=$(printf '%s' "$RAW_BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g; s/^[.-]+//; s/[.-]+$//; s/-+/-/g' | cut -c1-80)
           if [ -z "$BRANCH" ]; then
             BRANCH=ref
           fi
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          # 本次运行的 tag(回滚/Deploy Only 用,两个服务都打)
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
           LATEST_TAG="${BRANCH}-latest"
+          # 按服务的内容 tag:取最后一次改到该目录的 commit。
+          # 目录没改 → tag 不变 → 服务器上 compose 看到镜像名没变就不重建该容器,
+          # 只改前端不会重启后端(反之亦然)。
+          # 进镜像内容的输入都要进 tag:目录 commit + 影响产物的 build-arg。
+          # backend 的 BUILD_COMMIT/BUILD_TIME 等只是元数据,刻意不算(算了就永远重建)。
+          # 基础镜像在 Dockerfile 里钉了 digest,更新 digest 就是改到该目录的 commit,自然换 tag。
+          BACKEND_SHA=$(git log -1 --format=%h --abbrev=7 -- backend)
+          FRONTEND_SHA=$(git log -1 --format=%h --abbrev=7 -- frontend)
+          FRONTEND_ARGS_HASH=$(printf '%s' "$FRONTEND_BUILD_ARGS" | sha256sum | cut -c1-6)
+          BACKEND_TAG="${BRANCH}-${BACKEND_SHA}"
+          FRONTEND_TAG="${BRANCH}-${FRONTEND_SHA}-a${FRONTEND_ARGS_HASH}"
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
           echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-          echo "镜像 Tag: $IMAGE_TAG / $LATEST_TAG"
+          echo "backend_tag=$BACKEND_TAG" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=$FRONTEND_TAG" >> "$GITHUB_OUTPUT"
+          echo "运行 Tag: $IMAGE_TAG / $LATEST_TAG"
+          echo "backend  内容 Tag: $BACKEND_TAG"
+          echo "frontend 内容 Tag: $FRONTEND_TAG"
 
       - name: 登录 GHCR
         uses: docker/login-action@v3
@@ -79,18 +101,42 @@ jobs:
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: 检查内容 Tag 是否已在两个仓库
+        id: exists
+        env:
+          BACKEND_TAG: ${{ steps.meta.outputs.backend_tag }}
+          FRONTEND_TAG: ${{ steps.meta.outputs.frontend_tag }}
+        run: |
+          # 两个仓库(GHCR 给 OVH,ACR 给 ECS)都有才算存在;缺任一就重新构建推送
+          check() {
+            local svc="$1" tag="$2"
+            if docker buildx imagetools inspect "$IMAGE_REGISTRY/$svc:$tag" > /dev/null 2>&1 \
+               && docker buildx imagetools inspect "$ACR_IMAGE_REGISTRY/$svc:$tag" > /dev/null 2>&1; then
+              echo "$svc=true" >> "$GITHUB_OUTPUT"
+              echo "$svc:$tag 已存在,跳过构建"
+            else
+              echo "$svc=false" >> "$GITHUB_OUTPUT"
+              echo "$svc:$tag 不存在,需要构建"
+            fi
+          }
+          check backend "$BACKEND_TAG"
+          check frontend "$FRONTEND_TAG"
+
       - name: 生成构建时间戳
         run: echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
       - name: 构建并推送 backend 镜像
+        if: steps.exists.outputs.backend == 'false'
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
           tags: |
+            ${{ env.IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.backend_tag }}
             ${{ env.IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.image_tag }}
             ${{ env.IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.latest_tag }}
+            ${{ env.ACR_IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.backend_tag }}
             ${{ env.ACR_IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.image_tag }}
             ${{ env.ACR_IMAGE_REGISTRY }}/backend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
@@ -106,14 +152,17 @@ jobs:
           provenance: false
 
       - name: 构建并推送 frontend 镜像
+        if: steps.exists.outputs.frontend == 'false'
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
           tags: |
+            ${{ env.IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.frontend_tag }}
             ${{ env.IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.image_tag }}
             ${{ env.IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.latest_tag }}
+            ${{ env.ACR_IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.frontend_tag }}
             ${{ env.ACR_IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.image_tag }}
             ${{ env.ACR_IMAGE_REGISTRY }}/frontend:${{ steps.meta.outputs.latest_tag }}
           build-args: |
@@ -123,6 +172,34 @@ jobs:
           # 阿里云个人版 ACR 不认 provenance attestation 的 empty config
           # (application/vnd.oci.empty.v1+json)，推送会被 denied。关掉。
           provenance: false
+
+      - name: 未重建的服务:把运行 Tag / latest 指到已有内容 Tag
+        if: steps.exists.outputs.backend == 'true' || steps.exists.outputs.frontend == 'true'
+        env:
+          BACKEND_SKIPPED: ${{ steps.exists.outputs.backend }}
+          FRONTEND_SKIPPED: ${{ steps.exists.outputs.frontend }}
+          BACKEND_TAG: ${{ steps.meta.outputs.backend_tag }}
+          FRONTEND_TAG: ${{ steps.meta.outputs.frontend_tag }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+          LATEST_TAG: ${{ steps.meta.outputs.latest_tag }}
+        run: |
+          # 只是在仓库侧给同一个 manifest 加 tag,不拉不推镜像层。
+          # 这样 Deploy Only 用单个运行 Tag 回滚时两个服务都能找到镜像。
+          retag() {
+            local svc="$1" content_tag="$2"
+            docker buildx imagetools create \
+              -t "$IMAGE_REGISTRY/$svc:$IMAGE_TAG" \
+              -t "$IMAGE_REGISTRY/$svc:$LATEST_TAG" \
+              "$IMAGE_REGISTRY/$svc:$content_tag"
+            # ACR 个人版对 manifest 操作较挑剔;失败只告警,ECS 部署用的是内容 Tag 不受影响
+            docker buildx imagetools create \
+              -t "$ACR_IMAGE_REGISTRY/$svc:$IMAGE_TAG" \
+              -t "$ACR_IMAGE_REGISTRY/$svc:$LATEST_TAG" \
+              "$ACR_IMAGE_REGISTRY/$svc:$content_tag" \
+              || echo "::warning::ACR 上 $svc 的运行 Tag/latest 重打失败,内容 Tag $content_tag 仍可用"
+          }
+          if [ "$BACKEND_SKIPPED" = "true" ]; then retag backend "$BACKEND_TAG"; fi
+          if [ "$FRONTEND_SKIPPED" = "true" ]; then retag frontend "$FRONTEND_TAG"; fi
 
   # ── 部署到 ECS（测试/预发环境，从 ACR 拉取）──
   deploy-ecs:
@@ -167,6 +244,8 @@ jobs:
             DEPLOY_SKIP_CODE_UPDATE=1 \
             DEPLOY_REF=${{ github.sha }} \
             IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
+            BACKEND_IMAGE_TAG=${{ needs.build.outputs.backend_tag }} \
+            FRONTEND_IMAGE_TAG=${{ needs.build.outputs.frontend_tag }} \
             IMAGE_REGISTRY=${{ env.ACR_IMAGE_REGISTRY }} \
             DEPLOY_API_BASE_URL=http://${{ secrets.ECS_HOST }}:8080 \
             DEPLOY_CORS_ORIGINS=http://${{ secrets.ECS_HOST }}:8080 \
@@ -177,7 +256,9 @@ jobs:
         run: |
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ ECS 部署成功"
-            echo "   镜像: ${{ needs.build.outputs.image_tag }}"
+            echo "   backend : ${{ needs.build.outputs.backend_tag }}"
+            echo "   frontend: ${{ needs.build.outputs.frontend_tag }}"
+            echo "   运行 Tag: ${{ needs.build.outputs.image_tag }}"
             echo "   地址: http://${{ secrets.ECS_HOST }}:8080"
           else
             echo "❌ ECS 部署失败"
@@ -214,6 +295,8 @@ jobs:
             git reset --hard "origin/$REF"
             DEPLOY_REF="origin/$REF" \
             IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
+            BACKEND_IMAGE_TAG=${{ needs.build.outputs.backend_tag }} \
+            FRONTEND_IMAGE_TAG=${{ needs.build.outputs.frontend_tag }} \
             GHCR_TOKEN=${{ secrets.GITHUB_TOKEN }} \
             GHCR_USERNAME=${{ github.actor }} \
             DEPLOY_API_BASE_URL=${{ secrets.OVH_PUBLIC_ORIGIN }} \
@@ -225,7 +308,9 @@ jobs:
         run: |
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ OVH 生产部署成功"
-            echo "   镜像: ${{ needs.build.outputs.image_tag }}"
+            echo "   backend : ${{ needs.build.outputs.backend_tag }}"
+            echo "   frontend: ${{ needs.build.outputs.frontend_tag }}"
+            echo "   运行 Tag: ${{ needs.build.outputs.image_tag }}"
           else
             echo "❌ OVH 生产部署失败"
           fi

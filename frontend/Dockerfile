@@ -4,8 +4,11 @@
 # 用 pnpm + Next.js standalone 输出,生产模式启动(不要 dev / hot reload)
 # ============================================================
 
+# 基础镜像钉 digest(tag 保留给人看):构建输入进版本库,tag 在 Docker Hub 被重建不会悄悄漂移。
+# 更新由 .github/dependabot.yml 开 PR(同一 tag 的新 digest / 新 patch),合并即下个 release 重建本镜像。
+# 三个阶段必须同一个 digest。
 # ============= deps =============
-FROM node:20.18-alpine AS deps
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS deps
 
 # Alpine 镜像源换阿里云 + 淘宝 npm 镜像 + 锁定 pnpm 版本
 # 严禁 pnpm@latest(昨天踩过 ERR_UNKNOWN_BUILTIN_MODULE)
@@ -21,7 +24,7 @@ RUN pnpm config set registry https://registry.npmmirror.com \
     && pnpm install --frozen-lockfile
 
 # ============= builder =============
-FROM node:20.18-alpine AS builder
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
 
 RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories \
     && npm config set registry https://registry.npmmirror.com \
@@ -39,7 +42,7 @@ ENV NEXT_PUBLIC_DEMO_EMAILS=$NEXT_PUBLIC_DEMO_EMAILS
 RUN pnpm build
 
 # ============= runner =============
-FROM node:20.18-alpine AS runner
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production

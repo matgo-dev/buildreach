@@ -50,7 +50,29 @@ source .env.production
 set +a
 
 IMAGE_TAG="${IMAGE_TAG:-${RELEASE_TAG:-latest}}"
-echo "[deploy] IMAGE_TAG=$IMAGE_TAG"
+# 按服务的镜像 tag(CI 按目录算,目录没改 tag 不变 → compose 不重建该容器)。
+# 没传就两个服务都用 IMAGE_TAG,手动 SSH 部署/回滚的老用法不变。
+# 传字面值 current = 保留该服务当前运行的镜像不动(单服务回滚用),容器不存在则报错退出。
+BACKEND_IMAGE_TAG="${BACKEND_IMAGE_TAG:-$IMAGE_TAG}"
+FRONTEND_IMAGE_TAG="${FRONTEND_IMAGE_TAG:-$IMAGE_TAG}"
+
+running_image_tag() {
+    local svc="$1" cid img
+    cid=$(docker compose -f "$COMPOSE_FILE" ps -q "$svc" 2>/dev/null || true)
+    if [ -z "$cid" ]; then
+        echo "[deploy] ❌ $svc 容器不存在,无法保留当前镜像(current),请显式指定 tag" >&2
+        exit 1
+    fi
+    img=$(docker inspect --format '{{.Config.Image}}' "$cid")
+    echo "${img##*:}"
+}
+if [ "$BACKEND_IMAGE_TAG" = "current" ]; then
+    BACKEND_IMAGE_TAG=$(running_image_tag backend)
+fi
+if [ "$FRONTEND_IMAGE_TAG" = "current" ]; then
+    FRONTEND_IMAGE_TAG=$(running_image_tag frontend)
+fi
+echo "[deploy] 镜像 tag: backend=$BACKEND_IMAGE_TAG, frontend=$FRONTEND_IMAGE_TAG"
 
 # 允许 CI / 手动部署在不改 .env.production 的情况下覆盖本次发布参数
 if [ -n "${DEPLOY_CORS_ORIGINS:-}" ]; then
@@ -67,7 +89,7 @@ if [ -n "${DEPLOY_API_BASE_URL:-}" ]; then
 elif [ -n "${DEPLOY_PUBLIC_ORIGIN:-}" ]; then
     export API_BASE_URL="$PUBLIC_ORIGIN"
 fi
-export BACKEND_HOST_PORT FRONTEND_HOST_PORT IMAGE_TAG API_BASE_URL
+export BACKEND_HOST_PORT FRONTEND_HOST_PORT IMAGE_TAG BACKEND_IMAGE_TAG FRONTEND_IMAGE_TAG API_BASE_URL
 
 # ---- 1. 备份数据库(只在 DB 容器已运行时备份)----
 mkdir -p "$BACKUP_DIR"
@@ -124,7 +146,7 @@ else
 fi
 
 # ---- 3. 拉取镜像 ----
-echo "[deploy] [3/6] 拉取镜像(IMAGE_TAG=$IMAGE_TAG)"
+echo "[deploy] [3/6] 拉取镜像(backend=$BACKEND_IMAGE_TAG, frontend=$FRONTEND_IMAGE_TAG)"
 # 镜像仓库登录：ECS 用 ACR（IMAGE_REGISTRY 含 aliyuncs），OVH 用 GHCR
 if echo "${IMAGE_REGISTRY:-}" | grep -q "aliyuncs.com"; then
     if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
@@ -193,9 +215,9 @@ if [ "$BACKEND_OK" -ne 1 ] || [ "$FRONTEND_OK" -ne 1 ]; then
         else
             echo "[deploy]    已跳过服务器 git 拉取,不回滚工作区代码"
         fi
-        OLD_IMAGE_TAG="${OLD_BACKEND_IMAGE##*:}"
-        export IMAGE_TAG="$OLD_IMAGE_TAG"
-        echo "[deploy]    回滚 IMAGE_TAG → $IMAGE_TAG"
+        export BACKEND_IMAGE_TAG="${OLD_BACKEND_IMAGE##*:}"
+        export FRONTEND_IMAGE_TAG="${OLD_FRONTEND_IMAGE##*:}"
+        echo "[deploy]    回滚 backend → $BACKEND_IMAGE_TAG, frontend → $FRONTEND_IMAGE_TAG"
         docker compose -f "$COMPOSE_FILE" --env-file .env.production up -d --remove-orphans
         # 等回滚后的服务起来
         ROLLBACK_OK=0
@@ -225,7 +247,8 @@ docker builder prune -f --keep-storage=500MB 2>&1 | tail -3 | sed 's/^/         
 echo "[deploy] =================================================="
 echo "[deploy] 部署成功 $(date -Iseconds)"
 echo "[deploy]    ref       → $DEPLOY_REF"
-echo "[deploy]    image_tag → $IMAGE_TAG"
+echo "[deploy]    backend tag  → $BACKEND_IMAGE_TAG"
+echo "[deploy]    frontend tag → $FRONTEND_IMAGE_TAG"
 echo "[deploy]    backend   → http://localhost:${BACKEND_HOST_PORT}/healthz"
 echo "[deploy]    frontend  → http://localhost:${FRONTEND_HOST_PORT}"
 echo "[deploy]    public    → ${PUBLIC_ORIGIN}"

@@ -1,0 +1,25 @@
+# 只管 Docker 基础镜像(FROM 钉的 digest)。
+# 同一 tag 在 Docker Hub 重建(系统补丁)或出新 patch 版 → 开 PR 更新 digest;
+# 合并后该目录的内容 tag 变,下个 Build & Deploy 只重建那一个服务。
+# 大小版本(python 3.12+ / node 21+)是有意决策,不由机器人提;要升时改 FROM 并同步改这里的 ignore。
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: python
+        versions: [">= 3.12"]
+    commit-message:
+      prefix: "build(backend)"
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: node
+        versions: [">= 21"]
+    commit-message:
+      prefix: "build(frontend)"

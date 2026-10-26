@@ -173,9 +173,22 @@ gh pr create --base release-v0.x.x
 镜像每次构建都按 commit 打了不可变 tag(`<branch>-<sha>`,如 `release-v0.2.0-abc1234`),
 历史版本镜像都留在 GHCR + ACR,可直接回滚、不重新构建:
 
+> 镜像 tag 有两种:**运行 tag** `<branch>-<本次运行的 sha>`,backend/frontend 每次运行都打;
+> **内容 tag** `<branch>-<最后一次改到 backend/ 或 frontend/ 的 sha>`,目录没改就不重新构建、tag 不变,
+> 服务器上 compose 看到镜像名没变就不重建那个容器(只改前端不重启后端,反之亦然)。
+> 部署用内容 tag。整套回滚填运行 tag(两个服务都能找到,但两个容器都会重建);
+> 只回退一个服务填它的内容 tag,另一个留空=不动。
+> 基础镜像在 Dockerfile 里钉 digest(`FROM python:3.11-slim@sha256:…`),Dependabot 每周查 Docker Hub,
+> 同 tag 出新 digest(系统补丁 / 新 patch 版)就开 PR;合并后该目录内容 tag 变,下个 Build & Deploy 只重建那一个服务。
+> 改到 Dockerfile 的 PR 会额外跑 **Docker Build Check**(只构建不推送),Dependabot 的 PR 也靠它验证能构建。
+> 换 Python / Node 大小版本是有意决策,dependabot.yml 里 `ignore` 掉了,要升时改 FROM 的 tag 并同步调整 ignore。
+
 1. GitHub → Actions → **Deploy Only (Re-deploy)** → Run workflow
 2. Branch 选目标 ref(回滚生产选 `release-v*`,OVH 门槛才放行)
-3. `image_tag` 填要回滚到的历史 tag(如 `release-v0.2.0-abc1234`);留空则部署该分支最新镜像
+3. 三个 tag 输入三选一:
+   - 全留空:部署该分支最新镜像(`<branch>-latest`)
+   - `image_tag` 填运行 tag(如 `release-v0.2.0-abc1234`):整套回滚
+   - `backend_image_tag` / `frontend_image_tag` 填该服务的内容 tag:只换填了的服务,另一个保留当前运行镜像(此时 `image_tag` 必须留空)
 4. `target` 选 `ovh`(或 `ecs`)→ Run,production 需 Approve
 
 > 历史 tag 可在对应的 Build & Deploy 运行日志、或镜像仓库(GHCR/ACR)里查到。
