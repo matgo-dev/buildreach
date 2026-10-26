@@ -53,7 +53,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          # 与 backend/Dockerfile 的基础镜像同一小版本:测的就是生产跑的解释器。升版本两处一起改。
+          python-version: "3.11"
 
       - name: Install dependencies
         working-directory: backend
