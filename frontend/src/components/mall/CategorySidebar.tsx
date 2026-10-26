@@ -118,7 +118,7 @@ export function CategorySidebar({
         }}
       >
         {/* 头部 — 固定不滚动 */}
-        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-lime text-teal-900 shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-t-xl bg-gradient-to-r from-[#aad95c] via-lime to-lime-soft text-teal-900 shrink-0">
           <LayoutGrid className="w-4 h-4" />
           <span className="text-sm font-bold">{t("allCategoryNav")}</span>
         </div>

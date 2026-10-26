@@ -108,9 +108,9 @@ export function FilterPanel({
           {allLabel && !multiMode && (
             <button
               onClick={onClearAll}
-              className={`h-[28px] max-w-full justify-self-start rounded-full px-3 text-[12px] transition-all ${
+              className={`h-[28px] max-w-full justify-self-start rounded px-3 text-[12px] transition-all ${
                 isAllSelected
-                  ? "bg-lime/40 font-bold text-teal-900 ring-1 ring-inset ring-lime"
+                  ? "font-bold text-white bg-teal-500"
                   : "font-medium text-ink hover:text-teal-700"
               }`}
             >
@@ -154,10 +154,10 @@ export function FilterPanel({
               <button
                 key={item.key}
                 onClick={() => onSelect(item.key)}
-                // 选中:贴合文字宽度的浅柠绿胶囊 + 柠绿描边 + 加粗(不只靠颜色区分);单靠 teal-700 字色在现配色下与正文几乎同色
-                className={`h-[28px] max-w-full justify-self-start rounded-full px-3 text-[12px] text-left truncate transition-all ${
+                // 选中:中绿实底白字小圆角,平涂不加渐变/阴影(参考西域 ehsy.com 2026-10-23:选中=品牌绿实底白字)。用 teal-500 不用 700:700 太沉;纯字变色不成立 — teal-700 与正文几乎同色
+                className={`h-[28px] max-w-full justify-self-start rounded px-3 text-[12px] text-left truncate transition-all ${
                   isSelected
-                    ? "bg-lime/40 font-bold text-teal-900 ring-1 ring-inset ring-lime"
+                    ? "font-bold text-white bg-teal-500"
                     : "font-medium text-ink hover:text-teal-700"
                 }`}
               >
