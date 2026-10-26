@@ -43,8 +43,12 @@ export function MallNavRow() {
   const navLinks = isStaff ? NAV_LINKS.filter((l) => !l.buyerOnly) : NAV_LINKS;
 
   // 收紧内边距(px-2/sm:px-3),让整排双语项 + 专区一行装下不横滑。
+  // 下划线用 after 伪元素画(宽度 = 文字宽,不含内边距),悬浮时从中间向两侧展开到满宽,
+  // 当前页常亮;原来悬浮只换字色(ink-2→teal-900 两个深绿),几乎看不出变化。
   const itemBase =
-    "relative self-stretch inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 transition-colors -mb-px";
+    "relative self-stretch inline-flex items-center whitespace-nowrap font-extrabold text-[13px] sm:text-[14px] px-2 sm:px-3 -mb-px transition-colors duration-200 " +
+    "after:absolute after:bottom-0 after:left-2 after:right-2 sm:after:left-3 sm:after:right-3 after:h-[3px] after:rounded-full after:bg-lime " +
+    "after:origin-center after:scale-x-0 after:transition-transform after:duration-300 after:ease-out";
 
   const renderNavLink = (link: NavLink) => {
     // href 可能带 query(如 /mall?procurement=local),按路径 + query 双匹配高亮。
@@ -78,8 +82,8 @@ export function MallNavRow() {
         href={link.href}
         className={`${itemBase} ${
           active
-            ? "text-teal-900 border-b-[3px] border-lime"
-            : "text-ink-2 hover:text-teal-900"
+            ? "text-teal-900 after:scale-x-100"
+            : "text-ink-2 hover:text-teal-900 hover:after:scale-x-100"
         }`}
       >
         {t(link.labelKey)}
