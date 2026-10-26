@@ -99,6 +99,8 @@ export function MallHeader() {
       className="sticky top-0 z-[80] border-b border-line bg-white"
       style={{
         boxShadow: "0 1px 2px rgba(18,59,50,.04), 0 6px 20px rgba(18,59,50,.04)",
+        // 顶部氛围图(线稿工地,1536x480)分三段拼在 header/nav/main 上,偏移量随各段高度走
+        background: "url(/images/bg-top.webp) center 0 / 1536px 480px no-repeat, #fff",
       }}
     >
       <div className="mx-auto max-w-mall px-3 sm:px-6">
@@ -120,7 +122,7 @@ export function MallHeader() {
         {/* 中:搜索框 — PC 上显示在这一行 */}
         <form onSubmit={handleSearch} className="relative min-w-0 hidden md:block">
           <div
-            className="flex rounded-[10px] overflow-hidden border-2 border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
+            className="flex rounded-lg overflow-hidden border-[1.5px] border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
           >
             <input
               type="search"
@@ -129,14 +131,14 @@ export function MallHeader() {
               onFocus={() => setSearchFocused(true)}
               onClick={() => setSearchFocused(true)}
               placeholder={t("searchPlaceholder")}
-              className="flex-1 h-12 px-4 bg-white text-ink text-[14.5px] outline-none min-w-0"
+              className="flex-1 h-10 px-4 bg-white text-ink text-[14.5px] outline-none min-w-0"
             />
             <button
               type="submit"
-              className="w-[60px] bg-lime text-teal-900 hover:bg-lime-soft grid place-items-center transition-colors"
+              className="w-[52px] bg-lime text-teal-900 hover:bg-lime-soft grid place-items-center transition-colors"
               aria-label="Search"
             >
-              <Search className="h-5 w-5" strokeWidth={2.4} />
+              <Search className="h-[18px] w-[18px]" strokeWidth={2.4} />
             </button>
           </div>
           {isBuyer && (
@@ -187,7 +189,7 @@ export function MallHeader() {
         {/* 移动端搜索框 — 独占一行 */}
         <form onSubmit={handleSearch} className="relative md:hidden pb-3">
           <div
-            className="flex rounded-[10px] overflow-hidden border-2 border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
+            className="flex rounded-lg overflow-hidden border-[1.5px] border-lime transition-shadow focus-within:ring-2 focus-within:ring-sea/25"
           >
             <input
               type="search"

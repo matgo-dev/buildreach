@@ -8,13 +8,13 @@ import { useAuthStore } from "@/stores/authStore";
 import { useLogout } from "@/hooks/useAuth";
 import { workspaceDashboardOf } from "@/config/navigation";
 
-/** 顶部深青公告条 — 公告 + 帮助 + 账号小入口 */
+/** 顶部柠绿渐变公告条 — 公告 + 帮助 + 账号小入口(与分类栏头同一组渐变) */
 export function TopStrip() {
   const t = useTranslations("mall");
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="bg-lime text-teal-900 text-[13px] font-semibold">
+    <div className="bg-gradient-to-r from-[#aad95c] via-lime to-lime-soft text-teal-900 text-[13px] font-semibold">
       <div className="mx-auto max-w-mall px-3 sm:px-6 flex items-center justify-between min-h-[32px] sm:min-h-[36px]">
         <span className="hidden md:inline">
           {t("stripAnnouncement")}

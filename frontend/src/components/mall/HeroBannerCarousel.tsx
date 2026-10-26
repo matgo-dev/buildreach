@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
 import { bannersApi } from "@/lib/api/banners";
 import { imageUrl } from "@/lib/env";
 
-const AUTOPLAY_INTERVAL = Number(process.env.NEXT_PUBLIC_BANNER_INTERVAL_MS) || 5000;
-
 /**
  * 首页轮播 — 动态从后端读取(GET /api/v1/banners，position="home_carousel")。
  * 播放顺序 = 后端按 sort_order 排序;运营在后台增删改 / 排序 / 上下架。
  * 存量图由 backend/scripts/seed_banners.py 一次性 seed 进库。
+ * 不自动轮播(与 MatDara 一致,廖总 2026-10-21 定):默认停在第一张,只靠圆点/箭头手动切换;
+ * 只有一张时不显示圆点和箭头。
  */
 interface Slide {
   src: string;
@@ -46,8 +46,6 @@ export function HeroBannerCarousel() {
     [rows],
   );
   const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const count = slides.length;
 
   const goTo = useCallback(
@@ -57,23 +55,13 @@ export function HeroBannerCarousel() {
   const next = useCallback(() => setCurrent((c) => (count ? (c + 1) % count : 0)), [count]);
   const prev = useCallback(() => setCurrent((c) => (count ? (c - 1 + count) % count : 0)), [count]);
 
-  useEffect(() => {
-    if (count <= 1 || isPaused) return;
-    timerRef.current = setInterval(next, AUTOPLAY_INTERVAL);
-    return () => clearInterval(timerRef.current);
-  }, [count, isPaused, next]);
-
   // 加载中 / 无数据:保留占位背景,不塌陷布局
   if (count === 0) {
     return <div className="w-full h-full rounded-xl bg-gray-100" />;
   }
 
   return (
-    <div
-      className="relative w-full h-full rounded-xl overflow-hidden group"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
+    <div className="relative w-full h-full rounded-xl overflow-hidden group">
       {slides.map((slide, i) => {
         // 只渲染当前 ± 1 张，其余不挂载 DOM
         if (!isNearby(i, current, count)) return null;
