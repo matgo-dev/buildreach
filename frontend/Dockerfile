@@ -8,7 +8,7 @@
 # 更新由 .github/dependabot.yml 开 PR(同一 tag 的新 digest / 新 patch),合并即下个 release 重建本镜像。
 # 三个阶段必须同一个 digest。
 # ============= deps =============
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS deps
+FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS deps
 
 # Alpine 镜像源换阿里云 + 淘宝 npm 镜像 + 锁定 pnpm 版本
 # 严禁 pnpm@latest(昨天踩过 ERR_UNKNOWN_BUILTIN_MODULE)
@@ -24,7 +24,7 @@ RUN pnpm config set registry https://registry.npmmirror.com \
     && pnpm install --frozen-lockfile
 
 # ============= builder =============
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
+FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS builder
 
 RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories \
     && npm config set registry https://registry.npmmirror.com \
@@ -42,7 +42,7 @@ ENV NEXT_PUBLIC_DEMO_EMAILS=$NEXT_PUBLIC_DEMO_EMAILS
 RUN pnpm build
 
 # ============= runner =============
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS runner
+FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
